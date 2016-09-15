@@ -65,92 +65,20 @@ module Path = struct
   in
   snd @@ subst path
 
-  type u = t list
-  type g = Exact of t | Unknown of u
-end
-
-module Module = struct
-  module M = struct
-    include Map.Make(struct type t = name let compare = compare end)
-    let (|+>) (k,x) m = add k x m
-    let find_opt k m = try Some(find k m) with Not_found -> None
-  end
-
-  type t = {name:name; signature:signature }
-  and signature =
-    | Alias of Path.g
-    | Sig of t M.t
-    | Fun of { arg: t; result: signature }
-
-  let rec ellide path path' =
-    let open Path in
-    match path, path' with
-    | T, _ -> path'
-    | A m , A n  -> if m = n then T else A n
-    | S(p,m), S(p',n) ->
-      let meet = ellide p p' in
-      if meet = T && m = n then T
-      else meet / n
-    | F {fn;arg}, F f -> if fn = f.fn && arg = f.arg then T else F f
-    | _, _ -> path'
-
-  let rec substitute name path =
-    function
-    | Alias (Path.Exact p) -> Alias Path.(Exact (substitute ~name ~sub:path p))
-    | Alias _unknown as a -> a
-    | Sig s -> Sig (
-        M.map (fun md ->
-            { md with signature = substitute name path md.signature } )
-          s
-      )
-    | Fun {arg; result} -> Fun { arg; result = substitute name path result }
-
-  let apply (arg,signature) path =
-    substitute arg.name path signature
-
-
-  exception Functor_expected
-  exception Functor_not_expected
-
-  let (>>) x left = Either.map left (fun x -> Either.Right x) x
-
-
-  let rec find env path m =
-    let open Path in
-    match path with
-    | T -> raise Not_found
-    | A n -> Either.Left (M.find n m).signature
-    | F {fn;arg} ->
-      find_functor env fn arg m
-    | S(p,n) ->
-      let m = find env p m in
-      m >> (find_mod env @@ A n)
-  and find_functor env fn arg m =
-    let fn = find env fn m in
-    fn >> function
-    | Sig _ -> raise Functor_expected
-    | Alias (Path.Exact fn) ->  find_functor env fn arg env
-    | Alias (Path.Unknown unkn) -> Either.Right unkn
-    | Fun f -> Either.Left (apply (f.arg,f.result) arg)
-  and find_mod env path = function
-    | Sig s -> find env path s
-    | Alias (Path.Exact m') -> find env m' env >> find_mod env path
-    | Alias (Path.Unknown u) ->  Either.Right u (* todo *)
-    | Fun _ -> raise Functor_not_expected
-
-  let find path env =
-    try Some (find env path env) with
-    | Not_found -> None
-
 end
 
 
 module Unresolved = struct
 
-  type rpath = Loc of Path.t | Extern of Path.t list
-  let pp_rpath ppf = function
+  type u = {path:Path.t; env:rpath list}
+  and rpath = Loc of Path.t | Extern of u
+
+  let ($) f u = { u with path = f u.path }
+  let to_list u = List.rev @@ (Loc u.path) :: u.env
+
+  let rec pp_rpath ppf = function
     | Loc p ->  Path.pp ppf p
-    | Extern ext -> (Pp.clist Path.pp) ppf ext
+    | Extern ext -> (Pp.clist pp_rpath) ppf (to_list ext)
 
   module M = struct
     include Map.Make(struct type t = rpath let compare = compare end)
@@ -162,12 +90,12 @@ module Unresolved = struct
   let empty = Map M.empty
 
   type update = (map M.t -> map M.t) -> map M.t -> map M.t
-  type focus = { update: update; prev:update list; map:map }
+  type focus = { update: update; prev:update list; env:rpath list; map:map }
 
-  let start = { update = (@@); prev = []; map = empty }
+  let start = { update = (@@); prev = []; env = []; map = empty }
 
   let top foc =
-    { foc with update=(@@); prev = [] }
+    { foc with update=(@@); prev = []; env = []  }
 
   let m { map = Map m; _ } = m
   let update_map foc f = { foc with map = Map (foc.update f @@ m foc) }
@@ -197,30 +125,132 @@ module Unresolved = struct
         M.add x (Map(f m')) m in
       foc.update f'
     in
-    { foc with update; prev = foc.update :: foc.prev }
+    { map = foc.map;
+      update;
+      prev = foc.update :: foc.prev;
+      env = x :: foc.env
+    }
 
   let up foc = match foc.prev with
     | [] -> foc
-    | update::prev -> { foc with update; prev }
+    | update::prev -> {
+        map = foc.map;
+        update;
+        prev;
+        env = List.tl foc.env
+      }
 
   let down_into x foc = foc |> add_new x |> down x
 
   let move_to path foc =
     List.fold_left (fun foc u -> down u foc) (top foc) path
 
+  let alias_with_context foc path = {path; env = foc.env }
+
 end
+
+
+
+
+module Module = struct
+  module M = struct
+    include Map.Make(struct type t = name let compare = compare end)
+    let (|+>) (k,x) m = add k x m
+    let find_opt k m = try Some(find k m) with Not_found -> None
+  end
+
+  let empty_sig = M.empty
+
+  type t = {name:name; signature:signature }
+  and signature =
+    | Alias of Unresolved.u
+    | Sig of t M.t
+    | Fun of fn
+  and fn = {arg: t; result: signature }
+
+  let rec ellide path path' =
+    let open Path in
+    match path, path' with
+    | T, _ -> path'
+    | A m , A n  -> if m = n then T else A n
+    | S(p,m), S(p',n) ->
+      let meet = ellide p p' in
+      if meet = T && m = n then T
+      else meet / n
+    | F {fn;arg}, F f -> if fn = f.fn && arg = f.arg then T else F f
+    | _, _ -> path'
+
+  let rec substitute name path =
+    function
+    | Alias u -> Alias Unresolved.(Path.substitute ~name ~sub:path $ u)
+    | Sig s -> Sig (
+        M.map (fun md ->
+            { md with signature = substitute name path md.signature } )
+          s
+      )
+    | Fun {arg; result} -> Fun { arg; result = substitute name path result }
+
+  exception Functor_expected
+  exception Functor_not_expected
+
+  let (>>) x left = Either.map left (fun x -> Either.Right x) x
+
+
+  let rec find env path m =
+    let open Path in
+    match path with
+    | T -> raise Not_found
+    | A n -> Either.Left (M.find n m).signature
+    | F {fn;arg} ->
+      find_functor env fn arg m
+    | S(p,n) ->
+      let m = find env p m in
+      m >> (find_mod env @@ A n)
+  and find_functor env fn arg m =
+    let fn = find env fn m in
+    fn >> function
+    | Sig _ -> raise Functor_expected
+    | Alias unkn -> Either.Right unkn
+    | Fun fn ->
+      begin match find env arg m with
+        | Either.Left arg ->
+          Either.Left (apply env fn arg)
+        | Either.Right u ->
+          Either.Left ( apply env fn (Alias u) )
+      end
+  and find_mod env path = function
+    | Sig s -> find env path s
+    | Alias u ->  Either.Right u (* todo *)
+    | Fun _ -> raise Functor_not_expected
+  and apply _env fn _sign  = Fun fn
+
+  let find_exn = find
+
+  let find path env =
+    try Some (find env path env) with
+    | Not_found -> None
+
+
+
+
+end
+
 
 
 module Env = struct
   type t = {
     resolved: Module.t Module.M.t;
     unresolved: Unresolved.focus;
-    signature: Module.t list }
+    signature: Module.t Module.M.t }
   let find path env = Module.find path env.resolved
   let empty = {
     resolved = Module.M.empty;
-    unresolved = Unresolved.start; signature = [] }
+    unresolved = Unresolved.start; signature = Module.M.empty }
+
+
+  let unresolved env = env.unresolved
 end
+
 
 let access path env =
   match Module.find path env.Env.resolved with
@@ -230,15 +260,14 @@ let access path env =
 
 exception Opening_a_functor
 
-let rec open_ path env =
+let open_ path env =
   let open_unknown p =
     Env.{ env with unresolved = Unresolved.down_into p env.unresolved } in
   let union = Module.M.union (fun _key m1 _m2 -> Some m1) in
   let open_m =
     let open Module in
     function
-    | Alias (Path.Exact p) -> open_ p env
-    | Alias (Path.Unknown p) ->
+    | Alias p ->
       Env.{ env with unresolved = Unresolved.(down_into (Extern p) env.unresolved) }
     | Fun _ -> raise Opening_a_functor
     | Sig s ->
@@ -249,9 +278,10 @@ let rec open_ path env =
   | Some (Either.Right path) -> open_unknown (Unresolved.Extern path)
   | None -> open_unknown (Unresolved.Loc path)
 
-let enter_module env = { env with Env.signature = [] }
+let enter_module env = { env with Env.signature = Module.empty_sig  }
 
 let bind env md=
+  let add m = Module.M.add md.Module.name md m in
   Env.{ env with
-    resolved = Module.M.add md.Module.name md env.resolved;
-    signature = md :: env.signature }
+    resolved = add env.resolved;
+    signature = add env.signature }

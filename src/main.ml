@@ -1,14 +1,21 @@
 
 let test = {|
+ open I
+ module U = struct module I = struct module E = Ext  end end
  open A
+ module K = struct open W.S module X = Y end
  let x = B.x
- include F(D)
+ module F(X:sig end) = struct module N = Xeno end
+ open R
  open C
- module U = struct end
- open U
+ open U.I
+ open E
+ open K.X
+
 |}
 
-let lex_test = Lexing.from_string test
+
+let lex_test = Lexing.from_channel @@ open_in Sys.argv.(1)
 
 let ast = Parse.implementation lex_test
 
@@ -80,22 +87,68 @@ and recmodules env mbs = env
 and module_type_declaration env mdec = env
 and class_declaration env c = env
 and class_type_declaration env ct = env
-and module_expr env mexpr = Resolver.Module.(Sig M.empty)
+and module_expr (env: Resolver.Env.t) mexpr :
+  Resolver.Unresolved.focus * Resolver.Module.signature  =
+  let open Resolver in
+  let unresolved = Env.unresolved env in
+  match mexpr.pmod_desc with
+  | Pmod_ident name ->
+    let path = from_lid @@ txt name in
+    begin match Env.find path env with
+    | Some(Either.Left sign ) -> unresolved, sign
+    | Some(Either.Right unk) -> Unresolved.(add_new (Extern unk) unresolved),
+                                Module.Alias unk
+    | None ->
+      Unresolved.(add_new (Loc path) unresolved),
+      Module.Alias (Unresolved.alias_with_context env.Env.unresolved path)
+    end
+  | Pmod_structure str ->
+    let env = (structure (enter_module env) str) in
+       Env.( env.unresolved, Module.Sig env.signature)
+        (* struct ... end *)
+  | Pmod_functor (name, sign, mex) ->
+    let name = txt name in
+      begin match sign with
+        | Some s ->
+          let unresolved, s = signature env s in
+          let unresolved, result = module_expr { env with Env.unresolved } mex in
+          unresolved,
+          Module.(Fun {
+            arg = {Module.name;signature=s};
+            result })
+        | None -> assert false
+      end
+  | Pmod_apply (f,x) ->
+    let unresolved, f = module_expr env f in
+    let unresolved, x = module_expr {env with Env.unresolved} x in
+    begin match f with
+      | Module.Fun fn ->  unresolved, Module.apply env fn x
+      | Module.Alias u -> assert false
+      | _ -> assert false
+    end
+        (* ME1(ME2) *)
+  | Pmod_constraint (_module_expr,module_type) ->
+      signature env module_type
+  | Pmod_unpack _expression -> assert false
+        (* (val E) *)
+  | Pmod_extension _extension -> assert false
+        (* [%id] *)
 and value_binding env vb =
   expr env vb.pvb_expr
 and module_binding env { pmb_name; pmb_expr; _ } =
   let open Resolver in
-  let sign = module_expr (enter_module env) pmb_expr in
+  let unresolved, sign = module_expr (enter_module env) pmb_expr in
   let md = {Module.signature = sign;
             name = txt pmb_name } in
-  Resolver.bind env md
-
+  Resolver.bind { env with Env.unresolved } md
+and signature env _sign = Resolver.( Env.unresolved env, Module.(Sig empty_sig) )
 
 let print_env env =
   let open Resolver in
   env.Env.unresolved.Unresolved.map
   |> Format.printf "@[%a@]\n" Unresolved.pp
 
+(*
 let () =
   let open Resolver in
   let env = Env.empty in
@@ -104,6 +157,7 @@ let () =
   |> access (Path.A "B")
   |> open_ (Path.F {fn = Path.A "C"; arg = Path.A "D" } )
   |> print_env
+*)
 
 let () =
   structure Resolver.Env.empty ast
