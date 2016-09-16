@@ -32,6 +32,8 @@ let lex_test = Lexing.from_channel @@ open_in Sys.argv.(1)
 
 let ast = Parse.implementation lex_test
 
+exception Include_functor
+
 module L = Longident
 
 let rec from_lid  =
@@ -57,6 +59,8 @@ let access env path = let open Option in
 let do_open env popen_lid =
   let path = from_lid @@ txt popen_lid in
   Resolver.open_ path env
+
+
 
 let opt f env x=  Option.( x >>| (fun x -> f env x) >< env )
 let flip f x y = f y x
@@ -195,12 +199,12 @@ and expr env exp = match exp.pexp_desc with
   *) ->
     expr (expr (expr (pattern env pat) e1) e2) e3
   | Pexp_constraint (e,t) (* (E : T) *) ->
-    expr (type_ env t) e
+    expr (core_type env t) e
   | Pexp_coerce (e, t_opt, coer)
   (* (E :> T)        (None, T)
      (E : T0 :> T)   (Some T0, T)
   *) ->
-    expr (opt type_ (type_ env coer) t_opt) e
+    expr (opt core_type (core_type env coer) t_opt) e
   | Pexp_new name (* new M.c *) ->
     access env name
   | Pexp_setinstvar (_x, e) (* x <- e *) ->
@@ -272,13 +276,73 @@ and pattern env pat = match pat.ppat_desc with
 (*  | Ppat_open (m,p) (* M.(P) *) ->
     Resolver.(up env.Env.signature) @@ pattern (do_open env m) p *)
 
-and type_declaration env tyd = env
-and type_extension env ty_ext = env
-and type_ env t = env
-and core_type env ct = env
-and case env cs = env
-and exception_ env exn = env
-and do_include env incl = env
+and type_declaration env td  =
+  let env = List.fold_left (fun env (_,t,_) -> core_type env t) env td.ptype_cstrs in
+  let env = type_kind env td.ptype_kind in
+  opt core_type env td.ptype_manifest
+and type_kind env = function
+  | Ptype_abstract | Ptype_open -> env
+  | Ptype_variant constructor_declarations ->
+      List.fold_left constructor_declaration env constructor_declarations
+  | Ptype_record label_declarations ->
+    List.fold_left label_declaration env label_declarations
+and constructor_declaration env cd =
+  opt core_type (constructor_args env cd.pcd_args) cd.pcd_res
+and constructor_args env = function
+    | Pcstr_tuple cts -> List.fold_left core_type env cts
+    | Pcstr_record lds -> List.fold_left label_declaration env lds
+and label_declaration env ld = core_type env ld.pld_type
+and type_extension env tyext =
+  let env = access env tyext.ptyext_path in
+  List.fold_left extension_constructor env tyext.ptyext_constructors
+and core_type env ct =   match ct.ptyp_desc with
+  | Ptyp_any  (*  _ *)
+  | Ptyp_extension _ (* [%id] *)
+  | Ptyp_var _ (* 'a *) -> env
+  | Ptyp_arrow (_, t1, t2) (* [~? ]T1->T2 *) ->
+      core_type (core_type env t1) t2
+  | Ptyp_tuple cts (* T1 * ... * Tn *) ->
+    List.fold_left core_type env cts
+  | Ptyp_class (name,cts)
+  | Ptyp_constr (name,cts) (*[|T|(T1n ..., Tn)] tconstr *) ->
+    List.fold_left core_type (access env name) cts
+  | Ptyp_object (lbls, _ ) (* < l1:T1; ...; ln:Tn[; ..] > *) ->
+    List.fold_left (fun env (_,_,t) -> core_type env t) env lbls
+  | Ptyp_poly (_, ct)
+  | Ptyp_alias (ct,_) (* T as 'a *) -> core_type env ct
+
+  | Ptyp_variant (row_fields,_,_labels) ->
+    List.fold_left row_field env row_fields
+  | Ptyp_package s (* (module S) *) -> package_type env s
+
+and row_field env = function
+  | Rtag (_,_,_,cts) -> List.fold_left core_type env cts
+  | Rinherit ct -> core_type env ct
+and package_type env (s,constraints) =
+  List.fold_left (fun env (_,ct) -> core_type env ct)
+    (access env s) constraints
+and case env cs =
+  pattern env cs.pc_lhs
+  |> flip (opt expr) cs.pc_guard
+  |> flip expr cs.pc_rhs
+and do_include env incl =
+  let open Resolver in
+  let unresolved, sign = module_expr env incl.pincl_mod in
+  let merge = Resolver.Module.M.union (fun _k _x y -> Some y) in
+  let sign0 = env.Env.signature in
+  match sign with
+  | Module.Sig {Module.s;includes} ->
+      {
+        Env.resolved = merge env.Env.resolved s;
+        signature = Module.{ s = merge sign0.s s;
+                      includes = S.union includes sign0.includes
+                    };
+        unresolved
+      }
+  | Module.Alias u ->
+    let signature = Module.{ sign0 with includes = S.add u sign0.includes } in
+    { env with Env.signature; unresolved }
+  | Module.Fun _ -> raise Include_functor
 and extension_constructor env extc = env
 and recmodules env mbs = env
 and module_type_declaration env mdec = env
@@ -346,7 +410,7 @@ and signature env _sign = Resolver.( Env.unresolved env, Module.(Sig empty_sig) 
 let print_env env =
   let open Resolver in
   env.Env.unresolved.Unresolved.map
-  |> Format.printf "@[%a@]\n" Unresolved.pp
+  |> Format.printf "@[%a@]@." Unresolved.pp
 
 (*
 let () =

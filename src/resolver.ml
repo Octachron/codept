@@ -47,7 +47,7 @@ module Path = struct
     | F fn -> F (p//fn)
 
 
-  let (%) fn arg = F fn
+  let (%) fn _arg = F fn
 
   let substitute ~name ~sub path =
   let rec subst path = match path with
@@ -159,14 +159,21 @@ module Module = struct
     let find_opt k m = try Some(find k m) with Not_found -> None
   end
 
-  let empty_sig = M.empty
+  module S = struct
+    include Set.Make(struct type t = Unresolved.u let compare = compare end)
+    let map f s = fold (fun x s -> add (f x) s) s empty
+  end
+
 
   type t = {name:name; signature:signature }
   and signature =
     | Alias of Unresolved.u
-    | Sig of t M.t
+    | Sig of explicit_signature
     | Fun of fn
+  and explicit_signature = { s: t M.t; includes:S.t }
   and fn = {arg: t; result: signature }
+
+  let empty_sig = { s = M.empty; includes = S.empty }
 
   let rec ellide path path' =
     let open Path in
@@ -177,17 +184,20 @@ module Module = struct
       let meet = ellide p p' in
       if meet = T && m = n then T
       else meet / n
-    | F fn, F f -> F f
+    | F _, F f -> F f
     | _, _ -> path'
 
   let rec substitute name path =
     function
     | Alias u -> Alias Unresolved.(Path.substitute ~name ~sub:path $ u)
-    | Sig s -> Sig (
-        M.map (fun md ->
+    | Sig {s;includes} -> Sig {
+        s = M.map (fun md ->
             { md with signature = substitute name path md.signature } )
-          s
-      )
+            s;
+        includes = S.map
+            Unresolved.(fun u ->  Path.substitute ~name ~sub:path $ u)
+            includes
+      }
     | Fun {arg; result} -> Fun { arg; result = substitute name path result }
 
   exception Functor_expected
@@ -211,9 +221,9 @@ module Module = struct
     fn >> function
     | Sig _ -> raise Functor_expected
     | Alias unkn -> Either.Right unkn (*??*)
-    | Fun fn as f-> Either.Left f
+    | Fun _ as f-> Either.Left f
   and find_mod env path = function
-    | Sig s -> find env path s
+    | Sig { s;_ } -> find env path s
     | Alias u ->  Either.Right u (* todo *)
     | Fun _ -> raise Functor_not_expected
   and apply _env fn _sign  = Fun fn
@@ -235,11 +245,11 @@ module Env = struct
   type t = {
     resolved: Module.t Module.M.t;
     unresolved: Unresolved.focus;
-    signature: Module.t Module.M.t }
+    signature: Module.explicit_signature }
   let find path env = Module.find path env.resolved
   let empty = {
     resolved = Module.M.empty;
-    unresolved = Unresolved.start; signature = Module.M.empty }
+    unresolved = Unresolved.start; signature = Module.empty_sig }
 
 
   let unresolved env = env.unresolved
@@ -266,8 +276,11 @@ let open_ path env =
     | Alias p ->
       Env.{ env with unresolved = Unresolved.(down_into (Extern p) env.unresolved) }
     | Fun _ -> raise Opening_a_functor
-    | Sig s ->
-      Env.{ env with resolved = union s env.resolved }
+    | Sig { s; includes } ->
+      Env.{ env with resolved = union s env.resolved;
+                     unresolved = S.fold Unresolved.(fun u m ->
+                         add_new (Extern u) m) includes env.unresolved
+          }
   in
   match Env.find path env with
   | Some (Either.Left m) -> open_m m
@@ -277,9 +290,10 @@ let open_ path env =
 let enter_module env = { env with Env.signature = Module.empty_sig  }
 
 let bind env md=
-  let add m = Module.M.add md.Module.name md m in
+  let add_r m = Module.M.add md.Module.name md m in
+  let add_s m = Module.{ m with s = add_r m.s  } in
   Env.{ env with
-    resolved = add env.resolved;
-    signature = add env.signature }
+    resolved = add_r env.resolved;
+    signature = add_s env.signature }
 
 let up sign env = Env.{ (up env) with signature = sign }
