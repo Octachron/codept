@@ -231,7 +231,47 @@ and expr env exp = match exp.pexp_desc with
       Resolver.{ env with Env.unresolved = Unresolved.up env.Env.unresolved }
   | Pexp_constant _ | Pexp_extension _ (* [%ext] *) | Pexp_unreachable (* . *)
     -> env
-and pattern env pat = env
+and pattern env pat = match pat.ppat_desc with
+  | Ppat_constant _ (* 1, 'a', "true", 1.0, 1l, 1L, 1n *)
+  | Ppat_interval _ (* 'a'..'z'*)
+  | Ppat_any
+  | Ppat_extension _
+  | Ppat_var _ (* x *) -> env
+
+  | Ppat_exception pat (* exception P *)
+  | Ppat_lazy pat (* lazy P *)
+  | Ppat_alias (pat,_) (* P as 'a *) -> pattern env pat
+
+  | Ppat_array patterns (* [| P1; ...; Pn |] *)
+  | Ppat_tuple patterns (* (P1, ..., Pn) *) ->
+    List.fold_left pattern env patterns
+
+  | Ppat_construct (c, p)
+        (* C                None
+           C P              Some P
+           C (P1, ..., Pn)  Some (Ppat_tuple [P1; ...; Pn])
+        *) ->
+    opt pattern (access env c) p
+  | Ppat_variant (_, p) (*`A (None), `A P(Some P)*) ->
+    opt pattern env p
+  | Ppat_record (fields, _flag)
+        (* { l1=P1; ...; ln=Pn }     (flag = Closed)
+           { l1=P1; ...; ln=Pn; _}   (flag = Open)
+        *) ->
+    List.fold_left (fun env (_,p) -> pattern env p ) env fields
+  | Ppat_or (p1,p2) (* P1 | P2 *) ->
+    pattern (pattern env p1) p2
+  | Ppat_constraint (pat, ct)  (* (P : T) *) ->
+    pattern (core_type env ct) pat
+  | Ppat_type name (* #tconst *) -> access env name
+  | Ppat_unpack _s -> assert false
+        (* (module P)
+           Note: (module P : S) is represented as
+           Ppat_constraint(Ppat_unpack, Ptyp_package)
+         *)
+(*  | Ppat_open (m,p) (* M.(P) *) ->
+    Resolver.(up env.Env.signature) @@ pattern (do_open env m) p *)
+
 and type_declaration env tyd = env
 and type_extension env ty_ext = env
 and type_ env t = env
