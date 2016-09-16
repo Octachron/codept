@@ -25,7 +25,8 @@ module Path = struct
     | T
     | A of name
     | S of t * name
-    | F of {fn:t; arg:t}
+    | F of t
+    (** functor argument are forgotten: they do not influence module name *)
 
   let rec pp ppf =
     let p fmt = Format.fprintf ppf fmt in
@@ -33,7 +34,7 @@ module Path = struct
     | T -> p "T"
     | A name -> p"%s" name
     | S(h,n) -> p "%a.%s" pp h n
-    | F {fn;arg} -> p "%a(%a)" pp fn pp arg
+    | F fn -> p "%a(…)" pp fn
 
   let (/) p n= match p, n with
     | T, n -> A n
@@ -43,10 +44,10 @@ module Path = struct
     | T -> p
     | A n -> p / n
     | S (p',n)  -> (p // p') / n
-    | F {fn; arg} -> F { fn=p//fn; arg}
+    | F fn -> F (p//fn)
 
 
-  let (%) fn arg = F{fn;arg}
+  let (%) fn arg = F fn
 
   let substitute ~name ~sub path =
   let rec subst path = match path with
@@ -58,10 +59,9 @@ module Path = struct
     | T -> false, T
     | A m -> if name = m then true, sub
       else false, path
-    | F {fn;arg} ->
+    | F fn ->
       let t, fn = subst fn in
-      let t', arg = subst arg in
-      t || t', F {fn;arg}
+      t , F fn
   in
   snd @@ subst path
 
@@ -104,9 +104,9 @@ module Unresolved = struct
     let p fmt = Format.fprintf ppf fmt in
     if m = M.empty then ()
     else begin
-      p "@[[";
+      p "@[<hov2>[";
       M.iter (fun k x ->
-          p "%a? %a" pp_rpath k pp x
+          p "%a? @,%a" pp_rpath k pp x
         ) m;
       p "]@]@,";
     end
@@ -177,7 +177,7 @@ module Module = struct
       let meet = ellide p p' in
       if meet = T && m = n then T
       else meet / n
-    | F {fn;arg}, F f -> if fn = f.fn && arg = f.arg then T else F f
+    | F fn, F f -> F f
     | _, _ -> path'
 
   let rec substitute name path =
@@ -201,23 +201,17 @@ module Module = struct
     match path with
     | T -> raise Not_found
     | A n -> Either.Left (M.find n m).signature
-    | F {fn;arg} ->
-      find_functor env fn arg m
+    | F fn ->
+      find_functor env fn m
     | S(p,n) ->
       let m = find env p m in
       m >> (find_mod env @@ A n)
-  and find_functor env fn arg m =
+  and find_functor env fn m =
     let fn = find env fn m in
     fn >> function
     | Sig _ -> raise Functor_expected
-    | Alias unkn -> Either.Right unkn
-    | Fun fn ->
-      begin match find env arg m with
-        | Either.Left arg ->
-          Either.Left (apply env fn arg)
-        | Either.Right u ->
-          Either.Left ( apply env fn (Alias u) )
-      end
+    | Alias unkn -> Either.Right unkn (*??*)
+    | Fun fn as f-> Either.Left f
   and find_mod env path = function
     | Sig s -> find env path s
     | Alias u ->  Either.Right u (* todo *)
@@ -249,6 +243,8 @@ module Env = struct
 
 
   let unresolved env = env.unresolved
+  let umap f env = { env with unresolved = f env.unresolved }
+  let up = umap Unresolved.up
 end
 
 
@@ -285,3 +281,5 @@ let bind env md=
   Env.{ env with
     resolved = add env.resolved;
     signature = add env.signature }
+
+let up sign env = Env.{ (up env) with signature = sign }
