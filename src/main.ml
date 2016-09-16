@@ -343,12 +343,70 @@ and do_include env incl =
     let signature = Module.{ sign0 with includes = S.add u sign0.includes } in
     { env with Env.signature; unresolved }
   | Module.Fun _ -> raise Include_functor
-and extension_constructor env extc = env
-and recmodules env mbs = env
-and module_type_declaration env mdec = env
-and class_structure env ct = env
-and class_declaration env c = env
-and class_type_declaration env ct = env
+and extension_constructor env extc = match extc.pext_kind with
+| Pext_decl (args, cto) ->
+  opt core_type (constructor_args env args) cto
+| Pext_rebind name -> access env name
+and class_type env ct = match ct.pcty_desc with
+  | Pcty_constr (name, cts ) (* c ['a1, ..., 'an] c *) ->
+    List.fold_left core_type (access env name) cts
+  | Pcty_signature cs (* object ... end *) -> class_signature env cs
+  | Pcty_arrow (_arg_label, ct, clt) (* ^T -> CT *) ->
+    class_type (core_type env ct) clt
+  | Pcty_extension _ (* [%ext] *) -> env
+and class_signature env cs = List.fold_left class_type_field env cs.pcsig_fields
+and class_type_field env ctf = match ctf.pctf_desc with
+  | Pctf_inherit ct -> class_type env ct
+  | Pctf_val ( _, _, _, ct) (*val x : T *)
+  | Pctf_method (_ ,_,_,ct) (* method x: T *)
+    -> core_type env ct
+  | Pctf_constraint  (t1, t2) (* constraint T1 = T2 *) ->
+    core_type (core_type env t1) t2
+  | Pctf_attribute _
+  | Pctf_extension _ -> env
+and class_structure env ct =
+  List.fold_left class_field env ct.pcstr_fields
+and class_field env field = match field.pcf_desc with
+  | Pcf_inherit (_override_flag, ce, _) (* inherit CE *) ->
+    class_expr env ce
+  | Pcf_method (_, _, cfk)
+  | Pcf_val (_,_, cfk) (* val x = E *)->
+    class_field_kind env cfk
+  | Pcf_constraint (_ , ct) (* constraint T1 = T2 *) ->
+    core_type env ct
+  | Pcf_initializer e (* initializer E *) -> expr env e
+  | Pcf_attribute _
+  | Pcf_extension _ -> env
+and class_expr env ce = match ce.pcl_desc with
+  | Pcl_constr (name, cts)  (* ['a1, ..., 'an] c *) ->
+    List.fold_left core_type (access env name) cts
+  | Pcl_structure cs (* object ... end *) -> class_structure env cs
+  | Pcl_fun (_arg_label, eo, pat, ce)
+        (* fun P -> CE                          (Simple, None)
+           fun ~l:P -> CE                       (Labelled l, None)
+           fun ?l:P -> CE                       (Optional l, None)
+           fun ?l:(P = E0) -> CE                (Optional l, Some E0)
+        *)
+    -> opt expr env eo |> flip pattern pat |> flip class_expr ce
+  | Pcl_apply (ce, les )
+        (* CE ~l1:E1 ... ~ln:En
+           li can be empty (non labeled argument) or start with '?'
+           (optional argument).
+
+           Invariant: n > 0
+        *) ->
+    List.fold_left (fun env (_,e) -> expr env e) (class_expr env ce) les
+  | Pcl_let (_, value_bindings, ce ) (* let P1 = E1 and ... and Pn = EN in CE *)
+    -> List.fold_left value_binding env value_bindings
+  |> flip class_expr ce
+  | Pcl_constraint (ce, ct) ->
+    class_type (class_expr env ce) ct
+  | Pcl_extension _ext -> env
+and class_field_kind env = function
+  | Cfk_virtual ct -> core_type env ct
+  | Cfk_concrete (_, e) -> expr env e
+and class_declaration env cd = class_expr env (cd.pci_expr)
+and class_type_declaration env ctd = class_type env (ctd.pci_expr)
 and module_expr (env: Resolver.Env.t) mexpr :
   Resolver.Unresolved.focus * Resolver.Module.signature  =
   let open Resolver in
@@ -405,7 +463,10 @@ and module_binding env (pmb_name, pmb_expr) =
   let md = {Module.signature = sign;
             name = txt pmb_name } in
   Resolver.bind { env with Env.unresolved } md
+and module_type_declaration env mdec = env
 and signature env _sign = Resolver.( Env.unresolved env, Module.(Sig empty_sig) )
+and recmodules env mbs = env
+
 
 let print_env env =
   let open Resolver in
