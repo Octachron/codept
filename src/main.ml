@@ -14,6 +14,21 @@ let test = {|
 
 |}
 
+module Warning = struct
+
+  let p fmt = Format.eprintf fmt
+  let fp fmt = Format.fprintf fmt
+
+
+  let log pp = Format.eprintf "@[<hov2>\\e[35mWarning\\e[39m:@,@@[%a@]@]@." pp
+
+  let string ppf = fp ppf "%s"
+  let log_s s = log string s
+  let extension ()= log_s "extension node ignored"
+  let confused () = log_s "confused author did not know"
+
+end
+
 module Option = struct
   let fmap f = function
     | Some x -> Some (f x)
@@ -49,24 +64,64 @@ let module_path =
     | L.Ldot (lid, _) -> Some (from_lid lid)
     | L.Lapply _ -> None
 
+let value = Resolver.Path.Module
+let type_ = Resolver.Path.Module_type
+
+
+module Env = Resolver.Env
+
 open Parsetree
 let txt x= x.Location.txt
 
-let access env path = let open Option in
-     path |> txt |> module_path >>| (fun p -> Resolver.access p env)
+let find_signature kind env lid =
+  let open Resolver in
+  let unresolved = Env.unresolved env in
+  let path = from_lid @@ txt lid in
+  match Env.find (kind,path) env with
+    | Some(Either.Left sign ) -> unresolved, sign
+    | Some(Either.Right unk) -> Unresolved.(add_new (Extern unk) unresolved),
+                                Module.Alias unk
+    | None ->
+      Unresolved.(add_new (Env.loc value path) unresolved),
+      Module.Alias (Unresolved.alias_with_context env.Env.unresolved (value,path))
+
+let access_gen kind env path = let open Option in
+     path |> txt |> module_path >>| (fun p -> Resolver.access (kind,p) env)
   >< env
 
-let do_open env popen_lid =
-  let path = from_lid @@ txt popen_lid in
-  Resolver.open_ path env
+let access = access_gen value
 
+let do_open_gen kind env popen_lid =
+  let path = from_lid @@ txt popen_lid in
+  Resolver.open_ kind path env
+
+let do_open = do_open_gen value
+
+let do_include_gen kind extract env m=
+  let open Resolver in
+  let unresolved, sign = extract env m in
+  let merge s s' = Resolver.Module.M.union (fun _k _x y -> Some y) s s' in
+  let sign0 = env.Env.signature in
+  match sign with
+  | Module.Sig {Module.s;includes} ->
+    let env = Env.update kind (merge s) env in
+      { env with
+        Env.signature = Module.{ s = merge sign0.s s;
+                      includes = S.union includes sign0.includes
+                    };
+        unresolved
+      }
+  | Module.Alias u ->
+    let signature = Module.{ sign0 with includes = S.add u sign0.includes } in
+    { env with Env.signature; unresolved }
+  | Module.Fun _ -> raise Include_functor
 
 
 let opt f env x=  Option.( x >>| (fun x -> f env x) >< env )
 let flip f x y = f y x
 
 let rec structure env str =
-  List.fold_left structure_item env str
+  Env.refocus env @@ List.fold_left structure_item env str
 and structure_item env item =
   match item.pstr_desc with
   | Pstr_eval (exp, _attrs) -> expr env exp
@@ -107,7 +162,8 @@ and structure_item env item =
     -> env
   | Pstr_extension (_id, _payload) (* [%%id] *) ->
     env
-and expr env exp = match exp.pexp_desc with
+and expr env exp =
+  match exp.pexp_desc with
   | Pexp_ident name (* x, M.x *) ->
     access env name
   | Pexp_let (_rec_flag, value_bindings, exp )
@@ -115,8 +171,8 @@ and expr env exp = match exp.pexp_desc with
            let rec P1 = E1 and ... and Pn = EN in E   (flag = Recursive)
         *)
     ->
-    let env = List.fold_left value_binding env value_bindings in
-    expr env exp
+    let env' = List.fold_left value_binding env value_bindings in
+    expr env' exp
   | Pexp_function cases (* function P1 -> E1 | ... | Pn -> En *) ->
     List.fold_left case env cases
   | Pexp_fun ( _arg_label, expr_opt, pat, expression)
@@ -130,9 +186,9 @@ and expr env exp = match exp.pexp_desc with
            - "let f P = E" is represented using Pexp_fun.
         *)
     ->
-    let env = opt expr env expr_opt in
-    let env = pattern env pat in
-    expr env expression
+    let env' = opt expr env expr_opt in
+    let env' = pattern env' pat in
+    expr env' expression
   | Pexp_apply (expression, args)
         (* E0 ~l1:E1 ... ~ln:En
            li can be empty (non labeled argument) or start with '?'
@@ -214,7 +270,7 @@ and expr env exp = match exp.pexp_desc with
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
     let env' = module_binding env (m,me) in
     let env' = expr env' e in
-    Resolver.(up env.Env.signature env')
+    Env.{ (refocus env env') with signature = env.signature }
 (*  | Pexp_letexception (c, e) (* let exception C in E *) ->
     expression (extension_constructor env ext) e *)
 
@@ -276,7 +332,7 @@ and pattern env pat = match pat.ppat_desc with
 (*  | Ppat_open (m,p) (* M.(P) *) ->
     Resolver.(up env.Env.signature) @@ pattern (do_open env m) p *)
 
-and type_declaration env td  =
+and type_declaration env td  = Env.refocus env @@
   let env = List.fold_left (fun env (_,t,_) -> core_type env t) env td.ptype_cstrs in
   let env = type_kind env td.ptype_kind in
   opt core_type env td.ptype_manifest
@@ -313,7 +369,9 @@ and core_type env ct =   match ct.ptyp_desc with
 
   | Ptyp_variant (row_fields,_,_labels) ->
     List.fold_left row_field env row_fields
-  | Ptyp_package s (* (module S) *) -> package_type env s
+  | Ptyp_package s (* (module S) *) ->
+    Warning.confused();
+    package_type env s
 
 and row_field env = function
   | Rtag (_,_,_,cts) -> List.fold_left core_type env cts
@@ -326,23 +384,7 @@ and case env cs =
   |> flip (opt expr) cs.pc_guard
   |> flip expr cs.pc_rhs
 and do_include env incl =
-  let open Resolver in
-  let unresolved, sign = module_expr env incl.pincl_mod in
-  let merge = Resolver.Module.M.union (fun _k _x y -> Some y) in
-  let sign0 = env.Env.signature in
-  match sign with
-  | Module.Sig {Module.s;includes} ->
-      {
-        Env.resolved = merge env.Env.resolved s;
-        signature = Module.{ s = merge sign0.s s;
-                      includes = S.union includes sign0.includes
-                    };
-        unresolved
-      }
-  | Module.Alias u ->
-    let signature = Module.{ sign0 with includes = S.add u sign0.includes } in
-    { env with Env.signature; unresolved }
-  | Module.Fun _ -> raise Include_functor
+    do_include_gen value module_expr env incl.pincl_mod
 and extension_constructor env extc = match extc.pext_kind with
 | Pext_decl (args, cto) ->
   opt core_type (constructor_args env args) cto
@@ -376,7 +418,7 @@ and class_field env field = match field.pcf_desc with
     core_type env ct
   | Pcf_initializer e (* initializer E *) -> expr env e
   | Pcf_attribute _
-  | Pcf_extension _ -> env
+  | Pcf_extension _ -> Warning.extension (); env
 and class_expr env ce = match ce.pcl_desc with
   | Pcl_constr (name, cts)  (* ['a1, ..., 'an] c *) ->
     List.fold_left core_type (access env name) cts
@@ -401,7 +443,7 @@ and class_expr env ce = match ce.pcl_desc with
   |> flip class_expr ce
   | Pcl_constraint (ce, ct) ->
     class_type (class_expr env ce) ct
-  | Pcl_extension _ext -> env
+  | Pcl_extension _ext -> Warning.extension () ; env
 and class_field_kind env = function
   | Cfk_virtual ct -> core_type env ct
   | Cfk_concrete (_, e) -> expr env e
@@ -410,27 +452,19 @@ and class_type_declaration env ctd = class_type env (ctd.pci_expr)
 and module_expr (env: Resolver.Env.t) mexpr :
   Resolver.Unresolved.focus * Resolver.Module.signature  =
   let open Resolver in
-  let unresolved = Env.unresolved env in
   match mexpr.pmod_desc with
   | Pmod_ident name ->
-    let path = from_lid @@ txt name in
-    begin match Env.find path env with
-    | Some(Either.Left sign ) -> unresolved, sign
-    | Some(Either.Right unk) -> Unresolved.(add_new (Extern unk) unresolved),
-                                Module.Alias unk
-    | None ->
-      Unresolved.(add_new (Loc path) unresolved),
-      Module.Alias (Unresolved.alias_with_context env.Env.unresolved path)
-    end
+    find_signature value env name
   | Pmod_structure str ->
-    let env = (structure (enter_module env) str) in
-       Env.( env.unresolved, Module.Sig env.signature)
+    let env' = (structure (enter_module env) str) in
+    Env.( env'.unresolved,
+          Module.Sig env.signature)
         (* struct ... end *)
   | Pmod_functor (name, sign, mex) ->
     let name = txt name in
       begin match sign with
         | Some s ->
-          let unresolved, s = signature env s in
+          let unresolved, s = module_type env s in
           let unresolved, result = module_expr { env with Env.unresolved } mex in
           unresolved,
           Module.(Fun {
@@ -449,11 +483,13 @@ and module_expr (env: Resolver.Env.t) mexpr :
       | _ -> assert false
     end
         (* ME1(ME2) *)
-  | Pmod_constraint (_module_expr,module_type) ->
-      signature env module_type
+  | Pmod_constraint (_module_expr,mt) ->
+      module_type env mt
   | Pmod_unpack _expression -> assert false
         (* (val E) *)
-  | Pmod_extension _extension -> assert false
+  | Pmod_extension _extension ->
+    Warning.extension();
+    Env.unresolved env, Module.(Sig empty_sig)
         (* [%id] *)
 and value_binding env vb =
   expr env vb.pvb_expr
@@ -462,9 +498,85 @@ and module_binding env (pmb_name, pmb_expr) =
   let unresolved, sign = module_expr (enter_module env) pmb_expr in
   let md = {Module.signature = sign;
             name = txt pmb_name } in
-  Resolver.bind { env with Env.unresolved } md
-and module_type_declaration env mdec = env
-and signature env _sign = Resolver.( Env.unresolved env, Module.(Sig empty_sig) )
+  Resolver.bind value { env with Env.unresolved } md
+and module_type env mt =
+  let open Resolver in
+  match mt.pmty_desc with
+  | Pmty_signature s (* sig ... end *) -> signature env s
+  | Pmty_functor (name, arg, res) (* functor(X : MT1) -> MT2 *) ->
+    begin match arg with
+      | None -> assert false (*??*)
+      | Some arg ->
+        let unr, sign = module_type (enter_module env) arg in
+        let env =  { env with Env.unresolved = unr } in
+        let unr', sign'= module_type (enter_module env) res in
+        unr', Module.(Fun { arg = {name=txt name;signature=sign}; result= sign'})
+    end
+
+  | Pmty_with (mt, wlist) (* MT with ... *) ->
+    assert false
+  | Pmty_typeof me (* module type of ME *) ->
+    module_expr env me
+  | Pmty_extension _ ->
+    Warning.extension();
+    Resolver.( Env.unresolved env, Module.( Sig empty_sig ) )
+        (* [%id] *)
+  | Pmty_alias lid -> find_signature value env lid
+        (* (module M) *)
+  | Pmty_ident lid (* S *) ->
+    Warning.confused ();
+    find_signature type_ env lid
+
+and module_declaration env mdec =
+  let open Resolver in
+  let u, s = module_type env mdec.pmd_type in
+  let s = { Module.name =  txt mdec.pmd_name; signature = s} in
+  let env = Env.{ env with unresolved = Unresolved.refocus_on env.unresolved u } in
+  bind value env s
+and module_type_declaration env mdec =
+  let open Resolver in
+  let open Option in
+  let name = txt mdec.pmtd_name in
+  let u, s = mdec.pmtd_type >>| begin fun mtd ->
+      let u, s = module_type env mtd in
+      u ,{ Module.name; signature = s}
+    end
+  >< (Env.unresolved env, Module.{ name; signature = Sig empty_sig} )
+  in
+  let env = Env.{ env with unresolved = Unresolved.refocus_on env.unresolved u } in
+  bind type_ env s
+and signature env sign =
+  let env = List.fold_left signature_item (Resolver.enter_module env) sign in
+  Resolver.( Env.unresolved env, Module.Sig env.Env.signature  )
+and signature_item env item =  match item.psig_desc with
+  | Psig_value vd (* val x: T *) ->
+    core_type env vd.pval_type
+  | Psig_type (_rec_flag, tds) (* type t1 = ... and ... and tn = ... *) ->
+    List.fold_left type_declaration env tds
+  | Psig_typext te (* type t1 += ... *) ->
+    type_extension env te
+  | Psig_exception ec (* exception C of T *) ->
+    extension_constructor env ec
+  | Psig_module md (* module X : MT *) ->
+    module_declaration env md
+  | Psig_recmodule mds (* module rec X1 : MT1 and ... and Xn : MTn *) ->
+    let env' = List.fold_left module_declaration env mds in
+    let env'' = Env.{ env with modules = env'.modules; types = env'.types } in
+    Warning.confused ();
+    List.fold_left module_declaration env'' mds
+  | Psig_modtype mtd (* module type S = MT *) ->
+    module_type_declaration env mtd
+  | Psig_open od (* open X *) ->
+    do_open env od.popen_lid
+  | Psig_include id (* include MT *) ->
+    do_include_gen type_ module_type env id.pincl_mod
+  | Psig_class cds (* class c1 : ... and ... and cn : ... *) ->
+    List.fold_left class_description env cds
+  | Psig_class_type ctds ->
+    List.fold_left class_type_declaration env ctds
+  | Psig_attribute _ -> env
+  | Psig_extension _ -> Warning.extension(); env
+and class_description = class_type_declaration
 and recmodules env mbs = env
 
 
