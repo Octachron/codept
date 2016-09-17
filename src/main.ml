@@ -370,8 +370,7 @@ and core_type env ct =   match ct.ptyp_desc with
   | Ptyp_variant (row_fields,_,_labels) ->
     List.fold_left row_field env row_fields
   | Ptyp_package s (* (module S) *) ->
-    Warning.confused();
-    package_type env s
+    Warning.confused(); env
 
 and row_field env = function
   | Rtag (_,_,_,cts) -> List.fold_left core_type env cts
@@ -576,9 +575,14 @@ and signature_item env item =  match item.psig_desc with
     List.fold_left class_type_declaration env ctds
   | Psig_attribute _ -> env
   | Psig_extension _ -> Warning.extension(); env
-and class_description = class_type_declaration
-and recmodules env mbs = env
-
+and class_description x = class_type_declaration x
+and recmodules env mbs =
+  let modules = List.fold_left
+      (fun env md -> module_binding env (md.pmb_name,md.pmb_expr) ) in
+  let env'= modules env mbs in
+  let env' =
+    Env.{ env' with signature = env.signature; unresolved=env'.unresolved } in
+  modules env' mbs
 
 let print_env env =
   let open Resolver in
