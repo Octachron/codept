@@ -24,8 +24,10 @@ module Warning = struct
 
   let string ppf = fp ppf "%s"
   let log_s s = log string s
-  let extension ()= log_s "extension node ignored"
-  let confused () = log_s "confused author did not know"
+  let extension ()= log_s "extension node ignored."
+  let confused () = log_s "confused author did not know what to do here."
+  let first_class_module () =
+    log_s "first-class modules are not handled yet."
 
 end
 
@@ -324,8 +326,9 @@ and pattern env pat = match pat.ppat_desc with
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
     pattern (core_type env ct) pat
   | Ppat_type name (* #tconst *) -> access env name
-  | Ppat_unpack _s -> assert false
-        (* (module P)
+  | Ppat_unpack _s ->
+    Warning.first_class_module();
+    env (* (module P)
            Note: (module P : S) is represented as
            Ppat_constraint(Ppat_unpack, Ptyp_package)
          *)
@@ -369,7 +372,7 @@ and core_type env ct =   match ct.ptyp_desc with
 
   | Ptyp_variant (row_fields,_,_labels) ->
     List.fold_left row_field env row_fields
-  | Ptyp_package s (* (module S) *) ->
+  | Ptyp_package _s (* (module S) *) ->
     Warning.confused(); env
 
 and row_field env = function
@@ -482,8 +485,12 @@ and module_expr (env: Resolver.Env.t) mexpr :
       | _ -> assert false
     end
         (* ME1(ME2) *)
-  | Pmod_constraint (_module_expr,mt) ->
-      module_type env mt
+  | Pmod_constraint (me,mt) ->
+    let unr, sign = module_type (enter_module env) mt in
+    let env'' = Env.{ env with
+                      unresolved = Unresolved.refocus_on env.unresolved unr} in
+    let unr, _sign = module_expr env'' me in
+    unr, sign
   | Pmod_unpack _expression -> assert false
         (* (val E) *)
   | Pmod_extension _extension ->
@@ -581,13 +588,15 @@ and recmodules env mbs =
       (fun env md -> module_binding env (md.pmb_name,md.pmb_expr) ) in
   let env'= modules env mbs in
   let env' =
-    Env.{ env' with signature = env.signature; unresolved=env'.unresolved } in
-  modules env' mbs
+    Env.{ env' with signature = env.signature; unresolved=env.unresolved } in
+    modules env' mbs
 
 let print_env env =
   let open Resolver in
-  env.Env.unresolved.Unresolved.map
-  |> Format.printf "@[%a@]@." Unresolved.pp
+  let ur = env.Env.unresolved.Unresolved.map in
+  Format.printf "@[%a@]@.@[%a@]@."
+    Unresolved.pp ur
+    Module.pp_explicit env.Env.signature
 
 (*
 let () =

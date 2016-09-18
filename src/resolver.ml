@@ -88,9 +88,12 @@ module Unresolved = struct
     { u with path = k, f p }
   let to_list u = List.rev @@ (Loc u.path) :: u.env
 
+
   let rec pp_rpath ppf = function
     | Loc p ->  Path.pp_q ppf p
-    | Extern ext -> (Pp.clist pp_rpath) ppf (to_list ext)
+    | Extern ext -> pp_u ppf ext
+  and pp_u ppf u = Pp.clist pp_rpath ppf (to_list u)
+
 
   module M = struct
     include Map.Make(struct type t = rpath let compare = compare end)
@@ -188,6 +191,27 @@ module Module = struct
   and explicit_signature = { s: t M.t; includes:S.t }
   and fn = {arg: t; result: signature }
 
+  let rec pp ppf s = let open Pp in
+    fp ppf "@[<hov2> module %s:@,%a@]" s.name pp_signature s.signature
+  and pp_signature ppf = function
+    | Alias u -> Pp.fp ppf "@[?%a@]" Unresolved.pp_u u
+    | Fun {arg;result} -> Pp.fp ppf "@[<hov2> functor(%a)@,@ ->@ @,%a@ end]"
+                            pp arg pp_signature result
+    | Sig s -> Pp.fp ppf "sig@, @[<hov2>%a@]@, end"
+                 pp_explicit s
+  and pp_explicit ppf ex =
+    let submod = Pp.list @@ fun ppf (_,x) -> pp ppf x in
+    if S.cardinal ex.includes > 0 then
+      Pp.fp ppf "@[<hov2>%a@]@; include?[%a]@]"
+        submod
+        (M.bindings ex.s)
+        (Pp.list Unresolved.pp_u)
+        (S.elements ex.includes)
+    else
+      Pp.fp ppf "@[<hov2>%a@]@]"
+        submod
+        (M.bindings ex.s)
+
   let empty_sig = { s = M.empty; includes = S.empty }
 
   let rec ellide path path' =
@@ -239,7 +263,7 @@ module Module = struct
     | Fun _ as f-> Either.Left f
   and find_mod env path = function
     | Sig { s;_ } -> find env path s
-    | Alias u ->  Either.Right u (* todo *)
+    | Alias u ->  Either.Right u (* todo ?? *)
     | Fun _ -> raise Functor_not_expected
   and apply _env fn _sign  = Fun fn
 
@@ -248,8 +272,6 @@ module Module = struct
   let find path env =
     try Some (find env path env) with
     | Not_found -> None
-
-
 
 
 end
