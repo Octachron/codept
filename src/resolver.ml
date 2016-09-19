@@ -20,6 +20,9 @@ module Either = struct
     | Right r -> right r
 end
 
+exception Functor_expected
+exception Functor_not_expected
+
 module Path = struct
   type t =
     | T
@@ -27,6 +30,30 @@ module Path = struct
     | S of t * name
     | F of t
     (** functor argument are forgotten: they do not influence module name *)
+
+  let split = function
+    | T  -> raise (Invalid_argument "Splitting an empty path")
+    | F _ -> raise (Invalid_argument "Splitting a functor application")
+    | A n -> n, T
+    | S(p,a) -> a, p
+
+  let rev_concrete p =
+    let rec concretize l = function
+      | T -> l
+      | A a -> a :: l
+      | F _ -> raise Functor_not_expected
+      | S(p,s) -> concretize (s::l) p in
+    concretize [] p
+
+  let concrete p = List.rev @@ rev_concrete p
+
+  let from_list l =
+    let rec rebuild =
+      function
+      | [] -> T
+      | [a] -> A a
+      | a :: q -> S(rebuild q, a)
+    in rebuild @@ List.rev l
 
   let rec pp ppf =
     let p fmt = Format.fprintf ppf fmt in
@@ -65,6 +92,28 @@ module Path = struct
   in
   snd @@ subst path
 
+  let is_prefix prefix path =
+    let prefix, path = concrete prefix, concrete path in
+    let rec is_prefix prefix path =
+      match prefix, path with
+      | [], _ -> true
+      | _ , [] -> false
+      | a :: q, b:: q' -> a = b && is_prefix q q' in
+    is_prefix prefix path
+
+  let cut_prefix prefix path =
+    let prefix, path = concrete prefix, concrete path in
+    let rec cut_prefix prefix path =
+      match prefix, path with
+      | [], _ -> path
+      |  _ , [] -> []
+      | a :: q, b:: q' ->
+        if a = b then
+          cut_prefix q q'
+        else path in
+    from_list @@ cut_prefix prefix path
+
+
   type kind = Module_type | Module
   type q = kind * t
   let kind = fst
@@ -74,13 +123,15 @@ module Path = struct
     | Module -> pp ppf p
     | Module_type -> Pp.fp ppf "'%a" pp p
 
+module Set = Set.Make(struct type nonrec t = t let compare = compare end )
+type set = Set.t
+
 end
 
 
 module Unresolved = struct
 
-
-  type u = {path:Path.q; env:rpath list}
+  type u = {path:Path.q; deletions: Path.set; env:rpath list}
   and rpath = Loc of Path.q | Extern of u
 
   let ($) f u =
@@ -89,11 +140,19 @@ module Unresolved = struct
   let to_list u = List.rev @@ (Loc u.path) :: u.env
 
 
+
+
   let rec pp_rpath ppf = function
     | Loc p ->  Path.pp_q ppf p
     | Extern ext -> pp_u ppf ext
-  and pp_u ppf u = Pp.clist pp_rpath ppf (to_list u)
-
+  and pp_u ppf u=
+    let l = to_list u in
+    let pp_main ppf = Pp.clist pp_rpath ppf in
+    if Path.Set.cardinal u.deletions = 0 then
+      pp_main ppf l
+    else
+      Pp.fp ppf "@[(%a/%a)@]" pp_main l
+        (Pp.clist Path.pp) (Path.Set.elements u.deletions)
 
   module M = struct
     include Map.Make(struct type t = rpath let compare = compare end)
@@ -163,7 +222,9 @@ module Unresolved = struct
   let refocus_on foc foc' =
     { foc with map = foc'.map }
 
-  let alias_with_context foc path = {path; env = foc.env }
+  let alias_with_context foc path = {path; deletions=Path.Set.empty; env = foc.env }
+
+  let delete erased u = { u with deletions = Path.Set.add erased u.deletions }
 
 end
 
@@ -173,12 +234,12 @@ end
 module Module = struct
   module M = struct
     include Map.Make(struct type t = name let compare = compare end)
-    let (|+>) (k,x) m = add k x m
     let find_opt k m = try Some(find k m) with Not_found -> None
   end
 
   module S = struct
     include Set.Make(struct type t = Unresolved.u let compare = compare end)
+    let singleton x = add x empty
     let map f s = fold (fun x s -> add (f x) s) s empty
   end
 
@@ -190,6 +251,10 @@ module Module = struct
     | Fun of fn
   and explicit_signature = { s: t M.t; includes:S.t }
   and fn = {arg: t; result: signature }
+
+  let (|+>) me m = M.add me.name me m
+  let singleton m = M.singleton m.name m
+
 
   let rec pp ppf s = let open Pp in
     fp ppf "@[<hov2> module %s:@,%a@]" s.name pp_signature s.signature
@@ -213,6 +278,74 @@ module Module = struct
         (M.bindings ex.s)
 
   let empty_sig = { s = M.empty; includes = S.empty }
+  let create_sig ?(includes=S.empty) m = Sig { s = m; includes }
+
+  let rec create_along path nm =
+    match path with
+    | [] -> nm
+    | a :: q -> { name = a;
+                  signature = Sig { s = create_along q nm |+> M.empty;
+                                    includes = S.empty}
+                }
+
+  let delete path m =
+    let rec delete path m =
+    match path with
+    | [] -> m
+    | a::q ->
+      match m.signature with
+      | Alias u -> { m with
+                     signature = Alias (Unresolved.delete (Path.from_list path) u) }
+      | Fun _ -> Error.signature_expected ()
+      | Sig sg ->
+        match M.find a sg.s with
+        | m' -> if q = [] then
+            { m with signature = Sig { sg with s = M.remove a sg.s} }
+          else
+            { m with signature = Sig { sg with s = M.add a (delete q m') sg.s} }
+        | exception Not_found ->
+          let update u =  Unresolved.delete (Path.from_list path) u in
+          let includes = S.map update sg.includes in
+          let signature = Sig  { sg with includes } in
+          { m with signature } in
+    delete (Path.concrete path) m
+
+  let replace path ~inside ~signature =
+    let name, path = Path.split path in
+    let path = Path.concrete path in
+    let rec replace signature inside = function
+      | [] ->
+        let inner = {signature;name} in
+        begin match inside.signature with
+          | Alias u ->
+            let includes = S.singleton @@ Unresolved.delete (Path.A name) u in
+            { inside with signature = create_sig ~includes @@ singleton inner }
+          | Fun _ -> Error.signature_expected ()
+          | Sig s ->
+            let includes = S.map (Unresolved.delete @@ Path.A name) s.includes in
+            let signature = Sig { s = inner |+> s.s; includes } in
+            { inside with signature }
+        end
+      | a :: q as p -> match inside.signature with
+        | Fun _ -> Error.signature_expected ()
+        | Alias u ->
+          let sn = Sig { s=M.empty; includes = S.singleton u} in
+          replace signature { inside with signature = sn} p
+        | Sig sg ->
+          match M.find a sg.s with
+          | m' ->
+            { inside with signature =
+                            Sig { sg with s = replace signature m' q |+> sg.s } }
+          | exception Not_found ->
+            if S.cardinal sg.includes = 0 then
+              Error.module_type_error a
+            else
+              let update u =  Unresolved.delete (Path.from_list path) u in
+              let includes = S.map update sg.includes in
+              let inner = create_along p {name;signature} in
+              { inside with signature = Sig {s = inner |+> M.empty; includes } }
+    in
+    replace signature inside path
 
   let rec ellide path path' =
     let open Path in
@@ -226,6 +359,7 @@ module Module = struct
     | F _, F f -> F f
     | _, _ -> path'
 
+  (*
   let rec substitute name path =
     function
     | Alias u -> Alias Unresolved.(Path.substitute ~name ~sub:path $ u)
@@ -238,9 +372,8 @@ module Module = struct
             includes
       }
     | Fun {arg; result} -> Fun { arg; result = substitute name path result }
+*)
 
-  exception Functor_expected
-  exception Functor_not_expected
 
   let (>>) x left = Either.map left (fun x -> Either.Right x) x
 
@@ -272,6 +405,7 @@ module Module = struct
   let find path env =
     try Some (find env path env) with
     | Not_found -> None
+
 
 
 end
