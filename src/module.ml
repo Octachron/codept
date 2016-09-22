@@ -56,27 +56,34 @@ let rec create_along path nm =
                                     includes = S.empty}
                 }
 
+
+let rec delete path m =
+  { m with signature = delete_sig path m.signature }
+and delete_sig path sgn =
+  match path with
+  | [] -> sgn
+  | a::q ->
+    match sgn with
+    | Alias u -> Alias (Unresolved.delete (Epath.from_list path) u)
+    | Fun _ -> Error.signature_expected ()
+    | Sig sg ->
+      match M.find a sg.s with
+      | m' -> if q = [] then
+          Sig { sg with s = M.remove a sg.s}
+        else
+          Sig { sg with s = M.add a (delete q m') sg.s}
+      | exception Not_found ->
+        let update u =  Unresolved.delete (Epath.from_list path) u in
+        let includes = S.map update sg.includes in
+        Sig  { sg with includes }
+
 let delete path m =
-  let rec delete path m =
-    match path with
-    | [] -> m
-    | a::q ->
-      match m.signature with
-      | Alias u -> { m with
-                     signature = Alias (Unresolved.delete (Epath.from_list path) u) }
-      | Fun _ -> Error.signature_expected ()
-      | Sig sg ->
-        match M.find a sg.s with
-        | m' -> if q = [] then
-            { m with signature = Sig { sg with s = M.remove a sg.s} }
-          else
-            { m with signature = Sig { sg with s = M.add a (delete q m') sg.s} }
-        | exception Not_found ->
-          let update u =  Unresolved.delete (Epath.from_list path) u in
-          let includes = S.map update sg.includes in
-          let signature = Sig  { sg with includes } in
-          { m with signature } in
   delete (Epath.concrete path) m
+let delete_sig path s =
+  delete_sig (Epath.concrete path) s
+
+
+let (/) m set = Epath.Set.fold (fun path m-> delete_sig path m) set m
 
 let replace path ~inside ~signature =
   let name, path = Epath.split path in

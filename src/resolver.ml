@@ -72,43 +72,57 @@ let find_signature kind env path =
                       env.Envt.unresolved (Epath.Module,path))
 
 
-let rec refine env u =
+let rec refine_u env u =
   let us = Unresolved.to_list u in
-  update env us
-and update env = function
+  update_u env us
+and update_u env = function
   | [] -> env, None
   | a :: q as l->
     match a with
     | Unresolved.Extern u ->
       begin
-        match refine env u with
-        | env, None -> update env q
+        match refine_u env u with
+        | env, None -> update_u env q
         | _ , Some _ as res -> res
       end
     | Unresolved.Loc (p,del) ->
       match Envt.find p env with
       | Some (Either.Left s) ->
-        let env' = open_module Epath.Module env s in
-        update env' q
+        let env' = open_module Epath.Module env Module.( s / del) in
+        update_u env' q
       | Some (Either.Right u) ->
         let u = Epath.Set.fold Unresolved.delete del u in
         env, Some (Unresolved.unlist ((Unresolved.Extern u) :: q) )
       | None ->
         env, Some (Unresolved.unlist l)
 
-(*
-let rec refine env (Unresolved.Map m) =
+let rec refine env (Unresolved.Map m0) =
   let open Unresolved in
-  let update rpath inner m =
-    match Envt.find rpath.path env with
-    | Some (Either.Left s) ->
-      let q, p = rpath.path in
-      let env' = open_ q p env in
-      let Map m' = refine env' inner in
-      Map ( M.union (fun _k _x x' -> Some x') m m' )
-    | Some (Either.Right u) ->
-      Map ( M.add (Extern u) (refine env inner) m )
-    | None ->
-      Map ( M.add (Loc rpath) (refine env inner) m ) in
-  Map (M.fold update M.empty m)
-*)
+  Format.printf "Refine start.\n %a \n@." Unresolved.pp (Map m0);
+  let union m (Map m') = M.union (fun _k _x x' -> Some x') m m' in
+  let update gpath inner (env,m) =
+    Format.printf "path:%a\n" pp_rpath gpath;
+    match gpath with
+    | Extern u ->
+      begin match refine_u env u with
+        | env', None ->
+          env, union m (refine env' inner)
+        | env', Some u ->
+          env, M.add (Extern u) (refine env' inner) m
+      end
+    | Loc (qpath,del) ->
+      match Envt.find qpath env with
+      | Some (Either.Left s) ->
+        Format.printf "Refine: known module\n";
+        let q, _ = qpath in
+        Format.printf "refine:(%a)\n" Module.pp_signature s;
+        let env' = open_module q env s in
+        env, union m (refine env' inner)
+      | Some (Either.Right u) ->
+        Format.printf "Refine: known unknown module\n";
+        env, M.add (Extern u) (refine env inner) m
+      | None ->
+        Format.printf "Refine: unknown unknown module\n";
+        env, M.add (Loc (qpath,del)) (refine env inner) m in
+  let _ , m = M.fold update m0 (env,M.empty) in
+  Map m

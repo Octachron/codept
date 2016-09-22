@@ -31,3 +31,11 @@ let up = umap Unresolved.up
 let refocus env env'  =
   let env' = umap (Unresolved.refocus_on @@ unresolved env) env' in
   { env' with modules = env.modules; types = env.types }
+
+let pp ppf env =
+  let ur = env.unresolved.Unresolved.map in
+  Format.fprintf ppf "@Environment:@; Unresolved map:[%a@]@;
+  Signature:@[%a@]@."
+    Unresolved.pp ur
+    Module.pp_explicit env.signature
+
