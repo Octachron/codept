@@ -34,8 +34,7 @@ let refocus env env'  =
 
 let pp ppf env =
   let ur = env.unresolved.Unresolved.map in
-  Format.fprintf ppf "@Environment:@; Unresolved map:[%a@]@;
+  Format.fprintf ppf "Unresolved map:@[%a@]@;
   Signature:@[%a@]@."
     Unresolved.pp ur
     Module.pp_explicit env.signature
-

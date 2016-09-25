@@ -1,31 +1,31 @@
 open Common_types
 
-module M = struct
-  include Map.Make(struct type t = name let compare = compare end)
-  let find_opt k m = try Some(find k m) with Not_found -> None
-end
+module M = StrMap
 
 module S = struct
-  include Set.Make(struct type t = Unresolved.u let compare = compare end)
+  include Set.Make(struct type t = Unresolved.t let compare = compare end)
   let singleton x = add x empty
   let map f s = fold (fun x s -> add (f x) s) s empty
 end
 
-
-type t = {name:name; signature:signature }
+type t = {name: name; kind:Epath.kind; signature:signature }
 and signature =
-  | Alias of Unresolved.u
+  | Alias of Unresolved.t
   | Sig of explicit_signature
   | Fun of fn
-and explicit_signature = { s: t M.t; includes:S.t }
+and explicit_signature = { s: t M.t; t: t M.t; includes:S.t }
 and fn = {arg: t; result: signature }
 
 let (|+>) me m = M.add me.name me m
 let singleton m = M.singleton m.name m
 
+let pp_name ppf m =
+  Pp.fp ppf "module %s%s"
+    (match m.kind with Epath.Module ->""| Epath.Module_type -> "type ")
+    m.name
 
 let rec pp ppf s = let open Pp in
-  fp ppf "@[<hov2> module %s:@,%a@]" s.name pp_signature s.signature
+  fp ppf "@[<hov2> %a:@,%a@]" pp_name s pp_signature s.signature
 and pp_signature ppf = function
   | Alias u -> Pp.fp ppf "@[?%a@]" Unresolved.pp_u u
   | Fun {arg;result} -> Pp.fp ppf "@[<hov2> functor(%a)@,@ ->@ @,%a@ end]"
@@ -45,15 +45,17 @@ and pp_explicit ppf ex =
       submod
       (M.bindings ex.s)
 
-let empty_sig = { s = M.empty; includes = S.empty }
-let create_sig ?(includes=S.empty) m = Sig { s = m; includes }
+let empty_sig = { s = M.empty; t = M.empty; includes = S.empty }
+let create_sig ?(includes=S.empty) ?(t=M.empty) m = Sig { s = m; t; includes }
 
 let rec create_along path nm =
   match path with
   | [] -> nm
   | a :: q -> { name = a;
-                  signature = Sig { s = create_along q nm |+> M.empty;
-                                    includes = S.empty}
+                kind = Epath.Module;
+                signature = Sig { s = create_along q nm |+> M.empty;
+                                  t = M.empty;
+                                  includes = S.empty}
                 }
 
 
@@ -90,7 +92,7 @@ let replace path ~inside ~signature =
   let path = Epath.concrete path in
   let rec replace signature inside = function
     | [] ->
-      let inner = {signature;name} in
+      let inner = {signature; kind = Epath.Module; name} in
       begin match inside.signature with
         | Alias u ->
           let includes = S.singleton @@ Unresolved.delete (Epath.A name) u in
@@ -98,13 +100,13 @@ let replace path ~inside ~signature =
         | Fun _ -> Error.signature_expected ()
         | Sig s ->
           let includes = S.map (Unresolved.delete @@ Epath.A name) s.includes in
-          let signature = Sig { s = inner |+> s.s; includes } in
+          let signature = Sig { s = inner |+> s.s; includes; t = s.t } in
           { inside with signature }
       end
     | a :: q as p -> match inside.signature with
       | Fun _ -> Error.signature_expected ()
       | Alias u ->
-        let sn = Sig { s=M.empty; includes = S.singleton u} in
+        let sn = Sig { s=M.empty; includes = S.singleton u; t = M.empty} in
         replace signature { inside with signature = sn} p
       | Sig sg ->
         match M.find a sg.s with
@@ -117,8 +119,9 @@ let replace path ~inside ~signature =
           else
             let update u =  Unresolved.delete (Epath.from_list path) u in
             let includes = S.map update sg.includes in
-            let inner = create_along p {name;signature} in
-            { inside with signature = Sig {s = inner |+> M.empty; includes } }
+            let inner = create_along p {name; kind = Epath.Module; signature} in
+            { inside with signature = Sig
+                              {s = inner |+> M.empty; includes; t = M.empty } }
   in
   replace signature inside path
 

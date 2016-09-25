@@ -32,11 +32,10 @@ let access_gen kind env path = let open Option in
 
 let access = access_gen value
 
-let do_open_gen kind env popen_lid =
+let do_open env popen_lid =
   let path = from_lid @@ txt popen_lid in
-  Resolver.open_ kind path env
+  Resolver.open_ path env
 
-let do_open = do_open_gen value
 
 let do_include_gen kind extract env m=
   let m' = extract env m in
@@ -251,15 +250,15 @@ and pattern env pat = match pat.ppat_desc with
       {ptyp_desc=Ptyp_package (s,_ (* type constraints*)); _ } ) ->
     let name = txt name in
     let unresolved, signature = find_signature type_ env s in
-    Resolver.bind value { env with Envt.unresolved }
-      {Module.name; signature}
+    Resolver.bind { env with Envt.unresolved }
+      {Module.name; kind = value; signature}
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
     pattern (core_type env ct) pat
   | Ppat_type name (* #tconst *) -> access env name
   | Ppat_unpack m ->
     Warning.first_class_module();
-    Resolver.bind value env
-      Module.{ name = txt m ; signature = Sig empty_sig }
+    Resolver.bind env
+      Module.{ name = txt m ; kind = value; signature = Sig empty_sig }
       (* (module P)
            Note: (module P : S) is represented as
            Ppat_constraint(Ppat_unpack, Ptyp_package)
@@ -401,7 +400,7 @@ and module_expr (env: Envt.t) mexpr :
           let unresolved, result = module_expr { env with Envt.unresolved } mex in
           unresolved,
           Module.(Fun {
-            arg = {Module.name;signature=s};
+            arg = {Module.name; kind = value; signature=s};
             result })
         | None -> assert false (* How do this happens ? *)
       end
@@ -434,8 +433,9 @@ and module_binding env (pmb_name, pmb_expr) =
   let open Resolver in
   let unresolved, sign = module_expr (enter_module env) pmb_expr in
   let md = {Module.signature = sign;
+            kind = value;
             name = txt pmb_name } in
-  Resolver.bind value { env with Envt.unresolved } md
+  Resolver.bind  { env with Envt.unresolved } md
 and module_type env mt =
   match mt.pmty_desc with
   | Pmty_signature s (* sig ... end *) -> signature env s
@@ -446,7 +446,7 @@ and module_type env mt =
         let unr, sign = module_type (Resolver.enter_module env) arg in
         let env =  { env with Envt.unresolved = unr } in
         let unr', sign'= module_type (Resolver.enter_module env) res in
-        unr', Module.(Fun { arg = {name=txt name;signature=sign}; result= sign'})
+        unr', Module.(Fun { arg = {name=txt name; kind = type_; signature=sign}; result= sign'})
     end
 
   | Pmty_with (mt, wlist) (* MT with ... *) ->
@@ -466,21 +466,21 @@ and module_type env mt =
 and module_declaration env mdec =
   let open Resolver in
   let u, s = module_type env mdec.pmd_type in
-  let s = { Module.name =  txt mdec.pmd_name; signature = s} in
+  let s = { Module.name =  txt mdec.pmd_name; kind= value; signature = s} in
   let env = Envt.{ env with unresolved = Unresolved.refocus_on env.unresolved u } in
-  bind value env s
+  bind env s
 and module_type_declaration env mdec =
   let open Resolver in
   let open Option in
   let name = txt mdec.pmtd_name in
   let u, s = mdec.pmtd_type >>| begin fun mtd ->
       let u, s = module_type env mtd in
-      u ,{ Module.name; signature = s}
+      u ,{ Module.name; kind = type_; signature = s}
     end
-  >< (Envt.unresolved env, Module.{ name; signature = Sig empty_sig} )
+  >< (Envt.unresolved env, Module.{ name; kind = type_ ; signature = Sig empty_sig} )
   in
   let env = Envt.{ env with unresolved = Unresolved.refocus_on env.unresolved u } in
-  bind type_ env s
+  bind env s
 and signature env sign =
   let env = List.fold_left signature_item (Resolver.enter_module env) sign in
   Envt.unresolved env, Module.Sig env.Envt.signature
@@ -528,10 +528,10 @@ and with_eq env ((unr,mt) as r) =
     let unr, signature =
       find_signature value { env with Envt.unresolved = unr } lid' in
     let path = from_lid @@ txt @@ lid in
-    let sgn = Module.(replace path {name="**";signature=mt} signature) in
+    let sgn = Module.(replace path {name="**"; kind = type_; signature=mt} signature) in
     unr, sgn.Module.signature
   | Pwith_modsubst (name, lid') ->
     let name = txt name in
     let unr, _signature =
       find_signature value { env with Envt.unresolved = unr } lid' in
-    unr, Module.((delete (Epath.A name) {name="**"; signature = mt}).signature)
+    unr, Module.((delete (Epath.A name) {name="**"; kind = type_; signature = mt}).signature)

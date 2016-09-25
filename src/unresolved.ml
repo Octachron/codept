@@ -1,5 +1,5 @@
-type u = {path:Epath.q; deletions: Epath.set; env:rpath list}
-and rpath = Loc of Epath.q * Epath.set | Extern of u
+type t = {path:Epath.q; deletions: Epath.set; env:rpath list}
+and rpath = Loc of Epath.q * Epath.set | Extern of t
 
 let ($) f u =
   let (k,p) = u.path in
@@ -8,7 +8,7 @@ let to_list u = List.rev @@ (Loc (u.path,u.deletions) ) :: u.env
 
 let unlist = function
   | [] -> raise @@ Invalid_argument "Unresolved.unlist: non-empty list expected"
-  | Extern u :: q ->u
+  | Extern u :: _ ->u
   | Loc (path,deletions) :: env -> { path; deletions; env }
 
 
@@ -39,6 +39,7 @@ module M = struct
 end
 
 type map = Map of map M.t
+type direct_map = map M.t
 let empty = Map M.empty
 
 type update = (map M.t -> map M.t) -> map M.t -> map M.t
@@ -49,8 +50,8 @@ let start = { update = (@@); prev = []; env = []; map = empty }
 let top foc =
   { foc with update=(@@); prev = []; env = []  }
 
-let m { map = Map m; _ } = m
-let update_map foc f = { foc with map = Map (foc.update f @@ m foc) }
+let map { map = Map m; _ } = m
+let update_map foc f = { foc with map = Map (foc.update f @@ map foc) }
 
 let rec pp ppf (Map m)=
   let p fmt = Format.fprintf ppf fmt in
@@ -102,4 +103,8 @@ let refocus_on foc foc' =
 
 let alias_with_context foc path = {path; deletions=Epath.Set.empty; env = foc.env }
 
-let delete erased u = { u with deletions = Epath.Set.add erased u.deletions }
+let delete erased u =
+  { u with deletions = Epath.Set.add erased u.deletions }
+
+let delete_all erased u =
+  Epath.Set.fold delete erased u

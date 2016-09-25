@@ -1,3 +1,4 @@
+open Unit
 
 let test = {|
  open I
@@ -52,22 +53,25 @@ module Refine() = struct
   let a = {|
     open B
     open C
+    module type S = sig end
 |}
 
 let b = {| module B = struct module C = struct end end |}
 
 let env_a = parse a
 let env_b = parse b
-let env_for_a = Resolver.open_module Epath.Module Envt.empty
+let env_for_a = Resolver.open_module Envt.empty
     (Module.Sig env_b.Envt.signature)
-let u = Resolver.refine env_for_a   env_a.Envt.unresolved.Unresolved.map
+let deps, u =
+  let open Resolver.Refine in
+    map D.empty env_for_a env_a.Envt.unresolved.Unresolved.map
 
 let () = Format.printf
-    "env A:@[<hov2>%a@]\n env B:@[%a@]\n env A | env B:%a\n@."
+    "env A:@;@[<hov2>%a@]\n env B:@;@[%a@]\n env A | env B:%a;%a\n@."
     Envt.pp env_a
     Envt.pp env_b
     Unresolved.pp u
-
+    (Pp.clist Epath.pp) (Resolver.Refine.D.elements deps)
 
 end
 
