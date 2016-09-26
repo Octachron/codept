@@ -7,3 +7,14 @@
 
   let blist pp ppf = fp ppf "[%a]" (list pp)
   let clist pp ppf = fp ppf "{%a}" (list pp)
+
+let string ppf = fp ppf "%s"
+
+let std = Format.std_formatter
+let err = Format.err_formatter
+let p fmt = Format.printf fmt
+let e fmt = Format.eprintf fmt
+
+let opt pp ppf = function
+  | None -> ()
+  | Some x -> pp ppf x

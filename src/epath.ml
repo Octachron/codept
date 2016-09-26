@@ -1,10 +1,7 @@
-
-open Common_types
-
 type t =
   | T
-  | A of name
-  | S of t * name
+  | A of Name.t
+  | S of t * Name.t
   | F of t
   (** functor argument are forgotten: they do not influence module name *)
 
@@ -18,7 +15,7 @@ let rev_concrete p =
   let rec concretize l = function
     | T -> l
     | A a -> a :: l
-    | F _ -> raise Functor_not_expected
+    | F _ -> raise Error.Functor_not_expected
     | S(p,s) -> concretize (s::l) p in
   concretize [] p
 
@@ -77,6 +74,12 @@ let is_prefix prefix path =
     | _ , [] -> false
     | a :: q, b:: q' -> a = b && is_prefix q q' in
   is_prefix prefix path
+
+let rec prefix = function
+  | S(p,_) -> prefix p
+  | A n -> n
+  | F f -> prefix f
+  | T -> ""
 
 let cut_prefix prefix path =
   let prefix, path = concrete prefix, concrete path in

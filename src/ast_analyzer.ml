@@ -2,6 +2,7 @@
 exception Include_functor
 
 module L = Longident
+module R = Envt.Resolver
 
 let rec from_lid  =
   let open Epath in
@@ -24,22 +25,22 @@ let txt x= x.Location.txt
 
 let find_signature kind env lid =
   let path = from_lid @@ txt lid in
-  Resolver.find_signature kind env path
+  Envt.Resolver.find_signature kind env path
 
 let access_gen kind env path = let open Option in
-     path |> txt |> module_path >>| (fun p -> Resolver.access (kind,p) env)
+     path |> txt |> module_path >>| (fun p -> R.access (kind,p) env)
   >< env
 
 let access = access_gen value
 
 let do_open env popen_lid =
   let path = from_lid @@ txt popen_lid in
-  Resolver.open_ path env
+  R.open_ path env
 
 
 let do_include_gen kind extract env m=
   let m' = extract env m in
-  Resolver.include_ kind env m'
+  R.include_ kind env m'
 
 let opt f env x=  Option.( x >>| (fun x -> f env x) >< env )
 let flip f x y = f y x
@@ -208,7 +209,9 @@ and expr env exp =
   | Pexp_object clstr (* object ... end *) ->
     class_structure env clstr
   | Pexp_pack me (* (module ME) *)
-    -> let _sign, _env = module_expr env me in env
+    ->
+    Warning.first_class_module ();
+    let _sign, _env = module_expr env me in env
   | Pexp_open (_override_flag,name,e)
         (* M.(E), let open M in E, let! open M in E *)
     -> let env = expr (do_open env name) e in
@@ -247,17 +250,17 @@ and pattern env pat = match pat.ppat_desc with
     pattern (pattern env p1) p2
   | Ppat_constraint(
       {ppat_desc=Ppat_unpack name; _},
-      {ptyp_desc=Ptyp_package (s,_ (* type constraints*)); _ } ) ->
+      {ptyp_desc=Ptyp_package s; _ } ) ->
     let name = txt name in
-    let unresolved, signature = find_signature type_ env s in
-    Resolver.bind { env with Envt.unresolved }
+    let unresolved, signature = full_package_type env s in
+    R.bind_translucid { env with Envt.unresolved }
       {Module.name; kind = value; signature}
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
     pattern (core_type env ct) pat
   | Ppat_type name (* #tconst *) -> access env name
   | Ppat_unpack m ->
     Warning.first_class_module();
-    Resolver.bind env
+    R.bind_translucid env
       Module.{ name = txt m ; kind = value; signature = Sig empty_sig }
       (* (module P)
            Note: (module P : S) is represented as
@@ -303,8 +306,8 @@ and core_type env ct =   match ct.ptyp_desc with
 
   | Ptyp_variant (row_fields,_,_labels) ->
     List.fold_left row_field env row_fields
-  | Ptyp_package _s (* (module S) *) ->
-    Warning.confused "Ptyp_package"; env
+  | Ptyp_package s (* (module S) *) ->
+    package_type env s
 
 and row_field env = function
   | Rtag (_,_,_,cts) -> List.fold_left core_type env cts
@@ -312,6 +315,9 @@ and row_field env = function
 and package_type env (s,constraints) =
   List.fold_left (fun env (_,ct) -> core_type env ct)
     (access env s) constraints
+and full_package_type env (s,constraints) =
+  let env = List.fold_left (fun env (_,ct) -> core_type env ct) env constraints in
+  find_signature type_ env s
 and case env cs =
   pattern env cs.pc_lhs
   |> flip (opt expr) cs.pc_guard
@@ -388,7 +394,7 @@ and module_expr (env: Envt.t) mexpr :
   | Pmod_ident name ->
     find_signature value env name
   | Pmod_structure str ->
-    let env = (structure (Resolver.enter_module env) str) in
+    let env = (structure (R.enter_module env) str) in
     Envt.( env.unresolved,
           Module.Sig env.signature)
         (* struct ... end *)
@@ -397,32 +403,48 @@ and module_expr (env: Envt.t) mexpr :
       begin match sign with
         | Some s ->
           let unresolved, s = module_type env s in
-          let unresolved, result = module_expr { env with Envt.unresolved } mex in
+          let env' = R.bind env {Module.name; kind=value; signature = s } in
+          let env' = { env' with Envt.unresolved } in
+          let env' = R.enter_module env' in
+          let unresolved, result = module_expr env' mex in
           unresolved,
           Module.(Fun {
-            arg = {Module.name; kind = value; signature=s};
+            arg = Some {Module.name; kind = value; signature=s};
             result })
-        | None -> assert false (* How do this happens ? *)
+        | None (* module F() = struct end *)->
+          let unresolved, result = module_expr env mex in
+          unresolved,
+          Module.(Fun {arg = None;result})
       end
   | Pmod_apply (f,x)  (* ME1(ME2) *) ->
-    let unresolved, f = module_expr env f in
-    let unresolved, x = module_expr {env with Envt.unresolved} x in
+    let unresolved', f = module_expr env f in
     begin match f with
-      | Module.Fun fn ->  unresolved, Module.apply env fn x
+      | Module.Fun fn ->
+        let unresolved, x =
+          module_expr {env with Envt.unresolved = unresolved'} x in
+        unresolved, Module.apply env fn x
       | Module.Alias u ->
         let u = Unresolved.( (fun u -> Epath.F u) $ u ) in
+        let unresolved, _ = module_expr env x in
         Unresolved.(add_new (Extern u) unresolved), Module.Alias u
       | _ -> Error.not_a_functor ()
     end
 
   | Pmod_constraint (me,mt) ->
-    let unr, sign = module_type (Resolver.enter_module env) mt in
+    let unr, sign = module_type (R.enter_module env) mt in
     let env'' = Envt.{ env with
                       unresolved = Unresolved.refocus_on env.unresolved unr} in
     let unr, _sign = module_expr env'' me in
     unr, sign
-  | Pmod_unpack _expression -> assert false
-        (* (val E) *)
+  | Pmod_unpack { pexp_desc = Pexp_constraint
+                      (inner, {ptyp_desc = Ptyp_package s; _}); _ }
+    (* (val E : S ) *) ->
+    let env = expr env inner in
+    full_package_type env s
+  | Pmod_unpack e  (* (val E) *) ->
+    Warning.first_class_module();
+    let env' = expr env e in
+    env'.Envt.unresolved, Module.(Sig empty_sig)
   | Pmod_extension _extension ->
     Warning.extension();
     Envt.unresolved env, Module.(Sig empty_sig)
@@ -430,23 +452,24 @@ and module_expr (env: Envt.t) mexpr :
 and value_binding env vb =
   expr (pattern env vb.pvb_pat) vb.pvb_expr
 and module_binding env (pmb_name, pmb_expr) =
-  let open Resolver in
-  let unresolved, sign = module_expr (enter_module env) pmb_expr in
+  let unresolved, sign = module_expr (R.enter_module env) pmb_expr in
   let md = {Module.signature = sign;
             kind = value;
             name = txt pmb_name } in
-  Resolver.bind  { env with Envt.unresolved } md
+  R.bind  { env with Envt.unresolved } md
 and module_type env mt =
   match mt.pmty_desc with
   | Pmty_signature s (* sig ... end *) -> signature env s
   | Pmty_functor (name, arg, res) (* functor(X : MT1) -> MT2 *) ->
     begin match arg with
-      | None -> assert false (*??*)
+      | None ->
+        let unr', sign'= module_type (R.enter_module env) res in
+        unr', Module.(Fun { arg = None; result= sign'})
       | Some arg ->
-        let unr, sign = module_type (Resolver.enter_module env) arg in
+        let unr, sign = module_type (R.enter_module env) arg in
         let env =  { env with Envt.unresolved = unr } in
-        let unr', sign'= module_type (Resolver.enter_module env) res in
-        unr', Module.(Fun { arg = {name=txt name; kind = type_; signature=sign}; result= sign'})
+        let unr', sign'= module_type (R.enter_module env) res in
+        unr', Module.(Fun { arg = Some {name=txt name; kind = type_; signature=sign}; result= sign'})
     end
 
   | Pmty_with (mt, wlist) (* MT with ... *) ->
@@ -464,13 +487,11 @@ and module_type env mt =
     find_signature type_ env lid
 
 and module_declaration env mdec =
-  let open Resolver in
   let u, s = module_type env mdec.pmd_type in
   let s = { Module.name =  txt mdec.pmd_name; kind= value; signature = s} in
   let env = Envt.{ env with unresolved = Unresolved.refocus_on env.unresolved u } in
-  bind env s
+  R.bind env s
 and module_type_declaration env mdec =
-  let open Resolver in
   let open Option in
   let name = txt mdec.pmtd_name in
   let u, s = mdec.pmtd_type >>| begin fun mtd ->
@@ -480,9 +501,9 @@ and module_type_declaration env mdec =
   >< (Envt.unresolved env, Module.{ name; kind = type_ ; signature = Sig empty_sig} )
   in
   let env = Envt.{ env with unresolved = Unresolved.refocus_on env.unresolved u } in
-  bind env s
+  R.bind env s
 and signature env sign =
-  let env = List.fold_left signature_item (Resolver.enter_module env) sign in
+  let env = List.fold_left signature_item (R.enter_module env) sign in
   Envt.unresolved env, Module.Sig env.Envt.signature
 and signature_item env item =  match item.psig_desc with
   | Psig_value vd (* val x: T *) ->

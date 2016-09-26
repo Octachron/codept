@@ -1,6 +1,4 @@
-open Common_types
-
-module M = StrMap
+module M = Name.Map
 
 module S = struct
   include Set.Make(struct type t = Unresolved.t let compare = compare end)
@@ -8,13 +6,13 @@ module S = struct
   let map f s = fold (fun x s -> add (f x) s) s empty
 end
 
-type t = {name: name; kind:Epath.kind; signature:signature }
+type t = {name: Name.t; kind:Epath.kind; signature:signature }
 and signature =
   | Alias of Unresolved.t
   | Sig of explicit_signature
   | Fun of fn
 and explicit_signature = { s: t M.t; t: t M.t; includes:S.t }
-and fn = {arg: t; result: signature }
+and fn = {arg: t option; result: signature }
 
 let (|+>) me m = M.add me.name me m
 let singleton m = M.singleton m.name m
@@ -28,8 +26,8 @@ let rec pp ppf s = let open Pp in
   fp ppf "@[<hov2> %a:@,%a@]" pp_name s pp_signature s.signature
 and pp_signature ppf = function
   | Alias u -> Pp.fp ppf "@[?%a@]" Unresolved.pp_u u
-  | Fun {arg;result} -> Pp.fp ppf "@[<hov2> functor(%a)@,@ ->@ @,%a@ end]"
-                          pp arg pp_signature result
+  | Fun {arg;result} -> Pp.fp ppf "@[<hov2> functor(%a)@,@ ->@ @,%a@]"
+                          (Pp.opt pp) arg pp_signature result
   | Sig s -> Pp.fp ppf "sig@, @[<hov2>%a@]@, end"
                pp_explicit s
 and pp_explicit ppf ex =
@@ -163,20 +161,23 @@ let rec find env path m =
   | A n -> Either.Left (M.find n m).signature
   | F fn ->
     find_functor env fn m
-    | S(p,n) ->
-      let m = find env p m in
-      m >> (find_mod env @@ A n)
-and find_functor env fn m =
-  let fn = find env fn m in
+  | S(p,n) ->
+    let m = find env p m in
+    m >> (find_mod env @@ A n)
+and find_functor env fn0 m =
+  let fn = find env fn0 m in
   fn >> function
-  | Sig _ -> raise Functor_expected
+  | Sig _ -> raise @@ Error.Functor_expected
+      (Format.asprintf "%a" Epath.pp fn0)
   | Alias unkn -> Either.Right unkn (*??*)
-  | Fun _ as f-> Either.Left f
+  | Fun fn -> Either.Left fn.result
 and find_mod env path = function
   | Sig { s;_ } -> find env path s
-  | Alias u ->  Either.Right u (* todo ?? *)
-  | Fun _ -> raise Functor_not_expected
-and apply _env fn _sign  = Fun fn
+  | Alias u ->
+    (* u.path *)
+    Either.Right Unresolved.( u // path ) (* todo ?? *)
+  | Fun _ -> raise Error.Functor_not_expected
+and apply _env fn _sign  = fn.result
 
 let find_exn = find
 

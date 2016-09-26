@@ -4,9 +4,14 @@ and rpath = Loc of Epath.q * Epath.set | Extern of t
 let ($) f u =
   let (k,p) = u.path in
   { u with path = k, f p }
+
+let (//) u path =
+  (fun u -> Epath.(u // path) ) $ u
+
 let to_list u = List.rev @@ (Loc (u.path,u.deletions) ) :: u.env
 
-let unlist = function
+let unlist l =
+  match List.rev l with
   | [] -> raise @@ Invalid_argument "Unresolved.unlist: non-empty list expected"
   | Extern u :: _ ->u
   | Loc (path,deletions) :: env -> { path; deletions; env }
@@ -40,6 +45,8 @@ end
 
 type map = Map of map M.t
 type direct_map = map M.t
+
+let direct (Map m) = m
 let empty = Map M.empty
 
 type update = (map M.t -> map M.t) -> map M.t -> map M.t
@@ -108,3 +115,5 @@ let delete erased u =
 
 let delete_all erased u =
   Epath.Set.fold delete erased u
+
+let is_empty m = m = M.empty
