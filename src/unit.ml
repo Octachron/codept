@@ -17,7 +17,11 @@ type t = {
   dependencies: Name.set
 }
 
-let pp ppf unit =
+let pp ?compare ppf unit =
+  let pp_deps ppf s= match compare with
+    | None -> Name.Set.pp ppf s
+    | Some c -> Pp.(clist string) ppf
+                  (List.sort c @@ Name.Set.elements s) in
   Pp.fp ppf "@[[ name=%s; @, path=…; @;\
              signature=@[[%a]@]; @;\
              unresolved=@[[%a]@]; @;\
@@ -26,7 +30,7 @@ let pp ppf unit =
     unit.name
     Module.pp_explicit unit.signature
     Unresolved.pp (Unresolved.Map unit.unresolved)
-    Name.Set.pp unit.dependencies
+    pp_deps unit.dependencies
 
 type kind = Structure | Signature
 

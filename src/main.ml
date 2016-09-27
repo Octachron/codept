@@ -85,11 +85,67 @@ module Deps() = struct
 
   let env = Name.Set.of_list names, env0
 
-  let refiner = Refiner.( filter ++ envt)
+  let refiner = Refiner.( precise_filter ++ envt)
 
   let units = resolve_dependencies refiner env units
 
-  let () = List.iter (Unit.pp std) units
+  let order =
+    let compute (i,m) u = i+1, Name.Map.add u.name i m in
+    snd @@ List.fold_left compute (0,Name.Map.empty) @@ List.rev units
+
+  let compare order x y =
+    let get x=Name.Map.find_opt x order in
+    match get x, get y with
+    | Some k , Some l -> compare k l
+    | None, Some _ -> -1
+    | Some _, None -> 1
+    | None, None -> compare x y
+
+  let () = List.iter (Unit.pp ~compare:(compare order) std) units
+
+end
+
+module Modules() = struct
+  let classify f =
+    if Filename.check_suffix f ".mli" then
+      Unit.Signature
+    else
+      Unit.Structure
+
+  let files = match Array.to_list Sys.argv with
+    | [] -> assert false
+    |  _ :: q -> q
+
+  let names = List.map Unit.extract_name files
+  let env0 = Envt.empty
+
+  let units = List.map (fun f->
+      Unit.read_file env0 (classify f) f) files
+
+  let env = Name.Set.of_list names, env0
+  let refiner = Refiner.( precise_filter ++ envt)
+
+  let units = resolve_dependencies refiner env units
+
+  let order =
+    let compute (i,m) u = i+1, Name.Map.add u.name i m in
+    snd @@ List.fold_left compute (0,Name.Map.empty) @@ List.rev units
+
+  let compare order x y =
+    let get x=Name.Map.find_opt x order in
+    match get x, get y with
+    | Some k , Some l -> compare k l
+    | None, Some _ -> -1
+    | Some _, None -> 1
+    | None, None -> compare x y
+
+  let pp_module ppf u =
+    let open Unit in
+    Pp.fp ppf "%a:%a\n" Pp.(list ~sep:"/" string) u.path.file
+      Pp.(list ~sep:" " string)
+      (List.sort (compare order) @@ Name.Set.elements u.dependencies)
+
+  let () = List.iter (pp_module std) units
 
 end
 

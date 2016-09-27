@@ -1,7 +1,7 @@
   let fp = Format.fprintf
-  let rec list pp ppf =
+  let rec list ?(sep="; ") pp ppf =
     function
-    | a :: ( _ :: _ as q ) -> fp ppf "%a; %a" pp a (list pp) q
+    | a :: ( _ :: _ as q ) -> fp ppf "%a%s%a" pp a sep (list ~sep pp) q
     | [a] -> fp ppf "%a" pp a
     | [] -> ()
 

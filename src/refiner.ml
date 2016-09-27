@@ -28,7 +28,6 @@ end
 
 module PreFilter = struct
   type env = Name.set
-  let is_root _n _env = true
   let open_module env _s = env
   let add_root env _name _s = env
   let find q env =
@@ -40,6 +39,18 @@ module PreFilter = struct
 
   let pp ppf s = Pp.fp ppf "Filter %a" Pp.(clist string) (Name.Set.elements s)
 end
+
+module PreFullFilter = struct
+  include PreFilter
+  let is_root _n _env = true
+end
+
+module PreLocalFilter = struct
+  include PreFilter
+  let is_root _n _env = false
+end
+
+
 
 module Make(Envt: resolver): S with type env = Envt.env = struct
 
@@ -55,13 +66,11 @@ module Make(Envt: resolver): S with type env = Envt.env = struct
   exception Empty_path
 
   let update_deps env x deps =
-    match x with
-    | Epath.A name ->
-      if Envt.is_root name env then
-        name ++ deps
-      else
-        deps
-    | _ -> deps
+    let name = Epath.prefix x in
+    if Envt.is_root name env then
+      name ++ deps
+    else
+      deps
 
 let rec path deps env u =
   let us = Unresolved.to_list u in
@@ -87,6 +96,7 @@ and update_u deps env = function
             update_u deps env' q
         end
       | Some (Either.Right u) ->
+        let deps = update_deps env (snd p) deps in
         let u = Epath.Set.fold Unresolved.delete del u in
         env, deps, Right (Unresolved.unlist ((Unresolved.Extern u) :: q) )
       | None ->
@@ -173,10 +183,14 @@ type 'env t = (module S with type env = 'env)
 
 module E = Envt
 module Envt = Make(Envt.Resolver)
-module Filter = Make(PreFilter)
+module Precise_filter = Make(PreFullFilter)
+module Local_filter = Make(PreLocalFilter)
+
 
 let envt: E.t t = (module Envt)
-let filter: Name.set t = (module Filter)
+let precise_filter: Name.set t = (module Precise_filter)
+let local_filter: Name.set t = (module Local_filter)
+
 
 module Compose(X: S) (Y: S) : S with type env = X.env * Y.env = struct
 
