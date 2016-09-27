@@ -18,3 +18,5 @@ let () =
   let open N in
   let open A in
   ()
+
+include (val x)

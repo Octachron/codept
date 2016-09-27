@@ -22,12 +22,13 @@ let pp ?compare ppf unit =
     | None -> Name.Set.pp ppf s
     | Some c -> Pp.(clist string) ppf
                   (List.sort c @@ Name.Set.elements s) in
-  Pp.fp ppf "@[[ name=%s; @, path=…; @;\
-             signature=@[[%a]@]; @;\
+  Pp.fp ppf "@[<hov2>[ name=%s; @, path=…; @;\
+             signature%a@[[%a]@]; @;\
              unresolved=@[[%a]@]; @;\
              dependencies=@[%a@] @;\
              ] @] @."
     unit.name
+    Module.Approximation.pp_symb unit.signature.Module.approximation
     Module.pp_explicit unit.signature
     Unresolved.pp (Unresolved.Map unit.unresolved)
     pp_deps unit.dependencies

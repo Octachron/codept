@@ -6,13 +6,68 @@ module S = struct
   let map f s = fold (fun x s -> add (f x) s) s empty
 end
 
-type t = {name: Name.t; kind:Epath.kind; signature:signature }
+module Approximation = struct
+  type explanation = First_class_module
+  let pp ppf = function
+    | First_class_module -> Pp.fp ppf ""
+  type level = Exact | Inexact | Wrong of explanation list
+
+  let min x y = match x, y with
+    | Exact, Exact -> Exact
+    | Exact, Inexact | Inexact, Exact | Inexact, Inexact -> Inexact
+    | Wrong l, Wrong l' -> Wrong (l @ l')
+    | Wrong _ as w , (Exact|Inexact) | (Exact|Inexact), (Wrong _ as w) -> w
+
+  let pp_symb ppf = function
+    | Exact -> Pp.fp ppf "="
+    | Inexact -> Pp.fp ppf "≈"
+    | Wrong _ -> Pp.fp ppf "≠"
+
+end
+
+let exact = Approximation.Exact
+let warn_module = Approximation.(Wrong [First_class_module])
+
+
+type t = {
+  name: Name.t;
+  kind:Epath.kind;
+  signature:signature }
 and signature =
   | Alias of Unresolved.t
   | Sig of explicit_signature
   | Fun of fn
-and explicit_signature = { s: t M.t; t: t M.t; includes:S.t }
+and explicit_signature = {
+  approximation: Approximation.level;
+  s: t M.t;
+  t: t M.t;
+  includes:S.t }
 and fn = {arg: t option; result: signature }
+
+let rec sig_level = function
+  | Fun { arg=_ ; result } ->
+    sig_level result
+  | Alias _ -> Approximation.Exact
+  | Sig esn -> esn.approximation
+
+let exsig_level ~s ~t =
+  let check _k m level = Approximation.min level @@ sig_level m.signature in
+  Approximation.Exact
+  |> M.fold check s
+  |> M.fold check t
+
+
+let exsig  ?(t=M.empty) ?approx ?(includes=S.empty) s =
+  let approximation= match approx with
+    | Some x -> x
+    | None -> exsig_level ~s ~t in
+  { s; t; includes; approximation}
+
+
+let create ~name ~kind signature =
+  {name;kind;signature}
+
+
 
 let (|+>) me m = M.add me.name me m
 let singleton m = M.singleton m.name m
@@ -28,34 +83,40 @@ and pp_signature ppf = function
   | Alias u -> Pp.fp ppf "@[?%a@]" Unresolved.pp_u u
   | Fun {arg;result} -> Pp.fp ppf "@[<hov2> functor(%a)@,@ ->@ @,%a@]"
                           (Pp.opt pp) arg pp_signature result
-  | Sig s -> Pp.fp ppf "sig@, @[<hov2>%a@]@, end"
+  | Sig s -> Pp.fp ppf "sig(%a)@, @[<hov2>%a@]@, end"
+               Approximation.pp_symb s.approximation
                pp_explicit s
 and pp_explicit ppf ex =
   let submod = Pp.list @@ fun ppf (_,x) -> pp ppf x in
   if S.cardinal ex.includes > 0 then
-    Pp.fp ppf "@[<hov2>%a@]@; include?[%a]@]"
+    Pp.fp ppf "@[<hov2>%a@]@; include?@[[%a]@]"
       submod
-      (M.bindings ex.s)
+      (M.bindings ex.s @ M.bindings ex.t)
       (Pp.list Unresolved.pp_u)
       (S.elements ex.includes)
   else
-    Pp.fp ppf "@[<hov2>%a@]@]"
+    Pp.fp ppf "@[<hov2>%a@]"
       submod
       (M.bindings ex.s)
 
-let empty_sig = { s = M.empty; t = M.empty; includes = S.empty }
-let create_sig ?(includes=S.empty) ?(t=M.empty) m = Sig { s = m; t; includes }
+let empty_sig = exsig M.empty
 
-let rec create_along path nm =
+let first_class_approx = Sig { empty_sig with approximation = warn_module }
+
+let create_sig ?approx ?includes ?t m =
+  Sig (exsig ?approx ?includes ?t m)
+
+
+
+let rec create_along approx path nm =
   match path with
   | [] -> nm
   | a :: q -> { name = a;
                 kind = Epath.Module;
-                signature = Sig { s = create_along q nm |+> M.empty;
-                                  t = M.empty;
-                                  includes = S.empty}
+                signature = create_sig ~approx (create_along approx q nm |+> M.empty)
                 }
-
+let create_along path nm =
+  create_along (sig_level nm.signature) path nm
 
 let rec delete path m =
   { m with signature = delete_sig path m.signature }
@@ -90,7 +151,8 @@ let replace path ~inside ~signature =
   let path = Epath.concrete path in
   let rec replace signature inside = function
     | [] ->
-      let inner = {signature; kind = Epath.Module; name} in
+      let inner =
+        create ~name ~kind:Epath.Module signature in
       begin match inside.signature with
         | Alias u ->
           let includes = S.singleton @@ Unresolved.delete (Epath.A name) u in
@@ -98,29 +160,30 @@ let replace path ~inside ~signature =
         | Fun _ -> Error.signature_expected ()
         | Sig s ->
           let includes = S.map (Unresolved.delete @@ Epath.A name) s.includes in
-          let signature = Sig { s = inner |+> s.s; includes; t = s.t } in
+          let signature =
+            create_sig ~approx:s.approximation ~t:s.t ~includes (inner |+> s.s) in
           { inside with signature }
       end
     | a :: q as p -> match inside.signature with
       | Fun _ -> Error.signature_expected ()
       | Alias u ->
-        let sn = Sig { s=M.empty; includes = S.singleton u; t = M.empty} in
+        let sn = create_sig ~includes:(S.singleton u) M.empty in
         replace signature { inside with signature = sn} p
       | Sig sg ->
         match M.find a sg.s with
         | m' ->
           { inside with signature =
-                            Sig { sg with s = replace signature m' q |+> sg.s } }
+                          Sig { sg with s = replace signature m' q |+> sg.s } }
         | exception Not_found ->
           if S.cardinal sg.includes = 0 then
-              Error.module_type_error a
+            Error.module_type_error a
           else
             let update u =  Unresolved.delete (Epath.from_list path) u in
             let includes = S.map update sg.includes in
-            let inner = create_along p {name; kind = Epath.Module; signature} in
-            { inside with signature = Sig
-                              {s = inner |+> M.empty; includes; t = M.empty } }
-  in
+            let inner = create_along p @@
+              create ~name ~kind:Epath.Module signature in
+            let signature = create_sig ~approx:exact ~includes (inner |+> M.empty) in
+            { inside with signature } in
   replace signature inside path
 
 let rec ellide path path' =

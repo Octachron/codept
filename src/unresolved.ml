@@ -68,7 +68,7 @@ let rec pp ppf (Map m)=
     M.iter (fun k x ->
         p "%a? @,%a" pp_rpath k pp x
       ) m;
-    p "]@]@,";
+    p "]@]";
   end
 
 let (|=) = update_map

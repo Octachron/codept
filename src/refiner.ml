@@ -158,10 +158,10 @@ and signature env =
       | _, Right u -> Alias u
     end
   | Md.Sig s -> Md.Sig (explicit_signature env s)
-and explicit_signature env {Md.s; t; includes } =
+and explicit_signature env {Md.s; t; includes;approximation } =
     let s = Md.M.map (module_ env) s in
     let t = Md.M.map (module_ env) t in
-    Md.S.fold (include_ env) includes {Md.s;t;includes=Md.S.empty}
+    Md.S.fold (include_ env) includes {Md.s;t;includes=Md.S.empty;approximation}
 and include_ env u esn =
   let open Md in
   match path D.empty env u with
@@ -170,7 +170,9 @@ and include_ env u esn =
       | Sig s ->
         { s = M.union' esn.s s.s;
           t = M.union' esn.t s.t;
-          includes = S.union s.includes esn.includes }
+          includes = S.union s.includes esn.includes;
+          approximation =esn.approximation
+        }
       | Alias u -> { esn with includes = S.add u esn.includes }
       | Fun _ -> raise Error.Including_a_functor
     end

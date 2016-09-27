@@ -62,8 +62,19 @@ module Resolver = struct
 
 
   let union s = Module.M.union (fun _k _x y -> Some y) s
-  let open_sig env {Module.s;t;includes} =
+
+  let warn_on_open = function
+    | Module.Approximation.First_class_module ->
+      Warning.log "A packed module signature (that was subsequently \
+                   opened) could not be inferred. @;Subsequent dependencies may \
+                   be artefacts."
+  let print_warnings warn = function
+    | Module.Approximation.Wrong msgs -> List.iter warn msgs
+    | _ -> ()
+
+  let open_sig env {Module.s;t;includes;approximation} =
     let open Module in
+    print_warnings warn_on_open approximation;
     let env = { env with
                 unresolved = S.fold Unresolved.(fun u m ->
                     add_new (Extern u) m) includes env.unresolved
@@ -82,7 +93,26 @@ module Resolver = struct
       raise @@ Error.Opening_a_functor (Format.asprintf "%a" Module.pp_signature m)
     | Sig sn -> open_sig env sn
 
+
+  let warn_on_new_root name = function
+    | Module.Approximation.First_class_module ->
+      Warning.log "A packed module signature (that was subsequently \
+                   included) could not be inferred. Consequently, the inferred \
+                   signature for root module %s is erroneous." name
+
+  let print_root_warnings name warn =
+    let open Module.Approximation in
+    function
+    | Wrong msgs -> List.iter (warn name) msgs
+    | Inexact ->
+      Warning.log "The inferred signature for root module %s might be wrong. \
+                   Some of the computed signature items might be erroneous \
+                   artefacts." name
+    | Exact -> ()
+
+
   let add_root env name esn =
+    print_root_warnings name warn_on_new_root esn.Module.approximation;
     let md = {Module.name; kind = Epath.Module; signature = Module.Sig esn} in
     let roots = Name.Set.add name env.roots in
     { env with modules = Module.( md |+> env.modules); roots }
@@ -113,11 +143,14 @@ module Resolver = struct
   let include_ kind env (unresolved,sign) =
     let sign0 = env.signature in
     match sign with
-    | Module.Sig {Module.s; t; includes} ->
+    | Module.Sig {Module.s; t; includes; approximation} ->
       let env = update kind (union s) env in
+      let approximation =
+        Module.(Approximation.min approximation sign0.approximation) in
       { env with
         signature = Module.{ s = union sign0.s s; t = union sign0.t t;
-                             includes = S.union includes sign0.includes
+                             includes = S.union includes sign0.includes;
+                             approximation
                            };
         unresolved
       }
