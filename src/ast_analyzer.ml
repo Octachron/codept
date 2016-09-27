@@ -216,7 +216,9 @@ and expr env exp =
   | Pexp_open (_override_flag,name,e)
         (* M.(E), let open M in E, let! open M in E *)
     -> let env = expr (do_open env name) e in
-      Envt.{ env with unresolved = Unresolved.up env.unresolved }
+    Envt.{ env with unresolved = Unresolved.up env.unresolved }
+  | Pexp_extension (name, PStr payload) when txt name = "extension_constructor" ->
+    structure env payload
   | Pexp_constant _ | Pexp_extension _ (* [%ext] *) | Pexp_unreachable (* . *)
     -> env
 and pattern env pat = match pat.ppat_desc with
