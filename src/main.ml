@@ -131,7 +131,7 @@ module Modules() = struct
     let compute (i,m) u = i+1, Name.Map.add u.name i m in
     snd @@ List.fold_left compute (0,Name.Map.empty) @@ List.rev units
 
-  let compare order x y =
+  let topos_compare order x y =
     let get x=Name.Map.find_opt x order in
     match get x, get y with
     | Some k , Some l -> compare k l
@@ -141,12 +141,13 @@ module Modules() = struct
 
   let pp_module ppf u =
     let open Unit in
-    Pp.fp ppf "%a:%a\n" Pp.(list ~sep:"/" string) u.path.file
+    Pp.fp ppf "%a: %a\n" Pp.(list ~sep:"/" string) u.path.file
       Pp.(list ~sep:" " string)
-      (List.sort (compare order) @@ Name.Set.elements u.dependencies)
+      ((*List.sort (compare order) @@*) Name.Set.elements u.dependencies)
 
-  let () = List.iter (pp_module std) units
+  let () = List.iter (pp_module std)
+      (List.sort (fun x y -> compare x.path.file y.path.file) units)
 
 end
 
-module Do = Deps()
+module Do = Modules()
