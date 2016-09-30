@@ -15,6 +15,10 @@ let err = Format.err_formatter
 let p fmt = Format.printf fmt
 let e fmt = Format.eprintf fmt
 
-let opt pp ppf = function
+let pair ?(sep=",") pp1 pp2 ppf (x,y) = fp ppf "%a%s%a" pp1 x sep pp2 y
+let snd pp ppf (_x,y) = fp ppf "%a" pp y
+let fst pp ppf (x,_y) = fp ppf "%a" pp x
+
+let opt ?(pre="") ?(post="") pp ppf = function
   | None -> ()
-  | Some x -> pp ppf x
+  | Some x -> fp ppf "%s" pre; pp ppf x; fp ppf "%s" post

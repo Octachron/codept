@@ -11,7 +11,7 @@ let split = function
   | A n -> n, T
   | S(p,a) -> a, p
 
-let rev_concrete p =
+let rev_concrete p: Npath.t =
   let rec concretize l = function
     | T -> l
     | A a -> a :: l
