@@ -1,14 +1,26 @@
 
 type resolved = private R
 type 'a declaration = private D
-type module_type = private MT
+type module_type_brand = private MT
 type module_brand = private M
 
 type 'a arg = { name:Name.t; signature:'a }
+
+let pp_arg pp ppf = function
+  | Some arg ->
+    Pp.fp ppf "(%s:%a)" arg.name pp arg.signature
+  | None -> Pp.fp ppf "()"
+
+
+let pp_args pp ppf args = Pp.fp ppf "%a" (Pp.list ~sep:"→@," @@ pp_arg pp) args;
+  if List.length args > 0 then Pp.fp ppf "→"
+
+
+
 type ('a,'arg_kind) module_info = {
   name:Name.t;
   alias_of:Epath.t option;
-  args: 'arg_kind arg list;
+  args: 'arg_kind arg option list;
   signature:'a
 }
 
@@ -33,10 +45,7 @@ let pp_level ppf lvl =  Pp.fp ppf "%s" (match lvl with
 
 let rec pp_module ppf {name;args;alias_of;signature} =
   Pp.fp ppf "%s%a:%a@[<hv 2> %a@]"
-    name pp_alias alias_of pp_args args pp_signature signature
-and pp_args ppf args = Pp.fp ppf "%a" (Pp.list ~sep:"→@," pp_arg) args;
-  if List.length args > 0 then Pp.fp ppf "→"
-and pp_arg ppf arg = Pp.fp ppf "(%s:%a)" arg.name pp_signature arg.signature
+    name pp_alias alias_of (pp_args pp_signature) args pp_signature signature
 and pp_signature ppf {modules; module_types} =
   Pp.fp ppf "@[<hv2> %a@]@, module types: @,@[<hv2>%a@] @]"
     pp_mdict modules pp_mdict module_types
@@ -118,80 +127,71 @@ let is_functor = function
 
 type expression =
   | Defs of definitions (** Resolved modules definitions M = … *)
-  | Access of Name.set (** M.x ⇒ Name M *)
   | Open of Epath.t (** open path *)
   | Include of module_expr
+  | SigInclude of module_type
   (** include (M : s with module m := (deletions)
       and module m.k = n.w (equalities) *)
-  | Alias of (Name.t * alias_expr) list
-  | Declaration of level * module_decl
-  | Module_rec of module_decl list
+  | Bind of (level * bind)
+  | Bind_rec of bind list
+
+  | Access of Name.set (** M.x ⇒ Name M *)
   | Value of m2l
-and alias_expr = {
-  path: Epath.t;
-  level: level;
-  deletions: Name.set;
-  equalities: (Npath.t * Epath.t) list
-}
-and module_expr = {structure:m2l; signature:m2l}
-and module_decl = (module_expr, m2l) module_info
+  | Opaque of module_expr (** first class module *)
+and bind = { name:Name.t; expr: module_expr }
+and module_expr =
+  | Ident of Epath.t
+  | Apply of {f: module_expr; x:module_expr}
+  | Fun of { arg: module_type arg option; body:module_expr }
+  | Constraint of module_expr * module_type
+  | Str of m2l
+  | Opaque of m2l
+and module_type =
+  | Ident of Epath.t
+  | Sig of m2l
+  | Fun of { arg: module_type arg option; body:module_type }
+  | With of {
+      body: module_type;
+      deletions: Name.set
+      (* ; equalities: (Npath.t * Epath.t) list *)
+    }
+  | Of of module_expr
+  | Opaque
 and m2l = expression list
-
-let compress_me ?sig_opt str =
-  match sig_opt with
-  | None -> { signature = str; structure = [] }
-  | Some sg ->  { signature = sg; structure = str }
-
-let signature_level x : level= match x with
-  | { structure = []; signature = _ :: _ } -> Module
-  | _ -> Module_type
-
-
-let decompress_me =  function
-  | { structure = []; signature = _ :: _ as sg } -> None, sg
-  | x -> Some x.signature, x.structure
 
 let rec pp_expression ppf = function
   | Defs defs -> Pp.fp ppf "define @[<hov2>%a@]@, " pp_defs defs
   | Access n -> Pp.fp ppf "access [%a]@, " Name.Set.pp n
-  | Open epath -> Pp.fp ppf "open %a @," Epath.pp epath
-  | Include me ->
-    Pp.fp ppf "include [%a]@,"
-      pp_me me
-  | Value m2l -> Pp.fp ppf "val [%a]@, " pp m2l
-  | Declaration (level,{name;alias_of;args;signature}) ->
-    Pp.fp ppf "%s%a%a"
-      name pp_alias alias_of (Pp.list ~sep:"→" pp_arg) args;
-    begin match level with
-      | Module ->
-        pp_me ppf signature
-      | Module_type ->
-        Pp.fp ppf "=sig %a end @," pp signature.signature
-    end
-    | Module_rec mds ->
-      Pp.fp ppf "rec@[[ %a ]@] @," (Pp.list ~sep:"@, " pp_module_rec) mds
-    | Alias aliases -> Pp.fp ppf "aliases @[ %a@]@, "
-                         (Pp.list @@ Pp.pair ~sep:"=" Name.pp pp_alias_expr) aliases
-and pp_module_rec ppf { name; alias_of; args; signature = { signature;structure} } =
-  Pp.fp ppf "%s%a%a:sig %a end@,=@,struct %a end @,"
-    name pp_alias alias_of (Pp.list ~sep:"→" pp_arg) args
-    pp signature
-    pp structure
-and pp_arg ppf arg = Pp.fp ppf "(%s:sig %a end)" arg.name pp arg.signature
-and pp_alias_expr ppf {path; deletions; equalities; level } =
-  Pp.fp ppf "%a @[%a@]/ %a with %a @,"
-    pp_level level
-    Epath.pp path
-    Name.Set.pp deletions
-    Pp.(list ~sep:",@, " @@ pair ~sep:"=" Npath.pp Epath.pp)
-    equalities
-and pp_me ppf me =
-  let signature, structure = decompress_me me in
-  Pp.fp ppf "%a=struct %a end @,"
-    (Pp.opt ~pre:": sig" ~post:"end" pp) signature
-    pp structure
 
-and pp ppf = Pp.fp ppf "[@[%a@]]" (Pp.list pp_expression)
+  | Value m2l -> Pp.fp ppf "val [%a]" pp m2l
+  | Opaque me -> Pp.fp ppf "⟨%a⟩" pp_me me
+
+  | Open epath -> Pp.fp ppf "open %a @," Epath.pp epath
+  | Include me -> Pp.fp ppf "include [%a]@," pp_me me
+  | SigInclude mt -> Pp.fp ppf "include type [%a]@," pp_mt mt
+
+  | Bind (level, bind ) -> pp_bind level ppf bind
+  | Bind_rec bs ->
+    Pp.fp ppf "rec@[[ %a ]@] @,"
+      (Pp.list ~sep:"@, and @," @@ pp_bind Module ) bs
+and pp_bind level ppf {name;expr} =
+  Pp.fp ppf "%a %s =@, @[ %a @] " pp_level level name pp_me expr
+and pp_me ppf = function
+  | Ident np -> Epath.pp ppf np
+  | Str m2l -> Pp.fp ppf "@,struct@, %a end" pp m2l
+  | Apply {f;x} -> Pp.fp ppf "%a(@,%a@,)" pp_me f pp_me x
+  | Fun { arg; body } -> Pp.fp ppf "%a@,→%a" (pp_arg pp_mt) arg pp_me body
+  | Constraint (me,mt) -> Pp.fp ppf "%a: @,%a" pp_me me pp_mt mt
+  | Opaque m2l -> Pp.fp ppf "⟨%a⟩" pp m2l
+and pp_mt ppf = function
+  | Ident np -> Epath.pp ppf np
+  | Sig m2l -> Pp.fp ppf "@,sig@, %a end" pp m2l
+  | Fun { arg; body } ->  Pp.fp ppf "(%a)@,→%a" (pp_arg pp_mt) arg pp_mt body
+  | With {body; deletions} ->
+    Pp.fp ppf "%a@,/%a" pp_mt body Name.Set.pp deletions
+  | Of me -> Pp.fp ppf "module type of@, %a" pp_me me
+  | Opaque -> Pp.fp ppf "⟨⟩"
+and pp ppf = Pp.fp ppf "[@[%a@]]@." (Pp.list pp_expression)
 
 type t = m2l
 
@@ -219,9 +219,14 @@ let args_cdefs args =
   in
   extract (Some []) args >>| List.rev
 
+module Normalize = struct
+
+
+end
+
 let go_on (_,s) = true, s
 let stop (_,s) = false, s
-
+(*
 let rec normalize = function
   | Defs d1 :: Defs d2 :: q ->
     normalize @@ Defs ( d1 +| d2 ) :: q
@@ -260,20 +265,22 @@ let rec normalize = function
       | Some defs ->  go_on @@ normalize @@ Defs (mod_defs defs) :: q
       | None -> false, Module_rec mds :: q
     end
-  | Alias [] :: q -> go_on @@ normalize q
-  | Alias _  :: _ as l ->
-    false, l
   | [] -> false, []
 and md_normalize (md: module_decl) : module_decl =
   let me = md.signature in
-  let signature = snd @@ normalize me.signature in
-  let structure = snd @@ normalize me.structure in
+  let signature = snd @@ body_normalize me.signature in
+  let structure = snd @@ body_normalize me.structure in
   let args = List.map arg_normalize md.args in
   let signature = {signature;structure} in
   { md with args; signature }
+and body_normalize = function
+  | Alias _ as a -> false, a
+  | Explicit m2l ->
+    let more, p = normalize m2l in
+    more, Explicit p
 and md_cdefs md =
   let me = md.signature in
-  match cdefs me.signature, cdefs me.structure, args_cdefs md.args with
+  match body_cdefs me.signature, body_cdefs me.structure, args_cdefs md.args with
   | Some sg, Some _, Some args ->
     Some {name = md.name; alias_of = md.alias_of; signature = sg.defined; args }
   | _ -> None
@@ -324,12 +331,11 @@ let rec replace ~target ~alias sg = match target with
     let md = { md with signature } in
     { sg with modules = sg.modules |+> md }
 
-let precise_alias (md: module_) name al =
-  let  md = { md with name; alias_of = Some al.path } in
-  let md = {md with signature = delete al.deletions md.signature } in
-  let signature = List.fold_left (fun sg (x,y) ->
-      replace ~target:x ~alias:y sg) md.signature al.equalities in
-  { md with signature }
+let precise_alias (sg:signature) al =
+  let sg = delete al.deletions sg in
+  let sg = List.fold_left (fun sg (x,y) ->
+      replace ~target:x ~alias:y sg) sg al.equalities in
+  sg
 
 let rec compute state = function
   | Defs d :: q -> Defs d :: compute ( state +| d ) q
@@ -345,17 +351,6 @@ let rec compute state = function
       compute state q
     else
       Value p'' :: compute state q
-  | Alias [] :: q -> compute state q
-  | Alias ( (name, ae) :: more_alias ) :: q as p ->
-    begin
-      match find ae.level ae.path state.visible with
-      | md ->
-        let md = precise_alias md name ae in
-        compute state @@
-        Defs (gen_def ae.level md )
-        :: Alias more_alias :: q
-      | exception Not_found -> p
-    end
   | Open path :: q as p ->
     begin
       match find_module path state.visible with
@@ -392,17 +387,26 @@ and compute_md state md =
   let me = compute_me state' md.signature in
   { md with args; signature = me }
 and compute_me state me =
-  { signature = compute state (snd @@ normalize @@ me.signature)
-  ; structure = compute state (snd @@ normalize @@ me.structure) }
+  { signature = compute_body state (snd @@ body_normalize @@ me.signature)
+  ; structure = compute_body state (snd @@ body_normalize @@ me.structure) }
+and compute_body state = function
+  | Explicit mtl -> Explicit (compute state @@ snd @@ normalize @@ mtl)
+  | Alias ae -> compute_alias state ae
 
-
+and compute_alias state ae =
+  match find ae.level ae.path state.visible with
+  | md ->
+    let sg = md.signature in
+    let sg = precise_alias sg ae in
+    Explicit [ Defs (sg_bind sg ) ]
+  | exception Not_found -> Alias ae
 
 and normalize_and_continue state p =
     let continue, p = normalize p in
     if continue then compute state p else p
+*)
 
 module Build = struct
   let access path = Access (Name.Set.singleton @@ Epath.prefix path )
   let open_ path = Open path
-
 end

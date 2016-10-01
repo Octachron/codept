@@ -2,7 +2,7 @@
 exception Include_functor
 
 module L = Longident
-module R = Envt.Resolver
+module B = M2l.Build
 
 let rec from_lid  =
   let open Epath in
@@ -23,83 +23,118 @@ let type_ = Epath.Module_type
 open Parsetree
 let txt x= x.Location.txt
 
-let find_signature kind env lid =
-  let path = from_lid @@ txt lid in
-  Envt.Resolver.find_signature kind env path
+let epath x = from_lid @@ txt x
 
-let access_gen kind env path = let open Option in
-     path |> txt |> module_path >>| (fun p -> R.access (kind,p) env)
-  >< env
+let access lid =
+  let open Epath in
+  match from_lid @@ txt lid with
+  | A _ -> Name.Set.empty
+  | S(p,_) -> Name.Set.singleton @@ prefix p
+  | T | F _ -> assert false
 
-let access = access_gen value
+let access' lid =
+  let open Epath in
+ match from_lid @@ txt lid with
+  | A _ -> []
+  | S(p,_) -> [ M2l.Access (Name.Set.singleton @@ prefix p) ]
+  | T | F _ -> assert false
 
-let do_open env popen_lid =
-  let path = from_lid @@ txt popen_lid in
-  R.open_ path env
 
+let do_open lid =
+  [M2l.Open (epath lid)]
 
-let do_include_gen kind extract env m=
+let (+?) x l = match x with None -> l | Some x -> x :: l
+
+(*
+let do_include kind extract env m=
   let m' = extract env m in
   R.include_ kind env m'
+*)
 
-let opt f env x=  Option.( x >>| (fun x -> f env x) >< env )
+let first_class_approx = M2l.empty_sig
+
+let opt f x=  Option.( x >>| f >< [] )
 let flip f x y = f y x
 
-let rec structure env str =
-  Envt.refocus env @@ List.fold_left structure_item env str
-and structure_item env item =
+let (@%) l l' =
+  let open M2l in
+  match l,l' with
+  | [Access s] , Access s' :: q -> Access (Name.Set.union s s') :: q
+  | _ -> l @ l'
+
+let rec gen_mmap (@) f = function
+  | [] -> []
+  | a :: q -> (f a) @ gen_mmap (@) f q
+
+let mmap f = gen_mmap (@%) f
+let gmmap f = gen_mmap (@) f
+
+
+let (+:) s l' =
+  if Name.Set.cardinal s = 0 then l'
+  else
+    let open M2l in
+    match l' with
+    | Access s' :: q -> Access (Name.Set.union s s') :: q
+    | _ -> Access s ::  l'
+
+
+open M2l
+let rec structure str =
+  mmap structure_item str
+and structure_item item =
   match item.pstr_desc with
-  | Pstr_eval (exp, _attrs) -> expr env exp
+  | Pstr_eval (exp, _attrs) -> expr exp
   (* ;; exp [@@_attrs ] *)
   | Pstr_value (_rec_flag, vals)
     (* let P1 = E1 and ... and Pn = EN       (flag = Nonrecursive)
            let rec P1 = E1 and ... and Pn = EN   (flag = Recursive)
          *) ->
-    List.fold_left value_binding env vals
-  | Pstr_primitive _desc -> env
+    mmap value_binding vals
+  | Pstr_primitive desc
         (*  val x: T
             external x: T = "s1" ... "sn" *)
+    -> core_type desc.pval_type
   | Pstr_type (_rec_flag, type_declarations)
     (* type t1 = ... and ... and tn = ... *) ->
-    List.fold_left type_declaration env type_declarations
+    mmap type_declaration type_declarations
   | Pstr_typext a_type_extension  (* type t1 += ... *) ->
-    type_extension env a_type_extension
+    type_extension a_type_extension
   | Pstr_exception an_extension_constructor
         (* exception C of T
            exception C = M.X *)
-    -> extension_constructor env an_extension_constructor
+    -> extension_constructor an_extension_constructor
   | Pstr_module mb (* module X = ME *) ->
-    module_binding env (mb.pmb_name, mb.pmb_expr)
+    [Bind( Module, module_binding_raw mb)]
   | Pstr_recmodule module_bindings (* module rec X1 = ME1 and ... and Xn = MEn *)
-    -> recmodules env module_bindings
+    -> recmodules module_bindings
   | Pstr_modtype a_module_type_declaration (*module type s = .. *) ->
-        module_type_declaration env a_module_type_declaration
+    [ Bind(Module_type, module_type_declaration a_module_type_declaration) ]
   | Pstr_open open_desc (* open M *) ->
-        do_open env open_desc.popen_lid
+        do_open  open_desc.popen_lid
   | Pstr_class class_declarations  (* class c1 = ... and ... and cn = ... *)
-    -> List.fold_left class_declaration env class_declarations
+    -> mmap class_declaration class_declarations
   | Pstr_class_type class_type_declarations
   (* class type ct1 = ... and ... and ctn = ... *)
-    -> List.fold_left class_type_declaration env class_type_declarations
+    -> mmap class_type_declaration class_type_declarations
   | Pstr_include include_dec (* include M *) ->
-        do_include env include_dec
+        do_include include_dec
   | Pstr_attribute _attribute (* [@@@id] *)
-    -> env
+    -> []
   | Pstr_extension (_id, _payload) (* [%%id] *) ->
-    env
-and expr env exp =
+    Warning.extension(); []
+and expr exp =
   match exp.pexp_desc with
   | Pexp_ident name (* x, M.x *) ->
-    access env name
+    access' name
   | Pexp_let (_rec_flag, value_bindings, exp )
         (* let P1 = E1 and ... and Pn = EN in E       (flag = Nonrecursive)
            let rec P1 = E1 and ... and Pn = EN in E   (flag = Recursive)
         *)
     ->
-    let env' = List.fold_left value_binding env value_bindings in
-    Envt.refocus env @@ expr env' exp
+    mmap value_binding value_bindings @% expr exp (** todo: module bindings *)
   | Pexp_function cases (* function P1 -> E1 | ... | Pn -> En *) ->
-    List.fold_left case env cases
+    mmap case cases
   | Pexp_fun ( _arg_label, expr_opt, pat, expression)
         (* fun P -> E1                          (Simple, None)
            fun ~l:P -> E1                       (Labelled l, None)
@@ -111,9 +146,9 @@ and expr env exp =
            - "let f P = E" is represented using Pexp_fun.
         *)
     ->
-    let env' = opt expr env expr_opt in
-    let env' = pattern env' pat in
-    expr env' expression
+    (opt expr expr_opt)
+    @% pattern pat
+    @% expr expression
   | Pexp_apply (expression, args)
         (* E0 ~l1:E1 ... ~ln:En
            li can be empty (non labeled argument) or start with '?'
@@ -122,30 +157,29 @@ and expr env exp =
            Invariant: n > 0
         *)
     ->
-    let env = expr env expression in
-    List.fold_left (fun env (_flag,e) -> expr env e) env args
+    expr expression @%
+    mmap (fun (_,e) -> expr e) args
   | Pexp_match (expression, cases)
     (* match E0 with P1 -> E1 | ... | Pn -> En *)
   | Pexp_try (expression, cases)
     (* try E0 with P1 -> E1 | ... | Pn -> En *)
     ->
-    List.fold_left case (expr env expression) cases
+    expr expression @% mmap case cases
   | Pexp_tuple expressions
       (* (E1, ..., En) Invariant: n >= 2 *)
    ->
-      List.fold_left expr env expressions
+      mmap expr expressions
   | Pexp_construct (constr, expr_opt)
         (* C                None
            C E              Some E
            C (E1, ..., En)  Some (Pexp_tuple[E1;...;En])
         *) ->
-    let env = access env constr in
-    opt expr env expr_opt
+    access constr +: opt expr  expr_opt
   | Pexp_variant (_label, expression_opt)
         (* `A             (None)
            `A E           (Some E)
         *)
-    -> opt expr env expression_opt
+    -> opt expr expression_opt
   | Pexp_record (labels, expression_opt)
         (* { l1=P1; ...; ln=Pn }     (None)
            { E0 with l1=P1; ...; ln=Pn }   (Some E0)
@@ -153,118 +187,113 @@ and expr env exp =
            Invariant: n > 0
         *)
     ->
-    let env =
-      List.fold_left (fun env (labl,expression) ->
-          let env = access env labl in
-          expr env expression )
-        env labels in
-    opt expr env expression_opt
+    opt expr expression_opt
+    @% mmap (fun (labl,expression) -> access labl +:  expr expression ) labels
   | Pexp_field (expression, field)  (* E.l *) ->
-    let env = expr env expression in
-    access env field
+    access field +: expr expression
   | Pexp_setfield (e1, field,e2) (* E1.l <- E2 *) ->
-    let env = expr env e1 in
-    let env = access env field in
-    expr env e2
+    access field +: (expr e1 @% expr e2)
   | Pexp_array expressions (* [| E1; ...; En |] *) ->
-    List.fold_left expr env expressions
+    mmap expr expressions
   | Pexp_ifthenelse (e1, e2, e3) (* if E1 then E2 else E3 *) ->
-    expr env e1 |> flip expr e2 |> flip (opt expr) e3
+    expr e1 @% expr e2 @% opt expr e3
   | Pexp_sequence (e1,e2) (* E1; E2 *) ->
-    expr (expr env e1) e2
+    expr e1 @% expr e2
   | Pexp_while (e1, e2) (* while E1 do E2 done *) ->
-    expr (expr env e1) e2
+    expr e1 @% expr e2
   | Pexp_for (pat, e1, e2,_,e3)
   (* for pat = E1 to E2 do E3 done      (flag = Upto)
      for pat = E1 downto E2 do E3 done  (flag = Downto)
   *) ->
-    expr (expr (expr (pattern env pat) e1) e2) e3
+    pattern pat @% expr e1 @% expr e2 @% expr e3
   | Pexp_constraint (e,t) (* (E : T) *) ->
-    expr (core_type env t) e
+    expr e @% core_type t
   | Pexp_coerce (e, t_opt, coer)
   (* (E :> T)        (None, T)
      (E : T0 :> T)   (Some T0, T)
   *) ->
-    expr (opt core_type (core_type env coer) t_opt) e
+    expr e @% opt core_type t_opt @% core_type coer
   | Pexp_new name (* new M.c *) ->
-    access env name
+    access' name
   | Pexp_setinstvar (_x, e) (* x <- e *) ->
-    expr env e
+    expr e
   | Pexp_override labels (* {< x1 = E1; ...; Xn = En >} *) ->
-    List.fold_left (fun env (_,e) -> expr env e) env labels
+    mmap (fun (_,e) -> expr e) labels
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
-    let env' = module_binding env (m,me) in
-    let env' = expr env' e in
-    Envt.{ (refocus env env') with signature = env.signature }
+    [ Value ( Bind( Module, module_binding (m,me) ) :: expr e ) ]
 (*  | Pexp_letexception (c, e) (* let exception C in E *) ->
     expression (extension_constructor env ext) e *)
-
   | Pexp_send (e, _) (*  E # m *)
   | Pexp_assert e (* assert E *)
   | Pexp_newtype (_ ,e) (* fun (type t) -> E *)
-  | Pexp_lazy e (* lazy E *) -> expr env e
+  | Pexp_lazy e (* lazy E *) -> expr  e
 
   | Pexp_poly (e, ct_opt) ->
-    expr (opt core_type env ct_opt) e
+    expr e @% opt core_type ct_opt
   | Pexp_object clstr (* object ... end *) ->
-    class_structure env clstr
+    class_structure clstr
   | Pexp_pack me (* (module ME) *)
-    ->
-    (* Warning.first_class_module ();
-       (* todo: are all cases caught by the Module.approximation mechanism?  *) *)
-    let _sign, _env = module_expr env me in env
+    -> Warning.first_class_module ();
+       (* todo: are all cases caught by the Module.approximation mechanism?  *)
+    [Opaque (module_expr me) ]
   | Pexp_open (_override_flag,name,e)
         (* M.(E), let open M in E, let! open M in E *)
-    -> let env = expr (do_open env name) e in
-    Envt.{ env with unresolved = Unresolved.up env.unresolved }
+    -> [ Value ( do_open name @% expr e ) ]
   | Pexp_extension (name, PStr payload) when txt name = "extension_constructor" ->
-    structure env payload
-  | Pexp_constant _ | Pexp_extension _ (* [%ext] *) | Pexp_unreachable (* . *)
-    -> env
-and pattern env pat = match pat.ppat_desc with
+    structure payload
+  | Pexp_constant _ | Pexp_unreachable (* . *)
+    -> []
+  | Pexp_extension _ (* [%ext] *) -> (Warning.extension(); [])
+and pattern pat = match pat.ppat_desc with
   | Ppat_constant _ (* 1, 'a', "true", 1.0, 1l, 1L, 1n *)
   | Ppat_interval _ (* 'a'..'z'*)
   | Ppat_any
   | Ppat_extension _
-  | Ppat_var _ (* x *) -> env
+  | Ppat_var _ (* x *) -> []
 
   | Ppat_exception pat (* exception P *)
   | Ppat_lazy pat (* lazy P *)
-  | Ppat_alias (pat,_) (* P as 'a *) -> pattern env pat
+  | Ppat_alias (pat,_) (* P as 'a *) -> pattern pat
 
   | Ppat_array patterns (* [| P1; ...; Pn |] *)
   | Ppat_tuple patterns (* (P1, ..., Pn) *) ->
-    List.fold_left pattern env patterns
+    mmap pattern patterns
 
   | Ppat_construct (c, p)
         (* C                None
            C P              Some P
            C (P1, ..., Pn)  Some (Ppat_tuple [P1; ...; Pn])
         *) ->
-    opt pattern (access env c) p
+    access c +: opt pattern p
   | Ppat_variant (_, p) (*`A (None), `A P(Some P)*) ->
-    opt pattern env p
+    opt pattern p
   | Ppat_record (fields, _flag)
         (* { l1=P1; ...; ln=Pn }     (flag = Closed)
            { l1=P1; ...; ln=Pn; _}   (flag = Open)
         *) ->
-    List.fold_left (fun env (_,p) -> pattern env p ) env fields
+    mmap (fun (_,p) -> pattern p ) fields
   | Ppat_or (p1,p2) (* P1 | P2 *) ->
-    pattern (pattern env p1) p2
+    pattern p1 @% pattern p2
   | Ppat_constraint(
       {ppat_desc=Ppat_unpack name; _},
       {ptyp_desc=Ptyp_package s; _ } ) ->
-    let name = txt name in
-    let unresolved, signature = full_package_type env s in
-    R.bind_translucid { env with Envt.unresolved }
-      {Module.name; kind = value; signature}
+    let _name = txt name in
+    let _s, others = full_package_type s in
+    others
+    (* todo : catch higher up *)
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
-    pattern (core_type env ct) pat
-  | Ppat_type name (* #tconst *) -> access env name
+    pattern pat @% core_type ct
+  | Ppat_type name (* #tconst *) -> access' name
   | Ppat_unpack m ->
     (* Warning.first_class_module(); todo: test coverage *)
-    R.bind_translucid env
-      Module.{ name = txt m ; kind = value; signature = first_class_approx}
+    [ Value [ Defs (mod_def
+                      { name = txt m ;
+                        args = [];
+                        alias_of=None;
+                        signature = first_class_approx
+                      })
+            ]
+    ]
       (* (module P)
            Note: (module P : S) is represented as
            Ppat_constraint(Ppat_unpack, Ptyp_package)
@@ -272,106 +301,107 @@ and pattern env pat = match pat.ppat_desc with
 (*  | Ppat_open (m,p) (* M.(P) *) ->
     Resolver.(up env.Envt.signature) @@ pattern (do_open env m) p *)
 
-and type_declaration env td  = Envt.refocus env @@
-  let env = List.fold_left (fun env (_,t,_) -> core_type env t) env td.ptype_cstrs in
-  let env = type_kind env td.ptype_kind in
-  opt core_type env td.ptype_manifest
-and type_kind env = function
-  | Ptype_abstract | Ptype_open -> env
+and type_declaration td  =
+  mmap (fun (_,t,_) -> core_type t) td.ptype_cstrs
+  @% type_kind td.ptype_kind
+  @% opt core_type td.ptype_manifest
+and type_kind = function
+  | Ptype_abstract | Ptype_open -> []
   | Ptype_variant constructor_declarations ->
-      List.fold_left constructor_declaration env constructor_declarations
+      mmap constructor_declaration constructor_declarations
   | Ptype_record label_declarations ->
-    List.fold_left label_declaration env label_declarations
-and constructor_declaration env cd =
-  opt core_type (constructor_args env cd.pcd_args) cd.pcd_res
-and constructor_args env = function
-    | Pcstr_tuple cts -> List.fold_left core_type env cts
-    | Pcstr_record lds -> List.fold_left label_declaration env lds
-and label_declaration env ld = core_type env ld.pld_type
-and type_extension env tyext =
-  let env = access env tyext.ptyext_path in
-  List.fold_left extension_constructor env tyext.ptyext_constructors
-and core_type env ct =   match ct.ptyp_desc with
+    mmap label_declaration label_declarations
+and constructor_declaration cd =
+  opt core_type cd.pcd_res @% constructor_args cd.pcd_args
+and constructor_args = function
+    | Pcstr_tuple cts -> mmap core_type cts
+    | Pcstr_record lds -> mmap label_declaration lds
+and label_declaration ld = core_type ld.pld_type
+and type_extension tyext =
+  access tyext.ptyext_path
+  +: mmap  extension_constructor tyext.ptyext_constructors
+and core_type ct = match ct.ptyp_desc with
   | Ptyp_any  (*  _ *)
   | Ptyp_extension _ (* [%id] *)
-  | Ptyp_var _ (* 'a *) -> env
+  | Ptyp_var _ (* 'a *) -> []
   | Ptyp_arrow (_, t1, t2) (* [~? ]T1->T2 *) ->
-      core_type (core_type env t1) t2
+      core_type t1 @% core_type t2
   | Ptyp_tuple cts (* T1 * ... * Tn *) ->
-    List.fold_left core_type env cts
+    mmap core_type cts
   | Ptyp_class (name,cts)
   | Ptyp_constr (name,cts) (*[|T|(T1n ..., Tn)] tconstr *) ->
-    List.fold_left core_type (access env name) cts
+    access name +: mmap core_type  cts
   | Ptyp_object (lbls, _ ) (* < l1:T1; ...; ln:Tn[; ..] > *) ->
-    List.fold_left (fun env (_,_,t) -> core_type env t) env lbls
+    mmap (fun  (_,_,t) -> core_type t) lbls
   | Ptyp_poly (_, ct)
-  | Ptyp_alias (ct,_) (* T as 'a *) -> core_type env ct
+  | Ptyp_alias (ct,_) (* T as 'a *) -> core_type ct
 
   | Ptyp_variant (row_fields,_,_labels) ->
-    List.fold_left row_field env row_fields
+    mmap row_field row_fields
   | Ptyp_package s (* (module S) *) ->
-    package_type env s
+    package_type s
 
-and row_field env = function
-  | Rtag (_,_,_,cts) -> List.fold_left core_type env cts
-  | Rinherit ct -> core_type env ct
-and package_type env (s,constraints) =
-  List.fold_left (fun env (_,ct) -> core_type env ct)
-    (access env s) constraints
-and full_package_type env (s,constraints) =
-  let env = List.fold_left (fun env (_,ct) -> core_type env ct) env constraints in
-  find_signature type_ env s
-and case env cs =
-  pattern env cs.pc_lhs
-  |> flip (opt expr) cs.pc_guard
-  |> flip expr cs.pc_rhs
-and do_include env incl =
-    do_include_gen value module_expr env incl.pincl_mod
-and extension_constructor env extc = match extc.pext_kind with
-| Pext_decl (args, cto) ->
-  opt core_type (constructor_args env args) cto
-| Pext_rebind name -> access env name
-and class_type env ct = match ct.pcty_desc with
+and row_field = function
+  | Rtag (_,_,_,cts) -> mmap core_type cts
+  | Rinherit ct -> core_type ct
+and package_type (s,constraints) =
+  access s +:
+  mmap (fun  (_,ct) -> core_type ct) constraints
+and full_package_type (s,constraints) =
+  Ident (epath s),
+  mmap (fun (_,ct) -> core_type ct) constraints
+and case cs =
+  pattern cs.pc_lhs
+  @% opt expr cs.pc_guard
+  @% expr cs.pc_rhs
+and do_include incl =
+    [ Include (module_expr incl.pincl_mod) ]
+and extension_constructor extc = match extc.pext_kind with
+  | Pext_decl (args, cto) ->
+    constructor_args args
+    @% opt core_type cto
+| Pext_rebind name -> access' name
+and class_type ct = match ct.pcty_desc with
   | Pcty_constr (name, cts ) (* c ['a1, ..., 'an] c *) ->
-    List.fold_left core_type (access env name) cts
-  | Pcty_signature cs (* object ... end *) -> class_signature env cs
+    access name +: mmap core_type cts
+  | Pcty_signature cs (* object ... end *) -> class_signature cs
   | Pcty_arrow (_arg_label, ct, clt) (* ^T -> CT *) ->
-    class_type (core_type env ct) clt
-  | Pcty_extension _ (* [%ext] *) -> env
-and class_signature env cs = List.fold_left class_type_field env cs.pcsig_fields
-and class_type_field env ctf = match ctf.pctf_desc with
-  | Pctf_inherit ct -> class_type env ct
+    class_type clt @% core_type ct
+  | Pcty_extension _ (* [%ext] *) -> []
+and class_signature cs = mmap class_type_field cs.pcsig_fields
+and class_type_field ctf = match ctf.pctf_desc with
+  | Pctf_inherit ct -> class_type ct
   | Pctf_val ( _, _, _, ct) (*val x : T *)
   | Pctf_method (_ ,_,_,ct) (* method x: T *)
-    -> core_type env ct
+    -> core_type ct
   | Pctf_constraint  (t1, t2) (* constraint T1 = T2 *) ->
-    core_type (core_type env t1) t2
-  | Pctf_attribute _
-  | Pctf_extension _ -> env
-and class_structure env ct =
-  List.fold_left class_field env ct.pcstr_fields
-and class_field env field = match field.pcf_desc with
+    core_type t2 @% core_type t1
+  | Pctf_attribute _ -> []
+  | Pctf_extension _ -> Warning.extension (); []
+and class_structure ct =
+  mmap class_field ct.pcstr_fields
+and class_field  field = match field.pcf_desc with
   | Pcf_inherit (_override_flag, ce, _) (* inherit CE *) ->
-    class_expr env ce
+    class_expr ce
   | Pcf_method (_, _, cfk)
   | Pcf_val (_,_, cfk) (* val x = E *)->
-    class_field_kind env cfk
+    class_field_kind cfk
   | Pcf_constraint (_ , ct) (* constraint T1 = T2 *) ->
-    core_type env ct
-  | Pcf_initializer e (* initializer E *) -> expr env e
+    core_type ct
+  | Pcf_initializer e (* initializer E *) -> expr e
   | Pcf_attribute _
-  | Pcf_extension _ -> Warning.extension (); env
-and class_expr env ce = match ce.pcl_desc with
+  | Pcf_extension _ -> Warning.extension (); []
+and class_expr ce = match ce.pcl_desc with
   | Pcl_constr (name, cts)  (* ['a1, ..., 'an] c *) ->
-    List.fold_left core_type (access env name) cts
-  | Pcl_structure cs (* object ... end *) -> class_structure env cs
+    access name +: mmap core_type cts
+  | Pcl_structure cs (* object ... end *) -> class_structure cs
   | Pcl_fun (_arg_label, eo, pat, ce)
         (* fun P -> CE                          (Simple, None)
            fun ~l:P -> CE                       (Labelled l, None)
            fun ?l:P -> CE                       (Optional l, None)
            fun ?l:(P = E0) -> CE                (Optional l, Some E0)
         *)
-    -> opt expr env eo |> flip pattern pat |> flip class_expr ce
+    -> opt expr eo @% pattern pat @% class_expr ce
   | Pcl_apply (ce, les )
         (* CE ~l1:E1 ... ~ln:En
            li can be empty (non labeled argument) or start with '?'
@@ -379,185 +409,113 @@ and class_expr env ce = match ce.pcl_desc with
 
            Invariant: n > 0
         *) ->
-    List.fold_left (fun env (_,e) -> expr env e) (class_expr env ce) les
+    mmap (fun (_,e) -> expr e) les @% class_expr ce
   | Pcl_let (_, value_bindings, ce ) (* let P1 = E1 and ... and Pn = EN in CE *)
-    -> List.fold_left value_binding env value_bindings
-  |> flip class_expr ce
+    ->
+    class_expr ce
+    @% mmap value_binding value_bindings
   | Pcl_constraint (ce, ct) ->
-    class_type (class_expr env ce) ct
-  | Pcl_extension _ext -> Warning.extension () ; env
-and class_field_kind env = function
-  | Cfk_virtual ct -> core_type env ct
-  | Cfk_concrete (_, e) -> expr env e
-and class_declaration env cd = class_expr env (cd.pci_expr)
-and class_type_declaration env ctd = class_type env (ctd.pci_expr)
-and module_expr (env: Envt.t) mexpr :
-  Unresolved.focus * Module.signature  =
+    class_type ct @% class_expr ce
+  | Pcl_extension _ext -> Warning.extension () ; []
+and class_field_kind = function
+  | Cfk_virtual ct -> core_type ct
+  | Cfk_concrete (_, e) -> expr e
+and class_declaration cd = class_expr cd.pci_expr
+and class_type_declaration ctd = class_type ctd.pci_expr
+and module_expr mexpr : M2l.module_expr =
   match mexpr.pmod_desc with
-  | Pmod_ident name ->
-    find_signature value env name
-  | Pmod_structure str ->
-    let env = (structure (R.enter_module env) str) in
-    Envt.( env.unresolved,
-          Module.Sig env.signature)
-        (* struct ... end *)
+  | Pmod_ident name (* A *) ->
+    Ident (epath name)
+  | Pmod_structure str (* struct ... end *) ->
+    Str (structure  str)
   | Pmod_functor (name, sign, mex) ->
     let name = txt name in
-      begin match sign with
-        | Some s ->
-          let unresolved, s = module_type env s in
-          let env' = R.bind env @@ Module.create name value s in
-          let env' = { env' with Envt.unresolved } in
-          let env' = R.enter_module env' in
-          let unresolved, result = module_expr env' mex in
-          unresolved,
-          Module.(Fun {
-            arg = Some (Module.create name value s);
-            result })
-        | None (* module F() = struct end *)->
-          let unresolved, result = module_expr env mex in
-          unresolved,
-          Module.(Fun {arg = None;result})
-      end
+    let arg = Option.( sign >>| module_type >>| fun s ->{name;signature=s} ) in
+    Fun { arg; body = module_expr mex }
   | Pmod_apply (f,x)  (* ME1(ME2) *) ->
-    let unresolved', f = module_expr env f in
-    begin match f with
-      | Module.Fun fn ->
-        let unresolved, x =
-          module_expr {env with Envt.unresolved = unresolved'} x in
-        unresolved, Module.apply env fn x
-      | Module.Alias u ->
-        let u = Unresolved.( (fun u -> Epath.F u) $ u ) in
-        let unresolved, _ = module_expr env x in
-        Unresolved.(add_new (Extern u) unresolved), Module.Alias u
-      | _ -> Error.not_a_functor ()
-    end
-
+    Apply {f = module_expr f; x = module_expr x }
   | Pmod_constraint (me,mt) ->
-    let unr, sign = module_type (R.enter_module env) mt in
-    let env'' = Envt.{ env with
-                      unresolved = Unresolved.refocus_on env.unresolved unr} in
-    let unr, _sign = module_expr env'' me in
-    unr, sign
+    Constraint(module_expr me, module_type mt)
   | Pmod_unpack { pexp_desc = Pexp_constraint
                       (inner, {ptyp_desc = Ptyp_package s; _}); _ }
     (* (val E : S ) *) ->
-    let env = expr env inner in
-    full_package_type env s
+    Constraint( Opaque (expr inner), fst @@ full_package_type s)
   | Pmod_unpack e  (* (val E) *) ->
-    (* Warning.first_class_module(); (* todo: test coverage *) *)
-    let env' = expr env e in
-    env'.Envt.unresolved, Module.first_class_approx
+    Opaque (expr e)
   | Pmod_extension _extension ->
     Warning.extension();
-    Envt.unresolved env, Module.(Sig empty_sig)
+     Opaque []
         (* [%id] *)
-and value_binding env vb =
-  expr (pattern env vb.pvb_pat) vb.pvb_expr
-and module_binding env (pmb_name, pmb_expr) =
-  let unresolved, sign = module_expr (R.enter_module env) pmb_expr in
-  let md = Module.create ~name:(txt pmb_name) ~kind:value sign in
-  R.bind  { env with Envt.unresolved } md
-and module_type env mt =
+and value_binding vb =
+  pattern vb.pvb_pat
+  @% expr vb.pvb_expr
+and module_binding_raw mb =
+  module_binding (mb.pmb_name, mb.pmb_expr)
+and module_binding (pmb_name, pmb_expr) =
+  { name = txt pmb_name; expr = module_expr pmb_expr }
+and module_type (mt:Parsetree.module_type) =
   match mt.pmty_desc with
-  | Pmty_signature s (* sig ... end *) -> signature env s
+  | Pmty_signature s (* sig ... end *) -> Sig (signature s)
   | Pmty_functor (name, arg, res) (* functor(X : MT1) -> MT2 *) ->
-    begin match arg with
-      | None ->
-        let unr', sign'= module_type (R.enter_module env) res in
-        unr', Module.(Fun { arg = None; result= sign'})
-      | Some arg ->
-        let unr, sign = module_type (R.enter_module env) arg in
-        let env =  { env with Envt.unresolved = unr } in
-        let unr', sign'= module_type (R.enter_module env) res in
-        unr', Module.(Fun {
-            arg = Some (Module.create ~name:(txt name) ~kind:type_ sign);
-            result= sign'}
-          )
-    end
-
+    let arg = let open Option in
+      arg >>| module_type >>| fun s -> { name = txt name; signature = s} in
+    Fun { arg; body = module_type res }
   | Pmty_with (mt, wlist) (* MT with ... *) ->
-    let first = module_type env mt in
-    List.fold_left (with_eq env) first wlist
+    let deletions = Name.Set.of_list @@  gmmap dels wlist in
+    With { body = module_type mt; deletions }
   | Pmty_typeof me (* module type of ME *) ->
-    module_expr env me
-  | Pmty_extension _ ->
+    Of (module_expr me)
+  | Pmty_extension _ (* [%id] *) ->
     Warning.extension();
-    Envt.unresolved env, Module.( Sig empty_sig )
-        (* [%id] *)
-  | Pmty_alias lid -> find_signature value env lid
-        (* (module M) *)
+    Opaque
+  | Pmty_alias lid -> Warning.confused "Pmty_alias" ;
+    Ident (epath lid)
   | Pmty_ident lid (* S *) ->
-    find_signature type_ env lid
-
-and module_declaration env mdec =
-  let u, s = module_type env mdec.pmd_type in
-  let s = Module.create ~name:(txt mdec.pmd_name) ~kind:value s in
-  let env = Envt.{ env with unresolved = Unresolved.refocus_on env.unresolved u } in
-  R.bind env s
-and module_type_declaration env mdec =
+    Ident (epath lid)
+and module_declaration mdec =
+  let s = module_type mdec.pmd_type in
+  { name = txt mdec.pmd_name; expr = Constraint(Opaque [], s) }
+and module_type_declaration mdec =
   let open Option in
   let name = txt mdec.pmtd_name in
-  let u, s = mdec.pmtd_type >>| begin fun mtd ->
-      let u, s = module_type env mtd in
-      u , Module.create ~name ~kind:type_ s
-    end
-  >< (Envt.unresolved env, Module.create ~name ~kind:type_ Module.(Sig empty_sig) )
-  in
-  let env = Envt.{ env with unresolved = Unresolved.refocus_on env.unresolved u } in
-  R.bind env s
-and signature env sign =
-  let env = List.fold_left signature_item (R.enter_module env) sign in
-  Envt.unresolved env, Module.Sig env.Envt.signature
-and signature_item env item =  match item.psig_desc with
+  let s = ( (mdec.pmtd_type >>| module_type) >< Sig [] ) in
+  {name; expr = Constraint(Opaque [], s) }
+and signature sign =
+  mmap signature_item sign
+and signature_item item =  match item.psig_desc with
   | Psig_value vd (* val x: T *) ->
-    core_type env vd.pval_type
+    core_type vd.pval_type
   | Psig_type (_rec_flag, tds) (* type t1 = ... and ... and tn = ... *) ->
-    List.fold_left type_declaration env tds
+    mmap type_declaration tds
   | Psig_typext te (* type t1 += ... *) ->
-    type_extension env te
+    type_extension te
   | Psig_exception ec (* exception C of T *) ->
-    extension_constructor env ec
+    extension_constructor ec
   | Psig_module md (* module X : MT *) ->
-    module_declaration env md
+    [Bind(Module, module_declaration md)]
   | Psig_recmodule mds (* module rec X1 : MT1 and ... and Xn : MTn *) ->
-    let env' = List.fold_left module_declaration env mds in
-    let env'' = Envt.{ env with modules = env'.modules; types = env'.types } in
+    [Bind_rec (List.map module_declaration mds)]
     (* Warning.confused "Psig_recmodule"; (* todo coverage*) *)
-    List.fold_left module_declaration env'' mds
   | Psig_modtype mtd (* module type S = MT *) ->
-    module_type_declaration env mtd
+    [Bind(Module_type, module_type_declaration mtd)]
   | Psig_open od (* open X *) ->
-    do_open env od.popen_lid
+    do_open od.popen_lid
   | Psig_include id (* include MT *) ->
-    do_include_gen type_ module_type env id.pincl_mod
+    [ SigInclude (module_type id.pincl_mod) ]
   | Psig_class cds (* class c1 : ... and ... and cn : ... *) ->
-    List.fold_left class_description env cds
+    mmap class_description cds
   | Psig_class_type ctds ->
-    List.fold_left class_type_declaration env ctds
-  | Psig_attribute _ -> env
-  | Psig_extension _ -> Warning.extension(); env
+    mmap class_type_declaration ctds
+  | Psig_attribute _ -> []
+  | Psig_extension _ -> Warning.extension(); []
 and class_description x = class_type_declaration x
-and recmodules env mbs =
-  let modules = List.fold_left
-      (fun env md -> module_binding env (md.pmb_name,md.pmb_expr) ) in
-  let env'= modules env mbs in
-  let env' =
-    Envt.{ env' with signature = env.signature; unresolved=env.unresolved } in
-  modules env' mbs
-and with_eq env ((unr,mt) as r) =
+and recmodules mbs =
+  [Bind_rec (List.map module_binding_raw mbs)]
+and dels  =
   function
   | Pwith_typesubst _ (* with type t := ... *)
-  | Pwith_type _(* with type X.t = ... *) -> r
-  | Pwith_module (lid,lid') (* with module X.Y = Z *) ->
-    let unr, signature =
-      find_signature value { env with Envt.unresolved = unr } lid' in
-    let path = from_lid @@ txt @@ lid in
-    let sgn = Module.(replace path (Module.create ~name:"**" ~kind:type_ mt) signature) in
-    unr, sgn.Module.signature
-  | Pwith_modsubst (name, lid') ->
+  | Pwith_type _(* with type X.t = ... *) -> []
+  | Pwith_module _ (* with module X.Y = Z *) -> []
+  | Pwith_modsubst (name, _) ->
     let name = txt name in
-    let unr, _signature =
-      find_signature value { env with Envt.unresolved = unr } lid' in
-    unr, Module.((delete (Epath.A name) @@
-                  Module.create ~name:"**" ~kind:type_ mt).signature)
+    [name]
