@@ -13,6 +13,9 @@ let p fmt = Format.eprintf fmt
       ("@[<hov2>\x1b[31mError\x1b[39m:@,@ @["^^fmt^^"@]@]@.")
 
   let log_s s = log "%s" s
-  let signature_expected () = log "Expected signature, got a functor"
-  let module_type_error = log "Module type error: unknown module name %s"
-  let not_a_functor () = log "Only functors can be applied"
+
+let include_functor () = log "Structure expected: functor cannot be included"
+
+let signature_expected () = log "Expected signature, got a functor"
+let module_type_error = log "Module type error: unknown module name %s"
+let not_a_functor () = log "Only functors can be applied"

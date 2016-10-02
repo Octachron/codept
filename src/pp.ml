@@ -1,14 +1,23 @@
-  let fp = Format.fprintf
+let fp = Format.fprintf
+
   let rec list ?(sep="; ") pp ppf =
     function
-    | a :: ( _ :: _ as q ) -> fp ppf "%a%s%a" pp a sep (list ~sep pp) q
+    | a :: ( _ :: _ as q ) -> fp ppf "%a%s@,%a" pp a sep (list ~sep pp) q
     | [a] -> fp ppf "%a" pp a
     | [] -> ()
 
   let blist pp ppf = fp ppf "[%a]" (list pp)
   let clist pp ppf = fp ppf "{%a}" (list pp)
 
+let opt_list ?(pre="") ?(post="")  ?(sep="; ") pp ppf = function
+  | [] -> ()
+  | l -> fp ppf "%s@[<hv>%a@]%s" pre (list ~sep pp) l post
+
+
 let string ppf = fp ppf "%s"
+
+let decorate left right pp ppf x=
+  fp ppf "%s%a%s" left pp x right
 
 let std = Format.std_formatter
 let err = Format.err_formatter

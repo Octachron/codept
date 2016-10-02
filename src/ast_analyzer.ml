@@ -3,6 +3,7 @@ exception Include_functor
 
 module L = Longident
 module B = M2l.Build
+open M2l.Definitions
 
 let rec from_lid  =
   let open Epath in
@@ -36,7 +37,7 @@ let access' lid =
   let open Epath in
  match from_lid @@ txt lid with
   | A _ -> []
-  | S(p,_) -> [ M2l.Access (Name.Set.singleton @@ prefix p) ]
+  | S(p,_) -> [ B.access p ]
   | T | F _ -> assert false
 
 
@@ -59,7 +60,7 @@ let flip f x y = f y x
 let (@%) l l' =
   let open M2l in
   match l,l' with
-  | [Access s] , Access s' :: q -> Access (Name.Set.union s s') :: q
+  | [Minor m] , Minor m' :: q -> Minor(merge_annot m m') :: q
   | _ -> l @ l'
 
 let rec gen_mmap (@) f = function
@@ -75,8 +76,9 @@ let (+:) s l' =
   else
     let open M2l in
     match l' with
-    | Access s' :: q -> Access (Name.Set.union s s') :: q
-    | _ -> Access s ::  l'
+    | Minor m :: q ->
+      Minor { m with access = Name.Set.union s m.access} :: q
+    | _ -> Minor { empty_annot with access = s } ::  l'
 
 
 open M2l
@@ -220,7 +222,7 @@ and expr exp =
   | Pexp_override labels (* {< x1 = E1; ...; Xn = En >} *) ->
     mmap (fun (_,e) -> expr e) labels
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
-    [ Value ( Bind( Module, module_binding (m,me) ) :: expr e ) ]
+    [ B.value ( Bind( Module, module_binding (m,me) ) :: expr e ) ]
 (*  | Pexp_letexception (c, e) (* let exception C in E *) ->
     expression (extension_constructor env ext) e *)
   | Pexp_send (e, _) (*  E # m *)
@@ -235,10 +237,10 @@ and expr exp =
   | Pexp_pack me (* (module ME) *)
     -> Warning.first_class_module ();
        (* todo: are all cases caught by the Module.approximation mechanism?  *)
-    [Opaque (module_expr me) ]
+    [ B.opaque (module_expr me) ]
   | Pexp_open (_override_flag,name,e)
         (* M.(E), let open M in E, let! open M in E *)
-    -> [ Value ( do_open name @% expr e ) ]
+    -> [ B.value ( do_open name @% expr e ) ]
   | Pexp_extension (name, PStr payload) when txt name = "extension_constructor" ->
     structure payload
   | Pexp_constant _ | Pexp_unreachable (* . *)
@@ -286,7 +288,7 @@ and pattern pat = match pat.ppat_desc with
   | Ppat_type name (* #tconst *) -> access' name
   | Ppat_unpack m ->
     (* Warning.first_class_module(); todo: test coverage *)
-    [ Value [ Defs (mod_def
+    [ B.value [ Defs (mod_def
                       { name = txt m ;
                         args = [];
                         alias_of=None;
