@@ -25,6 +25,7 @@ open Parsetree
 let txt x= x.Location.txt
 
 let epath x = from_lid @@ txt x
+let npath x = Epath.concrete @@ epath x
 
 let access lid =
   let open Epath in
@@ -42,7 +43,7 @@ let access' lid =
 
 
 let do_open lid =
-  [M2l.Open (epath lid)]
+  [M2l.Open (npath lid)]
 
 let (+?) x l = match x with None -> l | Some x -> x :: l
 
@@ -427,7 +428,7 @@ and class_type_declaration ctd = class_type ctd.pci_expr
 and module_expr mexpr : M2l.module_expr =
   match mexpr.pmod_desc with
   | Pmod_ident name (* A *) ->
-    Ident (epath name)
+    Ident (npath name)
   | Pmod_structure str (* struct ... end *) ->
     Str (structure  str)
   | Pmod_functor (name, sign, mex) ->

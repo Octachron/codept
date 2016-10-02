@@ -185,7 +185,7 @@ open Definitions
 
 type expression =
   | Defs of definitions (** Resolved module actions M = … / include … / open … *)
-  | Open of Epath.t (** open path *)
+  | Open of Npath.t (** open A.B.C path *)
   | Include of module_expr
   | SigInclude of module_type
   (** include (M : s with module m := (deletions)
@@ -201,7 +201,7 @@ and annotation =
 and bind = { name:Name.t; expr: module_expr }
 and module_expr =
   | Resolved of full_defs
-  | Ident of Epath.t
+  | Ident of Npath.t
   | Apply of {f: module_expr; x:module_expr}
   | Fun of { arg: module_type arg option; body:module_expr }
   | Constraint of module_expr * module_type
@@ -236,7 +236,7 @@ let rec pp_expression ppf = function
       pp_access access
       (Pp.opt_list ~sep:"" ~pre:"values: " pp) values
       (Pp.opt_list ~sep:"" ~pre:"opaques: " pp_opaque) opaques
-  | Open epath -> Pp.fp ppf "@[<hv>open %a@]" Epath.pp epath
+  | Open epath -> Pp.fp ppf "@[<hv>open %a@]" Npath.pp epath
   | Include me -> Pp.fp ppf "@[<hv>include [%a]@]" pp_me me
   | SigInclude mt -> Pp.fp ppf "@[<hv>include type [%a]@]" pp_mt mt
 
@@ -251,7 +251,7 @@ and pp_bind level ppf {name;expr} =
   Pp.fp ppf "@[%a %s =@,@[<hv> %a @] @]" pp_level level name pp_me expr
 and pp_me ppf = function
   | Resolved fdefs -> pp_fulldefs ppf fdefs
-  | Ident np -> Epath.pp ppf np
+  | Ident np -> Npath.pp ppf np
   | Str m2l -> Pp.fp ppf "@,struct@, %a end" pp m2l
   | Apply {f;x} -> Pp.fp ppf "%a(@,%a@,)" pp_me f pp_me x
   | Fun { arg; body } -> Pp.fp ppf "%a@,→%a" (pp_arg pp_mt) arg pp_me body
@@ -337,7 +337,9 @@ module Reduce = struct
     if List.for_all is_done l then
       Done (List.map (function Done x -> x | _ -> assert false ) l)
     else
-      Halted (List.map (function Done d -> undone d| Halted _ as h -> h ) l)
+      Halted (List.map
+                (function Done d -> undone d
+                        | Halted h -> h ) l)
 
   let minor m =
     if m.access = Name.Set.empty && m.values = [] then
@@ -418,7 +420,7 @@ module Reduce = struct
 
   let fmap f g = function
     | Halted x -> Halted (f x)
-    | Done _ as r -> Done (g r)
+    | Done r -> Done (g r)
 
   let (%>) f g x = x |> f |> g
 
@@ -441,14 +443,21 @@ module Reduce = struct
       let m = Definitions.to_module name None d (* lost aliasing? *) in
       Done (Some(Definitions.gen_def lvl m))
 
-  let bind_rec bs = Halted (Bind_rec bs)
-      (*
-    let bind {name;expr} = match module_expr expr with
-      | Done d -> Done
-    let bs = List.map (fun {name;expr} -> {name; expr = module_expr expr} ) bs in
-    let undone (Done d ->
-    match all_done
-*)
+  let bind_rec bs =
+    let pair x y = x,y in
+    let mapper {name;expr} = expr |> module_expr |> fmap (pair name) (pair name) in
+    let bs = List.map mapper bs in
+    let undone (name,defs) = name, Resolved defs in
+    let recombine (name,expr) = {name;expr} in
+    match all_done undone bs with
+    | Halted bs -> Halted (Bind_rec (List.map recombine bs))
+    | Done defs ->
+      let defs =
+        List.fold_left
+          ( fun defs (name,d) -> bind_module (to_module name None d) defs )
+          empty_defs defs in
+      Done ( Some defs )
+
   let expr = function
     | (Defs _ | Open _ ) as d -> Halted d
     | Include i -> include_ i
