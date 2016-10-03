@@ -45,16 +45,16 @@ let pp_level ppf lvl =  Pp.fp ppf "%s" (match lvl with
   )
 
 let rec pp_module ppf {name;args;alias_of;signature} =
-  Pp.fp ppf "%s%a:%a@[<hv>[%a@]]"
+  Pp.fp ppf "%s%a:%a@[<hv>[@,%a@,]@]"
     name pp_alias alias_of (pp_args pp_signature) args pp_signature signature
 and pp_signature ppf {modules; module_types} =
-  Pp.fp ppf "@[<hv2> %a@]" pp_mdict modules;
+  Pp.fp ppf "@[<hv>%a@]" pp_mdict modules;
   if Name.Map.cardinal module_types >0 then
-    Pp.fp ppf "@,module types: @,@[<hv2>%a @] @]"
+    Pp.fp ppf "@,module types: @,@[<hv>%a@]"
       pp_mdict module_types
   else Pp.fp ppf " "
 and pp_mdict ppf dict =
-  Pp.fp ppf "%a" (Pp.list ~sep:"" pp_pair) (Name.Map.bindings dict)
+  Pp.fp ppf "%a" (Pp.list ~sep:" " pp_pair) (Name.Map.bindings dict)
 and pp_pair ppf (_,md) = pp_module ppf md
 
 let empty = Name.Map.empty
@@ -66,6 +66,9 @@ let sig_card s =
   card s.modules + card s.module_types
 
 let (|+>) m x = Name.Map.add x.name x m
+let add_module sg x = { sg with modules = sg.modules |+> x }
+let add_module_type sg x = { sg with module_types = sg.module_types |+> x }
+
 
 module Definitions = struct
   (** invariant defined ⊂ visible *)
@@ -88,14 +91,11 @@ module Definitions = struct
       module_types = diff d.module_types v.module_types
     }
 
-
-
-
-  let pp_defs ppf x = Pp.fp ppf "defined:[@[%a@]]"
+  let pp_defs ppf x = Pp.fp ppf "defined:@[[@,%a@,]@]"
       pp_signature x.defined;
     let v = only_visible x in
     if sig_card v > 0 then
-      Pp.fp ppf "@, visible:[@[%a@]]"
+      Pp.fp ppf "@, visible:@[@,[%a@,]@]"
         pp_signature v
     else ()
 
@@ -114,6 +114,8 @@ module Definitions = struct
 
   let to_module name alias_of {args;result} =
     {name;alias_of; args; signature = result }
+
+  let of_module {args;signature;_} = {result=signature;args}
 
   let to_sign fdefs =
     if fdefs.args <> [] then
@@ -228,8 +230,22 @@ let merge_annot a1 a2 =
     opaques = a1.opaques @ a2.opaques
   }
 
+let demote_str halt arg =
+  match arg with
+  | None -> Fun { arg=None; body = halt }
+  | Some ({name;signature}: _ arg) ->
+    Fun { arg = Some {name; signature=Sig [Defs signature]}; body=halt }
+
+let demote_sig halt arg : module_type =
+  match arg with
+  | None -> Fun { arg=None; body = halt }
+  | Some ({name;signature}: _ arg) ->
+    Fun { arg = Some {name; signature=Sig [Defs signature]}; body=halt }
+
+
+
 let rec pp_expression ppf = function
-  | Defs defs -> Pp.fp ppf "define @[<hov2>%a@]" pp_defs defs
+  | Defs defs -> Pp.fp ppf "define %a" pp_defs defs
 
   | Minor {access;values; opaques} ->
     Pp.fp ppf "(%a@,%a@,%a)"
@@ -245,10 +261,10 @@ let rec pp_expression ppf = function
     Pp.fp ppf "rec@[<hv>[ %a ]@]"
       (Pp.list ~sep:"@, and @," @@ pp_bind Module ) bs
 and pp_access ppf s =  if Name.Set.cardinal s = 0 then () else
-    Pp.fp ppf "access:@[<hv> %a@]" Name.Set.pp s
+    Pp.fp ppf "access:@[<hv>%a@]" Name.Set.pp s
 and pp_opaque ppf me = Pp.fp ppf "⟨%a⟩" pp_me me
 and pp_bind level ppf {name;expr} =
-  Pp.fp ppf "@[%a %s =@,@[<hv> %a @] @]" pp_level level name pp_me expr
+  Pp.fp ppf "@[%a %s =@,@[<hv>%a@] @]" pp_level level name pp_me expr
 and pp_me ppf = function
   | Resolved fdefs -> pp_fulldefs ppf fdefs
   | Ident np -> Npath.pp ppf np
@@ -266,7 +282,7 @@ and pp_mt ppf = function
     Pp.fp ppf "%a@,/%a" pp_mt body Name.Set.pp deletions
   | Of me -> Pp.fp ppf "module type of@, %a" pp_me me
   | Opaque -> Pp.fp ppf "⟨⟩"
-and pp ppf = Pp.fp ppf "[@[<hv2> %a@]]" (Pp.list ~sep:" " pp_expression)
+and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" (Pp.list ~sep:" " pp_expression)
 
 type t = m2l
 
@@ -327,8 +343,7 @@ module Normalize = struct
 
 end
 
-module Reduce = struct
-
+module Work = struct
   type ('a,'b) t = Halted of 'a | Done of 'b
 
   let is_done = function Done _ -> true | Halted _ -> false
@@ -341,24 +356,25 @@ module Reduce = struct
                 (function Done d -> undone d
                         | Halted h -> h ) l)
 
+  let fmap f g = function
+    | Halted x -> Halted (f x)
+    | Done r -> Done (g r)
+
+  let fmap_done f = function
+    | Halted _ as h  -> h
+    | Done r -> Done (f r)
+
+
+end
+
+module Reduce = struct
+open Work
+
   let minor m =
     if m.access = Name.Set.empty && m.values = [] then
       Done None
     else
       Halted (Minor m)
-
-
-  let demote_str halt arg =
-    match arg with
-    | None -> Fun { arg=None; body = halt }
-    | Some ({name;signature}: _ arg) ->
-      Fun { arg = Some {name; signature=Sig [Defs signature]}; body=halt }
-
-  let demote_sig halt arg : module_type =
-    match arg with
-    | None -> Fun { arg=None; body = halt }
-    | Some ({name;signature}: _ arg) ->
-      Fun { arg = Some {name; signature=Sig [Defs signature]}; body=halt }
 
 
   let rec module_expr: module_expr -> (module_expr,full_defs) t  = function
@@ -418,9 +434,6 @@ module Reduce = struct
                  ) in
         Halted (List.fold_left demote_str (Fun {arg;body=me}) args)
 
-  let fmap f g = function
-    | Halted x -> Halted (f x)
-    | Done r -> Done (g r)
 
   let (%>) f g x = x |> f |> g
 
@@ -432,11 +445,11 @@ module Reduce = struct
       let defs = to_defs fdefs in
       Done (Some defs)
 
-  let include_ = gen_include module_expr (fun i -> Include i)
-  let sig_include = gen_include module_type (fun i -> SigInclude i)
+  let include_ module_expr = gen_include module_expr (fun i -> Include i)
+  let sig_include module_type = gen_include module_type (fun i -> SigInclude i)
 
 
-  let bind lvl {name;expr} =
+  let bind module_expr lvl {name;expr} =
     match module_expr expr with
     | Halted h -> Halted ( Bind(lvl, {name; expr = h} ) )
     | Done d ->
@@ -458,209 +471,16 @@ module Reduce = struct
           empty_defs defs in
       Done ( Some defs )
 
+
   let expr = function
     | (Defs _ | Open _ ) as d -> Halted d
-    | Include i -> include_ i
-    | SigInclude i -> sig_include i
-    | Bind (lvl, b) -> bind lvl b
+    | Include i -> include_ module_expr i
+    | SigInclude i -> sig_include module_type i
+    | Bind (lvl, b) -> bind module_expr lvl b
     | Bind_rec bs -> bind_rec bs
     | Minor m -> minor m
 
-
-
 end
-
-module Compute = struct
-  let rec basic = function
-    | [] -> []
-    | a :: q -> match Reduce.expr a with
-      | Done (Some d) -> Defs d :: basic q
-      | Halted h -> h :: q
-      | Done None -> basic q
-
-end
-
-let go_on (_,s) = true, s
-let stop (_,s) = false, s
-(*
-let rec normalize = function
-  | Defs d1 :: Defs d2 :: q ->
-    normalize @@ Defs ( d1 +| d2 ) :: q
-  | Defs _ as d :: q ->
-    let more, q = normalize q in
-    if more then normalize (d :: q) else false, (d :: q)
-  | Access a1 :: Access a2 :: l ->
-    normalize ( Access (Name.Set.union a1 a2) :: l )
-  | Access _ as a :: (Defs _ as d) :: l ->
-    let _, q = normalize (a :: l) in
-    go_on @@ normalize @@ d :: q
-  | Access _ as a :: q ->
-    let more, q = normalize q in
-    if more then normalize (a::q) else false, a::q
-  | Value [(Value _ as v)] :: q ->
-    normalize @@ v :: q
-  | Value s :: q ->
-    let _, s = normalize s in
-    if is_constant s then
-      go_on @@ normalize q
-    else
-      false, Value s :: q
-  | (Open _| Include _ ) :: _ as l -> false, l
-  | Declaration (level, md) :: q as l ->
-    let md = md_normalize md in
-    begin match md_cdefs md with
-    | Some d ->
-        go_on @@ normalize @@ Defs ( gen_def level d )  :: l
-    | None ->
-      false, Declaration (level, md) :: q
-    end
-  | Module_rec mds :: q ->
-    let mds = List.map md_normalize mds in
-    let defs = Option.list_map md_cdefs mds in
-    begin match defs with
-      | Some defs ->  go_on @@ normalize @@ Defs (mod_defs defs) :: q
-      | None -> false, Module_rec mds :: q
-    end
-  | [] -> false, []
-and md_normalize (md: module_decl) : module_decl =
-  let me = md.signature in
-  let signature = snd @@ body_normalize me.signature in
-  let structure = snd @@ body_normalize me.structure in
-  let args = List.map arg_normalize md.args in
-  let signature = {signature;structure} in
-  { md with args; signature }
-and body_normalize = function
-  | Alias _ as a -> false, a
-  | Explicit m2l ->
-    let more, p = normalize m2l in
-    more, Explicit p
-and md_cdefs md =
-  let me = md.signature in
-  match body_cdefs me.signature, body_cdefs me.structure, args_cdefs md.args with
-  | Some sg, Some _, Some args ->
-    Some {name = md.name; alias_of = md.alias_of; signature = sg.defined; args }
-  | _ -> None
-and arg_normalize {name; signature } =
-  { name ; signature = snd @@ normalize signature }
-
-let rec find_module path (m:signature) =
-  let open Epath in
-  match path with
-  | T -> raise Not_found
-  | A n -> Name.Map.find n m.modules
-  | S(p,n) ->
-    let m' = find_module p m in
-    Name.Map.find n  m'.signature.modules
-  | F fn -> find_module fn m
-
-exception Kind_error of string
-
-let find_module_type path m =
-  let open Epath in
-  match path with
-  | T -> raise Not_found
-  | A n -> Name.Map.find n m.module_types
-  | S(p,n) ->
-    let m' = find_module p m in
-    Name.Map.find n  m'.signature.module_types
-  | F _ -> raise (Kind_error "Module type expected, got functor application")
-
-let find = function
-  | Module -> find_module
-  | Module_type -> find_module_type
-
-let open_ defs sgn  = { defs with visible = defs.visible +@ sgn }
-let include_ defs sgn  = defs +| sg_bind sgn
-
-let delete names sg =
-  { sg with modules = Name.Set.fold Name.Map.remove names sg.modules }
-
-let rec replace ~target ~alias sg = match target with
-  | [] -> raise (Invalid_argument "M2l.replace with empty path")
-  | [a] ->
-    let md = Name.Map.find a sg.modules in
-    let md = { md with alias_of = Some alias } in
-    { sg with modules = sg.modules |+> md }
-  | a :: q ->
-    let md = Name.Map.find a sg.modules in
-    let signature = replace ~target:q ~alias md.signature in
-    let md = { md with signature } in
-    { sg with modules = sg.modules |+> md }
-
-let precise_alias (sg:signature) al =
-  let sg = delete al.deletions sg in
-  let sg = List.fold_left (fun sg (x,y) ->
-      replace ~target:x ~alias:y sg) sg al.equalities in
-  sg
-
-let rec compute state = function
-  | Defs d :: q -> Defs d :: compute ( state +| d ) q
-  | Access s :: q ->
-    let _, s' = Name.Set.partition
-        (fun x -> Name.Map.mem x state.visible.modules) s in
-    if Name.Set.cardinal s' = 0 then
-      compute state q
-    else
-      Access s' :: compute state q
-  | Value p' :: q  -> let p'' = compute state p' in
-    if is_constant p'' then
-      compute state q
-    else
-      Value p'' :: compute state q
-  | Open path :: q as p ->
-    begin
-      match find_module path state.visible with
-      | md -> Defs (sg_see md.signature) :: compute ( open_ state md.signature ) q
-      | exception Not_found -> p
-    end
-  | Include me :: q ->
-    let continue, p = normalize @@ Include (compute_me state me) :: q in
-    if continue then compute state p else p
-  | Declaration (level, md) :: q  ->
-    let md = compute_md state md in
-    normalize_and_continue state @@ Declaration ( level, md ) :: q
-  | Module_rec mds :: q ->
-    (** First stage: we mockup all modules bindings in the recursive signature X_1,…, X_n with signature sig end *)
-    let mockup_args = List.map ( fun (arg: m2l arg) : signature arg ->
-        { name =arg.name; signature = empty_sig } ) in
-    let mockup_sig = List.map (fun md : module_ ->
-        { name = md.name; alias_of = None; args = mockup_args md.args;
-          signature = empty_sig } ) mds in
-    let state' =
-      List.fold_left (fun st md -> see_module md st ) state mockup_sig in
-    let mds = List.map (compute_md state') mds in
-    normalize_and_continue state' @@ Module_rec mds :: q
-  | [] -> []
-and compute_md state md =
-  let args = List.map (fun (arg: m2l arg) ->
-      { arg with signature = snd @@ normalize @@ compute state arg.signature} )
-      md.args in
-  let state' =
-    match args_cdefs args with
-    | Some args -> List.fold_left (fun defs arg ->
-        see_module (arg_to_module arg) defs ) state args
-    | None -> state in
-  let me = compute_me state' md.signature in
-  { md with args; signature = me }
-and compute_me state me =
-  { signature = compute_body state (snd @@ body_normalize @@ me.signature)
-  ; structure = compute_body state (snd @@ body_normalize @@ me.structure) }
-and compute_body state = function
-  | Explicit mtl -> Explicit (compute state @@ snd @@ normalize @@ mtl)
-  | Alias ae -> compute_alias state ae
-
-and compute_alias state ae =
-  match find ae.level ae.path state.visible with
-  | md ->
-    let sg = md.signature in
-    let sg = precise_alias sg ae in
-    Explicit [ Defs (sg_bind sg ) ]
-  | exception Not_found -> Alias ae
-
-and normalize_and_continue state p =
-    let continue, p = normalize p in
-    if continue then compute state p else p
-*)
 
 module Build = struct
   let access path = Minor { empty_annot with

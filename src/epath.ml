@@ -19,7 +19,8 @@ let rev_concrete p: Npath.t =
     | S(p,s) -> concretize (s::l) p in
   concretize [] p
 
-let concrete p = List.rev @@ rev_concrete p
+let concrete p = rev_concrete p
+let rev_concrete p = List.rev @@ rev_concrete p
 
 let from_list l =
   let rec rebuild =
