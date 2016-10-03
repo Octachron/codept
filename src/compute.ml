@@ -29,6 +29,29 @@ module Envt = struct
 end
 
 
+module Tracing_envt() = struct
+
+  type t = Envt.t
+  let deps  = ref Name.Set.empty
+  let record n = deps := Name.Set.add n !deps
+
+  let name path = List.hd @@ List.rev path
+
+  let find level path env =
+    let origin = List.hd path in
+    match Envt.find level path env with
+    | x -> x
+    | exception Not_found -> record origin;
+      { name = name path; alias_of = None; args = []; signature = empty_sig }
+  (* | Not_found -> raise Not_found *)
+
+  let (>>) = Definitions.(+@)
+  let add_module = M2l.add_module
+
+end
+
+
+
 let rec basic = function
   | [] -> []
   | a :: q -> match Reduce.expr a with
@@ -159,14 +182,16 @@ module Make(Envt:envt) = struct
     match ex_arg with
     | Halted me -> Halted (List.fold_left demote_str (Fun {arg=me;body}) args )
     | Done arg ->
+      let sg = Option.( arg >>| from_arg >>| to_sig Module >< empty_sig ) in
+      let state =  Envt.( state >> sg ) in
       match module_expr state body with
       | Done {args; result} -> Done {args = arg :: args; result }
       | Halted me ->
-        let arg =
-          Option.( arg >>| fun arg ->
-                   { name = arg.name;
-                     signature:module_type= Resolved (no_arg arg.signature) }
-                 ) in
+        let arg = Option.(
+            arg >>| fun arg ->
+            { name = arg.name;
+              signature:module_type= Resolved (no_arg arg.signature) }
+          ) in
         Halted (List.fold_left demote_str (Fun {arg;body=me}) args)
 
   and m2l state = function

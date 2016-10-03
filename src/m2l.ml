@@ -34,6 +34,8 @@ type module_ = (signature, signature) module_info
 and signature = { modules: mdict; module_types: mdict }
 and mdict = module_ Name.Map.t
 
+let from_arg ({name;signature}:_ arg) = { name; alias_of=None; args=[]; signature }
+
 
 type level = Module | Module_type
 
@@ -66,8 +68,13 @@ let sig_card s =
   card s.modules + card s.module_types
 
 let (|+>) m x = Name.Map.add x.name x m
+
 let add_module sg x = { sg with modules = sg.modules |+> x }
 let add_module_type sg x = { sg with module_types = sg.module_types |+> x }
+
+let to_sig level md = match level with
+  | Module -> add_module empty_sig md
+  | Module_type -> add_module empty_sig md
 
 
 module Definitions = struct
