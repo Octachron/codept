@@ -12,10 +12,10 @@ module Def = D.Def
 
 module Partial = struct
   type t =
-    {
+    { origin: Module.origin;
       args: Module.arg option list;
       result:Module.signature }
-  let empty = { args = []; result= S.empty }
+  let empty = { origin = Submodule; args = []; result= S.empty }
   let simple defs = { empty with result = defs }
   let pp ppf (x:t) =
     let open Module in
@@ -25,16 +25,21 @@ module Partial = struct
         pp_signature x.result
 
 
-  let no_arg x = {args = []; result = x }
+  let no_arg x = { origin = Submodule; args = []; result = x }
 
-  let drop_arg {args;result} = match args with
-    | [] -> Error.not_a_functor ()
-    | _ :: args -> { args; result }
+  let drop_arg (p:t) = match  p.args with
+    | _ :: args -> { p with args }
+    | [] ->
+      match p.origin with
+      | Extern | First_class | Rec -> p (* we guessed the arg wrong *)
+      | Unit | Submodule | Arg -> Error.not_a_functor ()
+  (* there is an error somewhere *)
 
-  let to_module ?(origin=M.Submodule) name {args;result} =
-    {M.name;origin; args; signature = result }
+  let to_module ?origin name (p:t) =
+    let origin = Option.( origin >< p.origin ) in
+    {M.name;origin; args = p.args; signature = p.result }
 
-  let of_module {M.args;signature;_} = {result=signature;args}
+  let of_module {M.args;signature;origin; _} = {origin;result=signature;args}
 
 
   let to_sign fdefs =
@@ -292,7 +297,7 @@ open Work
     | Halted me -> Halted (List.fold_left demote_str (Fun {arg=me;body}) args )
     | Done arg ->
       match module_expr body with
-      | Done {args; result} -> Done {args = arg :: args; result }
+      | Done p -> Done { p with args = arg :: p.args }
       | Halted me ->
         let arg =
           Option.( arg >>| fun arg ->

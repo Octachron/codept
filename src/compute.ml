@@ -221,7 +221,7 @@ module Make(Envt:envt) = struct
       let sg = Option.( arg >>| M.of_arg >>| S.create >< S.empty ) in
       let state =  Envt.( state >> sg ) in
       match module_expr state body with
-      | Done {args; result} -> Done {args = arg :: args; result }
+      | Done p  -> Done { p with args = arg :: p.args }
       | Halted me ->
         let arg = Option.(
             arg >>| fun arg ->
