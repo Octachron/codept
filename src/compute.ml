@@ -1,22 +1,39 @@
 open M2l
 open Work
-open Definitions
 
+module D = Definition
+module Def = D.Def
+module P = Partial
+
+module M = Module
+module S = Module.Sig
 
 module type envt = sig
   type t
-  val find: M2l.level -> Npath.t -> t -> module_
-  val (>>) : t -> M2l.signature -> t
-  val add_module: t -> module_ -> t
+  val find: M.level -> Npath.t -> t -> Module.t
+  val (>>) : t -> M.signature -> t
+  val add_module: t -> Module.t -> t
 end
 
 
 module Envt = struct
-  type t = M2l.signature
+  type t = M.signature
+
+  let empty = S.empty
+
+  let proj lvl env = match lvl with
+    | M.Module -> env.M.modules
+    | M.Module_type -> env.module_types
+
+  let root_origin level path env =
+    let a, lvl = match path with
+      | []-> raise @@ Invalid_argument "Compute.Envt.root_origin: empty path"
+      | [a] -> a, level
+      | a :: _ -> a, M.Module in
+    let m = Name.Map.find a @@ proj lvl env in
+    m.origin
+
   let rec find level path env =
-    let proj lvl env = match lvl with
-      | Module -> env.modules
-      | Module_type -> env.module_types in
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | [a] -> Name.Map.find a @@ proj level env
@@ -24,30 +41,49 @@ module Envt = struct
       let m = Name.Map.find a env.modules in
       find level q m.signature
 
-  let (>>) = Definitions.(+@)
-  let add_module = M2l.add_module
+  let (>>) = Def.(+@)
+  let add_module = S.add
+
+
 end
 
 
-module Tracing_envt() = struct
+module Tracing = struct
 
-  type t = Envt.t
-  let deps  = ref Name.Set.empty
-  let record n = deps := Name.Set.add n !deps
+  type core = { env: Envt.t; protected: Name.set }
+  type t = { env: Envt.t; protected: Name.set; deps: Name.set ref }
+
+  let record n env = env.deps := Name.Set.add n !(env.deps)
+
+  let start protected = { protected; env = Envt.empty }
+
+  let create ({ protected; env }:core) :t =
+    { env; protected; deps = ref Name.Set.empty }
+
+  let deps env = env.deps
 
   let name path = List.hd @@ List.rev path
 
   let find level path env =
-    let origin = List.hd path in
-    match Envt.find level path env with
-    | x -> x
-    | exception Not_found -> record origin;
-      { name = name path; alias_of = None; args = []; signature = empty_sig }
-  (* | Not_found -> raise Not_found *)
+    let root = List.hd path in
+    match Envt.find level path env.env with
+    | x ->
+      begin if Envt.root_origin level path env.env = M.Unit then record root env;
+        x
+      end
+    | exception Not_found ->
+      if Name.Set.mem root env.protected then
+        raise Not_found
+      else begin
+        record root env;
+        Module.create ~origin:M.Extern (name path) S.empty
+      end
+        (* | Not_found -> raise Not_found *)
 
-  let (>>) = Definitions.(+@)
-  let add_module = M2l.add_module
+  let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
 
+  let add_module e m = { e with env = S.add e.env m }
+  let add_core (c:core) m = { c with env = S.add c.env m }
 end
 
 
@@ -78,13 +114,13 @@ module Make(Envt:envt) = struct
 
   let open_ state path =
     match Envt.find Module path state with
-    | x -> Done (Some(mod_def x))
+    | x -> Done (Some( Def.md x))
     | exception Not_found -> Halted (Open path)
 
   let gen_include unbox box i = match unbox i with
     | Halted h -> Halted (box h)
     | Done fdefs ->
-      let defs = to_defs fdefs in
+      let defs = P.to_defs fdefs in
       Done (Some defs)
 
   let include_ state module_expr =
@@ -97,13 +133,13 @@ module Make(Envt:envt) = struct
     match module_expr state expr with
     | Halted h -> Halted ( Bind(lvl, {name; expr = h} ) )
     | Done d ->
-      let m = Definitions.to_module name None d (* lost aliasing? *) in
-      Done (Some(Definitions.gen_def lvl m))
+      let m = P.to_module name d in
+      Done (Some(Def.gen lvl m))
 
   let bind_rec state module_expr bs =
     let pair x y = x,y in
     let mockup {name;_} =
-      {alias_of = None; name; args = []; signature = empty_sig } in
+      {M.origin = Rec; name; args = []; signature = S.empty } in
     let add_mockup defs arg = Envt.add_module defs @@ mockup arg in
     let state' = List.fold_left add_mockup state bs in
     let mapper {name;expr} =
@@ -116,8 +152,8 @@ module Make(Envt:envt) = struct
     | Done defs ->
       let defs =
         List.fold_left
-          ( fun defs (name,d) -> bind_module (to_module name None d) defs )
-          empty_defs defs in
+          ( fun defs (name,d) -> D.bind (P.to_module name d) defs )
+          D.empty defs in
       Done ( Some defs )
 
   let drop_state = function
@@ -125,24 +161,24 @@ module Make(Envt:envt) = struct
     | Halted _ as h -> h
 
   let rec module_expr state (me:module_expr) = match me with
-    | Opaque _ -> Done (empty_full) (** todo : add warning *)
+    | Opaque _ -> Done P.empty (** todo : add warning *)
     | Ident i ->
       begin match Envt.find Module i state with
-        | x -> Done (of_module x)
+        | x -> Done (P.of_module x)
         | exception Not_found -> Halted (Ident i: module_expr)
       end
     | Apply {f;x} ->
       begin match module_expr state f, module_expr state x with
-        | Done f, Done _ -> Done f
+        | Done f, Done _ -> Done (P.drop_arg f)
         | Halted f, Halted x -> Halted (Apply {f;x} )
         | Halted f, Done d -> Halted (Apply {f; x = Resolved d})
-        | Done _, _ -> assert false
+        | Done f, Halted x -> Halted (Apply {f = Resolved f ;x} )
       end
     | Fun {arg;body} -> functor_expr state [] arg body
-    | Str [] -> Done empty_full
-    | Str[Defs d] -> Done (no_arg d.defined)
+    | Str [] -> Done P.empty
+    | Str[Defs d] -> Done (P.no_arg d.defined)
     | Resolved d -> Done d
-    | Str str -> Work.fmap (fun s -> Str s) no_arg @@
+    | Str str -> Work.fmap (fun s -> Str s) P.no_arg @@
       drop_state @@ m2l state str
     | Constraint(me,mt) ->
       constraint_ state me mt
@@ -157,9 +193,9 @@ module Make(Envt:envt) = struct
     | Halted me, Halted mt -> Halted ( Constraint(me,mt) )
 
   and module_type state = function
-    | Sig [] -> Done empty_full
-    | Sig [Defs d] -> Done (no_arg d.defined)
-    | Sig s -> Work.fmap (fun s -> Sig s) no_arg @@
+    | Sig [] -> Done P.empty
+    | Sig [Defs d] -> Done (P.no_arg d.defined)
+    | Sig s -> Work.fmap (fun s -> Sig s) P.no_arg @@
       drop_state @@ signature state s
     | Resolved d -> Done d
     | Ident _ | With _ as mt -> Halted mt
@@ -177,30 +213,30 @@ module Make(Envt:envt) = struct
       | None -> Done None
       | Some arg ->
         match module_type state arg.signature with
-        | Halted h -> Halted (Some {name = arg.name; signature = h })
-        | Done d   -> Done (Some{name=arg.name; signature = to_sign d}) in
+        | Halted h -> Halted (Some {Arg.name = arg.name; signature = h })
+        | Done d   -> Done (Some{Arg.name=arg.name; signature = P.to_sign d}) in
     match ex_arg with
     | Halted me -> Halted (List.fold_left demote_str (Fun {arg=me;body}) args )
     | Done arg ->
-      let sg = Option.( arg >>| from_arg >>| to_sig Module >< empty_sig ) in
+      let sg = Option.( arg >>| M.of_arg >>| S.create >< S.empty ) in
       let state =  Envt.( state >> sg ) in
       match module_expr state body with
       | Done {args; result} -> Done {args = arg :: args; result }
       | Halted me ->
         let arg = Option.(
             arg >>| fun arg ->
-            { name = arg.name;
-              signature:module_type= Resolved (no_arg arg.signature) }
+            { Arg.name = arg.name;
+              signature:module_type= Resolved (P.no_arg arg.signature) }
           ) in
         Halted (List.fold_left demote_str (Fun {arg;body=me}) args)
 
   and m2l state = function
-    | [] -> Done (state, empty_sig)
+    | [] -> Done (state, S.empty)
     | a :: q ->
       match expr state a with
       | Done (Some defs)  ->
-        begin match m2l Envt.( state >> defs.visible ) q with
-          | Done (state,sg) ->  Done (state, defs.defined +@ sg)
+        begin match m2l Envt.( state >> defs.D.visible ) q with
+          | Done (state,sg) ->  Done (state, S.merge defs.defined sg)
           | Halted q' -> Halted ( snd @@ Normalize.all @@ Defs defs :: q')
         end
       | Done None -> m2l state q
@@ -219,3 +255,4 @@ module Make(Envt:envt) = struct
 end
 
 module Sg = Make(Envt)
+module Tr = Make(Tracing)

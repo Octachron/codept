@@ -3,7 +3,9 @@ exception Include_functor
 
 module L = Longident
 module B = M2l.Build
-open M2l.Definitions
+
+module D = Definition
+module S = Module.Sig
 
 let rec from_lid  =
   let open Epath in
@@ -53,7 +55,7 @@ let do_include kind extract env m=
   R.include_ kind env m'
 *)
 
-let first_class_approx = M2l.empty_sig
+let first_class_approx = S.empty
 
 let opt f x=  Option.( x >>| f >< [] )
 let flip f x y = f y x
@@ -289,10 +291,10 @@ and pattern pat = match pat.ppat_desc with
   | Ppat_type name (* #tconst *) -> access' name
   | Ppat_unpack m ->
     (* Warning.first_class_module(); todo: test coverage *)
-    [ B.value [ Defs (mod_def
-                      { name = txt m ;
+    [ B.value [ Defs (Def.md
+                      { M.name = txt m ;
                         args = [];
-                        alias_of=None;
+                        origin = First_class;
                         signature = first_class_approx
                       })
             ]
@@ -433,7 +435,7 @@ and module_expr mexpr : M2l.module_expr =
     Str (structure  str)
   | Pmod_functor (name, sign, mex) ->
     let name = txt name in
-    let arg = Option.( sign >>| module_type >>| fun s ->{name;signature=s} ) in
+    let arg = Option.( sign >>| module_type >>| fun s ->{Arg.name;signature=s} ) in
     Fun { arg; body = module_expr mex }
   | Pmod_apply (f,x)  (* ME1(ME2) *) ->
     Apply {f = module_expr f; x = module_expr x }
@@ -461,7 +463,7 @@ and module_type (mt:Parsetree.module_type) =
   | Pmty_signature s (* sig ... end *) -> Sig (signature s)
   | Pmty_functor (name, arg, res) (* functor(X : MT1) -> MT2 *) ->
     let arg = let open Option in
-      arg >>| module_type >>| fun s -> { name = txt name; signature = s} in
+      arg >>| module_type >>| fun s -> { Arg.name = txt name; signature = s} in
     Fun { arg; body = module_type res }
   | Pmty_with (mt, wlist) (* MT with ... *) ->
     let deletions = Name.Set.of_list @@  gmmap dels wlist in

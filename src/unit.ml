@@ -1,37 +1,29 @@
-type spath = string list
 
 module Map = Name.Map
+
 
 type package = {name:string; content: content }
 and content = Subpackages of package Map.t | Modules of Module.t Map.t
 
-type package_path = Local | Sys of spath
+type package_path = Local | Sys of Npath.t
 
-type path = { package: package_path ; file: spath }
+type path = { package: package_path ; file: Npath.t }
 
 type t = {
   name: string;
   path: path;
-  signature: Module.explicit_signature;
-  unresolved: Unresolved.direct_map;
+  code: M2l.t;
   dependencies: Name.set
 }
 
-let pp ?compare ppf unit =
-  let pp_deps ppf s= match compare with
-    | None -> Name.Set.pp ppf s
-    | Some c -> Pp.(clist string) ppf
-                  (List.sort c @@ Name.Set.elements s) in
+let pp ppf unit =
   Pp.fp ppf "@[<hov2>[ name=%s; @, path=…; @;\
-             signature%a@[[%a]@]; @;\
-             unresolved=@[[%a]@]; @;\
+             m2l = @[%a@]; @;\
              dependencies=@[%a@] @;\
              ] @] @."
     unit.name
-    Module.Approximation.pp_symb unit.signature.Module.approximation
-    Module.pp_explicit unit.signature
-    Unresolved.pp (Unresolved.Map unit.unresolved)
-    pp_deps unit.dependencies
+    M2l.pp unit.code
+    Name.Set.pp unit.dependencies
 
 type kind = Structure | Signature
 
@@ -42,66 +34,48 @@ let (%>) f g x = x |> f |> g
 let extract_name filename = String.capitalize_ascii @@
   Filename.chop_extension @@ Filename.basename filename
 
-let read_file env kind filename =
-  let name =  extract_name filename in
-  let extract env = Envt.(env.unresolved, env.signature) in
-  let normalize (focus, sign) =
-    match sign with
-    | Module.Sig esn ->
-      ( focus, esn )
-    | Module.Alias _ | Module.Fun _ -> assert false
-  in
-  let parse_and_analyze = match kind with
-    | Structure -> Parse.implementation %> Ast_analyzer.structure env %> extract
-    | Signature -> Parse.interface %> Ast_analyzer.signature env %> normalize in
-  let foc, signature = try parse_and_analyze @@
-      Lexing.from_channel @@ open_in filename
-    with
-    | Error.Opening_a_functor msg ->
-      Error.log "Analyse error when reading %s@: opening functor %s." filename msg
-    | Error.Functor_expected msg -> Error.log
-      "Analyse error when reading %s@: functor expected, got %s." filename msg
-
-
+let read_file kind filename =
+  let name = extract_name filename in
+  let parse = match kind with
+    | Structure -> Parse.implementation %> Ast_analyzer.structure
+    | Signature -> Parse.interface %> Ast_analyzer.signature in
+  let code = parse @@ Lexing.from_channel @@ open_in filename
   in
   { name;
     path = { package= Local; file=[filename] };
-    signature;
-    unresolved = Unresolved.map foc;
+    code;
     dependencies = Name.Set.empty
   }
 
-let refine (type env) ((module Refine):env Refiner.t) env unit =
-  let deps = Name.Set.empty in
-  try
-  let deps, Unresolved.Map map =
-    Refine.map deps env (Unresolved.Map unit.unresolved) in
-  { unit with
-    unresolved = map;
-    signature = Refine.explicit_signature env unit.signature;
-    dependencies = (Name.Set.union deps unit.dependencies)
-  } with
-  | Error.Opening_a_functor msg ->
-    Error.log "Refinement error for module %s: opening functor %s." unit.name msg
-  | Error.Functor_expected msg -> Error.log
-      "Analyse error when reading %s: functor expected, got %s." unit.name msg
+module Eval = Compute.Tr
+module Envt = Compute.Tracing
 
-
-let is_independent unit = Unresolved.is_empty unit.unresolved
+let compute_more core unit =
+  let env = Envt.create core in
+  let result = Eval.m2l env unit.code in
+  !(env.deps), result
 
 exception Cycle
 
-let resolve_dependencies (type env) (refiner: env Refiner.t) env units =
-  let (module R) = refiner in
-  let remove_independents (env, l, solved) unit =
-    if is_independent unit then
-      let env = R.add_root env unit.name unit.signature in
-      env, l, unit :: solved
-    else
-      env, unit :: l, solved in
+let eval (finished, core, rest) unit =
+  let open M2l in
+  match compute_more core unit with
+  | deps, Work.Done (_,sg) ->
+    let md = Module.create ~origin:Module.Unit unit.name sg in
+    let core = Envt.add_core core md in
+    let deps = Name.Set.union unit.dependencies deps in
+    let unit = { unit with code = []; dependencies = deps } in
+    (unit :: finished, core, rest )
+  | deps, Halted code ->
+    let deps = Name.Set.union unit.dependencies deps in
+    let unit = { unit with dependencies = deps; code } in
+    finished, core, unit :: rest
+
+
+let resolve_dependencies core units =
   let rec resolve alert env solved units =
-    let env, units', solved =
-      List.fold_left remove_independents (env,[],solved) units in
+    let solved, env, units' =
+      List.fold_left eval (solved,env,[]) units in
     match List.length units' with
     | 0 -> solved
     | n when n = List.length units ->
@@ -109,8 +83,7 @@ let resolve_dependencies (type env) (refiner: env Refiner.t) env units =
         ( List.iter (pp Pp.err) units;
           raise Cycle
         )
-      else resolve true env solved @@ List.map (refine refiner env) units
+      else resolve true env solved units'
     | _ ->
-      let units = List.map (refine refiner env) units' in
-      resolve false env solved units in
-  resolve false env [] units
+      resolve false env solved units' in
+  resolve false core [] units
