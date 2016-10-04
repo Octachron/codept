@@ -56,6 +56,8 @@ end
 
 module P = Partial
 
+
+
 type expression =
   | Defs of Definition.t (** Resolved module actions M = … / include … / open … *)
   | Open of Npath.t (** open A.B.C path *)
@@ -76,15 +78,15 @@ and module_expr =
   | Resolved of Partial.t
   | Ident of Npath.t
   | Apply of {f: module_expr; x:module_expr}
-  | Fun of { arg: module_type Arg.t option; body:module_expr }
+  | Fun of module_expr fn
   | Constraint of module_expr * module_type
   | Str of m2l
   | Opaque of m2l
 and module_type =
   | Resolved of Partial.t
-  | Ident of Epath.t
+  | Ident of Npath.t
   | Sig of m2l
-  | Fun of { arg: module_type Arg.t option; body:module_type }
+  | Fun of module_type fn
   | With of {
       body: module_type;
       deletions: Name.set
@@ -93,6 +95,9 @@ and module_type =
   | Of of module_expr
   | Opaque
 and m2l = expression list
+and 'a fn = { arg: module_type Arg.t option; body:'a }
+
+type arg = module_type Arg.t option
 
 let empty_annot = { access=Name.Set.empty; values = []; opaques = [] }
 let merge_annot a1 a2 =
@@ -101,18 +106,22 @@ let merge_annot a1 a2 =
     opaques = a1.opaques @ a2.opaques
   }
 
-let demote_str halt arg =
+let demote_str fn arg =
+  let body = Fun fn in
   match arg with
-  | None -> Fun { arg=None; body = halt }
+  | None -> { arg=None; body }
   | Some ({name;signature}: _ Arg.t) ->
-    Fun { arg = Some {name; signature=Sig [Defs signature]}; body=halt }
+    { arg = Some {name; signature=Sig [Defs signature]}; body }
 
-let demote_sig halt arg : module_type =
+let demote_sig fn arg : module_type fn  =
+  let body : module_type = Fun fn in
   match arg with
-  | None -> Fun { arg=None; body = halt }
+  | None -> { arg=None; body }
   | Some ({name;signature}: _ Arg.t) ->
-    Fun { arg = Some {name; signature=Sig [Defs signature]}; body=halt }
+    { arg = Some {name; signature=Sig [Defs signature]}; body }
 
+let fn_sig arg : module_type = Fun arg
+let fn arg : module_expr  = Fun arg
 
 
 let rec pp_expression ppf = function
@@ -146,7 +155,7 @@ and pp_me ppf = function
   | Opaque m2l -> Pp.fp ppf "⟨%a⟩" pp m2l
 and pp_mt ppf = function
   | Resolved fdefs -> Partial.pp ppf fdefs
-  | Ident np -> Epath.pp ppf np
+  | Ident np -> Npath.pp ppf np
   | Sig m2l -> Pp.fp ppf "@,sig@, %a end" pp m2l
   | Fun { arg; body } ->  Pp.fp ppf "(%a)@,→%a" (Arg.pp pp_mt) arg pp_mt body
   | With {body; deletions} ->
@@ -294,7 +303,7 @@ open Work
         | Halted h -> Halted (Some {Arg.name = arg.name; signature = h })
         | Done d   -> Done (Some{Arg.name=arg.name; signature = P.to_sign d}) in
     match ex_arg with
-    | Halted me -> Halted (List.fold_left demote_str (Fun {arg=me;body}) args )
+    | Halted me -> Halted (fn @@ List.fold_left demote_str {arg=me;body} args )
     | Done arg ->
       match module_expr body with
       | Done p -> Done { p with args = arg :: p.args }
@@ -304,7 +313,7 @@ open Work
                    { Arg.name = arg.name;
                      signature:module_type= Resolved (P.no_arg arg.signature) }
                  ) in
-        Halted (List.fold_left demote_str (Fun {arg;body=me}) args)
+        Halted (fn @@ List.fold_left demote_str {arg;body=me} args)
 
 
   let (%>) f g x = x |> f |> g

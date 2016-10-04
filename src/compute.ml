@@ -114,7 +114,7 @@ module Make(Envt:envt) = struct
 
   let open_ state path =
     match Envt.find Module path state with
-    | x -> Done (Some( Def.md x))
+    | x -> Done (Some( D.sg_see x.signature ))
     | exception Not_found -> Halted (Open path)
 
   let gen_include unbox box i = match unbox i with
@@ -174,7 +174,7 @@ module Make(Envt:envt) = struct
         | Halted f, Done d -> Halted (Apply {f; x = Resolved d})
         | Done f, Halted x -> Halted (Apply {f = Resolved f ;x} )
       end
-    | Fun {arg;body} -> functor_expr state [] arg body
+    | Fun {arg;body} -> functor_expr (module_expr,fn, demote_str) state [] arg body
     | Str [] -> Done P.empty
     | Str[Defs d] -> Done (P.no_arg d.defined)
     | Resolved d -> Done d
@@ -185,7 +185,7 @@ module Make(Envt:envt) = struct
 
   and constraint_ state me mt =
     match module_expr state me, module_type state mt with
-    |  Done _, (Done _ as r) -> r
+    | Done _, (Done _ as r) -> r
     | Done me, Halted mt ->
       Halted (Constraint(Resolved me, mt) )
     | Halted me, Done mt ->
@@ -198,8 +198,23 @@ module Make(Envt:envt) = struct
     | Sig s -> Work.fmap (fun s -> Sig s) P.no_arg @@
       drop_state @@ signature state s
     | Resolved d -> Done d
-    | Ident _ | With _ as mt -> Halted mt
-    | Fun _ -> Error.include_functor () (** todo *)
+    | Ident id ->
+      begin match Envt.find Module_type id state with
+        | x -> Done (P.of_module x)
+        | exception Not_found -> Halted (Ident id: module_type)
+      end
+    | With w ->
+      begin
+        match module_type state w.body with
+        | Halted mt -> Halted ( With { w with body = mt } )
+        | Done d ->
+          let modules =
+            Name.Set.fold Name.Map.remove w.deletions d.result.modules in
+          let d = { d with result = { d.result with modules} } in
+          Done d
+      end
+    | Fun {arg;body} ->
+      functor_expr (module_type, fn_sig, demote_sig) state [] arg body
     | Of me -> of_ (module_expr state me)
     | Opaque -> Halted (Opaque:module_type)
 
@@ -207,20 +222,25 @@ module Make(Envt:envt) = struct
     | Halted me -> Halted (Of me)
     | Done d -> Done d
 
-  and functor_expr state args arg body =
+  and functor_expr: 'k. (Envt.t -> 'k -> ('k, P.t) M2l.Work.t)
+                    * ('k M2l.fn -> 'k)
+                    * ('k M2l.fn -> D.t Arg.t option -> 'k M2l.fn) ->
+    Envt.t ->  D.t Arg.t option list -> arg
+    -> 'k -> ('k, P.t) M2l.Work.t =
+    fun (body_type,fn,demote) state args arg body ->
     let ex_arg =
       match arg with
       | None -> Done None
       | Some arg ->
-        match module_type state arg.signature with
+        match module_type state arg.Arg.signature with
         | Halted h -> Halted (Some {Arg.name = arg.name; signature = h })
         | Done d   -> Done (Some{Arg.name=arg.name; signature = P.to_sign d}) in
     match ex_arg with
-    | Halted me -> Halted (List.fold_left demote_str (Fun {arg=me;body}) args )
+    | Halted me -> Halted (fn @@ List.fold_left demote {arg=me;body} args )
     | Done arg ->
       let sg = Option.( arg >>| M.of_arg >>| S.create >< S.empty ) in
       let state =  Envt.( state >> sg ) in
-      match module_expr state body with
+      match body_type state body with
       | Done p  -> Done { p with args = arg :: p.args }
       | Halted me ->
         let arg = Option.(
@@ -228,7 +248,7 @@ module Make(Envt:envt) = struct
             { Arg.name = arg.name;
               signature:module_type= Resolved (P.no_arg arg.signature) }
           ) in
-        Halted (List.fold_left demote_str (Fun {arg;body=me}) args)
+        Halted (fn @@ List.fold_left demote {arg;body=me} args)
 
   and m2l state = function
     | [] -> Done (state, S.empty)

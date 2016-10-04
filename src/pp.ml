@@ -6,8 +6,8 @@ let fp = Format.fprintf
     | [a] -> fp ppf "%a" pp a
     | [] -> ()
 
-  let blist pp ppf = fp ppf "[%a]" (list pp)
-  let clist pp ppf = fp ppf "{%a}" (list pp)
+  let blist pp ppf = fp ppf "[@,%a@,]" (list pp)
+  let clist pp ppf = fp ppf "{@,%a@,}" (list pp)
 
 let opt_list ?(pre="") ?(post="")  ?(sep="; ") pp ppf = function
   | [] -> ()

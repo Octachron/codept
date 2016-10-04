@@ -59,11 +59,11 @@ let rec pp ppf {name;args;origin;signature} =
   Pp.fp ppf "%a%s:%a@[<hv>[@,%a@,]@]"
     pp_origin origin name (Arg.pp_s pp_signature) args pp_signature signature
 and pp_signature ppf {modules; module_types} =
-  Pp.fp ppf "@[<hv>%a@]" pp_mdict modules;
+  Pp.fp ppf "@[<hv>%a" pp_mdict modules;
   if Name.Map.cardinal module_types >0 then
-    Pp.fp ppf "@,module types: @,@[<hv>%a@]"
+    Pp.fp ppf "@,**Types**:@, %a@]"
       pp_mdict module_types
-  else Pp.fp ppf " "
+  else Pp.fp ppf "@]"
 and pp_mdict ppf dict =
   Pp.fp ppf "%a" (Pp.list ~sep:" " pp_pair) (Name.Map.bindings dict)
 and pp_pair ppf (_,md) = pp ppf md
@@ -93,7 +93,7 @@ module Sig = struct
   }
 
   let create m = { modules = empty |+> m; module_types = empty }
-  let create_type m = { modules = empty |+> m; module_types = empty }
+  let create_type m = { module_types = empty |+> m; modules = empty }
 
   let gen_create level md = match level with
     | Module -> create md

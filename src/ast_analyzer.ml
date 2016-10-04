@@ -353,7 +353,7 @@ and package_type (s,constraints) =
   access s +:
   mmap (fun  (_,ct) -> core_type ct) constraints
 and full_package_type (s,constraints) =
-  Ident (epath s),
+  Ident (npath s),
   mmap (fun (_,ct) -> core_type ct) constraints
 and case cs =
   pattern cs.pc_lhs
@@ -474,9 +474,9 @@ and module_type (mt:Parsetree.module_type) =
     Warning.extension();
     Opaque
   | Pmty_alias lid -> Warning.confused "Pmty_alias" ;
-    Ident (epath lid)
+    Ident (npath lid)
   | Pmty_ident lid (* S *) ->
-    Ident (epath lid)
+    Ident (npath lid)
 and module_declaration mdec =
   let s = module_type mdec.pmd_type in
   { name = txt mdec.pmd_name; expr = Constraint(Opaque [], s) }
