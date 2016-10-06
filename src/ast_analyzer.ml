@@ -545,8 +545,8 @@ and module_type (mt:Parsetree.module_type) =
   | Pmty_extension _ (* [%id] *) ->
     Warning.extension();
     Opaque
-  | Pmty_alias lid (* same as Pmty_ident? *) | Pmty_ident lid (* S *) ->
-    Ident (npath lid)
+  | Pmty_alias lid -> Alias (npath lid)
+  | Pmty_ident lid (* S *) -> Ident (npath lid)
 and module_declaration mdec =
   let s = module_type mdec.pmd_type in
   { name = txt mdec.pmd_name; expr = Constraint( Abstract, s) }

@@ -86,6 +86,7 @@ and module_expr =
   | Unpacked
 and module_type =
   | Resolved of Partial.t
+  | Alias of Npath.t (* module level *)
   | Ident of Npath.t
   | Sig of m2l
   | Fun of module_type fn
@@ -189,6 +190,7 @@ and pp_me ppf = function
   | Unpacked -> Pp.fp ppf "⟨unpacked⟩"
 and pp_mt ppf = function
   | Resolved fdefs -> Partial.pp ppf fdefs
+  | Alias np -> Pp.fp ppf "(≡)%a" Npath.pp np
   | Ident np -> Npath.pp ppf np
   | Sig m2l -> Pp.fp ppf "@,sig@, %a end" pp m2l
   | Fun { arg; body } ->  Pp.fp ppf "(%a)@,→%a" (Arg.pp pp_mt) arg pp_mt body
@@ -328,7 +330,7 @@ open Work
     | Sig [Defs d] -> Done (P.no_arg d.defined)
     | Resolved d -> Done d
     | Sig _ as s -> Halted s
-    | Ident _ | With _ as mt -> Halted mt
+    | Ident _ | Alias _ | With _ as mt -> Halted mt
     | Fun _ -> Error.include_functor () (** todo *)
     | Of me -> of_ (module_expr me)
     | Opaque -> Halted (Opaque:module_type)

@@ -141,7 +141,7 @@ module Make(Envt:envt) = struct
   let include_ state module_expr =
     gen_include (module_expr state) (fun i -> Include i)
   let sig_include state module_type = gen_include
-      (module_type Module_type state) (fun i -> SigInclude i)
+      (module_type state) (fun i -> SigInclude i)
 
 
   let bind state module_expr {name;expr} =
@@ -213,7 +213,7 @@ module Make(Envt:envt) = struct
       constraint_ state me mt
 
   and constraint_ state me mt =
-    match module_expr state me, module_type Module state mt with
+    match module_expr state me, module_type state mt with
     | Done _, (Done _ as r) -> r
     | Done me, Halted mt ->
       Halted (Constraint(Resolved me, mt) )
@@ -221,20 +221,25 @@ module Make(Envt:envt) = struct
       Halted (Constraint(me, Resolved mt) )
     | Halted me, Halted mt -> Halted ( Constraint(me,mt) )
 
-  and module_type lvl state = function
+  and module_type state = function
     | Sig [] -> Done P.empty
     | Sig [Defs d] -> Done (P.no_arg d.defined)
     | Sig s -> Work.fmap (fun s -> Sig s) P.no_arg @@
       drop_state @@ signature state s
     | Resolved d -> Done d
     | Ident id ->
-      begin match Envt.find lvl id state with
+      begin match Envt.find Module_type id state with
         | x -> Done (P.of_module x)
         | exception Not_found -> Halted (Ident id: module_type)
       end
+    | Alias i ->
+      begin match Envt.find Module i state with
+        | x -> Done (P.of_module x)
+        | exception Not_found -> Halted (Alias i)
+      end
     | With w ->
       begin
-        match module_type lvl state w.body with
+        match module_type state w.body with
         | Halted mt -> Halted ( With { w with body = mt } )
         | Done d ->
           let modules =
@@ -243,7 +248,7 @@ module Make(Envt:envt) = struct
           Done d
       end
     | Fun {arg;body} ->
-      functor_expr (module_type lvl, fn_sig, demote_sig) state [] arg body
+      functor_expr (module_type, fn_sig, demote_sig) state [] arg body
     | Of me -> of_ (module_expr state me)
     | Opaque -> Halted (Opaque:module_type)
 
@@ -261,7 +266,7 @@ module Make(Envt:envt) = struct
       match arg with
       | None -> Done None
       | Some arg ->
-        match module_type Module_type state arg.Arg.signature with
+        match module_type state arg.Arg.signature with
         | Halted h -> Halted (Some {Arg.name = arg.name; signature = h })
         | Done d   -> Done (Some{Arg.name=arg.name; signature = P.to_sign d}) in
     match ex_arg with
@@ -299,7 +304,7 @@ module Make(Envt:envt) = struct
     | Include i -> include_ state module_expr i
     | SigInclude i -> sig_include state module_type i
     | Bind b -> bind state module_expr b
-    | Bind_sig b -> bind_sig state (module_type Module_type) b
+    | Bind_sig b -> bind_sig state module_type b
     | Bind_rec bs -> bind_rec state module_expr bs
     | Minor m -> Work.fmap_halted (fun m -> Minor m) @@
       minor module_expr m2l state m
