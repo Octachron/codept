@@ -56,6 +56,7 @@ end
 
 module P = Partial
 
+type 'a bind = {name:Name.t; expr:'a}
 
 type expression =
   | Defs of Definition.t (** Resolved module actions M = … / include … / open … *)
@@ -64,15 +65,15 @@ type expression =
   | SigInclude of module_type
   (** include (M : s with module m := (deletions)
       and module m.k = n.w (equalities) *)
-  | Bind of (M.level * bind)
-  | Bind_rec of bind list
+  | Bind of module_expr bind
+  | Bind_sig of module_type bind
+  | Bind_rec of module_expr bind list
   | Minor of annotation
 and annotation =
   { access: Name.set (** M.x ⇒ Name M *)
   ; values: m2l list (** let open in ...; let module M = .. *)
   ; packed: module_expr list
   }
-and bind = { name:Name.t; expr: module_expr }
 and module_expr =
   | Resolved of Partial.t
   | Ident of Npath.t
@@ -80,7 +81,9 @@ and module_expr =
   | Fun of module_expr fn
   | Constraint of module_expr * module_type
   | Str of m2l
-  | Opaque of m2l
+  | Val of annotation
+  | Abstract
+  | Unpacked
 and module_type =
   | Resolved of Partial.t
   | Ident of Npath.t
@@ -144,24 +147,36 @@ let fn arg : module_expr  = Fun arg
 let rec pp_expression ppf = function
   | Defs defs -> Pp.fp ppf "define %a" D.pp defs
 
-  | Minor {access;values; packed} ->
-    Pp.fp ppf "(%a@,%a@,%a)"
-      pp_access access
-      (Pp.opt_list ~sep:"" ~pre:"values: " pp) values
-      (Pp.opt_list ~sep:"" ~pre:"packed: " pp_opaque) packed
+  | Minor annot -> pp_annot ppf annot
   | Open epath -> Pp.fp ppf "@[<hv>open %a@]" Npath.pp epath
   | Include me -> Pp.fp ppf "@[<hv>include [%a]@]" pp_me me
   | SigInclude mt -> Pp.fp ppf "@[<hv>include type [%a]@]" pp_mt mt
 
-  | Bind (level, bind ) -> pp_bind level ppf bind
+  | Bind bind -> pp_bind ppf bind
+  | Bind_sig bind -> pp_bind_sig ppf bind
   | Bind_rec bs ->
     Pp.fp ppf "rec@[<hv>[ %a ]@]"
-      (Pp.list ~sep:"@, and @," @@ pp_bind Module ) bs
+      (Pp.list ~sep:"@, and @," @@ pp_bind ) bs
+and pp_annot ppf {access;values; packed} =
+  Pp.fp ppf "(%a@,%a@,%a)"
+    pp_access access
+    (Pp.opt_list ~sep:"" ~pre:"values: " pp) values
+    (Pp.opt_list ~sep:"" ~pre:"packed: " pp_opaque) packed
 and pp_access ppf s =  if Name.Set.cardinal s = 0 then () else
     Pp.fp ppf "access:@[<hv>%a@]" Name.Set.pp s
 and pp_opaque ppf me = Pp.fp ppf "⟨%a⟩" pp_me me
-and pp_bind level ppf {name;expr} =
-  Pp.fp ppf "@[%a %s =@,@[<hv>%a@] @]" M.pp_level level name pp_me expr
+and pp_bind ppf {name;expr} =
+  match expr with
+  | Constraint(Abstract, mt) ->
+    Pp.fp ppf "@[module %s:[<hv>%a@] @]" name pp_mt mt
+  | Constraint(Unpacked, mt) ->
+    Pp.fp ppf "@[(module %s:[<hv>%a@])@]" name pp_mt mt
+  | Unpacked ->
+    Pp.fp ppf "(module %s)" name
+  | _ ->
+    Pp.fp ppf "@[module %s =@,@[<hv>%a@] @]" name pp_me expr
+and pp_bind_sig ppf {name;expr} =
+  Pp.fp ppf "@[module type %s =@,@[<hv>%a@] @]" name pp_mt expr
 and pp_me ppf = function
   | Resolved fdefs -> Partial.pp ppf fdefs
   | Ident np -> Npath.pp ppf np
@@ -169,7 +184,9 @@ and pp_me ppf = function
   | Apply {f;x} -> Pp.fp ppf "%a(@,%a@,)" pp_me f pp_me x
   | Fun { arg; body } -> Pp.fp ppf "%a@,→%a" (Arg.pp pp_mt) arg pp_me body
   | Constraint (me,mt) -> Pp.fp ppf "%a: @,%a" pp_me me pp_mt mt
-  | Opaque m2l -> Pp.fp ppf "⟨%a⟩" pp m2l
+  | Val annot -> Pp.fp ppf "⟨val %a⟩" pp_annot annot
+  | Abstract -> Pp.fp ppf "⟨abstract⟩"
+  | Unpacked -> Pp.fp ppf "⟨unpacked⟩"
 and pp_mt ppf = function
   | Resolved fdefs -> Partial.pp ppf fdefs
   | Ident np -> Npath.pp ppf np
@@ -227,7 +244,8 @@ module Normalize = struct
     | Defs d :: q ->
       let more, q = all q in more, Defs d :: q
     | Minor m :: q -> Minor (minor m) +: all q
-    | (Open _ | Include _ | SigInclude _ | Bind _ | Bind_rec _) :: _ as l ->
+    | (Open _ | Include _ | SigInclude _ | Bind_sig _ | Bind _ | Bind_rec _)
+      :: _ as l ->
       halt l
     | [] -> halt []
   and minor v =
@@ -263,6 +281,9 @@ module Work = struct
     | Halted _ as h  -> h
     | Done r -> Done (f r)
 
+   let fmap_halted f = function
+    | Halted h  -> Halted (f h)
+    | Done _ as r -> r
 
 
 end
@@ -278,7 +299,8 @@ open Work
 
 
   let rec module_expr: module_expr -> (module_expr,Partial.t) Work.t  = function
-    | Opaque _ | Ident _  as i -> Halted i
+    | Abstract | Unpacked -> Done Partial.empty
+    |  Val _ | Ident _  as i -> Halted i
     | Apply {f;x} ->
       begin match module_expr f, module_expr x with
         | Done f, Done _ -> Done (Partial.drop_arg f)
@@ -349,12 +371,20 @@ open Work
   let sig_include module_type = gen_include module_type (fun i -> SigInclude i)
 
 
-  let bind module_expr lvl {name;expr} =
+  let bind module_expr {name;expr} =
     match module_expr expr with
-    | Halted h -> Halted ( Bind(lvl, {name; expr = h} ) )
+    | Halted h -> Halted ( Bind( {name; expr = h} ) )
     | Done d ->
-      let m = P.to_module name d (* lost aliasing? *) in
-      Done (Some(Def.gen lvl m))
+      let m = P.to_module name d in
+      Done (Some(Def.md m))
+
+  let bind_sig module_sig {name;expr} =
+    match module_sig expr with
+    | Halted h -> Halted ( Bind_sig( {name; expr = h} ) )
+    | Done d ->
+      let m = P.to_module name d in
+      Done (Some(Def.sg m))
+
 
   let bind_rec bs =
     let pair x y = x,y in
@@ -376,7 +406,8 @@ open Work
     | (Defs _ | Open _ ) as d -> Halted d
     | Include i -> include_ module_expr i
     | SigInclude i -> sig_include module_type i
-    | Bind (lvl, b) -> bind module_expr lvl b
+    | Bind b -> bind module_expr b
+    | Bind_sig b -> bind_sig module_type b
     | Bind_rec bs -> bind_rec bs
     | Minor m -> minor m
 

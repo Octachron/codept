@@ -97,7 +97,7 @@ module Pattern = struct
 
   (** At module level, a pattern can only access modules or
       bind a first class module *)
-  type t = { binds: M2l.bind list; annot: Annot.t }
+  type t = { binds: module_expr M2l.bind list; annot: Annot.t }
 
   let empty = { annot = Annot.empty; binds = [] }
 
@@ -126,7 +126,7 @@ module Pattern = struct
 
   let bind_fmod p inner =
     let binded =
-      List.fold_left ( fun inner b -> M2l.Bind(Module, b ) :: inner )
+      List.fold_left ( fun inner b -> M2l.Bind b :: inner )
         [Minor inner] p.binds
       in
       if List.length binded > 1 then
@@ -168,11 +168,11 @@ and structure_item item =
            exception C = M.X *)
     -> minor @@ extension_constructor an_extension_constructor
   | Pstr_module mb (* module X = ME *) ->
-    [Bind( Module, module_binding_raw mb)]
+    [Bind(module_binding_raw mb)]
   | Pstr_recmodule module_bindings (* module rec X1 = ME1 and ... and Xn = MEn *)
     -> recmodules module_bindings
   | Pstr_modtype a_module_type_declaration (*module type s = .. *) ->
-    [ Bind(Module_type, module_type_declaration a_module_type_declaration) ]
+    [ Bind_sig(module_type_declaration a_module_type_declaration) ]
   | Pstr_open open_desc (* open M *) ->
         do_open  open_desc.popen_lid
   | Pstr_class class_declarations  (* class c1 = ... and ... and cn = ... *)
@@ -289,7 +289,7 @@ and expr exp =
   | Pexp_override labels (* {< x1 = E1; ...; Xn = En >} *) ->
     Annot.union_map (fun (_,e) -> expr e) labels
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
-    Annot.value [[ Bind( Module, module_binding (m,me) );
+    Annot.value [[ Bind( module_binding (m,me) );
                  Minor( expr e )
                ]]
 (*  | Pexp_letexception (c, e) (* let exception C in E *) ->
@@ -352,7 +352,7 @@ and pattern pat = match pat.ppat_desc with
       {ptyp_desc=Ptyp_package s; _ } ) ->
     let name = txt name in
     let mt, others = full_package_type s in
-    let bind = {M2l.name; expr = M2l.Constraint(Opaque[], mt) } in
+    let bind = {M2l.name; expr = M2l.Constraint(Unpacked, mt) } in
     { others with binds = [bind] }
     (* todo : catch higher up *)
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
@@ -360,7 +360,7 @@ and pattern pat = match pat.ppat_desc with
   | Ppat_type name (* #tconst *) -> Pattern.access name
   | Ppat_unpack m ->
     (* Warning.first_class_module(); todo: test coverage *)
-    Pattern.bind (txt m) (M2l.Opaque [])
+    Pattern.bind (txt m) Unpacked
       (* (module P)
            Note: (module P : S) is represented as
            Ppat_constraint(Ppat_unpack, Ptyp_package)
@@ -508,19 +508,19 @@ and module_expr mexpr : M2l.module_expr =
   | Pmod_unpack { pexp_desc = Pexp_constraint
                       (inner, {ptyp_desc = Ptyp_package s; _}); _ }
     (* (val E : S ) *) ->
-    Constraint( Opaque [Minor(expr inner)], fst @@ full_package_type s)
+    Constraint( Val (expr inner), fst @@ full_package_type s)
   | Pmod_unpack e  (* (val E) *) ->
-    Opaque [ Minor (expr e) ]
+    Val(expr e)
   | Pmod_extension _extension ->
     Warning.extension();
-     Opaque []
+    Abstract
         (* [%id] *)
 and value_binding vb : Pattern.t =
   Pattern.( pattern vb.pvb_pat ++ of_annot (expr vb.pvb_expr) )
 and value_bindings vbs expr =
   let p = Pattern.union_map value_binding vbs in
   if List.length p.binds > 0 then
-    let v = List.fold_left ( fun inner b -> Bind(Module,b) :: inner )
+    let v = List.fold_left ( fun inner b -> Bind b :: inner )
         (minor expr) p.binds in
     Annot.value [v]
   else
@@ -551,12 +551,12 @@ and module_type (mt:Parsetree.module_type) =
     Ident (npath lid)
 and module_declaration mdec =
   let s = module_type mdec.pmd_type in
-  { name = txt mdec.pmd_name; expr = Constraint(Opaque [], s) }
+  { name = txt mdec.pmd_name; expr = Constraint( Abstract, s) }
 and module_type_declaration mdec =
   let open Option in
   let name = txt mdec.pmtd_name in
   let s = ( (mdec.pmtd_type >>| module_type) >< Opaque ) in
-  {name; expr = Constraint(Opaque [], s) }
+  {name; expr = s }
 and signature sign =
   mmap signature_item sign
 and signature_item item =  match item.psig_desc with
@@ -569,12 +569,12 @@ and signature_item item =  match item.psig_desc with
   | Psig_exception ec (* exception C of T *) ->
     minor @@ extension_constructor ec
   | Psig_module md (* module X : MT *) ->
-    [Bind(Module, module_declaration md)]
+    [Bind (module_declaration md)]
   | Psig_recmodule mds (* module rec X1 : MT1 and ... and Xn : MTn *) ->
     [Bind_rec (List.map module_declaration mds)]
     (* Warning.confused "Psig_recmodule"; (* todo coverage*) *)
   | Psig_modtype mtd (* module type S = MT *) ->
-    [Bind(Module_type, module_type_declaration mtd)]
+    [Bind_sig(module_type_declaration mtd)]
   | Psig_open od (* open X *) ->
     do_open od.popen_lid
   | Psig_include id (* include MT *) ->

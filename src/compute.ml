@@ -96,6 +96,7 @@ let rec basic = function
     | Done None -> basic q
 
 module Make(Envt:envt) = struct
+
   let minor module_expr str state m =
     let value l v = match str state v with
       | Done _ -> l
@@ -113,7 +114,7 @@ module Make(Envt:envt) = struct
     if access = Name.Set.empty && values = [] && packed = [] then
       Done None
     else
-      Halted (Minor { access; values; packed } )
+      Halted { access; values; packed }
 
 
   let open_ state path =
@@ -133,12 +134,24 @@ module Make(Envt:envt) = struct
       (module_type state) (fun i -> SigInclude i)
 
 
-  let bind state module_expr lvl {name;expr} =
+  let bind state module_expr {name;expr} =
     match module_expr state expr with
-    | Halted h -> Halted ( Bind(lvl, {name; expr = h} ) )
+    | Halted h -> Halted ( Bind {name; expr = h} )
+    | Done d ->
+      let origin = match expr with
+        | Constraint(Unpacked,_) | Unpacked -> Module.First_class
+        | _ -> Module.Submodule in
+      let m = P.to_module ~origin name d in
+      Done (Some(Def.md m))
+
+  let bind_sig state module_type {name;expr} =
+    match module_type state expr with
+    | Halted h -> Halted ( Bind_sig {name; expr = h} )
     | Done d ->
       let m = P.to_module ~origin:Submodule name d in
-      Done (Some(Def.gen lvl m))
+      Done (Some(Def.sg m))
+
+
 
   let bind_rec state module_expr bs =
     let pair x y = x,y in
@@ -165,7 +178,12 @@ module Make(Envt:envt) = struct
     | Halted _ as h -> h
 
   let rec module_expr state (me:module_expr) = match me with
-    | Opaque _ -> Done P.empty (** todo : add warning *)
+    | Abstract | Unpacked -> Done P.empty
+    | Val m -> begin
+        match minor module_expr m2l state m with
+        | Done _ -> Done P.empty
+        | Halted h -> Halted (Val h)
+      end  (** todo : add warning *)
     | Ident i ->
       begin match Envt.find Module i state with
         | x -> Done (P.of_module x)
@@ -273,9 +291,11 @@ module Make(Envt:envt) = struct
     | Open p -> open_ state p
     | Include i -> include_ state module_expr i
     | SigInclude i -> sig_include state module_type i
-    | Bind (lvl, b) -> bind state module_expr lvl b
+    | Bind b -> bind state module_expr b
+    | Bind_sig b -> bind_sig state module_type b
     | Bind_rec bs -> bind_rec state module_expr bs
-    | Minor m -> minor module_expr m2l state m
+    | Minor m -> Work.fmap_halted (fun m -> Minor m) @@
+      minor module_expr m2l state m
 end
 
 module Sg = Make(Envt)

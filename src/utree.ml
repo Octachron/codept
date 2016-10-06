@@ -15,9 +15,9 @@ and take_tree lift l = function
 
 type pattern = { ident:Name.t; signature: M2l.module_type option }
 type expr = M2l.module_expr
-type full = M2l.bind
+type full = M2l.module_expr M2l.bind
 
-let first_class: M2l.module_expr = M2l.Opaque []
+let first_class: M2l.module_expr = M2l.Unpacked
 
 let id x = x
 let lift_pattern {ident; signature } =
