@@ -168,9 +168,9 @@ and pp_opaque ppf me = Pp.fp ppf "⟨%a⟩" pp_me me
 and pp_bind ppf {name;expr} =
   match expr with
   | Constraint(Abstract, mt) ->
-    Pp.fp ppf "@[module %s:[<hv>%a@] @]" name pp_mt mt
+    Pp.fp ppf "@[module %s:@[<hv>%a@] @]" name pp_mt mt
   | Constraint(Unpacked, mt) ->
-    Pp.fp ppf "@[(module %s:[<hv>%a@])@]" name pp_mt mt
+    Pp.fp ppf "@[(module %s:@[<hv>%a@])@]" name pp_mt mt
   | Unpacked ->
     Pp.fp ppf "(module %s)" name
   | _ ->
