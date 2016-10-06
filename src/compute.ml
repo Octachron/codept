@@ -137,7 +137,7 @@ module Make(Envt:envt) = struct
     match module_expr state expr with
     | Halted h -> Halted ( Bind(lvl, {name; expr = h} ) )
     | Done d ->
-      let m = P.to_module name d in
+      let m = P.to_module ~origin:Submodule name d in
       Done (Some(Def.gen lvl m))
 
   let bind_rec state module_expr bs =
@@ -156,7 +156,7 @@ module Make(Envt:envt) = struct
     | Done defs ->
       let defs =
         List.fold_left
-          ( fun defs (name,d) -> D.bind (P.to_module name d) defs )
+          ( fun defs (name,d) -> D.bind (P.to_module ~origin:Submodule name d) defs )
           D.empty defs in
       Done ( Some defs )
 

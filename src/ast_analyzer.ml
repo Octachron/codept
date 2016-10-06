@@ -114,7 +114,6 @@ module Pattern = struct
   let merge e1 e2 = {annot = Annot.( e1.annot ++ e2.annot);
                      binds = e1.binds @ e2.binds }
 
-
   let (++) = merge
 
   let union = List.fold_left merge empty
@@ -133,7 +132,7 @@ module Pattern = struct
       if List.length binded > 1 then
         Annot.( p.annot ++ value [binded] )
       else
-        Annot.( to_annot p ++ inner )
+        Annot.( p.annot ++ inner )
 
 
 end
@@ -323,7 +322,7 @@ and pattern pat = match pat.ppat_desc with
 
   | Ppat_var _ (* x *) -> Pattern.empty
 
- | Ppat_extension _ -> Warning.extension(); Pattern.empty
+  | Ppat_extension _ -> Warning.extension(); Pattern.empty
 
   | Ppat_exception pat (* exception P *)
   | Ppat_lazy pat (* lazy P *)
@@ -422,9 +421,8 @@ and full_package_type (s,constraints) =
   Ident (npath s),
   Pattern.of_annot @@ Annot.union_map (fun (_,ct) -> core_type ct) constraints
 and case cs =
-  Annot.merge
     (Annot.opt expr cs.pc_guard)
-    (Pattern.bind_fmod (pattern cs.pc_lhs) @@ expr cs.pc_rhs)
+    ++ (Pattern.bind_fmod (pattern cs.pc_lhs) @@ expr cs.pc_rhs)
 and do_include incl =
     [ Include (module_expr incl.pincl_mod) ]
 and extension_constructor extc: M2l.annotation = match extc.pext_kind with
@@ -526,7 +524,7 @@ and value_bindings vbs expr =
         (minor expr) p.binds in
     Annot.value [v]
   else
-    Pattern.to_annot p
+    Pattern.to_annot p ++ expr
 
 and module_binding_raw mb =
   module_binding (mb.pmb_name, mb.pmb_expr)
