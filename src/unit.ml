@@ -64,7 +64,8 @@ let eval (finished, core, rest) unit =
     let md = Module.create ~origin:Module.Unit unit.name sg in
     let core = Envt.add_core core md in
     let deps = Name.Set.union unit.dependencies deps in
-    let unit = { unit with code = []; dependencies = deps } in
+    let unit = { unit with code = [Defs (Definition.sg_bind sg)];
+                           dependencies = deps } in
     (unit :: finished, core, rest )
   | deps, Halted code ->
     let deps = Name.Set.union unit.dependencies deps in

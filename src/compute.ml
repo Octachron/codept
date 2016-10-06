@@ -96,20 +96,24 @@ let rec basic = function
     | Done None -> basic q
 
 module Make(Envt:envt) = struct
-  let minor str state m =
+  let minor module_expr str state m =
     let value l v = match str state v with
       | Done _ -> l
       | Halted h -> h :: l in
     let access n m = match Envt.find Module [n] state with
       | _ -> m
       | exception Not_found -> Name.Set.add n m in
+    let packed l p = match module_expr state p with
+      | Done _ -> l
+      | Halted h -> h :: l in
     let values = List.fold_left value [] m.values in
     let access = Name.Set.fold access m.access Name.Set.empty in
+    let packed = List.fold_left packed [] m.packed in
     (* to do opaque *)
-    if access = Name.Set.empty && values = [] && m.opaques = [] then
+    if access = Name.Set.empty && values = [] && packed = [] then
       Done None
     else
-      Halted (Minor { access; values; opaques = m.opaques } )
+      Halted (Minor { access; values; packed } )
 
 
   let open_ state path =
@@ -271,7 +275,7 @@ module Make(Envt:envt) = struct
     | SigInclude i -> sig_include state module_type i
     | Bind (lvl, b) -> bind state module_expr lvl b
     | Bind_rec bs -> bind_rec state module_expr bs
-    | Minor m -> minor m2l state m
+    | Minor m -> minor module_expr m2l state m
 end
 
 module Sg = Make(Envt)

@@ -57,7 +57,6 @@ end
 module P = Partial
 
 
-
 type expression =
   | Defs of Definition.t (** Resolved module actions M = … / include … / open … *)
   | Open of Npath.t (** open A.B.C path *)
@@ -71,7 +70,7 @@ type expression =
 and annotation =
   { access: Name.set (** M.x ⇒ Name M *)
   ; values: m2l list (** let open in ...; let module M = .. *)
-  ; opaques: module_expr list
+  ; packed: module_expr list
   }
 and bind = { name:Name.t; expr: module_expr }
 and module_expr =
@@ -99,13 +98,31 @@ and 'a fn = { arg: module_type Arg.t option; body:'a }
 
 type arg = module_type Arg.t option
 
-let empty_annot = { access=Name.Set.empty; values = []; opaques = [] }
-let merge_annot a1 a2 =
-  { access= Name.Set.union a1.access a2.access;
-    values = a1.values @ a2.values;
-    opaques = a1.opaques @ a2.opaques
-  }
+module Annot = struct
+  type t = annotation
+  let empty = { access=Name.Set.empty; values = []; packed = [] }
+  let is_empty  = (=) empty
+  let merge a1 a2 =
+    { access= Name.Set.union a1.access a2.access;
+      values = a1.values @ a2.values;
+      packed = a1.packed @ a2.packed
+    }
 
+  let (++) = merge
+
+  let union l =
+    List.fold_left (++) empty l
+  let union_map f l =
+    List.fold_left (fun res x -> res ++ f x ) empty l
+
+  let access name = { empty with
+                      access = Name.Set.singleton name }
+  let value v = { empty with values = v }
+  let pack o ={ empty with packed = o }
+
+  let opt f x = Option.( x >>| f >< empty )
+
+end
 let demote_str fn arg =
   let body = Fun fn in
   match arg with
@@ -127,11 +144,11 @@ let fn arg : module_expr  = Fun arg
 let rec pp_expression ppf = function
   | Defs defs -> Pp.fp ppf "define %a" D.pp defs
 
-  | Minor {access;values; opaques} ->
+  | Minor {access;values; packed} ->
     Pp.fp ppf "(%a@,%a@,%a)"
       pp_access access
       (Pp.opt_list ~sep:"" ~pre:"values: " pp) values
-      (Pp.opt_list ~sep:"" ~pre:"opaques: " pp_opaque) opaques
+      (Pp.opt_list ~sep:"" ~pre:"packed: " pp_opaque) packed
   | Open epath -> Pp.fp ppf "@[<hv>open %a@]" Npath.pp epath
   | Include me -> Pp.fp ppf "@[<hv>include [%a]@]" pp_me me
   | SigInclude mt -> Pp.fp ppf "@[<hv>include type [%a]@]" pp_mt mt
@@ -165,6 +182,8 @@ and pp_mt ppf = function
 and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" (Pp.list ~sep:" " pp_expression)
 
 type t = m2l
+
+
 
 (*
 let is_constant_str = function
@@ -217,7 +236,7 @@ module Normalize = struct
     match snd @@ all p with
     | [] -> mn
     | Minor m :: q ->
-      let mn = merge_annot mn m in
+      let mn = Annot.merge mn m in
           { mn with values = q :: mn.values }
     | l -> { mn with values = l :: mn.values }
 
@@ -364,9 +383,8 @@ open Work
 end
 
 module Build = struct
-  let access path = Minor { empty_annot with
-                            access = Name.Set.singleton @@ Epath.prefix path }
+  let access path = Minor (Annot.access @@ Epath.prefix path)
   let open_ path = Open path
-  let value v = Minor { empty_annot with values = [v] }
-  let opaque o = Minor { empty_annot with opaques = [o] }
+  let value v = Minor ( Annot.value v)
+  let pack o = Minor (Annot.pack o)
 end

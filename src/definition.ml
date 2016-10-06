@@ -20,7 +20,7 @@ let only_visible defs =
     module_types = diff d.module_types v.module_types
   }
 
-let pp ppf x = Pp.fp ppf "defined:@[[@,%a@,]@]"
+let pp ppf x = Pp.fp ppf "@[[@,%a@,]@]"
     Module.pp_signature x.defined;
   let v = only_visible x in
   if S.card v > 0 then

@@ -6,6 +6,10 @@ let fmap f = function
   | Some x -> Some (f x)
   | None -> None
 
+let either f default = function
+  | Some x -> f x
+  | None -> default
+
 let default value = function
   | None -> value
   | Some x -> x

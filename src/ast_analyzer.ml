@@ -6,6 +6,7 @@ module B = M2l.Build
 
 module D = Definition
 module S = Module.Sig
+module Annot = M2l.Annot
 
 let rec from_lid  =
   let open Epath in
@@ -26,28 +27,29 @@ let type_ = Epath.Module_type
 open Parsetree
 let txt x= x.Location.txt
 
-let epath x = from_lid @@ txt x
-let npath x = Epath.concrete @@ epath x
+module H = struct
+  let epath x = from_lid @@ txt x
+  let npath x = Epath.concrete @@ epath x
 
-let access lid =
-  let open Epath in
-  match from_lid @@ txt lid with
-  | A _ -> Name.Set.empty
-  | S(p,_) -> Name.Set.singleton @@ prefix p
-  | T | F _ -> assert false
+  let access lid =
+    let open Epath in
+    match from_lid @@ txt lid with
+    | A _ -> Annot.empty
+    | S(p,_) -> Annot.access @@ prefix p
+    | T | F _ -> assert false
 
-let access' lid =
-  let open Epath in
- match from_lid @@ txt lid with
-  | A _ -> []
-  | S(p,_) -> [ B.access p ]
-  | T | F _ -> assert false
+  let access' lid =
+    let open Epath in
+    match from_lid @@ txt lid with
+    | A _ -> []
+    | S(p,_) -> [ B.access p ]
+    | T | F _ -> assert false
 
 
-let do_open lid =
-  [M2l.Open (npath lid)]
+  let do_open lid =
+    [M2l.Open (npath lid)]
 
-let (+?) x l = match x with None -> l | Some x -> x :: l
+  let (+?) x l = match x with None -> l | Some x -> x :: l
 
 (*
 let do_include kind extract env m=
@@ -55,60 +57,117 @@ let do_include kind extract env m=
   R.include_ kind env m'
 *)
 
-let first_class_approx = S.empty
+  let first_class_approx = S.empty
 
-let opt f x=  Option.( x >>| f >< [] )
-let flip f x y = f y x
+  let opt f x=  Option.( x >>| f >< [] )
+  let flip f x y = f y x
 
-let (@%) l l' =
-  let open M2l in
-  match l,l' with
-  | [Minor m] , Minor m' :: q -> Minor(merge_annot m m') :: q
-  | _ -> l @ l'
-
-let rec gen_mmap (@) f = function
-  | [] -> []
-  | a :: q -> (f a) @ gen_mmap (@) f q
-
-let mmap f = gen_mmap (@%) f
-let gmmap f = gen_mmap (@) f
-
-
-let (+:) s l' =
-  if Name.Set.cardinal s = 0 then l'
-  else
+  let (@%) l l' =
     let open M2l in
-    match l' with
-    | Minor m :: q ->
-      Minor { m with access = Name.Set.union s m.access} :: q
-    | _ -> Minor { empty_annot with access = s } ::  l'
+    match l,l' with
+    | [Minor m] , Minor m' :: q -> Minor( Annot.merge m m') :: q
+    | _ -> l @ l'
 
+  let rec gen_mmap (@) f = function
+    | [] -> []
+    | a :: q -> (f a) @ gen_mmap (@) f q
 
+  let mmap f = gen_mmap (@%) f
+  let gmmap f = gen_mmap (@) f
+
+  let (%>) f g x = x |> f |> g
+  let (%) f g x = f (g x)
+
+  let (+:) s l' =
+    if Name.Set.cardinal s = 0 then l'
+    else
+      let open M2l in
+      match l' with
+      | Minor m :: q ->
+        Minor { m with access = Name.Set.union s m.access} :: q
+      | _ -> Minor { Annot.empty with access = s } ::  l'
+end
+open H
+let (++) = Annot.(++)
+
+module U = Utree
 open M2l
+
+module Pattern = struct
+
+  (** At module level, a pattern can only access modules or
+      bind a first class module *)
+  type t = { binds: M2l.bind list; annot: Annot.t }
+
+  let empty = { annot = Annot.empty; binds = [] }
+
+  let access p = { empty with annot = access p }
+  let value s = { empty with annot = Annot.value s }
+
+  let of_annot annot = { empty with annot }
+  (*  let of_minor minor = { annot = Minor.to_annot minor; binds = [] } *)
+
+  let to_annot e = e.annot
+    let to_m2l e = Minor (to_annot e)
+
+
+  let merge e1 e2 = {annot = Annot.( e1.annot ++ e2.annot);
+                     binds = e1.binds @ e2.binds }
+
+
+  let (++) = merge
+
+  let union = List.fold_left merge empty
+  let union_map f = List.fold_left (fun p x -> p ++ f x) empty
+
+  let opt f x = Option.( x >>| f >< empty )
+  let pack o = { empty with annot = Annot.pack o }
+
+  let bind name sign = { empty with binds = [{M2l.name; expr = sign } ] }
+
+  let bind_fmod p inner =
+    let binded =
+      List.fold_left ( fun inner b -> M2l.Bind(Module, b ) :: inner )
+        [Minor inner] p.binds
+      in
+      if List.length binded > 1 then
+        Annot.( p.annot ++ value [binded] )
+      else
+        Annot.( to_annot p ++ inner )
+
+
+end
+
+let minor x =
+  if Annot.is_empty x then
+    []
+  else
+    [Minor x]
 let rec structure str =
   mmap structure_item str
 and structure_item item =
   match item.pstr_desc with
-  | Pstr_eval (exp, _attrs) -> expr exp
+  | Pstr_eval (exp, _attrs) -> [Minor (expr exp) ]
   (* ;; exp [@@_attrs ] *)
   | Pstr_value (_rec_flag, vals)
     (* let P1 = E1 and ... and Pn = EN       (flag = Nonrecursive)
            let rec P1 = E1 and ... and Pn = EN   (flag = Recursive)
          *) ->
-    mmap value_binding vals
+    minor @@
+    Annot.union_map (Pattern.to_annot % value_binding) vals
   | Pstr_primitive desc
         (*  val x: T
             external x: T = "s1" ... "sn" *)
-    -> core_type desc.pval_type
+    -> minor @@ core_type desc.pval_type
   | Pstr_type (_rec_flag, type_declarations)
     (* type t1 = ... and ... and tn = ... *) ->
-    mmap type_declaration type_declarations
+    [ Minor (Annot.union_map type_declaration type_declarations) ]
   | Pstr_typext a_type_extension  (* type t1 += ... *) ->
-    type_extension a_type_extension
+    minor @@ type_extension a_type_extension
   | Pstr_exception an_extension_constructor
         (* exception C of T
            exception C = M.X *)
-    -> extension_constructor an_extension_constructor
+    -> minor @@ extension_constructor an_extension_constructor
   | Pstr_module mb (* module X = ME *) ->
     [Bind( Module, module_binding_raw mb)]
   | Pstr_recmodule module_bindings (* module rec X1 = ME1 and ... and Xn = MEn *)
@@ -118,10 +177,10 @@ and structure_item item =
   | Pstr_open open_desc (* open M *) ->
         do_open  open_desc.popen_lid
   | Pstr_class class_declarations  (* class c1 = ... and ... and cn = ... *)
-    -> mmap class_declaration class_declarations
+    -> minor @@ Annot.union_map class_declaration class_declarations
   | Pstr_class_type class_type_declarations
   (* class type ct1 = ... and ... and ctn = ... *)
-    -> mmap class_type_declaration class_type_declarations
+    -> minor @@ Annot.union_map class_type_declaration class_type_declarations
   | Pstr_include include_dec (* include M *) ->
         do_include include_dec
   | Pstr_attribute _attribute (* [@@@id] *)
@@ -131,15 +190,15 @@ and structure_item item =
 and expr exp =
   match exp.pexp_desc with
   | Pexp_ident name (* x, M.x *) ->
-    access' name
-  | Pexp_let (_rec_flag, value_bindings, exp )
+    access name
+  | Pexp_let (_rec_flag, vbs, exp )
         (* let P1 = E1 and ... and Pn = EN in E       (flag = Nonrecursive)
            let rec P1 = E1 and ... and Pn = EN in E   (flag = Recursive)
         *)
     ->
-    mmap value_binding value_bindings @% expr exp (** todo: module bindings *)
+    value_bindings vbs @@ expr exp (** todo: module bindings *)
   | Pexp_function cases (* function P1 -> E1 | ... | Pn -> En *) ->
-    mmap case cases
+    Annot.union @@ List.map case cases
   | Pexp_fun ( _arg_label, expr_opt, pat, expression)
         (* fun P -> E1                          (Simple, None)
            fun ~l:P -> E1                       (Labelled l, None)
@@ -151,9 +210,8 @@ and expr exp =
            - "let f P = E" is represented using Pexp_fun.
         *)
     ->
-    (opt expr expr_opt)
-    @% pattern pat
-    @% expr expression
+    Annot.merge (Annot.opt expr expr_opt)
+    @@ Pattern.bind_fmod (pattern pat) (expr expression)
   | Pexp_apply (expression, args)
         (* E0 ~l1:E1 ... ~ln:En
            li can be empty (non labeled argument) or start with '?'
@@ -162,29 +220,31 @@ and expr exp =
            Invariant: n > 0
         *)
     ->
-    expr expression @%
-    mmap (fun (_,e) -> expr e) args
+    Annot.( expr expression ++ union_map (fun (_, x) -> expr x) args)
   | Pexp_match (expression, cases)
     (* match E0 with P1 -> E1 | ... | Pn -> En *)
   | Pexp_try (expression, cases)
     (* try E0 with P1 -> E1 | ... | Pn -> En *)
     ->
-    expr expression @% mmap case cases
+    Annot.( expr expression ++  Annot.union_map case cases)
   | Pexp_tuple expressions
       (* (E1, ..., En) Invariant: n >= 2 *)
    ->
-      mmap expr expressions
+      Annot.union_map expr expressions
   | Pexp_construct (constr, expr_opt)
         (* C                None
            C E              Some E
            C (E1, ..., En)  Some (Pexp_tuple[E1;...;En])
         *) ->
-    access constr +: opt expr  expr_opt
-  | Pexp_variant (_label, expression_opt)
+    begin match expr_opt with
+      | Some e -> Annot.merge (access constr) (expr e)
+      | None -> access constr
+    end
+  | Pexp_variant (_label, eo)
         (* `A             (None)
            `A E           (Some E)
         *)
-    -> opt expr expression_opt
+    -> Annot.opt expr eo
   | Pexp_record (labels, expression_opt)
         (* { l1=P1; ...; ln=Pn }     (None)
            { E0 with l1=P1; ...; ln=Pn }   (Some E0)
@@ -192,40 +252,47 @@ and expr exp =
            Invariant: n > 0
         *)
     ->
-    opt expr expression_opt
-    @% mmap (fun (labl,expression) -> access labl +:  expr expression ) labels
+    Annot.( opt expr expression_opt
+            ++ union_map (fun (labl,expression) -> H.access labl ++ expr expression )
+              labels
+          )
   | Pexp_field (expression, field)  (* E.l *) ->
-    access field +: expr expression
+    H.access field ++ expr expression
   | Pexp_setfield (e1, field,e2) (* E1.l <- E2 *) ->
-    access field +: (expr e1 @% expr e2)
+    access field ++ expr e1 ++ expr e2
   | Pexp_array expressions (* [| E1; ...; En |] *) ->
-    mmap expr expressions
+    Annot.union_map expr expressions
   | Pexp_ifthenelse (e1, e2, e3) (* if E1 then E2 else E3 *) ->
-    expr e1 @% expr e2 @% opt expr e3
+    expr e1 ++ expr e2 ++  Annot.opt expr e3
   | Pexp_sequence (e1,e2) (* E1; E2 *) ->
-    expr e1 @% expr e2
+    expr e1 ++ expr e2
   | Pexp_while (e1, e2) (* while E1 do E2 done *) ->
-    expr e1 @% expr e2
+    expr e1 ++ expr e2
   | Pexp_for (pat, e1, e2,_,e3)
   (* for pat = E1 to E2 do E3 done      (flag = Upto)
      for pat = E1 downto E2 do E3 done  (flag = Downto)
   *) ->
-    pattern pat @% expr e1 @% expr e2 @% expr e3
+    (Pattern.to_annot @@ pattern pat)
+    ++ expr e1 ++ expr e2 ++ expr e3
   | Pexp_constraint (e,t) (* (E : T) *) ->
-    expr e @% core_type t
+    expr e ++ core_type t
   | Pexp_coerce (e, t_opt, coer)
   (* (E :> T)        (None, T)
      (E : T0 :> T)   (Some T0, T)
   *) ->
-    expr e @% opt core_type t_opt @% core_type coer
+    expr e ++ Annot.opt core_type t_opt
+    ++ core_type coer
+
   | Pexp_new name (* new M.c *) ->
-    access' name
+    H.access name
   | Pexp_setinstvar (_x, e) (* x <- e *) ->
     expr e
   | Pexp_override labels (* {< x1 = E1; ...; Xn = En >} *) ->
-    mmap (fun (_,e) -> expr e) labels
+    Annot.union_map (fun (_,e) -> expr e) labels
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
-    [ B.value ( Bind( Module, module_binding (m,me) ) :: expr e ) ]
+    Annot.value [[ Bind( Module, module_binding (m,me) );
+                 Minor( expr e )
+               ]]
 (*  | Pexp_letexception (c, e) (* let exception C in E *) ->
     expression (extension_constructor env ext) e *)
   | Pexp_send (e, _) (*  E # m *)
@@ -234,27 +301,29 @@ and expr exp =
   | Pexp_lazy e (* lazy E *) -> expr  e
 
   | Pexp_poly (e, ct_opt) ->
-    expr e @% opt core_type ct_opt
+    expr e ++ Annot.opt core_type ct_opt
   | Pexp_object clstr (* object ... end *) ->
     class_structure clstr
   | Pexp_pack me (* (module ME) *)
     -> Warning.first_class_module ();
        (* todo: are all cases caught by the Module.approximation mechanism?  *)
-    [ B.opaque (module_expr me) ]
+    Annot.pack [module_expr me]
   | Pexp_open (_override_flag,name,e)
         (* M.(E), let open M in E, let! open M in E *)
-    -> [ B.value ( do_open name @% expr e ) ]
+    -> Annot.value [ do_open name @ [Minor (expr e) ] ]
   | Pexp_extension (name, PStr payload) when txt name = "extension_constructor" ->
-    structure payload
+    Annot.value [structure payload]
   | Pexp_constant _ | Pexp_unreachable (* . *)
-    -> []
-  | Pexp_extension _ (* [%ext] *) -> (Warning.extension(); [])
+    -> Annot.empty
+  | Pexp_extension _ (* [%ext] *) -> (Warning.extension(); Annot.empty)
 and pattern pat = match pat.ppat_desc with
   | Ppat_constant _ (* 1, 'a', "true", 1.0, 1l, 1L, 1n *)
   | Ppat_interval _ (* 'a'..'z'*)
   | Ppat_any
-  | Ppat_extension _
-  | Ppat_var _ (* x *) -> []
+
+  | Ppat_var _ (* x *) -> Pattern.empty
+
+ | Ppat_extension _ -> Warning.extension(); Pattern.empty
 
   | Ppat_exception pat (* exception P *)
   | Ppat_lazy pat (* lazy P *)
@@ -262,43 +331,37 @@ and pattern pat = match pat.ppat_desc with
 
   | Ppat_array patterns (* [| P1; ...; Pn |] *)
   | Ppat_tuple patterns (* (P1, ..., Pn) *) ->
-    mmap pattern patterns
+    Pattern.union_map pattern patterns
 
   | Ppat_construct (c, p)
         (* C                None
            C P              Some P
            C (P1, ..., Pn)  Some (Ppat_tuple [P1; ...; Pn])
         *) ->
-    access c +: opt pattern p
+    Pattern.( access c ++ Pattern.opt pattern p )
   | Ppat_variant (_, p) (*`A (None), `A P(Some P)*) ->
-    opt pattern p
+    Pattern.opt pattern p
   | Ppat_record (fields, _flag)
         (* { l1=P1; ...; ln=Pn }     (flag = Closed)
            { l1=P1; ...; ln=Pn; _}   (flag = Open)
         *) ->
-    mmap (fun (_,p) -> pattern p ) fields
+    Pattern.union_map (fun (_,p) -> pattern p ) fields
   | Ppat_or (p1,p2) (* P1 | P2 *) ->
-    pattern p1 @% pattern p2
+    Pattern.( pattern p1 ++ pattern p2 )
   | Ppat_constraint(
       {ppat_desc=Ppat_unpack name; _},
       {ptyp_desc=Ptyp_package s; _ } ) ->
-    let _name = txt name in
-    let _s, others = full_package_type s in
-    others
+    let name = txt name in
+    let mt, others = full_package_type s in
+    let bind = {M2l.name; expr = M2l.Constraint(Opaque[], mt) } in
+    { others with binds = [bind] }
     (* todo : catch higher up *)
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
-    pattern pat @% core_type ct
-  | Ppat_type name (* #tconst *) -> access' name
+    Pattern.( pattern pat ++ of_annot (core_type ct) )
+  | Ppat_type name (* #tconst *) -> Pattern.access name
   | Ppat_unpack m ->
     (* Warning.first_class_module(); todo: test coverage *)
-    [ B.value [ Defs (Def.md
-                      { M.name = txt m ;
-                        args = [];
-                        origin = First_class;
-                        signature = first_class_approx
-                      })
-            ]
-    ]
+    Pattern.bind (txt m) (M2l.Opaque [])
       (* (module P)
            Note: (module P : S) is represented as
            Ppat_constraint(Ppat_unpack, Ptyp_package)
@@ -306,85 +369,88 @@ and pattern pat = match pat.ppat_desc with
 (*  | Ppat_open (m,p) (* M.(P) *) ->
     Resolver.(up env.Envt.signature) @@ pattern (do_open env m) p *)
 
-and type_declaration td  =
-  mmap (fun (_,t,_) -> core_type t) td.ptype_cstrs
-  @% type_kind td.ptype_kind
-  @% opt core_type td.ptype_manifest
+and type_declaration td: M2l.annotation  =
+  Annot.union_map (fun (_,t,_) -> core_type t) td.ptype_cstrs
+  ++ type_kind td.ptype_kind
+  ++ Annot.opt core_type td.ptype_manifest
 and type_kind = function
-  | Ptype_abstract | Ptype_open -> []
+  | Ptype_abstract | Ptype_open -> Annot.empty
   | Ptype_variant constructor_declarations ->
-      mmap constructor_declaration constructor_declarations
+      Annot.union_map constructor_declaration constructor_declarations
   | Ptype_record label_declarations ->
-    mmap label_declaration label_declarations
+    Annot.union_map label_declaration label_declarations
 and constructor_declaration cd =
-  opt core_type cd.pcd_res @% constructor_args cd.pcd_args
+  Annot.opt core_type cd.pcd_res ++ constructor_args cd.pcd_args
 and constructor_args = function
-    | Pcstr_tuple cts -> mmap core_type cts
-    | Pcstr_record lds -> mmap label_declaration lds
+    | Pcstr_tuple cts -> Annot.union_map core_type cts
+    | Pcstr_record lds -> Annot.union_map label_declaration lds
 and label_declaration ld = core_type ld.pld_type
-and type_extension tyext =
+and type_extension tyext: M2l.annotation =
   access tyext.ptyext_path
-  +: mmap  extension_constructor tyext.ptyext_constructors
-and core_type ct = match ct.ptyp_desc with
+  ++ Annot.union_map  extension_constructor tyext.ptyext_constructors
+and core_type ct : M2l.annotation = match ct.ptyp_desc with
+  | Ptyp_extension _ (* [%id] *) -> Warning.extension (); Annot.empty
+
   | Ptyp_any  (*  _ *)
-  | Ptyp_extension _ (* [%id] *)
-  | Ptyp_var _ (* 'a *) -> []
+  | Ptyp_var _ (* 'a *) -> Annot.empty
   | Ptyp_arrow (_, t1, t2) (* [~? ]T1->T2 *) ->
-      core_type t1 @% core_type t2
+      core_type t1 ++ core_type t2
   | Ptyp_tuple cts (* T1 * ... * Tn *) ->
-    mmap core_type cts
+    Annot.union_map core_type cts
   | Ptyp_class (name,cts)
   | Ptyp_constr (name,cts) (*[|T|(T1n ..., Tn)] tconstr *) ->
-    access name +: mmap core_type  cts
+      access name
+      ++ Annot.union_map core_type cts
   | Ptyp_object (lbls, _ ) (* < l1:T1; ...; ln:Tn[; ..] > *) ->
-    mmap (fun  (_,_,t) -> core_type t) lbls
+    Annot.union_map  (fun  (_,_,t) -> core_type t) lbls
   | Ptyp_poly (_, ct)
   | Ptyp_alias (ct,_) (* T as 'a *) -> core_type ct
 
   | Ptyp_variant (row_fields,_,_labels) ->
-    mmap row_field row_fields
+    Annot.union_map row_field row_fields
   | Ptyp_package s (* (module S) *) ->
     package_type s
 
 and row_field = function
-  | Rtag (_,_,_,cts) -> mmap core_type cts
+  | Rtag (_,_,_,cts) -> Annot.union_map core_type cts
   | Rinherit ct -> core_type ct
 and package_type (s,constraints) =
-  access s +:
-  mmap (fun  (_,ct) -> core_type ct) constraints
+  Annot.merge
+    (access s)
+    (Annot.union_map (fun  (_,ct) -> core_type ct) constraints)
 and full_package_type (s,constraints) =
   Ident (npath s),
-  mmap (fun (_,ct) -> core_type ct) constraints
+  Pattern.of_annot @@ Annot.union_map (fun (_,ct) -> core_type ct) constraints
 and case cs =
-  pattern cs.pc_lhs
-  @% opt expr cs.pc_guard
-  @% expr cs.pc_rhs
+  Annot.merge
+    (Annot.opt expr cs.pc_guard)
+    (Pattern.bind_fmod (pattern cs.pc_lhs) @@ expr cs.pc_rhs)
 and do_include incl =
     [ Include (module_expr incl.pincl_mod) ]
-and extension_constructor extc = match extc.pext_kind with
+and extension_constructor extc: M2l.annotation = match extc.pext_kind with
   | Pext_decl (args, cto) ->
     constructor_args args
-    @% opt core_type cto
-| Pext_rebind name -> access' name
+    ++ Annot.opt core_type cto
+| Pext_rebind name -> access name
 and class_type ct = match ct.pcty_desc with
   | Pcty_constr (name, cts ) (* c ['a1, ..., 'an] c *) ->
-    access name +: mmap core_type cts
+    Annot.merge (access name) (Annot.union_map core_type cts)
   | Pcty_signature cs (* object ... end *) -> class_signature cs
   | Pcty_arrow (_arg_label, ct, clt) (* ^T -> CT *) ->
-    class_type clt @% core_type ct
-  | Pcty_extension _ (* [%ext] *) -> []
-and class_signature cs = mmap class_type_field cs.pcsig_fields
+    Annot.( class_type clt ++ core_type ct)
+  | Pcty_extension _ (* [%ext] *) -> Warning.extension (); Annot.empty
+and class_signature cs = Annot.union_map class_type_field cs.pcsig_fields
 and class_type_field ctf = match ctf.pctf_desc with
   | Pctf_inherit ct -> class_type ct
   | Pctf_val ( _, _, _, ct) (*val x : T *)
   | Pctf_method (_ ,_,_,ct) (* method x: T *)
     -> core_type ct
   | Pctf_constraint  (t1, t2) (* constraint T1 = T2 *) ->
-    core_type t2 @% core_type t1
-  | Pctf_attribute _ -> []
-  | Pctf_extension _ -> Warning.extension (); []
+    Annot.( core_type t2 ++ core_type t1 )
+  | Pctf_attribute _ -> Annot.empty
+  | Pctf_extension _ -> Warning.extension (); Annot.empty
 and class_structure ct =
-  mmap class_field ct.pcstr_fields
+  Annot.union_map class_field ct.pcstr_fields
 and class_field  field = match field.pcf_desc with
   | Pcf_inherit (_override_flag, ce, _) (* inherit CE *) ->
     class_expr ce
@@ -395,10 +461,10 @@ and class_field  field = match field.pcf_desc with
     core_type ct
   | Pcf_initializer e (* initializer E *) -> expr e
   | Pcf_attribute _
-  | Pcf_extension _ -> Warning.extension (); []
+  | Pcf_extension _ -> Warning.extension (); Annot.empty
 and class_expr ce = match ce.pcl_desc with
   | Pcl_constr (name, cts)  (* ['a1, ..., 'an] c *) ->
-    access name +: mmap core_type cts
+    access name ++ Annot.union_map core_type cts
   | Pcl_structure cs (* object ... end *) -> class_structure cs
   | Pcl_fun (_arg_label, eo, pat, ce)
         (* fun P -> CE                          (Simple, None)
@@ -406,7 +472,8 @@ and class_expr ce = match ce.pcl_desc with
            fun ?l:P -> CE                       (Optional l, None)
            fun ?l:(P = E0) -> CE                (Optional l, Some E0)
         *)
-    -> opt expr eo @% pattern pat @% class_expr ce
+    -> Annot.merge (Annot.opt expr eo)
+       (Pattern.bind_fmod (pattern pat) (class_expr ce) )
   | Pcl_apply (ce, les )
         (* CE ~l1:E1 ... ~ln:En
            li can be empty (non labeled argument) or start with '?'
@@ -414,19 +481,18 @@ and class_expr ce = match ce.pcl_desc with
 
            Invariant: n > 0
         *) ->
-    mmap (fun (_,e) -> expr e) les @% class_expr ce
-  | Pcl_let (_, value_bindings, ce ) (* let P1 = E1 and ... and Pn = EN in CE *)
+    Annot.union_map (fun (_,e) -> expr e) les ++ class_expr ce
+  | Pcl_let (_, vbs, ce ) (* let P1 = E1 and ... and Pn = EN in CE *)
     ->
-    class_expr ce
-    @% mmap value_binding value_bindings
+    value_bindings vbs (class_expr ce)
   | Pcl_constraint (ce, ct) ->
-    class_type ct @% class_expr ce
-  | Pcl_extension _ext -> Warning.extension () ; []
+    class_type ct ++ class_expr ce
+  | Pcl_extension _ext -> Warning.extension () ; Annot.empty
 and class_field_kind = function
   | Cfk_virtual ct -> core_type ct
   | Cfk_concrete (_, e) -> expr e
-and class_declaration cd = class_expr cd.pci_expr
-and class_type_declaration ctd = class_type ctd.pci_expr
+and class_declaration cd: M2l.annotation = class_expr cd.pci_expr
+and class_type_declaration ctd: M2l.annotation = class_type ctd.pci_expr
 and module_expr mexpr : M2l.module_expr =
   match mexpr.pmod_desc with
   | Pmod_ident name (* A *) ->
@@ -444,16 +510,24 @@ and module_expr mexpr : M2l.module_expr =
   | Pmod_unpack { pexp_desc = Pexp_constraint
                       (inner, {ptyp_desc = Ptyp_package s; _}); _ }
     (* (val E : S ) *) ->
-    Constraint( Opaque (expr inner), fst @@ full_package_type s)
+    Constraint( Opaque [Minor(expr inner)], fst @@ full_package_type s)
   | Pmod_unpack e  (* (val E) *) ->
-    Opaque (expr e)
+    Opaque [ Minor (expr e) ]
   | Pmod_extension _extension ->
     Warning.extension();
      Opaque []
         (* [%id] *)
-and value_binding vb =
-  pattern vb.pvb_pat
-  @% expr vb.pvb_expr
+and value_binding vb : Pattern.t =
+  Pattern.( pattern vb.pvb_pat ++ of_annot (expr vb.pvb_expr) )
+and value_bindings vbs expr =
+  let p = Pattern.union_map value_binding vbs in
+  if List.length p.binds > 0 then
+    let v = List.fold_left ( fun inner b -> Bind(Module,b) :: inner )
+        (minor expr) p.binds in
+    Annot.value [v]
+  else
+    Pattern.to_annot p
+
 and module_binding_raw mb =
   module_binding (mb.pmb_name, mb.pmb_expr)
 and module_binding (pmb_name, pmb_expr) =
@@ -483,19 +557,19 @@ and module_declaration mdec =
 and module_type_declaration mdec =
   let open Option in
   let name = txt mdec.pmtd_name in
-  let s = ( (mdec.pmtd_type >>| module_type) >< Sig [] ) in
+  let s = ( (mdec.pmtd_type >>| module_type) >< Opaque ) in
   {name; expr = Constraint(Opaque [], s) }
 and signature sign =
   mmap signature_item sign
 and signature_item item =  match item.psig_desc with
   | Psig_value vd (* val x: T *) ->
-    core_type vd.pval_type
+    minor (core_type vd.pval_type)
   | Psig_type (_rec_flag, tds) (* type t1 = ... and ... and tn = ... *) ->
-    mmap type_declaration tds
+    minor @@ Annot.union_map type_declaration tds
   | Psig_typext te (* type t1 += ... *) ->
-    type_extension te
+    minor @@ type_extension te
   | Psig_exception ec (* exception C of T *) ->
-    extension_constructor ec
+    minor @@ extension_constructor ec
   | Psig_module md (* module X : MT *) ->
     [Bind(Module, module_declaration md)]
   | Psig_recmodule mds (* module rec X1 : MT1 and ... and Xn : MTn *) ->
@@ -508,12 +582,12 @@ and signature_item item =  match item.psig_desc with
   | Psig_include id (* include MT *) ->
     [ SigInclude (module_type id.pincl_mod) ]
   | Psig_class cds (* class c1 : ... and ... and cn : ... *) ->
-    mmap class_description cds
+    minor @@ Annot.union_map class_description cds
   | Psig_class_type ctds ->
-    mmap class_type_declaration ctds
+    minor @@ Annot.union_map class_type_declaration ctds
   | Psig_attribute _ -> []
   | Psig_extension _ -> Warning.extension(); []
-and class_description x = class_type_declaration x
+and class_description x =  class_type_declaration x
 and recmodules mbs =
   [Bind_rec (List.map module_binding_raw mbs)]
 and dels  =
