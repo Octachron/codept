@@ -119,12 +119,21 @@ module Make(Envt:envt) = struct
 
   let open_ state path =
     match Envt.find Module path state with
-    | x -> Done (Some( D.sg_see x.signature ))
+    | x ->
+      if x.signature = S.empty then
+        begin match x.origin with
+          | First_class -> Warning.opened_first_class x.name
+          | Unit | Submodule | Arg | Rec -> ()
+          | Extern -> () (* add a hook here? *)
+        end;
+      Done (Some( D.sg_see x.signature ))
     | exception Not_found -> Halted (Open path)
 
   let gen_include unbox box i = match unbox i with
     | Halted h -> Halted (box h)
     | Done fdefs ->
+      if P.( fdefs.result = S.empty && fdefs.origin = First_class ) then
+        Warning.included_first_class ();
       let defs = P.to_defs fdefs in
       Done (Some defs)
 
@@ -138,10 +147,7 @@ module Make(Envt:envt) = struct
     match module_expr state expr with
     | Halted h -> Halted ( Bind {name; expr = h} )
     | Done d ->
-      let origin = match expr with
-        | Constraint(Unpacked,_) | Unpacked -> Module.First_class
-        | _ -> Module.Submodule in
-      let m = P.to_module ~origin name d in
+      let m = P.to_module (*~origin*) name d in
       Done (Some(Def.md m))
 
   let bind_sig state module_type {name;expr} =
@@ -150,7 +156,6 @@ module Make(Envt:envt) = struct
     | Done d ->
       let m = P.to_module ~origin:Submodule name d in
       Done (Some(Def.sg m))
-
 
 
   let bind_rec state module_expr bs =
@@ -178,10 +183,11 @@ module Make(Envt:envt) = struct
     | Halted _ as h -> h
 
   let rec module_expr state (me:module_expr) = match me with
-    | Abstract | Unpacked -> Done P.empty
+    | Abstract -> Done P.empty
+    | Unpacked -> Done P.{ empty with origin = First_class }
     | Val m -> begin
         match minor module_expr m2l state m with
-        | Done _ -> Done P.empty
+        | Done _ -> Done { P.empty with origin = First_class }
         | Halted h -> Halted (Val h)
       end  (** todo : add warning *)
     | Ident i ->

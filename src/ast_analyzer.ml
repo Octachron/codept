@@ -304,7 +304,7 @@ and expr exp =
   | Pexp_object clstr (* object ... end *) ->
     class_structure clstr
   | Pexp_pack me (* (module ME) *)
-    -> Warning.first_class_module ();
+    ->  (*Warning.first_class_module (); *)
        (* todo: are all cases caught by the Module.approximation mechanism?  *)
     Annot.pack [module_expr me]
   | Pexp_open (_override_flag,name,e)
