@@ -30,6 +30,7 @@ let txt x= x.Location.txt
 module H = struct
   let epath x = from_lid @@ txt x
   let npath x = Epath.concrete @@ epath x
+  let npath_fn x = Epath.concrete_with_f @@ epath x
 
   let access lid =
     let open Epath in
@@ -134,7 +135,6 @@ module Pattern = struct
       else
         Annot.( p.annot ++ inner )
 
-
 end
 
 let minor x =
@@ -197,7 +197,7 @@ and expr exp =
     ->
     value_bindings vbs @@ expr exp (** todo: module bindings *)
   | Pexp_function cases (* function P1 -> E1 | ... | Pn -> En *) ->
-    Annot.union @@ List.map case cases
+    Annot.union_map case cases
   | Pexp_fun ( _arg_label, expr_opt, pat, expression)
         (* fun P -> E1                          (Simple, None)
            fun ~l:P -> E1                       (Labelled l, None)
@@ -209,8 +209,8 @@ and expr exp =
            - "let f P = E" is represented using Pexp_fun.
         *)
     ->
-    Annot.merge (Annot.opt expr expr_opt)
-    @@ Pattern.bind_fmod (pattern pat) (expr expression)
+    Annot.opt expr expr_opt
+    ++ Pattern.bind_fmod (pattern pat) (expr expression)
   | Pexp_apply (expression, args)
         (* E0 ~l1:E1 ... ~ln:En
            li can be empty (non labeled argument) or start with '?'
@@ -344,7 +344,7 @@ and pattern pat = match pat.ppat_desc with
         (* { l1=P1; ...; ln=Pn }     (flag = Closed)
            { l1=P1; ...; ln=Pn; _}   (flag = Open)
         *) ->
-    Pattern.union_map (fun (_,p) -> pattern p ) fields
+    Pattern.union_map (fun (lbl,p) -> Pattern.(access lbl ++ pattern p) ) fields
   | Ppat_or (p1,p2) (* P1 | P2 *) ->
     Pattern.( pattern p1 ++ pattern p2 )
   | Ppat_constraint(
@@ -546,7 +546,7 @@ and module_type (mt:Parsetree.module_type) =
     Warning.extension();
     Opaque
   | Pmty_alias lid -> Alias (npath lid)
-  | Pmty_ident lid (* S *) -> Ident (npath lid)
+  | Pmty_ident lid (* S *) -> Ident (npath_fn lid)
 and module_declaration mdec =
   let s = module_type mdec.pmd_type in
   { name = txt mdec.pmd_name; expr = Constraint( Abstract, s) }

@@ -16,9 +16,11 @@ let rec tlist ?(sep=";") pp ppf =
   let blist pp ppf = fp ppf "[@,%a@,]" (list pp)
   let clist pp ppf = fp ppf "{@,%a@,}" (list pp)
 
-let opt_list ?(pre="") ?(post="")  ?(sep="; ") pp ppf = function
+let s st ppf = fp ppf st
+let opt_list ?(pre=s "") ?(post=s "")  ?(sep="; ") pp ppf = function
   | [] -> ()
-  | l -> fp ppf "%s@[<hv>%a@]%s" pre (list ~sep pp) l post
+  | l -> fp ppf "%t@[<hv>%a@]%t" pre (list ~sep pp) l post
+
 
 
 let string ppf = fp ppf "%s"

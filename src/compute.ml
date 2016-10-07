@@ -148,7 +148,7 @@ module Make(Envt:envt) = struct
     match module_expr state expr with
     | Halted h -> Halted ( Bind {name; expr = h} )
     | Done d ->
-      let m = P.to_module (*~origin*) name d in
+      let m = P.to_module ~origin:Submodule name d in
       Done (Some(Def.md m))
 
   let bind_sig state module_type {name;expr} =

@@ -36,7 +36,10 @@ module Partial = struct
   (* there is an error somewhere *)
 
   let to_module ?origin name (p:t) =
-    let origin = Option.( origin >< p.origin ) in
+    let origin = match origin with
+      | Some o -> Module.at_most p.origin o
+      | None -> p.origin
+    in
     {M.name;origin; args = p.args; signature = p.result }
 
   let of_module {M.args;signature;origin; _} = {origin;result=signature;args}
@@ -159,10 +162,10 @@ let rec pp_expression ppf = function
     Pp.fp ppf "rec@[<hv>[ %a ]@]"
       (Pp.list ~sep:"@, and @," @@ pp_bind ) bs
 and pp_annot ppf {access;values; packed} =
-  Pp.fp ppf "(%a@,%a@,%a)"
+  Pp.fp ppf "%a%a%a"
     pp_access access
-    (Pp.opt_list ~sep:"" ~pre:"values: " pp) values
-    (Pp.opt_list ~sep:"" ~pre:"packed: " pp_opaque) packed
+    (Pp.opt_list ~sep:"" ~pre:(Pp.s "@,values: ") pp) values
+    (Pp.opt_list ~sep:"" ~pre:(Pp.s "packed: ") pp_opaque) packed
 and pp_access ppf s =  if Name.Set.cardinal s = 0 then () else
     Pp.fp ppf "access:@[<hv>%a@]" Name.Set.pp s
 and pp_opaque ppf me = Pp.fp ppf "⟨%a⟩" pp_me me

@@ -28,6 +28,12 @@ let pp_origin ppf = function
   | First_class -> Pp.fp ppf "'"
   | Arg -> Pp.fp ppf "§"
 
+let at_most max v = match max, v with
+  | Unit, v -> v
+  | Submodule, Unit -> Submodule
+  | Submodule, v -> v
+  | (First_class|Rec|Arg|Extern) , _ -> max
+
 type t = {
   name:Name.t;
   origin: origin;
