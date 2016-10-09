@@ -10,6 +10,7 @@ module S = Module.Sig
 
 module type envt = sig
   type t
+  val find_partial: M.level -> Npath.t -> t -> t
   val find: M.level -> Npath.t -> t -> Module.t
   val (>>) : t -> M.signature -> t
   val add_module: t -> Module.t -> t
@@ -41,6 +42,10 @@ module Envt = struct
       let m = Name.Map.find a env.modules in
       find level q m.signature
 
+  let find_partial level path env =
+    let m = find level path env in
+    m.signature
+
   let (>>) = Def.(+@)
   let add_module = S.add
 
@@ -51,11 +56,16 @@ end
 module Tracing = struct
 
   type core = { env: Envt.t; protected: Name.set }
-  type t = { env: Envt.t; protected: Name.set; deps: Name.set ref }
+  type t = { env: Envt.t;
+             protected: Name.set;
+             deps: Name.set ref }
 
   let record n env = env.deps := Name.Set.add n !(env.deps)
 
   let start protected = { protected; env = Envt.empty }
+
+  let empty = {deps = ref Name.Set.empty; protected = Name.Set.empty;
+               env = Envt.empty }
 
   let create ({ protected; env }:core) :t =
     { env; protected; deps = ref Name.Set.empty }
@@ -78,7 +88,12 @@ module Tracing = struct
         record root env;
         Module.create ~origin:M.Extern (name path) S.empty
       end
-        (* | Not_found -> raise Not_found *)
+  (* | Not_found -> raise Not_found *)
+
+  let find_partial level path core =
+    let m = find level path core in
+    let env = m.signature in
+    { empty with env }
 
   let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
 
@@ -221,16 +236,42 @@ module Make(Envt:envt) = struct
       Halted (Constraint(me, Resolved mt) )
     | Halted me, Halted mt -> Halted ( Constraint(me,mt) )
 
+  and epath: 'a. (Module.level -> Npath.t -> Envt.t -> 'a)
+    -> Module.level -> Envt.t -> Epath.t -> (Epath.t, 'a ) Work.t=
+    fun find lvl state ->
+    let open Epath in
+    function
+    | T -> Halted T
+    | A s as p -> begin match find lvl [s] state with
+        | x -> Done x
+        | exception Not_found -> Halted p
+      end
+    | S(pr,s) as p ->
+      begin
+        match epath Envt.find_partial Module state pr with
+        | Halted _ -> Halted p
+        | Done env ->
+          begin match find lvl [s] env with
+            | x -> Done x
+            | exception Not_found -> Halted p
+          end
+      end
+    | F {f;x} as p ->
+      begin match epath find Module state f, epath find Module state x with
+        | Done _ as r, Done _ -> r
+        | _ -> Halted p
+      end
+
   and module_type state = function
     | Sig [] -> Done P.empty
     | Sig [Defs d] -> Done (P.no_arg d.defined)
     | Sig s -> Work.fmap (fun s -> Sig s) P.no_arg @@
       drop_state @@ signature state s
     | Resolved d -> Done d
-    | Ident id ->
-      begin match Envt.find Module_type id state with
-        | x -> Done (P.of_module x)
-        | exception Not_found -> Halted (Ident id: module_type)
+    | Ident id as mt ->
+      begin match epath Envt.find Module_type state id with
+        | Done x -> Done (P.of_module x)
+        | Halted _ -> Halted mt
       end
     | Alias i ->
       begin match Envt.find Module i state with
@@ -250,7 +291,7 @@ module Make(Envt:envt) = struct
     | Fun {arg;body} ->
       functor_expr (module_type, fn_sig, demote_sig) state [] arg body
     | Of me -> of_ (module_expr state me)
-    | Opaque -> Halted (Opaque:module_type)
+    | Abstract -> Done (P.empty)
 
   and of_ = function
     | Halted me -> Halted (Of me)

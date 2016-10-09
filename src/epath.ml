@@ -2,8 +2,7 @@ type t =
   | T
   | A of Name.t
   | S of t * Name.t
-  | F of t
-  (** functor argument are forgotten: they do not influence module name *)
+  | F of {f:t; x:t}
 
 let split = function
   | T  -> raise (Invalid_argument "Splitting an empty path")
@@ -23,7 +22,7 @@ let concrete_with_f p: Npath.t =
   let rec concretize l = function
     | T -> l
     | A a -> a :: l
-    | F f -> concretize l f
+    | F {f;_} -> concretize l f
     | S(p,s) -> concretize (s::l) p in
   concretize [] p
 
@@ -44,7 +43,7 @@ let rec pp ppf =
   | T -> p "T"
   | A name -> p"%s" name
   | S(h,n) -> p "%a.%s" pp h n
-  | F fn -> p "%a(…)" pp fn
+  | F {f;x} -> p "%a(%a)" pp f pp x
 
 let (/) p n= match p, n with
   | T, n -> A n
@@ -54,10 +53,10 @@ let rec (//) p = function
   | T -> p
   | A n -> p / n
   | S (p',n)  -> (p // p') / n
-  | F fn -> F (p//fn)
+  | F {f;x} -> F { f = p//f; x }
 
 
-let (%) fn _arg = F fn
+let (%) f x = F {f;x}
 
 let substitute ~name ~sub path =
   let rec subst path = match path with
@@ -69,9 +68,10 @@ let substitute ~name ~sub path =
     | T -> false, T
     | A m -> if name = m then true, sub
       else false, path
-    | F fn ->
-      let t, fn = subst fn in
-      t , F fn
+    | F {f;x} ->
+      let t, f = subst f in
+      let t', x = subst x in
+      t || t' , F {f;x}
   in
   snd @@ subst path
 
@@ -87,7 +87,7 @@ let is_prefix prefix path =
 let rec prefix = function
   | S(p,_) -> prefix p
   | A n -> n
-  | F f -> prefix f
+  | F {f;_} -> prefix f
   | T -> ""
 
 let cut_prefix prefix path =

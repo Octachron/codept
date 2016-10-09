@@ -90,7 +90,7 @@ and module_expr =
 and module_type =
   | Resolved of Partial.t
   | Alias of Npath.t (* module level *)
-  | Ident of Npath.t
+  | Ident of Epath.t (* epath due to F.(X).s expression *)
   | Sig of m2l
   | Fun of module_type fn
   | With of {
@@ -99,7 +99,7 @@ and module_type =
       (* ; equalities: (Npath.t * Epath.t) list *)
     }
   | Of of module_expr
-  | Opaque
+  | Abstract
 and m2l = expression list
 and 'a fn = { arg: module_type Arg.t option; body:'a }
 
@@ -182,7 +182,7 @@ and pp_bind ppf {name;expr} =
 and pp_bind_sig ppf {name;expr} =
   Pp.fp ppf "@[module type %s =@,@[<hv>%a@] @]" name pp_mt expr
 and pp_me ppf = function
-  | Resolved fdefs -> Partial.pp ppf fdefs
+  | Resolved fdefs -> Pp.fp ppf "✔%a" Partial.pp fdefs
   | Ident np -> Npath.pp ppf np
   | Str m2l -> Pp.fp ppf "@,struct@, %a end" pp m2l
   | Apply {f;x} -> Pp.fp ppf "%a(@,%a@,)" pp_me f pp_me x
@@ -192,15 +192,15 @@ and pp_me ppf = function
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
   | Unpacked -> Pp.fp ppf "⟨unpacked⟩"
 and pp_mt ppf = function
-  | Resolved fdefs -> Partial.pp ppf fdefs
+  | Resolved fdefs -> Pp.fp ppf "✔%a" Partial.pp fdefs
   | Alias np -> Pp.fp ppf "(≡)%a" Npath.pp np
-  | Ident np -> Npath.pp ppf np
+  | Ident np -> Epath.pp ppf np
   | Sig m2l -> Pp.fp ppf "@,sig@, %a end" pp m2l
   | Fun { arg; body } ->  Pp.fp ppf "(%a)@,→%a" (Arg.pp pp_mt) arg pp_mt body
   | With {body; deletions} ->
     Pp.fp ppf "%a@,/%a" pp_mt body Name.Set.pp deletions
   | Of me -> Pp.fp ppf "module type of@, %a" pp_me me
-  | Opaque -> Pp.fp ppf "⟨⟩"
+  | Abstract -> Pp.fp ppf "⟨abstract⟩"
 and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" (Pp.list ~sep:" " pp_expression)
 
 type t = m2l
@@ -336,7 +336,7 @@ open Work
     | Ident _ | Alias _ | With _ as mt -> Halted mt
     | Fun _ -> Error.include_functor () (** todo *)
     | Of me -> of_ (module_expr me)
-    | Opaque -> Halted (Opaque:module_type)
+    | Abstract -> Halted (Abstract:module_type)
   and of_ = function
     | Halted me -> Halted (Of me)
     | Done d -> Done d

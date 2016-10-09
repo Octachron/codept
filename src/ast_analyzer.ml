@@ -13,7 +13,7 @@ let rec from_lid  =
   function
     | L.Lident s -> A s
     | L.Ldot (lid,s) -> S(from_lid lid,s)
-    | L.Lapply (f,_x) -> F (from_lid f) (* argument are forgotten *)
+    | L.Lapply (f,x) -> F {f = from_lid f; x = from_lid x }
 
 let module_path =
   function
@@ -418,7 +418,7 @@ and package_type (s,constraints) =
     (access s)
     (Annot.union_map (fun  (_,ct) -> core_type ct) constraints)
 and full_package_type (s,constraints) =
-  Ident (npath s),
+  Ident (epath s),
   Pattern.of_annot @@ Annot.union_map (fun (_,ct) -> core_type ct) constraints
 and case cs =
     (Annot.opt expr cs.pc_guard)
@@ -544,16 +544,16 @@ and module_type (mt:Parsetree.module_type) =
     Of (module_expr me)
   | Pmty_extension _ (* [%id] *) ->
     Warning.extension();
-    Opaque
+    Abstract
   | Pmty_alias lid -> Alias (npath lid)
-  | Pmty_ident lid (* S *) -> Ident (npath_fn lid)
+  | Pmty_ident lid (* S *) -> Ident (epath lid)
 and module_declaration mdec =
   let s = module_type mdec.pmd_type in
   { name = txt mdec.pmd_name; expr = Constraint( Abstract, s) }
 and module_type_declaration mdec =
   let open Option in
   let name = txt mdec.pmtd_name in
-  let s = ( (mdec.pmtd_type >>| module_type) >< Opaque ) in
+  let s = ( (mdec.pmtd_type >>| module_type) >< Abstract ) in
   {name; expr = s }
 and signature sign =
   mmap signature_item sign
