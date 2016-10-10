@@ -15,6 +15,7 @@ end
 type origin =
   | Unit (** aka toplevel module *)
   | Extern (** aka unknow module *)
+  | Alias of Name.t (** M = A… *)
   | Submodule
   | First_class (** Not resolved first-class module *)
   | Arg (** functor argument *)
@@ -27,11 +28,14 @@ let pp_origin ppf = function
   | Submodule -> Pp.fp ppf "."
   | First_class -> Pp.fp ppf "'"
   | Arg -> Pp.fp ppf "§"
+  | Alias n -> Pp.fp ppf "(≡%s…)" n
 
 let at_most max v = match max, v with
   | Unit, v -> v
+  | Submodule, Alias _ -> Submodule
   | Submodule, Unit -> Submodule
   | Submodule, v -> v
+  | _ , (Alias _ as a) | (Alias _ as a), _ -> a
   | (First_class|Rec|Arg|Extern) , _ -> max
 
 type t = {

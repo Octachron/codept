@@ -10,12 +10,16 @@ module S = Module.Sig
 
 module type envt = sig
   type t
-  val find_partial: M.level -> Npath.t -> t -> t
-  val find: M.level -> Npath.t -> t -> Module.t
+  val find_partial: transparent:bool -> M.level -> Npath.t -> t -> t
+  val find: transparent:bool -> M.level -> Npath.t -> t -> Module.t
   val (>>) : t -> M.signature -> t
   val add_module: t -> Module.t -> t
 end
 
+module type param = sig
+  val transparent_extension_nodes: bool
+  val transparent_aliases: bool
+end
 
 module Envt = struct
   type t = M.signature
@@ -34,16 +38,16 @@ module Envt = struct
     let m = Name.Map.find a @@ proj lvl env in
     m.origin
 
-  let rec find level path env =
+  let rec find ~transparent level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | [a] -> Name.Map.find a @@ proj level env
     | a :: q ->
       let m = Name.Map.find a env.modules in
-      find level q m.signature
+      find ~transparent level q m.signature
 
-  let find_partial level path env =
-    let m = find level path env in
+  let find_partial ~transparent level path env =
+    let m = find ~transparent level path env in
     m.signature
 
   let (>>) = Def.(+@)
@@ -74,13 +78,28 @@ module Tracing = struct
 
   let name path = List.hd @@ List.rev path
 
-  let find level path env =
+  let rec find0 ~transparent ?(track=false) level path env =
+    match path with
+    | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
+    | [a] ->
+      let m = Name.Map.find a @@ Envt.proj level env.env in
+      (match m.origin with Alias n -> record n env | _ -> ());
+      if track && m.origin = M.Unit then record a env;
+      m
+    | a :: q ->
+      let m = Name.Map.find a env.env.modules in
+      begin
+        match m.origin with
+        | Module.Alias n -> record n env
+        | _ -> ()
+      end;
+      if track && m.origin = M.Unit then record a env;
+      find0 ~transparent level q { env with env = m.signature }
+
+  let find ~transparent level path env =
     let root = List.hd path in
-    match Envt.find level path env.env with
-    | x ->
-      begin if Envt.root_origin level path env.env = M.Unit then record root env;
-        x
-      end
+    match find0 ~track:true ~transparent level path env with
+    | x -> x
     | exception Not_found ->
       if Name.Set.mem root env.protected then
         raise Not_found
@@ -90,8 +109,8 @@ module Tracing = struct
       end
   (* | Not_found -> raise Not_found *)
 
-  let find_partial level path core =
-    let m = find level path core in
+  let find_partial ~transparent level path core =
+    let m = find ~transparent level path core in
     let env = m.signature in
     { empty with env }
 
@@ -110,14 +129,19 @@ let rec basic = function
     | Halted h -> h :: q
     | Done None -> basic q
 
-module Make(Envt:envt) = struct
+module Make(Envt:envt)(Param:param) = struct
+
+  include Param
+  let find = Envt.find ~transparent:transparent_aliases
+  let find_partial = Envt.find_partial ~transparent:transparent_aliases
+
 
   type level = Module.level = Module | Module_type
   let minor module_expr str state m =
     let value l v = match str state v with
       | Done _ -> l
       | Halted h -> h :: l in
-    let access n m = match Envt.find Module [n] state with
+    let access n m = match find Module [n] state with
       | _ -> m
       | exception Not_found -> Name.Set.add n m in
     let packed l p = match module_expr state p with
@@ -134,12 +158,13 @@ module Make(Envt:envt) = struct
 
 
   let open_ state path =
-    match Envt.find Module path state with
+    match find Module path state with
     | x ->
       if x.signature = S.empty then
         begin match x.origin with
           | First_class -> Warning.opened_first_class x.name
           | Unit | Submodule | Arg | Rec -> ()
+          | Alias _ -> ()
           | Extern -> () (* add a hook here? *)
         end;
       Done (Some( D.sg_see x.signature ))
@@ -158,25 +183,28 @@ module Make(Envt:envt) = struct
   let sig_include state module_type = gen_include
       (module_type state) (fun i -> SigInclude i)
 
+  let aliased d = match d.P.origin with
+    | Alias _ -> None
+    | _ -> Some Module.Submodule
 
   let bind state module_expr {name;expr} =
     match module_expr state expr with
     | Halted h -> Halted ( Bind {name; expr = h} )
     | Done d ->
-      let m = P.to_module ~origin:Submodule name d in
+      let m = P.to_module ?origin:(aliased d) name d in
       Done (Some(Def.md m))
 
   let bind_sig state module_type {name;expr} =
     match module_type state expr with
     | Halted h -> Halted ( Bind_sig {name; expr = h} )
     | Done d ->
-      let m = P.to_module ~origin:Submodule name d in
+      let m = P.to_module ?origin:(aliased d) name d in
       Done (Some(Def.sg m))
 
 
   let bind_rec state module_expr bs =
     let pair x y = x,y in
-    let mockup {name;_} =
+    let mockup ({name;_}:_ M2l.bind) =
       {M.origin = Rec; name; args = []; signature = S.empty } in
     let add_mockup defs arg = Envt.add_module defs @@ mockup arg in
     let state' = List.fold_left add_mockup state bs in
@@ -190,7 +218,7 @@ module Make(Envt:envt) = struct
     | Done defs ->
       let defs =
         List.fold_left
-          ( fun defs (name,d) -> D.bind (P.to_module ~origin:Submodule name d) defs )
+          ( fun defs (name,d) -> D.bind (P.to_module ?origin:(aliased d) name d) defs )
           D.empty defs in
       Done ( Some defs )
 
@@ -207,8 +235,13 @@ module Make(Envt:envt) = struct
         | Halted h -> Halted (Val h)
       end  (** todo : add warning *)
     | Ident i ->
-      begin match Envt.find Module i state with
-        | x -> Done (P.of_module x)
+      begin match find Module i state with
+        | x ->
+          let p = P.of_module x in
+          let p = if P.is_functor p then p
+            else
+              { p with origin = Alias (Npath.prefix i) } in
+          Done p
         | exception Not_found -> Halted (Ident i: module_expr)
       end
     | Apply {f;x} ->
@@ -226,6 +259,11 @@ module Make(Envt:envt) = struct
       drop_state @@ m2l state str
     | Constraint(me,mt) ->
       constraint_ state me mt
+    | Extension_node n ->
+      begin match extension state n with
+        | Done () -> Done P.empty
+        | Halted h -> Halted (Extension_node h)
+      end
 
   and constraint_ state me mt =
     match module_expr state me, module_type state mt with
@@ -248,7 +286,7 @@ module Make(Envt:envt) = struct
       end
     | S(pr,s) as p ->
       begin
-        match epath Envt.find_partial Module state pr with
+        match epath find_partial Module state pr with
         | Halted _ -> Halted p
         | Done env ->
           begin match find lvl [s] env with
@@ -269,13 +307,14 @@ module Make(Envt:envt) = struct
       drop_state @@ signature state s
     | Resolved d -> Done d
     | Ident id as mt ->
-      begin match epath Envt.find Module_type state id with
-        | Done x -> Done (P.of_module x)
+      begin match epath find Module_type state id with
+        | Done x ->
+          Done(P.of_module x)
         | Halted _ -> Halted mt
       end
     | Alias i ->
-      begin match Envt.find Module i state with
-        | x -> Done (P.of_module x)
+      begin match find Module i state with
+        | x -> Done { (P.of_module x) with origin = Alias (Npath.prefix i) }
         | exception Not_found -> Halted (Alias i)
       end
     | With w ->
@@ -292,7 +331,11 @@ module Make(Envt:envt) = struct
       functor_expr (module_type, fn_sig, demote_sig) state [] arg body
     | Of me -> of_ (module_expr state me)
     | Abstract -> Done (P.empty)
-
+    | Extension_node n ->
+      begin match extension state n with
+      | Done () -> Done (P.empty)
+      | Halted n -> Halted (Extension_node n)
+      end
   and of_ = function
     | Halted me -> Halted (Of me)
     | Done d -> Done d
@@ -339,7 +382,8 @@ module Make(Envt:envt) = struct
 
   and signature state  = m2l state
 
-  and expr state = function
+  and expr state =
+    function
     | Defs d -> Done (Some d)
     | Open p -> open_ state p
     | Include i -> include_ state module_expr i
@@ -349,6 +393,21 @@ module Make(Envt:envt) = struct
     | Bind_rec bs -> bind_rec state module_expr bs
     | Minor m -> Work.fmap_halted (fun m -> Minor m) @@
       minor module_expr m2l state m
+    | Extension_node n -> begin
+        match extension state n with
+        | Done () -> Done None
+        | Halted h -> Halted (Extension_node h)
+      end
+  and extension state e =
+    if not transparent_extension_nodes then Done ()
+    else
+      begin let open M2l in
+        match e.extension with
+        | Module m -> fmap (fun x -> { e with extension= Module x} ) ignore @@
+          m2l state m
+        | Val x -> fmap (fun x -> { e with extension=Val x}) ignore @@
+          minor module_expr m2l state x
+      end
 end
 
 module Sg = Make(Envt)

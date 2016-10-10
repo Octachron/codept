@@ -32,7 +32,7 @@ module Partial = struct
     | [] ->
       match p.origin with
       | Extern | First_class | Rec -> p (* we guessed the arg wrong *)
-      | Unit | Submodule | Arg -> Error.not_a_functor ()
+      | Unit | Submodule | Arg | Alias _ -> Error.not_a_functor ()
   (* there is an error somewhere *)
 
   let to_module ?origin name (p:t) =
@@ -44,6 +44,7 @@ module Partial = struct
 
   let of_module {M.args;signature;origin; _} = {origin;result=signature;args}
 
+  let is_functor x = x.args <> []
 
   let to_sign fdefs =
     if fdefs.args <> [] then
@@ -72,6 +73,7 @@ type expression =
   | Bind_sig of module_type bind
   | Bind_rec of module_expr bind list
   | Minor of annotation
+  | Extension_node of extension
 and annotation =
   { access: Name.set (** M.x ⇒ Name M *)
   ; values: m2l list (** let open in ...; let module M = .. *)
@@ -85,6 +87,7 @@ and module_expr =
   | Constraint of module_expr * module_type
   | Str of m2l
   | Val of annotation
+  | Extension_node of extension
   | Abstract
   | Unpacked
 and module_type =
@@ -99,7 +102,11 @@ and module_type =
       (* ; equalities: (Npath.t * Epath.t) list *)
     }
   | Of of module_expr
+  | Extension_node of extension
   | Abstract
+and extension = {name:string; extension:extension_core}
+and extension_core = Module of m2l
+              | Val of annotation
 and m2l = expression list
 and 'a fn = { arg: module_type Arg.t option; body:'a }
 
@@ -147,7 +154,6 @@ let demote_sig fn arg : module_type fn  =
 let fn_sig arg : module_type = Fun arg
 let fn arg : module_expr  = Fun arg
 
-
 let rec pp_expression ppf = function
   | Defs defs -> Pp.fp ppf "define %a" D.pp defs
 
@@ -158,6 +164,7 @@ let rec pp_expression ppf = function
 
   | Bind bind -> pp_bind ppf bind
   | Bind_sig bind -> pp_bind_sig ppf bind
+  | Extension_node e -> pp_extension ppf e
   | Bind_rec bs ->
     Pp.fp ppf "rec@[<hv>[ %a ]@]"
       (Pp.list ~sep:"@, and @," @@ pp_bind ) bs
@@ -189,6 +196,7 @@ and pp_me ppf = function
   | Fun { arg; body } -> Pp.fp ppf "%a@,→%a" (Arg.pp pp_mt) arg pp_me body
   | Constraint (me,mt) -> Pp.fp ppf "%a: @,%a" pp_me me pp_mt mt
   | Val annot -> Pp.fp ppf "⟨val %a⟩" pp_annot annot
+  | Extension_node ext -> Pp.fp ppf "%a" pp_extension ext
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
   | Unpacked -> Pp.fp ppf "⟨unpacked⟩"
 and pp_mt ppf = function
@@ -200,7 +208,13 @@ and pp_mt ppf = function
   | With {body; deletions} ->
     Pp.fp ppf "%a@,/%a" pp_mt body Name.Set.pp deletions
   | Of me -> Pp.fp ppf "module type of@, %a" pp_me me
+  | Extension_node ext -> Pp.fp ppf "%a" pp_extension ext
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
+and pp_extension ppf x = Pp.fp ppf "[%%%s @[<hv>%a@]]" x.name pp_extension_core
+    x.extension
+and pp_extension_core ppf = function
+  | Module m -> pp ppf m
+  | Val m -> pp_annot ppf m
 and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" (Pp.list ~sep:" " pp_expression)
 
 type t = m2l
@@ -249,7 +263,8 @@ module Normalize = struct
     | Defs d :: q ->
       let more, q = all q in more, Defs d :: q
     | Minor m :: q -> Minor (minor m) +: all q
-    | (Open _ | Include _ | SigInclude _ | Bind_sig _ | Bind _ | Bind_rec _)
+    | (Open _ | Include _ | SigInclude _ | Bind_sig _ | Bind _ | Bind_rec _
+      | Extension_node _ )
       :: _ as l ->
       halt l
     | [] -> halt []
@@ -318,6 +333,7 @@ open Work
     | Str[Defs d] -> Done (Partial.no_arg d.defined)
     | Resolved d -> Done d
     | Str _ as i -> Halted i
+    | Extension_node _ as e -> Halted e
     | Constraint(me,mt) ->
       constraint_ me mt
   and constraint_ me mt =
@@ -337,6 +353,7 @@ open Work
     | Fun _ -> Error.include_functor () (** todo *)
     | Of me -> of_ (module_expr me)
     | Abstract -> Halted (Abstract:module_type)
+    | Extension_node _ as e -> Halted e
   and of_ = function
     | Halted me -> Halted (Of me)
     | Done d -> Done d
@@ -408,7 +425,7 @@ open Work
 
 
   let expr = function
-    | (Defs _ | Open _ ) as d -> Halted d
+    | (Defs _ | Open _ | Extension_node _ ) as d -> Halted d
     | Include i -> include_ module_expr i
     | SigInclude i -> sig_include module_type i
     | Bind b -> bind module_expr b

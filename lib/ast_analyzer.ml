@@ -61,6 +61,7 @@ let do_include kind extract env m=
   let first_class_approx = S.empty
 
   let opt f x=  Option.( x >>| f >< [] )
+
   let flip f x y = f y x
 
   let (@%) l l' =
@@ -184,8 +185,8 @@ and structure_item item =
         do_include include_dec
   | Pstr_attribute _attribute (* [@@@id] *)
     -> []
-  | Pstr_extension (_id, _payload) (* [%%id] *) ->
-    Warning.extension(); []
+  | Pstr_extension (ext, _attributes) (* [%%id] *) ->
+    Warning.extension(); [extension ext]
 and expr exp =
   match exp.pexp_desc with
   | Pexp_ident name (* x, M.x *) ->
@@ -314,7 +315,8 @@ and expr exp =
     Annot.value [structure payload]
   | Pexp_constant _ | Pexp_unreachable (* . *)
     -> Annot.empty
-  | Pexp_extension _ (* [%ext] *) -> (Warning.extension(); Annot.empty)
+  | Pexp_extension ext (* [%ext] *) ->
+    (Warning.extension(); Annot.value [[extension ext]] )
 and pattern pat = match pat.ppat_desc with
   | Ppat_constant _ (* 1, 'a', "true", 1.0, 1l, 1L, 1n *)
   | Ppat_interval _ (* 'a'..'z'*)
@@ -322,7 +324,8 @@ and pattern pat = match pat.ppat_desc with
 
   | Ppat_var _ (* x *) -> Pattern.empty
 
-  | Ppat_extension _ -> Warning.extension(); Pattern.empty
+  | Ppat_extension ext -> Warning.extension();
+    Pattern.value [[extension ext]]
 
   | Ppat_exception pat (* exception P *)
   | Ppat_lazy pat (* lazy P *)
@@ -388,8 +391,8 @@ and type_extension tyext: M2l.annotation =
   access tyext.ptyext_path
   ++ Annot.union_map  extension_constructor tyext.ptyext_constructors
 and core_type ct : M2l.annotation = match ct.ptyp_desc with
-  | Ptyp_extension _ (* [%id] *) -> Warning.extension (); Annot.empty
-
+  | Ptyp_extension ext (* [%id] *) -> Warning.extension ();
+    Annot.value [[ extension ext ]]
   | Ptyp_any  (*  _ *)
   | Ptyp_var _ (* 'a *) -> Annot.empty
   | Ptyp_arrow (_, t1, t2) (* [~? ]T1->T2 *) ->
@@ -436,7 +439,8 @@ and class_type ct = match ct.pcty_desc with
   | Pcty_signature cs (* object ... end *) -> class_signature cs
   | Pcty_arrow (_arg_label, ct, clt) (* ^T -> CT *) ->
     Annot.( class_type clt ++ core_type ct)
-  | Pcty_extension _ (* [%ext] *) -> Warning.extension (); Annot.empty
+  | Pcty_extension ext (* [%ext] *) -> Warning.extension ();
+    Annot.value [[ extension ext ]]
 and class_signature cs = Annot.union_map class_type_field cs.pcsig_fields
 and class_type_field ctf = match ctf.pctf_desc with
   | Pctf_inherit ct -> class_type ct
@@ -446,7 +450,8 @@ and class_type_field ctf = match ctf.pctf_desc with
   | Pctf_constraint  (t1, t2) (* constraint T1 = T2 *) ->
     Annot.( core_type t2 ++ core_type t1 )
   | Pctf_attribute _ -> Annot.empty
-  | Pctf_extension _ -> Warning.extension (); Annot.empty
+  | Pctf_extension ext -> Warning.extension ();
+    Annot.value [[ extension ext ]]
 and class_structure ct =
   Annot.union_map class_field ct.pcstr_fields
 and class_field  field = match field.pcf_desc with
@@ -458,8 +463,8 @@ and class_field  field = match field.pcf_desc with
   | Pcf_constraint (_ , ct) (* constraint T1 = T2 *) ->
     core_type ct
   | Pcf_initializer e (* initializer E *) -> expr e
-  | Pcf_attribute _
-  | Pcf_extension _ -> Warning.extension (); Annot.empty
+  | Pcf_attribute _ -> Annot.empty
+  | Pcf_extension ext -> Warning.extension (); Annot.value [[extension ext]]
 and class_expr ce = match ce.pcl_desc with
   | Pcl_constr (name, cts)  (* ['a1, ..., 'an] c *) ->
     access name ++ Annot.union_map core_type cts
@@ -485,7 +490,8 @@ and class_expr ce = match ce.pcl_desc with
     value_bindings vbs (class_expr ce)
   | Pcl_constraint (ce, ct) ->
     class_type ct ++ class_expr ce
-  | Pcl_extension _ext -> Warning.extension () ; Annot.empty
+  | Pcl_extension ext -> Warning.extension () ;
+    Annot.value [[ extension ext ]]
 and class_field_kind = function
   | Cfk_virtual ct -> core_type ct
   | Cfk_concrete (_, e) -> expr e
@@ -511,9 +517,9 @@ and module_expr mexpr : M2l.module_expr =
     Constraint( Val (expr inner), fst @@ full_package_type s)
   | Pmod_unpack e  (* (val E) *) ->
     Val(expr e)
-  | Pmod_extension _extension ->
+  | Pmod_extension ext ->
     Warning.extension();
-    Abstract
+    Extension_node(extension_core ext)
         (* [%id] *)
 and value_binding vb : Pattern.t =
   Pattern.( pattern vb.pvb_pat ++ of_annot (expr vb.pvb_expr) )
@@ -542,9 +548,9 @@ and module_type (mt:Parsetree.module_type) =
     With { body = module_type mt; deletions }
   | Pmty_typeof me (* module type of ME *) ->
     Of (module_expr me)
-  | Pmty_extension _ (* [%id] *) ->
+  | Pmty_extension ext (* [%id] *) ->
     Warning.extension();
-    Abstract
+    Extension_node (extension_core ext)
   | Pmty_alias lid -> Alias (npath lid)
   | Pmty_ident lid (* S *) -> Ident (epath lid)
 and module_declaration mdec =
@@ -582,7 +588,7 @@ and signature_item item =  match item.psig_desc with
   | Psig_class_type ctds ->
     minor @@ Annot.union_map class_type_declaration ctds
   | Psig_attribute _ -> []
-  | Psig_extension _ -> Warning.extension(); []
+  | Psig_extension (ext,_) -> Warning.extension(); [extension ext]
 and class_description x =  class_type_declaration x
 and recmodules mbs =
   [Bind_rec (List.map module_binding_raw mbs)]
@@ -594,3 +600,15 @@ and dels  =
   | Pwith_modsubst (name, _) ->
     let name = txt name in
     [name]
+and extension n = Extension_node (extension_core n)
+and extension_core (name,payload) =
+  let open M2l in
+  let name = txt name in
+  match payload with
+  | PSig s ->  {extension = Module (signature s); name }
+  | PStr s ->  {extension = Module (structure s); name }
+  | PTyp c ->  {extension = Val (core_type c); name }
+  | PPat (p, eo) ->
+                      {extension = Val
+                           ( Pattern.to_annot (pattern p) ++ Annot.opt expr eo)
+                      ; name }

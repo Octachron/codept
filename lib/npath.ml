@@ -16,3 +16,4 @@ module Map = struct
 end
 type set = Set.t
 type 'a map = 'a Map.t
+let prefix = List.hd

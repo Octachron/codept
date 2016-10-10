@@ -119,52 +119,56 @@ let split map =
 module Eval = Compute.Tr
 module Envt = Compute.Tracing
 
-let compute_more core unit =
-  let env = Envt.create core in
-  let result = Eval.m2l env unit.code in
-  !(env.deps), result
+module Make(Param:Compute.param) = struct
 
-exception Cycle
+  module Eval = Eval(Param)
+  let compute_more core unit =
+    let env = Envt.create core in
+    let result = Eval.m2l env unit.code in
+    !(env.deps), result
 
-let eval ?(learn=true) (finished, core, rest) unit =
-  let open M2l in
-  match compute_more core unit with
-  | deps, Work.Done (_,sg) ->
-    let core =
-      if learn then begin
-        let md = Module.(create ~origin:Unit) unit.name sg in
-        Envt.add_core core md
-      end
-      else
-        core
-    in
-    let deps = Name.Set.union unit.dependencies deps in
-    let unit = { unit with code = [Defs (Definition.sg_bind sg)];
-                           dependencies = deps } in
-    (unit :: finished, core, rest )
-  | deps, Halted code ->
-    let deps = Name.Set.union unit.dependencies deps in
-    let unit = { unit with dependencies = deps; code } in
-    finished, core, unit :: rest
+  exception Cycle
+
+  let eval ?(learn=true) (finished, core, rest) unit =
+    let open M2l in
+    match compute_more core unit with
+    | deps, Work.Done (_,sg) ->
+      let core =
+        if learn then begin
+          let md = Module.(create ~origin:Unit) unit.name sg in
+          Envt.add_core core md
+        end
+        else
+          core
+      in
+      let deps = Name.Set.union unit.dependencies deps in
+      let unit = { unit with code = [Defs (Definition.sg_bind sg)];
+                             dependencies = deps } in
+      (unit :: finished, core, rest )
+    | deps, Halted code ->
+      let deps = Name.Set.union unit.dependencies deps in
+      let unit = { unit with dependencies = deps; code } in
+      finished, core, unit :: rest
 
 
-let resolve_dependencies ?(learn=true) core units =
-  let rec resolve alert env solved units =
-    let solved, env, units' =
-      List.fold_left (eval ~learn) (solved,env,[]) units in
-    match List.length units' with
-    | 0 -> env, solved
-    | n when n = List.length units ->
-      if alert then
-        ( List.iter (pp Pp.err) units;
-          raise Cycle
-        )
-      else resolve true env solved units'
-    | _ ->
-      resolve false env solved units' in
-  resolve false core [] units
+  let resolve_dependencies ?(learn=true) core units =
+    let rec resolve alert env solved units =
+      let solved, env, units' =
+        List.fold_left (eval ~learn) (solved,env,[]) units in
+      match List.length units' with
+      | 0 -> env, solved
+      | n when n = List.length units ->
+        if alert then
+          ( List.iter (pp Pp.err) units;
+            raise Cycle
+          )
+        else resolve true env solved units'
+      | _ ->
+        resolve false env solved units' in
+    resolve false core [] units
 
-let resolve_split_dependencies env {ml; mli} =
-  let env, mli = resolve_dependencies env mli in
-  let _, ml = resolve_dependencies ~learn:false env ml in
-  { ml; mli }
+  let resolve_split_dependencies env {ml; mli} =
+    let env, mli = resolve_dependencies env mli in
+    let _, ml = resolve_dependencies ~learn:false env ml in
+    { ml; mli }
+end

@@ -4,6 +4,10 @@ open M2l
 module S = Module.Sig
 let std = Format.std_formatter
 
+module Param = struct
+  let transparent_extension_nodes = true
+  let transparent_aliases = true
+end
 
 let classify f =
   if Filename.check_suffix f ".mli" then
@@ -12,6 +16,7 @@ let classify f =
     Unit.Structure
 
 let file f =
+  let module Sg = Compute.Sg(Param) in
   let lex_test = Lexing.from_channel @@ open_in f in
   let ast = Parse.implementation lex_test in
   let start =  Ast_analyzer.structure ast in
@@ -21,7 +26,7 @@ let file f =
   |> Normalize.all
   |> snd
   |> Pp.fp std  "Basic:\n %a@." M2l.pp;
-  match start |> Compute.Sg.m2l S.empty with
+  match start |> Sg.m2l S.empty with
   | Done (_state,d) -> Pp.fp std "Computation finished:\n %a@." S.pp d
   | Halted h -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
 
@@ -68,6 +73,8 @@ let files = match Array.to_list Sys.argv with
     | None, None -> compare x y
 *)
 
+
+
 let deps files =
   let names = List.map Unit.extract_name files in
   let units = Unit.( split @@ group_by classify files ) in
@@ -78,7 +85,8 @@ let deps files =
   in
   let module Envt = Compute.Tracing in
   let core = Envt.start @@ Name.Set.of_list names in
-  let {Unit.ml; mli} = Unit.resolve_split_dependencies core units in
+  let module Solver = Unit.Make(Param) in
+  let {Unit.ml; mli} = Solver.resolve_split_dependencies core units in
   List.iter (Unit.pp std) mli;
   List.iter (Unit.pp std) ml
 
@@ -93,10 +101,11 @@ let modules files =
   let units = Unit.( split @@ group_by classify files ) in
   let module Envt = Compute.Tracing in
   let core = Envt.start @@ Name.Set.of_list names in
-  let {Unit.ml; mli} = Unit.resolve_split_dependencies core units in
+  let module Solver = Unit.Make(Param) in
+  let {Unit.ml; mli} = Solver.resolve_split_dependencies core units in
   let print units = List.iter (pp_module std)
       (List.sort Unit.(fun x y -> compare x.path.file y.path.file) units) in
-    print mli; print ml
+    print ml; print mli
 
 
 let usage_msg = "fdep is an alternative dependencies solver for OCaml"
