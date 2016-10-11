@@ -11,7 +11,7 @@ module S = Module.Sig
 module type envt = sig
   type t
   val find_partial: transparent:bool -> M.level -> Npath.t -> t -> t
-  val find: transparent:bool -> M.level -> Npath.t -> t -> Module.t
+  val find: transparent:bool -> ?alias:bool -> M.level -> Npath.t -> t -> Module.t
   val (>>) : t -> M.signature -> t
   val add_module: t -> Module.t -> t
 end
@@ -38,16 +38,16 @@ module Envt = struct
     let m = Name.Map.find a @@ proj lvl env in
     m.origin
 
-  let rec find ~transparent level path env =
+  let rec find ~transparent ?alias level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | [a] -> Name.Map.find a @@ proj level env
     | a :: q ->
       let m = Name.Map.find a env.modules in
-      find ~transparent level q m.signature
+      find ~transparent ?alias level q m.signature
 
   let find_partial ~transparent level path env =
-    let m = find ~transparent level path env in
+    let m = find ~transparent ~alias:false level path env in
     m.signature
 
   let (>>) = Def.(+@)
@@ -62,57 +62,72 @@ module Tracing = struct
   type core = { env: Envt.t; protected: Name.set }
   type t = { env: Envt.t;
              protected: Name.set;
-             deps: Name.set ref }
+             deps: Name.set ref;
+             cmi_deps: Name.set ref
+           }
 
   let record n env = env.deps := Name.Set.add n !(env.deps)
+  let record_cmi n env = env.cmi_deps := Name.Set.add n !(env.cmi_deps)
+
 
   let start protected = { protected; env = Envt.empty }
 
-  let empty = {deps = ref Name.Set.empty; protected = Name.Set.empty;
-               env = Envt.empty }
+  let empty ()= {deps = ref Name.Set.empty; protected = Name.Set.empty;
+               env = Envt.empty; cmi_deps = ref Name.Set.empty }
 
   let create ({ protected; env }:core) :t =
-    { env; protected; deps = ref Name.Set.empty }
+    { (empty ())  with env; protected }
 
   let deps env = env.deps
 
   let name path = List.hd @@ List.rev path
 
-  let rec find0 ~transparent ?(track=false) level path env =
+  let alias_chain start env a root = function
+    | Module.Alias n when start-> Some n
+    | Alias n -> Option.( root >>| fun r -> record_cmi r env; n )
+    | Unit when start -> Some a
+    | _ -> None
+
+  let guard transparent f x = if transparent then f x else None
+
+  let prefix level a env =
+    match Name.Map.find a @@ Envt.proj level env.env with
+    | exception Not_found -> a
+    | { origin = Alias n; _ } -> n
+    | _ -> a
+
+  let rec find0 ~transparent start root level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | [a] ->
       let m = Name.Map.find a @@ Envt.proj level env.env in
-      (match m.origin with Alias n -> record n env | _ -> ());
-      if track && m.origin = M.Unit then record a env;
-      m
+      let root = guard transparent (alias_chain start env a root) m.origin in
+      root, m
     | a :: q ->
       let m = Name.Map.find a env.env.modules in
-      begin
-        match m.origin with
-        | Module.Alias n -> record n env
-        | _ -> ()
-      end;
-      if track && m.origin = M.Unit then record a env;
-      find0 ~transparent level q { env with env = m.signature }
+      let root = guard transparent (alias_chain start env a root) m.origin in
+      find0 ~transparent false root level q { env with env = m.signature }
 
-  let find ~transparent level path env =
-    let root = List.hd path in
-    match find0 ~track:true ~transparent level path env with
-    | x -> x
+  let find ~transparent ?(alias=false) level path env =
+    match find0 ~transparent true None level path env with
+    | Some root, x when not transparent || not alias
+      -> (record root env; x)
+    | Some _, x
+    | None, x -> x
     | exception Not_found ->
+      let root = prefix level (List.hd path) env in
       if Name.Set.mem root env.protected then
         raise Not_found
       else begin
-        record root env;
+        if not alias then record root env;
         Module.create ~origin:M.Extern (name path) S.empty
       end
   (* | Not_found -> raise Not_found *)
 
   let find_partial ~transparent level path core =
-    let m = find ~transparent level path core in
+    let m = find ~transparent ~alias:false level path core in
     let env = m.signature in
-    { empty with env }
+    { (empty()) with env }
 
   let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
 
@@ -188,7 +203,7 @@ module Make(Envt:envt)(Param:param) = struct
     | _ -> Some Module.Submodule
 
   let bind state module_expr {name;expr} =
-    match module_expr state expr with
+    match module_expr ?bind:(Some true) state expr with
     | Halted h -> Halted ( Bind {name; expr = h} )
     | Done d ->
       let m = P.to_module ?origin:(aliased d) name d in
@@ -226,7 +241,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Done(_state,x) -> Done x
     | Halted _ as h -> h
 
-  let rec module_expr state (me:module_expr) = match me with
+  let rec module_expr ?(bind=false) state (me:module_expr) = match me with
     | Abstract -> Done P.empty
     | Unpacked -> Done P.{ empty with origin = First_class }
     | Val m -> begin
@@ -235,10 +250,10 @@ module Make(Envt:envt)(Param:param) = struct
         | Halted h -> Halted (Val h)
       end  (** todo : add warning *)
     | Ident i ->
-      begin match find Module i state with
+      begin match find ~alias:bind Module i state with
         | x ->
           let p = P.of_module x in
-          let p = if P.is_functor p then p
+          let p = if P.is_functor p || not bind then p
             else
               { p with origin = Alias (Npath.prefix i) } in
           Done p
@@ -251,7 +266,8 @@ module Make(Envt:envt)(Param:param) = struct
         | Halted f, Done d -> Halted (Apply {f; x = Resolved d})
         | Done f, Halted x -> Halted (Apply {f = Resolved f ;x} )
       end
-    | Fun {arg;body} -> functor_expr (module_expr,fn, demote_str) state [] arg body
+    | Fun {arg;body} ->
+      functor_expr (module_expr ~bind:false,fn, demote_str) state [] arg body
     | Str [] -> Done P.empty
     | Str[Defs d] -> Done (P.no_arg d.defined)
     | Resolved d -> Done d

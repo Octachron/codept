@@ -32,8 +32,8 @@ let pp_origin ppf = function
 
 let at_most max v = match max, v with
   | Unit, v -> v
-  | Submodule, Alias _ -> Submodule
   | Submodule, Unit -> Submodule
+  |  Submodule, Alias _ -> Submodule
   | Submodule, v -> v
   | _ , (Alias _ as a) | (Alias _ as a), _ -> a
   | (First_class|Rec|Arg|Extern) , _ -> max

@@ -75,27 +75,32 @@ type expression =
   | Minor of annotation
   | Extension_node of extension
 and annotation =
-  { access: Name.set (** M.x ⇒ Name M *)
+  { access: Name.set (** M.x ⇒ access \{M\} *)
   ; values: m2l list (** let open in ...; let module M = .. *)
-  ; packed: module_expr list
+  ; packed: module_expr list (** (module M) *)
   }
 and module_expr =
   | Resolved of Partial.t
-  | Ident of Npath.t
-  | Apply of {f: module_expr; x:module_expr}
-  | Fun of module_expr fn
-  | Constraint of module_expr * module_type
-  | Str of m2l
-  | Val of annotation
-  | Extension_node of extension
-  | Abstract
-  | Unpacked
+  (** already resolved module expression, generally
+      used in subexpression when waiting for other parts
+      of module expression to be resolved
+  *)
+  | Ident of Npath.t (** A.B… **)
+  | Apply of {f: module_expr; x:module_expr} (** F(X) *)
+  | Fun of module_expr fn (** functor (X:S) -> M *)
+  | Constraint of module_expr * module_type (** M:S *)
+  | Str of m2l (** struct … end *)
+  | Val of annotation (** (val … ) *)
+  | Extension_node of extension (** [%ext …] *)
+  | Abstract (** □ *)
+  | Unpacked (** (module M *)
 and module_type =
-  | Resolved of Partial.t
-  | Alias of Npath.t (* module level *)
-  | Ident of Epath.t (* epath due to F.(X).s expression *)
-  | Sig of m2l
-  | Fun of module_type fn
+  | Resolved of Partial.t (** same as in the module type *)
+  | Alias of Npath.t (** module m = A…  *)
+  | Ident of Epath.t (** module M : F(X).s
+                         epath due to F.(X).s expression *)
+  | Sig of m2l (** sig end*)
+  | Fun of module_type fn (** functor (X:S) → M *)
   | With of {
       body: module_type;
       deletions: Name.set
