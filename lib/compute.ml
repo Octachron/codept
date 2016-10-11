@@ -108,10 +108,17 @@ module Tracing = struct
       let root = guard transparent (alias_chain start env a root) m.origin in
       find0 ~transparent false root level q { env with env = m.signature }
 
+  let check_alias name env =
+    match (Name.Map.find name env.env.modules).origin with
+    | Unit -> true
+    | exception Not_found -> true
+    | _ -> false
+
   let find ~transparent ?(alias=false) level path env =
     match find0 ~transparent true None level path env with
     | Some root, x when not transparent || not alias
-      -> (record root env; x)
+      ->
+      ( if check_alias root env then record root env; x)
     | Some _, x
     | None, x -> x
     | exception Not_found ->
