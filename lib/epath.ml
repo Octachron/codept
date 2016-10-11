@@ -27,6 +27,14 @@ let concrete_with_f p: Npath.t =
   concretize [] p
 
 
+let multiples p : Npath.t list =
+  let rec concretize stack l = function
+    | T -> l :: stack
+    | A a -> (a :: l) :: stack
+    | F {f;x} -> concretize (concretize stack [] x) l f
+    | S(p,s) -> concretize stack (s::l) p in
+  concretize [] [] p
+
 let rev_concrete p = List.rev @@ concrete p
 
 let from_list l =

@@ -179,6 +179,24 @@ module Make(Envt:envt)(Param:param) = struct
       Halted { access; values; packed }
 
 
+  let mt_ident level state id =  begin match find level id state with
+    | x -> Done(P.of_module x)
+    | exception Not_found -> Halted id
+  end
+
+  let epath state path =
+    let paths = Epath.multiples path in
+    let l = match paths with
+    | a :: q ->
+      (mt_ident Module_type state a) ::  List.map (mt_ident Module state) q
+    | [] -> []
+    in
+    match l with
+    | Done x :: q when
+        List.for_all (function Done _ -> true | Halted _ -> false) q ->
+      Done x
+    | _ -> Halted path
+
   let open_ state path =
     match find Module path state with
     | x ->
@@ -297,43 +315,16 @@ module Make(Envt:envt)(Param:param) = struct
       Halted (Constraint(me, Resolved mt) )
     | Halted me, Halted mt -> Halted ( Constraint(me,mt) )
 
-  and epath: 'a. (Module.level -> Npath.t -> Envt.t -> 'a)
-    -> Module.level -> Envt.t -> Epath.t -> (Epath.t, 'a ) Work.t=
-    fun find lvl state ->
-    let open Epath in
-    function
-    | T -> Halted T
-    | A s as p -> begin match find lvl [s] state with
-        | x -> Done x
-        | exception Not_found -> Halted p
-      end
-    | S(pr,s) as p ->
-      begin
-        match epath find_partial Module state pr with
-        | Halted _ -> Halted p
-        | Done env ->
-          begin match find lvl [s] env with
-            | x -> Done x
-            | exception Not_found -> Halted p
-          end
-      end
-    | F {f;x} as p ->
-      begin match epath find Module state f, epath find Module state x with
-        | Done _ as r, Done _ -> r
-        | _ -> Halted p
-      end
-
   and module_type state = function
     | Sig [] -> Done P.empty
     | Sig [Defs d] -> Done (P.no_arg d.defined)
     | Sig s -> Work.fmap (fun s -> Sig s) P.no_arg @@
       drop_state @@ signature state s
     | Resolved d -> Done d
-    | Ident id as mt ->
-      begin match epath find Module_type state id with
-        | Done x ->
-          Done(P.of_module x)
-        | Halted _ -> Halted mt
+    | Ident id ->
+      begin match epath state id with
+        | Done x -> Done x
+        | Halted p -> Halted (Ident p)
       end
     | Alias i ->
       begin match find Module i state with
