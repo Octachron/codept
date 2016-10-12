@@ -110,28 +110,28 @@ let modules files =
 
 let usage_msg = "fdep is an alternative dependencies solver for OCaml"
 
-let extract_files () =
+(* let extract_files () =
   let current = 1 + !(Cmd.current) in
   let rec files_from k = if k = Array.length Sys.argv then []
     else Sys.argv.(k) :: files_from (k+1) in
   files_from current
+*)
 
+let simple =
+  List.iter file
 
-let cmd_module () =
-  modules @@ extract_files ()
+let files = ref []
+let anon_fun name =  files:= name :: ! files
 
-let cmd_deps () =
-  deps @@ extract_files ()
-
-let cmd_file () =
-  file Sys.argv.(1 + !Cmd.current)
-
-let anon_fun _name = ()
+let action = ref deps
+let set command () = action:= command
 
 let args =
-    Cmd.["-modules", Unit cmd_module, "print raw modules dependencies";
-     "-deps", Unit cmd_deps, "print detailed dependencies";
-     "-file", Unit cmd_file, "print simple analysis of one file"
+    Cmd.["-modules", Unit (set modules), "print raw modules dependencies";
+     "-deps", Unit (set deps), "print detailed dependencies";
+     "-file", Unit (set simple), "print simple analysis of one file"
     ]
 
-let () = Cmd.parse args anon_fun usage_msg
+let () =
+  Cmd.parse args anon_fun usage_msg
+  ; !action !files
