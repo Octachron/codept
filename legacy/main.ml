@@ -15,21 +15,45 @@ let classify f =
   else
     Unit.Structure
 
-let file f =
+let rec last = function
+  | [] -> raise @@ Invalid_argument ("Empty lists do not have last element")
+  | [a] -> a
+  | _ :: q -> last q
+
+exception Unknown_file_type of string
+
+let extension name =
+  let n = String.length name in
+  let r = try String.rindex name '.' with Not_found -> n-1 in
+  String.sub name (r+1) (n-r-1)
+
+let to_m2l f =
+  match extension f with
+  | "ml" ->
+    f
+    |> open_in |> Lexing.from_channel
+    |> Parse.implementation |> Ast_analyzer.structure
+  | "mli" ->
+    f
+    |> open_in |> Lexing.from_channel
+    |> Parse.interface |> Ast_analyzer.signature
+  | "cmi" ->
+    Cmi.cmi_m2l f
+  | ext -> raise (Unknown_file_type ext)
+
+let one_pass f =
   let module Sg = Compute.Sg(Param) in
-  let lex_test = Lexing.from_channel @@ open_in f in
-  let ast = Parse.implementation lex_test in
-  let start =  Ast_analyzer.structure ast in
-  Pp.fp std "M2l: %a@." M2l.pp start;
-  start
-  |> Compute.basic
-  |> Normalize.all
-  |> snd
-  |> Pp.fp std  "Basic:\n %a@." M2l.pp;
+  let start = to_m2l f in
   match start |> Sg.m2l S.empty with
   | Done (_state,d) -> Pp.fp std "Computation finished:\n %a@." S.pp d
   | Halted h -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
 
+let m2l f =
+  let start = to_m2l f in
+  start
+  |> Normalize.all
+  |> snd
+  |> Pp.fp std  "%a@." M2l.pp
 
 (*
 let files = match Array.to_list Sys.argv with
@@ -108,7 +132,7 @@ let modules files =
     print ml; print mli
 
 
-let usage_msg = "fdep is an alternative dependencies solver for OCaml"
+let usage_msg = "codept is an alternative dependencies solver for OCaml"
 
 (* let extract_files () =
   let current = 1 + !(Cmd.current) in
@@ -117,19 +141,19 @@ let usage_msg = "fdep is an alternative dependencies solver for OCaml"
   files_from current
 *)
 
-let simple =
-  List.iter file
 
 let files = ref []
 let anon_fun name =  files:= name :: ! files
 
 let action = ref deps
 let set command () = action:= command
+let set_iter command = set (List.iter command)
 
 let args =
-    Cmd.["-modules", Unit (set modules), "print raw modules dependencies";
-     "-deps", Unit (set deps), "print detailed dependencies";
-     "-file", Unit (set simple), "print simple analysis of one file"
+  Cmd.["-modules", Unit (set modules), "print raw modules dependencies";
+       "-deps", Unit (set deps), "print detailed dependencies";
+       "-m2l", Unit (set_iter m2l), "print m2l ast";
+       "-one-pass", Unit (set_iter one_pass), "print m2l ast after one pass"
     ]
 
 let () =

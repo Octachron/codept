@@ -1,10 +1,7 @@
 (** Extract module level definitions from cmi files *)
 
 let cmi_infos path =
-  let chan = open_in_bin path in
-  let size = in_channel_length chan in
-  let s = really_input_string chan size in
-  Cmi_format.read_cmi s
+  Cmi_format.read_cmi path
 
 let rec mmap f l = match l with
   | [] -> []
