@@ -138,6 +138,11 @@ module Pattern = struct
 
 end
 
+let rec fold2 f acc l1 l2 = match l1, l2 with
+  | a :: q, a'::q' -> fold2 f (f acc a a') q q'
+  | [], [] -> acc
+  | [], _ :: _ | _ :: _, [] -> acc
+
 let minor x =
   if Annot.is_empty x then
     []
@@ -522,7 +527,8 @@ and module_expr mexpr : M2l.module_expr =
     Extension_node(extension_core ext)
         (* [%id] *)
 and value_binding vb : Pattern.t =
-  Pattern.( pattern vb.pvb_pat ++ of_annot (expr vb.pvb_expr) )
+  let p, e = matched_patt_expr vb.pvb_pat vb.pvb_expr in
+  Pattern.( p ++ of_annot e )
 and value_bindings vbs expr =
   let p = Pattern.union_map value_binding vbs in
   if List.length p.binds > 0 then
@@ -612,3 +618,26 @@ and extension_core (name,payload) =
                       {extension = Val
                            ( Pattern.to_annot (pattern p) ++ Annot.opt expr eo)
                       ; name }
+and matched_patt_expr x y =
+(** matched_patt_expr is used to catch some case of packed module
+    where the module signature is provided not on the pattern side
+    but on the expression side
+*)
+  match x.ppat_desc, y.pexp_desc with
+  | Ppat_constraint _ , Pexp_constraint _ -> pattern x, expr y
+  | _, Pexp_constraint (_,t) ->
+    pattern { x with ppat_desc = Ppat_constraint(x,t)}, expr y
+  | Ppat_construct (_,po), Pexp_construct(_,eo)|
+    Ppat_variant (_,po), Pexp_variant(_,eo)
+    ->
+    Option.( (po >>= fun p -> eo >>| fun e -> matched_patt_expr p e) ><
+             (Pattern.opt pattern po, Annot.opt expr eo)
+           )
+  | Ppat_tuple pt, Pexp_tuple et
+  | Ppat_array pt, Pexp_array et
+    ->
+    fold2
+      (fun (p,e) x y -> let p',e' = matched_patt_expr x y in
+        Pattern.( p ++ p'), e ++ e' ) (Pattern.empty, Annot.empty) pt et
+  (* todo record *)
+  | _, _ -> pattern x, expr y
