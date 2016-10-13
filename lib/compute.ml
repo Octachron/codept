@@ -366,11 +366,11 @@ module Make(Envt:envt)(Param:param) = struct
       | Some arg ->
         match module_type state arg.Arg.signature with
         | Halted h -> Halted (Some {Arg.name = arg.name; signature = h })
-        | Done d   -> Done (Some{Arg.name=arg.name; signature = P.to_sign d}) in
+        | Done d   -> Done (Some(P.to_arg arg.name d)) in
     match ex_arg with
     | Halted me -> Halted (fn @@ List.fold_left demote {arg=me;body} args )
     | Done arg ->
-      let sg = Option.( arg >>| M.of_arg >>| S.create >< S.empty ) in
+      let sg = Option.( arg >>| S.create >< S.empty ) in
       let state =  Envt.( state >> sg ) in
       match body_type state body with
       | Done p  -> Done { p with args = arg :: p.args }
@@ -378,7 +378,7 @@ module Make(Envt:envt)(Param:param) = struct
         let arg = Option.(
             arg >>| fun arg ->
             { Arg.name = arg.name;
-              signature:module_type= Resolved (P.no_arg arg.signature) }
+              signature:module_type= Resolved (P.of_module arg) }
           ) in
         Halted (fn @@ List.fold_left demote {arg;body=me} args)
 

@@ -41,7 +41,7 @@ let at_most max v = match max, v with
 type t = {
   name:Name.t;
   origin: origin;
-  args: signature Arg.t option list;
+  args: t option list;
   signature:signature
 }
 and signature = { modules: mdict; module_types: mdict }
@@ -67,7 +67,7 @@ let pp_level ppf lvl =  Pp.fp ppf "%s" (match lvl with
 
 let rec pp ppf {name;args;origin;signature} =
   Pp.fp ppf "%a%s:%a@[<hv>[@,%a@,]@]"
-    pp_origin origin name (Arg.pp_s pp_signature) args pp_signature signature
+    pp_origin origin name pp_args args pp_signature signature
 and pp_signature ppf {modules; module_types} =
   Pp.fp ppf "@[<hv>%a" pp_mdict modules;
   if Name.Map.cardinal module_types >0 then
@@ -77,6 +77,10 @@ and pp_signature ppf {modules; module_types} =
 and pp_mdict ppf dict =
   Pp.fp ppf "%a" (Pp.list ~sep:" " pp_pair) (Name.Map.bindings dict)
 and pp_pair ppf (_,md) = pp ppf md
+and pp_arg ppf arg = Pp.fp ppf "(%a)" (Pp.opt pp) arg
+and pp_args ppf args = Pp.fp ppf "%a" (Pp.list ~sep:"→" @@ pp_arg ) args;
+    if List.length args > 0 then Pp.fp ppf "→"
+
 
 let empty = Name.Map.empty
 

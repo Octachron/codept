@@ -13,16 +13,15 @@ module Def = D.Def
 module Partial = struct
   type t =
     { origin: Module.origin;
-      args: Module.arg option list;
+      args: Module.t option list;
       result:Module.signature }
   let empty = { origin = Submodule; args = []; result= S.empty }
   let simple defs = { empty with result = defs }
   let pp ppf (x:t) =
-    let open Module in
-    if x.args = [] then pp_signature ppf x.result
+    if x.args = [] then M.pp_signature ppf x.result
     else Pp.fp ppf "%a@,→%a"
-        (Arg.pp_s pp_signature) x.args
-        pp_signature x.result
+        M.pp_args x.args
+        M.pp_signature x.result
 
 
   let no_arg x = { origin = Submodule; args = []; result = x }
@@ -41,6 +40,9 @@ module Partial = struct
       | None -> p.origin
     in
     {M.name;origin; args = p.args; signature = p.result }
+
+  let to_arg name (p:t) =
+    {M.name;origin=Arg; args = p.args; signature = p.result }
 
   let of_module {M.args;signature;origin; _} = {origin;result=signature;args}
 
@@ -183,6 +185,8 @@ and pp_access ppf s =  if Name.Set.cardinal s = 0 then () else
 and pp_opaque ppf me = Pp.fp ppf "⟨%a⟩" pp_me me
 and pp_bind ppf {name;expr} =
   match expr with
+  | Constraint(Abstract, Alias np) ->
+    Pp.fp ppf "@[module %s ≡ %a" name Npath.pp np
   | Constraint(Abstract, mt) ->
     Pp.fp ppf "@[module %s:@[<hv>%a@] @]" name pp_mt mt
   | Constraint(Unpacked, mt) ->
@@ -190,9 +194,15 @@ and pp_bind ppf {name;expr} =
   | Unpacked ->
     Pp.fp ppf "(module %s)" name
   | _ ->
-    Pp.fp ppf "@[module %s =@,@[<hv>%a@] @]" name pp_me expr
+    Pp.fp ppf "@[module %s = @,@[<hv>%a@] @]" name pp_me expr
 and pp_bind_sig ppf {name;expr} =
-  Pp.fp ppf "@[module type %s =@,@[<hv>%a@] @]" name pp_mt expr
+  match expr with
+  | Alias id ->
+    Pp.fp ppf "@[module type %s ≡ %a @]" name Npath.pp id
+  | Abstract ->
+    Pp.fp ppf "@[module type %s@]" name
+  | _ ->
+    Pp.fp ppf "@[module type %s = @,@[<hv>%a@] @]" name pp_mt expr
 and pp_me ppf = function
   | Resolved fdefs -> Pp.fp ppf "✔%a" Partial.pp fdefs
   | Ident np -> Npath.pp ppf np
@@ -209,7 +219,7 @@ and pp_mt ppf = function
   | Alias np -> Pp.fp ppf "(≡)%a" Npath.pp np
   | Ident np -> Epath.pp ppf np
   | Sig m2l -> Pp.fp ppf "@,sig@, %a end" pp m2l
-  | Fun { arg; body } ->  Pp.fp ppf "(%a)@,→%a" (Arg.pp pp_mt) arg pp_mt body
+  | Fun { arg; body } ->  Pp.fp ppf "%a@,→%a" (Arg.pp pp_mt) arg pp_mt body
   | With {body; deletions} ->
     Pp.fp ppf "%a@,/%a" pp_mt body Name.Set.pp deletions
   | Of me -> Pp.fp ppf "module type of@, %a" pp_me me
@@ -248,7 +258,7 @@ let args_cdefs args =
       | [] -> Some arg_defs
       | {Arg.name;signature} :: args ->
         sig_cdefs signature >>= fun defs ->
-        let md: M.arg = { name ; signature = Partial.to_sign defs } in
+        let md: _ Arg.t = { name ; signature = defs } in
         extract (Some(md :: arg_defs)) args
     end
   in
@@ -369,7 +379,7 @@ open Work
       | Some arg ->
         match module_type arg.signature with
         | Halted h -> Halted (Some {Arg.name = arg.name; signature = h })
-        | Done d   -> Done (Some{Arg.name=arg.name; signature = P.to_sign d}) in
+        | Done d   -> Done (Some(P.to_arg arg.name d)) in
     match ex_arg with
     | Halted me -> Halted (fn @@ List.fold_left demote_str {arg=me;body} args )
     | Done arg ->
@@ -379,7 +389,7 @@ open Work
         let arg =
           Option.( arg >>| fun arg ->
                    { Arg.name = arg.name;
-                     signature:module_type= Resolved (P.no_arg arg.signature) }
+                     signature:module_type= Resolved (P.of_module arg) }
                  ) in
         Halted (fn @@ List.fold_left demote_str {arg;body=me} args)
 
