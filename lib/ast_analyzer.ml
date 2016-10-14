@@ -1,6 +1,4 @@
 
-exception Include_functor
-
 module L = Longident
 module B = M2l.Build
 
@@ -24,7 +22,7 @@ let module_path =
 let value = Epath.Module
 let type_ = Epath.Module_type
 
-open Parsetree
+
 let txt x= x.Location.txt
 
 module H = struct
@@ -92,10 +90,11 @@ end
 open H
 let (++) = Annot.(++)
 
-module U = Utree
 open M2l
 
+
 module Pattern = struct
+  (** {2 Pattern manipulation function} *)
 
   (** At module level, a pattern can only access modules or
       bind a first class module *)
@@ -107,11 +106,9 @@ module Pattern = struct
   let value s = { empty with annot = Annot.value s }
 
   let of_annot annot = { empty with annot }
-  (*  let of_minor minor = { annot = Minor.to_annot minor; binds = [] } *)
 
   let to_annot e = e.annot
-    let to_m2l e = Minor (to_annot e)
-
+  let to_m2l e = Minor (to_annot e)
 
   let merge e1 e2 = {annot = Annot.( e1.annot ++ e2.annot);
                      binds = e1.binds @ e2.binds }
@@ -148,11 +145,14 @@ let minor x =
     []
   else
     [Minor x]
+
+(** {2 From OCaml ast to m2l } *)
+open Parsetree
 let rec structure str =
   mmap structure_item str
 and structure_item item =
   match item.pstr_desc with
-  | Pstr_eval (exp, _attrs) -> [Minor (expr exp) ]
+  | Pstr_eval (exp, _attrs) -> minor @@ expr exp
   (* ;; exp [@@_attrs ] *)
   | Pstr_value (_rec_flag, vals)
     (* let P1 = E1 and ... and Pn = EN       (flag = Nonrecursive)
@@ -166,7 +166,7 @@ and structure_item item =
     -> minor @@ core_type desc.pval_type
   | Pstr_type (_rec_flag, type_declarations)
     (* type t1 = ... and ... and tn = ... *) ->
-    [ Minor (Annot.union_map type_declaration type_declarations) ]
+    minor @@ Annot.union_map type_declaration type_declarations
   | Pstr_typext a_type_extension  (* type t1 += ... *) ->
     minor @@ type_extension a_type_extension
   | Pstr_exception an_extension_constructor
@@ -180,7 +180,7 @@ and structure_item item =
   | Pstr_modtype a_module_type_declaration (*module type s = .. *) ->
     [ Bind_sig(module_type_declaration a_module_type_declaration) ]
   | Pstr_open open_desc (* open M *) ->
-        do_open  open_desc.popen_lid
+        do_open open_desc.popen_lid
   | Pstr_class class_declarations  (* class c1 = ... and ... and cn = ... *)
     -> minor @@ Annot.union_map class_declaration class_declarations
   | Pstr_class_type class_type_declarations
@@ -201,7 +201,7 @@ and expr exp =
            let rec P1 = E1 and ... and Pn = EN in E   (flag = Recursive)
         *)
     ->
-    value_bindings vbs @@ expr exp (** todo: module bindings *)
+    value_bindings vbs @@ expr exp
   | Pexp_function cases (* function P1 -> E1 | ... | Pn -> En *) ->
     Annot.union_map case cases
   | Pexp_fun ( _arg_label, expr_opt, pat, expression)
@@ -225,7 +225,7 @@ and expr exp =
            Invariant: n > 0
         *)
     ->
-    Annot.( expr expression ++ union_map (fun (_, x) -> expr x) args)
+    Annot.(expr expression ++ union_map (expr % snd) args)
   | Pexp_match (expression, cases)
     (* match E0 with P1 -> E1 | ... | Pn -> En *)
   | Pexp_try (expression, cases)
@@ -293,7 +293,7 @@ and expr exp =
   | Pexp_setinstvar (_x, e) (* x <- e *) ->
     expr e
   | Pexp_override labels (* {< x1 = E1; ...; Xn = En >} *) ->
-    Annot.union_map (fun (_,e) -> expr e) labels
+    Annot.union_map (expr % snd) labels
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
     Annot.value [[ Bind( module_binding (m,me) );
                  Minor( expr e )
@@ -424,10 +424,10 @@ and row_field = function
 and package_type (s,constraints) =
   Annot.merge
     (access s)
-    (Annot.union_map (fun  (_,ct) -> core_type ct) constraints)
+    (Annot.union_map (core_type % snd) constraints)
 and full_package_type (s,constraints) =
   Ident (epath s),
-  Pattern.of_annot @@ Annot.union_map (fun (_,ct) -> core_type ct) constraints
+  Pattern.of_annot @@ Annot.union_map (core_type % snd) constraints
 and case cs =
     (Annot.opt expr cs.pc_guard)
     ++ (Pattern.bind_fmod (pattern cs.pc_lhs) @@ expr cs.pc_rhs)
@@ -489,7 +489,7 @@ and class_expr ce = match ce.pcl_desc with
 
            Invariant: n > 0
         *) ->
-    Annot.union_map (fun (_,e) -> expr e) les ++ class_expr ce
+    Annot.union_map (expr % snd) les ++ class_expr ce
   | Pcl_let (_, vbs, ce ) (* let P1 = E1 and ... and Pn = EN in CE *)
     ->
     value_bindings vbs (class_expr ce)
@@ -510,7 +510,7 @@ and module_expr mexpr : M2l.module_expr =
     Str (structure  str)
   | Pmod_functor (name, sign, mex) ->
     let name = txt name in
-    let arg = Option.( sign >>| module_type >>| fun s ->{Arg.name;signature=s} ) in
+    let arg = Option.( sign >>| module_type >>| fun s -> {Arg.name;signature=s} ) in
     Fun { arg; body = module_expr mex }
   | Pmod_apply (f,x)  (* ME1(ME2) *) ->
     Apply {f = module_expr f; x = module_expr x }
@@ -634,10 +634,32 @@ and matched_patt_expr x y =
              (Pattern.opt pattern po, Annot.opt expr eo)
            )
   | Ppat_tuple pt, Pexp_tuple et
-  | Ppat_array pt, Pexp_array et
+  | Ppat_array pt, Pexp_array et  (* todo use homogeneity *)
     ->
     fold2
       (fun (p,e) x y -> let p',e' = matched_patt_expr x y in
         Pattern.( p ++ p'), e ++ e' ) (Pattern.empty, Annot.empty) pt et
-  (* todo record *)
+  | Ppat_record (pr,_) , Pexp_record (er,eo) ->
+    (* First, gather together pattern and expression with the same label *)
+    let m = Npath.Map.empty in
+    let alt a x = match x with None -> Some a | _ -> x in
+    let add_p p' (p,e) = alt p' p, e in
+    let add_e e' (p,e) = p, alt e' e in
+    let folder add m (key,x) =
+      let key = H.npath key in
+      let v = try add x @@ Npath.Map.find key m with
+        | Not_found -> None, None in
+      Npath.Map.add key v m in
+    let m = List.fold_left (folder add_p) m pr in
+    let m = List.fold_left (folder add_e) m er in
+    (* Then use matched pattern expression analyse, when both pattern
+       and expression are available *)
+    Npath.Map.fold (fun _ elt (acc_p,acc_e) -> match elt with
+        | Some p, Some e ->
+          let p, e = matched_patt_expr p e in
+          Pattern.( acc_p ++ p ), acc_e ++ e
+        | None, None -> acc_p, acc_e
+        | Some p, None -> Pattern.( acc_p ++ pattern p), acc_e
+        | None, Some e -> acc_p , acc_e ++ expr e
+      ) m (Pattern.empty, Annot.opt expr eo)
   | _, _ -> pattern x, expr y

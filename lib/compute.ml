@@ -213,7 +213,7 @@ module Make(Envt:envt)(Param:param) = struct
   let gen_include unbox box i = match unbox i with
     | Halted h -> Halted (box h)
     | Done fdefs ->
-      if P.( fdefs.result = S.empty && fdefs.origin = First_class ) then
+      if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
         Warning.included_first_class ();
       let defs = P.to_defs fdefs in
       Done (Some defs)
@@ -249,7 +249,8 @@ module Make(Envt:envt)(Param:param) = struct
     let add_mockup defs arg = Envt.add_module defs @@ mockup arg in
     let state' = List.fold_left add_mockup state bs in
     let mapper {name;expr} =
-      expr |> module_expr state' |> fmap (pair name) (pair name) in
+      expr |> module_expr ?bind:(Some true) state'
+      |> fmap (pair name) (pair name) in
     let bs = List.map mapper bs in
     let undone (name,defs) = name, (Resolved defs:module_expr) in
     let recombine (name,expr) = {name;expr} in
@@ -258,7 +259,8 @@ module Make(Envt:envt)(Param:param) = struct
     | Done defs ->
       let defs =
         List.fold_left
-          ( fun defs (name,d) -> D.bind (P.to_module ?origin:(aliased d) name d) defs )
+          ( fun defs (name,d) ->
+              D.bind (P.to_module ?origin:(aliased d) name d) defs )
           D.empty defs in
       Done ( Some defs )
 
@@ -273,7 +275,7 @@ module Make(Envt:envt)(Param:param) = struct
         match minor module_expr m2l state m with
         | Done _ -> Done { P.empty with origin = First_class }
         | Halted h -> Halted (Val h)
-      end  (** todo : add warning *)
+      end  (* todo : check warning *)
     | Ident i ->
       begin match find ~alias:bind Module i state with
         | x ->
@@ -422,6 +424,7 @@ module Make(Envt:envt)(Param:param) = struct
         | Val x -> fmap (fun x -> { e with extension=Val x}) ignore @@
           minor module_expr m2l state x
       end
+
 end
 
 module Sg = Make(Envt)
