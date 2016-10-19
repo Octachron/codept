@@ -8,7 +8,8 @@ module Arg = struct
     | None -> Pp.fp ppf "()"
 
 
-  let pp_s pp_sig ppf args = Pp.fp ppf "%a" (Pp.list ~sep:"→@," @@ pp pp_sig) args;
+  let pp_s pp_sig ppf args = Pp.fp ppf "%a"
+      (Pp.(list ~sep:(s "→@,")) @@ pp pp_sig) args;
     if List.length args > 0 then Pp.fp ppf "→"
 end
 
@@ -75,10 +76,10 @@ and pp_signature ppf {modules; module_types} =
       pp_mdict module_types
   else Pp.fp ppf "@]"
 and pp_mdict ppf dict =
-  Pp.fp ppf "%a" (Pp.list ~sep:" " pp_pair) (Name.Map.bindings dict)
+  Pp.fp ppf "%a" (Pp.(list ~sep:(s " @,")) pp_pair) (Name.Map.bindings dict)
 and pp_pair ppf (_,md) = pp ppf md
 and pp_arg ppf arg = Pp.fp ppf "(%a)" (Pp.opt pp) arg
-and pp_args ppf args = Pp.fp ppf "%a" (Pp.list ~sep:"→" @@ pp_arg ) args;
+and pp_args ppf args = Pp.fp ppf "%a" (Pp.(list ~sep:(s "@,→") ) @@ pp_arg ) args;
     if List.length args > 0 then Pp.fp ppf "→"
 
 

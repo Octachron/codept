@@ -174,12 +174,12 @@ let rec pp_expression ppf = function
   | Extension_node e -> pp_extension ppf e
   | Bind_rec bs ->
     Pp.fp ppf "rec@[<hv>[ %a ]@]"
-      (Pp.list ~sep:"@, and @," @@ pp_bind ) bs
+      (Pp.(list ~sep:(s "@, and @,")) @@ pp_bind ) bs
 and pp_annot ppf {access;values; packed} =
   Pp.fp ppf "%a%a%a"
     pp_access access
-    (Pp.opt_list ~sep:"" ~pre:(Pp.s "@,values: ") pp) values
-    (Pp.opt_list ~sep:"" ~pre:(Pp.s "packed: ") pp_opaque) packed
+    Pp.(opt_list ~sep:(s " @,") ~pre:(s "@,values: ") pp) values
+    Pp.(opt_list ~sep:(s " @,") ~pre:(s "packed: ") pp_opaque) packed
 and pp_access ppf s =  if Name.Set.cardinal s = 0 then () else
     Pp.fp ppf "access:@[<hv>%a@]" Name.Set.pp s
 and pp_opaque ppf me = Pp.fp ppf "⟨%a⟩" pp_me me
@@ -230,7 +230,7 @@ and pp_extension ppf x = Pp.fp ppf "[%%%s @[<hv>%a@]]" x.name pp_extension_core
 and pp_extension_core ppf = function
   | Module m -> pp ppf m
   | Val m -> pp_annot ppf m
-and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" (Pp.list ~sep:" " pp_expression)
+and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" Pp.(list ~sep:(s " @,") pp_expression)
 
 type t = m2l
 

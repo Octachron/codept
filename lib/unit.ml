@@ -1,34 +1,14 @@
 
-module Map = Name.Map
-
-
-type package = {name:string; content: content }
-and content = Subpackages of package Map.t | Modules of Module.t Map.t
-
-type package_path = Local | Sys of Npath.t
-
-type path = { package: package_path ; file: Npath.t }
-
-let rec chop_suffix l = match l with
-  | [] -> []
-  | [a] -> [Filename.chop_extension a]
-  | a :: q -> a :: chop_suffix q
-
-let pp_package_path ppf = function
-  | Local -> Pp.fp ppf "Local"
-  | Sys n -> Pp.fp ppf "Sys[%a]" Npath.pp n
-
-let pp_path ppf {package;file}=
-  Pp.fp ppf "(%a)%a" pp_package_path package Npath.pp file
+module Path = Package.Path
 
 type kind = Structure | Signature
 
 type t = {
   name: string;
-  path: path;
+  path: Path.t;
   kind: kind;
   code: M2l.t;
-  dependencies: Name.set
+  dependencies: Path.set
 }
 type unit = t
 
@@ -57,9 +37,11 @@ module Map = struct
   type t = group Npath.Map.t
 
 let add unit m =
-  let key = chop_suffix unit.path.file in
+  let key = Path.chop_suffix unit.path.file in
   let grp = Option.( Npath.Map.find_opt key m >< empty ) in
   Npath.Map.add key (add unit grp) m
+
+let of_list = List.fold_left (fun x y -> add y x) Npath.Map.empty
 end
 
 end
@@ -72,9 +54,9 @@ let pp ppf unit =
              dependencies=@[%a@] @;\
              ] @] @."
     unit.name
-    pp_path unit.path
+    Path.pp_simple unit.path
     M2l.pp unit.code
-    Name.Set.pp unit.dependencies
+    Path.Set.pp unit.dependencies
 
 
 
@@ -96,7 +78,7 @@ let read_file kind filename =
     kind;
     path = { package= Local; file=[filename] };
     code;
-    dependencies = Name.Set.empty
+    dependencies = Path.Set.empty
   }
 
 let group_by classifier files =
@@ -116,10 +98,10 @@ let split map =
       | Some m, None | None, Some m -> { ml; mli = m :: mli }
     ) { ml = []; mli = [] }  (Npath.Map.bindings map)
 
-module Eval = Compute.Tr
-module Envt = Compute.Tracing
+module Eval = Envts.Interpreters.Tr
+module Envt =  Envts.Tracing
 
-module Make(Param:Compute.param) = struct
+module Make(Param:Interpreter.param) = struct
 
   module Eval = Eval(Param)
   let compute_more core unit =
@@ -141,12 +123,12 @@ module Make(Param:Compute.param) = struct
         else
           core
       in
-      let deps = Name.Set.union unit.dependencies deps in
+      let deps = Path.Set.union unit.dependencies deps in
       let unit = { unit with code = [Defs (Definition.sg_bind sg)];
                              dependencies = deps } in
       (unit :: finished, core, rest )
     | deps, Halted code ->
-      let deps = Name.Set.union unit.dependencies deps in
+      let deps = Path.Set.union unit.dependencies deps in
       let unit = { unit with dependencies = deps; code } in
       finished, core, unit :: rest
 

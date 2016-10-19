@@ -1,14 +1,19 @@
 let fp = Format.fprintf
 
-let rec list ?(sep="; ") pp ppf =
+let s st ppf = fp ppf st
+
+let rec list ~sep pp ppf =
   function
-  | a :: ( _ :: _ as q ) -> fp ppf "%a%s@,%a" pp a sep (list ~sep pp) q
+  | a :: ( _ :: _ as q ) -> fp ppf "%a%t%a" pp a sep (list ~sep pp) q
   | [a] -> fp ppf "%a" pp a
   | [] -> ()
 
-let rec tlist ?(sep=";") pp ppf =
+let list ?(pre=s"") ?(post=s"") ?(sep=s"; @,") pp ppf l =
+  fp ppf "%t%a%t" pre (list ~sep pp) l post
+
+let rec tlist ?(sep=s ";@,") pp ppf =
   function
-  | a :: ( _ :: _ as q ) -> fp ppf "%a%s%a" pp a sep (tlist ~sep pp) q
+  | a :: ( _ :: _ as q ) -> fp ppf "%a%t%a" pp a sep (tlist ~sep pp) q
   | [a] -> fp ppf "%a" pp a
   | [] -> ()
 
@@ -16,11 +21,13 @@ let rec tlist ?(sep=";") pp ppf =
   let blist pp ppf = fp ppf "[@,%a@,]" (list pp)
   let clist pp ppf = fp ppf "{@,%a@,}" (list pp)
 
-let s st ppf = fp ppf st
-let opt_list ?(pre=s "") ?(post=s "")  ?(sep="; ") pp ppf = function
+let opt_list ?(pre=s "") ?(post=s "")  ?(sep= s ";@, ") pp ppf = function
   | [] -> ()
   | l -> fp ppf "%t@[<hv>%a@]%t" pre (list ~sep pp) l post
 
+let opt_list_0 ?(pre=s "") ?(post=s "")  ?(sep= s ";@, ") pp ppf = function
+  | [] -> ()
+  | l -> fp ppf "%t%a%t" pre (list ~sep pp) l post
 
 
 let string ppf = fp ppf "%s"

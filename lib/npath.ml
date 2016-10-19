@@ -2,7 +2,7 @@ module Core = struct
   type t = Name.t list
   type npath = t
   let compare (x:t) (y:t) = compare x y
-  let pp = Pp.list ~sep:"." Name.pp
+  let pp = Pp.(list ~sep:(s".")) Name.pp
 end
 include Core
 module Set = struct
