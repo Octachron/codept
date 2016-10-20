@@ -19,12 +19,15 @@ module Envt = struct
     let m = Name.Map.find a @@ proj lvl env in
     m.origin
 
+  let find0 level name env =
+     Name.Map.find name @@ proj level env
+
   let rec find ~transparent ?alias level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
-    | [a] -> Name.Map.find a @@ proj level env
+    | [a] -> find0 level a env
     | a :: q ->
-      let m = Name.Map.find a env.modules in
+      let m = find0 M.Module a env in
       find ~transparent ?alias level q m.signature
 
   let find_partial ~transparent level path env =
@@ -33,6 +36,77 @@ module Envt = struct
 
   let (>>) = Def.(+@)
   let add_module = S.add
+  let add_core = add_module
+end
+
+module Sg = Interpreter.Make(Envt)
+
+module Layered = struct
+  module P = Package.Path
+  type source = {
+    origin:P.package;
+    mutable resolved: Envt.t;
+    cmis: P.t Name.Map.t
+  }
+
+  let read_dir dir =
+    let files = Sys.readdir dir in
+    let p = P.parse_filename dir in
+    let origin = P.Sys p in
+    let cmis =
+      Array.fold_left (fun m x ->
+          if Filename.check_suffix x ".cmi" then
+            let p = { P.package=Sys p; file = P.parse_filename x } in
+            Name.Map.add (P.module_name p) p m
+          else m
+        )
+        Name.Map.empty files in
+    { origin; resolved= Envt.empty; cmis }
+
+  type t = { local: Envt.t; pkgs: source list }
+
+  module I = Sg(struct
+      let transparent_aliases = false
+      (* we are not recording anything *)
+      let transparent_extension_nodes = false
+      (* extension nodes should not appear in cmi *)
+    end)
+
+
+  let rec track source stack = match stack with
+    | [] -> ()
+    | (name, code) :: q ->
+      match I.m2l source.resolved code with
+      | Halted code ->
+        begin match M2l.Block.m2l code with
+          | None -> assert false
+          | Some name' ->
+            let code' = Cmi.cmi_m2l
+              @@ P.filename
+              @@ Name.Map.find name source.cmis in
+            track source ( (name',code') :: (name, code) :: q )
+        end
+      | Done (_, sg) ->
+        let md = M.create ~origin:M.Unit name sg in
+        source.resolved <- Envt.add_core source.resolved md;
+        track source q
+
+  let rec pkg_find name source =
+    try Envt.find0 M.Module name source.resolved with
+    | Not_found ->
+      track source
+        [name,Cmi.cmi_m2l (P.filename @@ Name.Map.find name source.cmis)];
+      pkg_find name source
+
+  let rec pkgs_find name = function
+    | [] -> raise Not_found
+    | source :: q ->
+      try pkg_find name source with Not_found -> pkgs_find name q
+
+
+  let find0 level name env =
+    try Envt.find0 level name env.local with
+    | Not_found when level = Module_type -> pkgs_find name env.pkgs
 
 
 end

@@ -7,6 +7,13 @@ module Path = struct
 
   type t = { package: package ; file: Npath.t }
   type path = t
+  let filename p =
+    begin match p.package with
+      | Sys n -> String.concat "/" n ^ "/"
+      | _ -> ""
+    end
+      ^
+      String.concat "/" p.file
 
   let is_known = function
     | {package=Unknown; _ } -> false
@@ -67,4 +74,20 @@ module Path = struct
   end
 
   type set = Set.t
+
+  let slash = '/'
+
+  let parse_filename filename =
+    let n = String.length filename in
+    let rec extract shards start current =
+      if current = n - 1  then
+        List.rev @@ String.sub filename start (current-start-1) :: shards
+      else if filename.[current] = slash then
+        extract (String.sub filename start (current-start) :: shards)
+          (current + 1) (current + 1)
+      else
+        extract shards start (current + 1) in
+    extract [] 0 0
+
+  let local file = { package = Local; file }
 end

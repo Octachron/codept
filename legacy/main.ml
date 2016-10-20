@@ -101,20 +101,7 @@ let order units =
     | None, None -> compare x y
 
 
-let slash = '/'
-let parse_filename filename =
-  let n = String.length filename in
-  let rec extract shards start current =
-    if current = n - 1  then
-      List.rev @@ String.sub filename start (current-start-1) :: shards
-    else if filename.[current] = slash then
-      extract (String.sub filename start (current-start) :: shards)
-        (current + 1) (current + 1)
-    else
-      extract shards start (current + 1) in
-  extract [] 0 0
-
-let local file = Path.{ package=Local; file = parse_filename file }
+let local file = Path.(local @@ parse_filename file)
 
 let organize files =
   let m = List.fold_left

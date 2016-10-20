@@ -119,6 +119,47 @@ and 'a fn = { arg: module_type Arg.t option; body:'a }
 
 type arg = module_type Arg.t option
 
+module Block = struct
+  let either x f y = if x = None then f y else x
+  let first f l = List.fold_left (fun x y -> either x f y) None l
+
+  let rec me = function
+    | Resolved _ -> None
+    | Ident n -> Some( List.hd n )
+    | Apply {f; x} -> either (me f) me  x
+    | Fun fn ->
+      either
+        Option.(fn.arg >>= fun {Arg.signature;_} -> mt signature)
+        me fn.body
+    | Constraint (e,t) -> either (me e) mt t
+    | Str code -> m2l code
+    | Val _ | Extension_node _ | Abstract | Unpacked -> None
+  and mt = function
+    | Resolved _ -> None
+    | Alias n -> Some (List.hd n)
+    | Ident e -> Some (Epath.prefix e)
+    | Sig code -> m2l code
+    | Fun fn -> either
+                  Option.(fn.arg >>= fun {Arg.signature;_} -> mt signature)
+                  mt fn.body
+    | With { body; _ } -> mt body
+    | Of e -> me e
+    | Extension_node _
+    | Abstract -> None
+  and expr = function
+    | Defs _ -> None
+    | Open p -> Some (List.hd p)
+    | Include e -> me e
+    | SigInclude t -> mt t
+    | Bind {expr;_} -> me expr
+    | Bind_sig {expr;_} -> mt expr
+    | Bind_rec l ->
+      first (fun b -> me b.expr) l
+    | Minor _ -> None
+    | Extension_node _ -> None
+  and m2l code = first expr code
+end
+
 module Annot = struct
   type t = annotation
   let empty = { access=Name.Set.empty; values = []; packed = [] }
