@@ -81,7 +81,7 @@ module Path = struct
     let n = String.length filename in
     let rec extract shards start current =
       if current = n - 1  then
-        List.rev @@ String.sub filename start (current-start-1) :: shards
+        List.rev @@ String.sub filename start (current-start+1) :: shards
       else if filename.[current] = slash then
         extract (String.sub filename start (current-start) :: shards)
           (current + 1) (current + 1)

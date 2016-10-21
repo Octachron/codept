@@ -13,8 +13,10 @@ module Arg = struct
     if List.length args > 0 then Pp.fp ppf "→"
 end
 
+type source = Local | Pkg of Npath.t
+
 type origin =
-  | Unit (** aka toplevel module *)
+  | Unit of source (** aka toplevel module *)
   | Extern (** aka unknow module *)
   | Alias of Name.t (** M = A… *)
   | Submodule
@@ -23,7 +25,8 @@ type origin =
   | Rec (** mockup module for recursive definitions *)
 
 let pp_origin ppf = function
-  | Unit -> Pp.fp ppf "#"
+  | Unit Local -> Pp.fp ppf "#"
+  | Unit (Pkg x) -> Pp.fp ppf "#[%a]" Npath.pp x
   | Extern -> Pp.fp ppf "!"
   | Rec -> Pp.fp ppf "?"
   | Submodule -> Pp.fp ppf "."
@@ -32,8 +35,8 @@ let pp_origin ppf = function
   | Alias n -> Pp.fp ppf "(≡%s…)" n
 
 let at_most max v = match max, v with
-  | Unit, v -> v
-  | Submodule, Unit -> Submodule
+  | Unit _ , v -> v
+  | Submodule, Unit _ -> Submodule
   |  Submodule, Alias _ -> Submodule
   | Submodule, v -> v
   | _ , (Alias _ as a) | (Alias _ as a), _ -> a

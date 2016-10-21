@@ -2,6 +2,12 @@ module M = Module
 module S = Module.Sig
 module Def = Definition.Def
 
+module type local_envt = sig
+  include Interpreter.envt
+  val find_name: M.level -> Name.t -> t -> Module.t
+  val reset: t -> M.signature -> t
+end
+
 module Envt = struct
   type t = M.signature
 
@@ -19,24 +25,20 @@ module Envt = struct
     let m = Name.Map.find a @@ proj lvl env in
     m.origin
 
-  let find0 level name env =
-     Name.Map.find name @@ proj level env
+  let find_name level name env =
+    Name.Map.find name @@ proj level env
 
   let rec find ~transparent ?alias level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
-    | [a] -> find0 level a env
+    | [a] -> find_name level a env
     | a :: q ->
-      let m = find0 M.Module a env in
+      let m = find_name M.Module a env in
       find ~transparent ?alias level q m.signature
 
-  let find_partial ~transparent level path env =
-    let m = find ~transparent ~alias:false level path env in
-    m.signature
-
   let (>>) = Def.(+@)
+  let reset sg _env = sg
   let add_module = S.add
-  let add_core = add_module
 end
 
 module Sg = Interpreter.Make(Envt)
@@ -44,19 +46,18 @@ module Sg = Interpreter.Make(Envt)
 module Layered = struct
   module P = Package.Path
   type source = {
-    origin:P.package;
+    origin:Npath.t;
     mutable resolved: Envt.t;
     cmis: P.t Name.Map.t
   }
 
   let read_dir dir =
     let files = Sys.readdir dir in
-    let p = P.parse_filename dir in
-    let origin = P.Sys p in
+    let origin = P.parse_filename dir in
     let cmis =
       Array.fold_left (fun m x ->
           if Filename.check_suffix x ".cmi" then
-            let p = { P.package=Sys p; file = P.parse_filename x } in
+            let p = {P.package = P.Sys origin; file = P.parse_filename x} in
             Name.Map.add (P.module_name p) p m
           else m
         )
@@ -64,6 +65,8 @@ module Layered = struct
     { origin; resolved= Envt.empty; cmis }
 
   type t = { local: Envt.t; pkgs: source list }
+
+  let create includes env = { local = env; pkgs = List.map read_dir includes }
 
   module I = Sg(struct
       let transparent_aliases = false
@@ -87,12 +90,15 @@ module Layered = struct
             track source ( (name',code') :: (name, code) :: q )
         end
       | Done (_, sg) ->
-        let md = M.create ~origin:M.Unit name sg in
-        source.resolved <- Envt.add_core source.resolved md;
+        let md = M.create ~origin:(M.Unit (Pkg source.origin)) name sg in
+        source.resolved <- Envt.add_module source.resolved md;
         track source q
 
   let rec pkg_find name source =
-    try Envt.find0 M.Module name source.resolved with
+    try
+      let m = Envt.find_name M.Module name source.resolved
+      in m
+    with
     | Not_found ->
       track source
         [name,Cmi.cmi_m2l (P.filename @@ Name.Map.find name source.cmis)];
@@ -103,16 +109,28 @@ module Layered = struct
     | source :: q ->
       try pkg_find name source with Not_found -> pkgs_find name q
 
+  let find_name level name env =
+    try Envt.find_name level name env.local with
+    | Not_found when level = Module -> pkgs_find name env.pkgs
 
-  let find0 level name env =
-    try Envt.find0 level name env.local with
-    | Not_found when level = Module_type -> pkgs_find name env.pkgs
+  let reset t sg = { t with local = sg }
 
+  let rec find ~transparent ?alias level path env =
+    match path with
+    | [] -> raise (Invalid_argument "Layered.find cannot find empty path")
+    | [a] -> find_name level a env
+    | a :: q ->
+      let m = find_name M.Module a env in
+      find ~transparent ?alias level q (reset env m.signature)
+
+
+  let (>>) e1 sg = { e1 with local = Envt.( e1.local >> sg) }
+  let add_module e m = { e with local = Envt.add_module e.local m }
 
 end
 
 
-module Tracing = struct
+module Tracing(Envt: local_envt) = struct
 
   module P = Package.Path
   type core = { env: Envt.t; protected: P.t Name.map }
@@ -122,23 +140,27 @@ module Tracing = struct
              cmi_deps: P.set ref
            }
 
-
   let resolve n env =
-   try Name.Map.find n env.protected with
-     | Not_found -> P.{ package = Unknown; file = [n] }
+    let package =
+      match (Envt.find_name Module n env).M.origin with
+      | M.Unit Local | M.Alias _ -> P.Local
+      | M.Extern -> Unknown
+      | M.Unit (Pkg p) -> Sys p
+      | M.Arg | M.Rec | M.First_class | Submodule ->
+        assert false
+      | exception Not_found -> Unknown
+    in
+    { P.package; file = [n] }
 
   let record n env =
-    env.deps := P.Set.add (resolve n env) !(env.deps)
-  let record_cmi n env = env.cmi_deps := P.Set.add (resolve n env) !(env.cmi_deps)
+    env.deps := P.Set.add (resolve n env.env) !(env.deps)
+  let record_cmi n env = env.cmi_deps :=
+      P.Set.add (resolve n env.env) !(env.cmi_deps)
 
-
-  let start protected = { protected; env = Envt.empty }
-
-  let empty ()= {deps = ref P.Set.empty; protected = Name.Map.empty;
-               env = Envt.empty; cmi_deps = ref P.Set.empty }
+  let create_core protected env = { protected; env }
 
   let create ({ protected; env }:core) :t =
-    { (empty ())  with env; protected }
+    { env; protected; deps = ref P.Set.empty; cmi_deps = ref P.Set.empty }
 
   let deps env = env.deps
 
@@ -147,13 +169,13 @@ module Tracing = struct
   let alias_chain start env a root = function
     | Module.Alias n when start-> Some n
     | Alias n -> Option.( root >>| fun r -> record_cmi r env; n )
-    | Unit when start -> Some a
+    | Unit _ when start -> Some a
     | _ -> None
 
   let guard transparent f x = if transparent then f x else None
 
   let prefix level a env =
-    match Name.Map.find a @@ Envt.proj level env.env with
+    match Envt.find_name level a env.env with
     | exception Not_found -> a
     | { origin = Alias n; _ } -> n
     | _ -> a
@@ -162,17 +184,18 @@ module Tracing = struct
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | [a] ->
-      let m = Name.Map.find a @@ Envt.proj level env.env in
+      let m = Envt.find_name level a env.env in
       let root = guard transparent (alias_chain start env a root) m.origin in
       root, m
     | a :: q ->
-      let m = Name.Map.find a env.env.modules in
+      let m = Envt.find_name M.Module a env.env in
       let root = guard transparent (alias_chain start env a root) m.origin in
-      find0 ~transparent false root level q { env with env = m.signature }
+      find0 ~transparent false root level q
+        { env with env = Envt.reset env.env m.signature}
 
   let check_alias name env =
-    match (Name.Map.find name env.env.modules).origin with
-    | Unit -> true
+    match (Envt.find_name Module name env.env).origin with
+    | Unit _ -> true
     | exception Not_found -> true
     | _ -> false
 
@@ -180,33 +203,30 @@ module Tracing = struct
     match find0 ~transparent true None level path env with
     | Some root, x when not transparent || not alias
       ->
-      ( if check_alias root env then record root env; x)
+      ( if level = Module && check_alias root env then record root env; x)
     | Some _, x -> x
     | None, x ->
       let root = prefix level (List.hd path) env in
-      (if check_alias root env then record root env; x)
+      (if level = Module && check_alias root env then record root env; x)
     | exception Not_found ->
       let root = prefix level (List.hd path) env in
-      if Name.Map.mem root env.protected then
+      if level = Module && Name.Map.mem root env.protected then
         raise Not_found
       else begin
-        if not alias then record root env;
+        if level = Module && not alias then record root env;
         Module.create ~origin:M.Extern (name path) S.empty
       end
-  (* | Not_found -> raise Not_found *)
-
-  let find_partial ~transparent level path core =
-    let m = find ~transparent ~alias:false level path core in
-    let env = m.signature in
-    { (empty()) with env }
 
   let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
 
-  let add_module e m = { e with env = S.add e.env m }
-  let add_core (c:core) m = { c with env = S.add c.env m }
+  let reset sg env = { env with env = sg }
+  let add_module e m = { e with env = Envt.add_module e.env m }
+  let add_core (c:core) m = { c with env = Envt.add_module c.env m }
 end
+
+module Tr = Tracing(Layered)
 
 module Interpreters = struct
   module Sg = Interpreter.Make(Envt)
-  module Tr = Interpreter.Make(Tracing)
+  module Tr = Interpreter.Make(Tr)
 end

@@ -31,7 +31,7 @@ module Partial = struct
     | [] ->
       match p.origin with
       | Extern | First_class | Rec -> p (* we guessed the arg wrong *)
-      | Unit | Submodule | Arg | Alias _ -> Error.not_a_functor ()
+      | Unit _ | Submodule | Arg | Alias _ -> Error.not_a_functor ()
   (* there is an error somewhere *)
 
   let to_module ?origin name (p:t) =

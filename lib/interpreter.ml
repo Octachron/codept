@@ -10,7 +10,6 @@ module S = Module.Sig
 
 module type envt = sig
   type t
-  val find_partial: transparent:bool -> M.level -> Npath.t -> t -> t
   val find: transparent:bool -> ?alias:bool -> M.level -> Npath.t -> t -> Module.t
   val (>>) : t -> M.signature -> t
   val add_module: t -> Module.t -> t
@@ -20,9 +19,6 @@ module type param = sig
   val transparent_extension_nodes: bool
   val transparent_aliases: bool
 end
-
-
-
 
 let rec basic = function
   | [] -> []
@@ -35,7 +31,6 @@ module Make(Envt:envt)(Param:param) = struct
 
   include Param
   let find = Envt.find ~transparent:transparent_aliases
-  let find_partial = Envt.find_partial ~transparent:transparent_aliases
 
 
   type level = Module.level = Module | Module_type
@@ -59,7 +54,8 @@ module Make(Envt:envt)(Param:param) = struct
       Halted { access; values; packed }
 
 
-  let mt_ident level state id =  begin match find level id state with
+  let mt_ident level state id =
+    begin match find level id state with
     | x -> Done(P.of_module x)
     | exception Not_found -> Halted id
   end
@@ -67,9 +63,9 @@ module Make(Envt:envt)(Param:param) = struct
   let epath state path =
     let paths = Epath.multiples path in
     let l = match paths with
-    | a :: q ->
-      (mt_ident Module_type state a) ::  List.map (mt_ident Module state) q
-    | [] -> []
+      | a :: q ->
+        (mt_ident Module_type state a) ::  List.map (mt_ident Module state) q
+      | [] -> []
     in
     match l with
     | Done x :: q when
@@ -83,7 +79,7 @@ module Make(Envt:envt)(Param:param) = struct
       if x.signature = S.empty then
         begin match x.origin with
           | First_class -> Warning.opened_first_class x.name
-          | Unit | Submodule | Arg | Rec -> ()
+          | Unit _ | Submodule | Arg | Rec -> ()
           | Alias _ -> ()
           | Extern -> () (* add a hook here? *)
         end;

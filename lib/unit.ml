@@ -99,7 +99,7 @@ let split map =
     ) { ml = []; mli = [] }  (Npath.Map.bindings map)
 
 module Eval = Envts.Interpreters.Tr
-module Envt =  Envts.Tracing
+module Envt =  Envts.Tr
 
 module Make(Param:Interpreter.param) = struct
 
@@ -117,7 +117,7 @@ module Make(Param:Interpreter.param) = struct
     | deps, Work.Done (_,sg) ->
       let core =
         if learn then begin
-          let md = Module.(create ~origin:Unit) unit.name sg in
+          let md = Module.(create ~origin:(Unit Local)) unit.name sg in
           Envt.add_core core md
         end
         else
