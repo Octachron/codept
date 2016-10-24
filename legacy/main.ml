@@ -71,15 +71,24 @@ let order units =
 
 let local file = Path.(local @@ parse_filename file)
 
-let organize files =
+let rec open_in opens m2l = match opens with
+  | [] -> m2l
+  | a :: q -> open_in q (M2l.Open a :: m2l)
+
+let organize opens files =
   let add_name m n  =  Name.Map.add (Unit.extract_name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
   let units = Unit.( split @@ group files ) in
+  let units =
+    let f = List.map
+        (fun u -> { u with Unit.code = open_in opens u.Unit.code } ) in
+    { Unit.ml = f units.ml; mli = f units.mli }
+  in
   units, m
 
-let deps includes files =
-  let units, filemap = organize files in
+let deps opens includes files =
+  let units, filemap = organize opens files in
   let () =
     List.iter (Unit.pp std) units.mli;
     List.iter (Unit.pp std) units.ml;
@@ -101,8 +110,8 @@ let pp_module ppf u =
     Pp.( list ~sep:(s" ") Name.pp )
     ( List.map Path.module_name @@ Path.Set.elements u.dependencies)
 
-let analyze includes files =
-  let units, filemap = organize files in
+let analyze opens includes files =
+  let units, filemap = organize opens files in
   let module Envt = Envts.Tr in
   let core =
     Envt.create_core filemap
@@ -111,8 +120,8 @@ let analyze includes files =
   let module Solver = Unit.Make(Param) in
   Solver.resolve_split_dependencies core units
 
-let modules includes files =
-  let {Unit.ml; mli} = analyze includes files in
+let modules opens includes files =
+  let {Unit.ml; mli} = analyze opens includes files in
   let print units = List.iter (pp_module std)
       (List.sort Unit.(fun x y -> compare x.path.file y.path.file) units) in
   print ml; print mli
@@ -122,9 +131,9 @@ let local_dependencies unit =
   @@ Path.Set.elements unit.U.dependencies
 
 
-let dot includes files =
+let dot opens includes files =
   let open Unit in
-  let {mli; _ } = analyze includes files in
+  let {mli; _ } = analyze opens includes files in
   Pp.fp Pp.std "digraph G {\n";
   List.iter (fun u ->
       List.iter (fun p ->
@@ -145,9 +154,9 @@ let print_deps order cmo ppf unit =
   @@ List.sort (topos_compare order)
   @@ local_dependencies unit
 
-let makefile includes files =
+let makefile opens includes files =
   let ppf = Pp.std in
-  let units = analyze includes files in
+  let units = analyze opens includes files in
   let order = order units.Unit.mli in
   let m = regroup units in
   Npath.Map.iter (fun _k g ->
@@ -160,8 +169,6 @@ let makefile includes files =
         print_deps order Path.cmi ppf intf
       | { impl = None; intf = None } -> ()
     ) m
-
-
 
 
 let usage_msg = "codept is an alternative dependencies solver for OCaml"
@@ -182,6 +189,7 @@ let classify f =
 
 let files = ref Unit.{ ml = []; mli = [] }
 let includes = ref []
+let opens = ref []
 
 let add_impl name =
   let {Unit.ml;mli} = !files in
@@ -196,6 +204,9 @@ let add_file name =
     | Structure -> add_impl name
     | Signature -> add_intf name
 
+let add_open name =
+  opens := [name] :: !opens
+
 let ml_synonym s =
   ml_synonyms := Name.Set.add s !ml_synonyms
 
@@ -205,7 +216,7 @@ let mli_synonym s =
 let include_ f = includes := f :: !includes
 let action = ref makefile
 let set command () = action:= command
-let set_iter command = set (fun _ {Unit.ml;mli} ->
+let set_iter command = set (fun _ _ {Unit.ml;mli} ->
     List.iter command (ml @ mli) )
 
 let args =
@@ -222,9 +233,11 @@ let args =
        "-makefile", Unit (set makefile), ": print makefile depend file";
        "-dot", Unit (set dot), ": print dependencies in dot format";
        "-I", String include_, "<dir>:   include <dir> in the analyssi all cmi files\
-                               in <dir>"
+                               in <dir>";
+       "-open", String add_open, "<name>: open module <name> at the start of \
+       all compilation units"
     ]
 
 let () =
   Cmd.parse args add_file usage_msg
-  ; !action !includes !files
+  ; !action !opens !includes !files
