@@ -12,11 +12,6 @@ module Param = struct
   let transparent_aliases = true
 end
 
-let classify f =
-  if Filename.check_suffix f ".mli" then
-    Unit.Signature
-  else
-    Unit.Structure
 
 let rec last = function
   | [] -> raise @@ Invalid_argument ("Empty lists do not have last element")
@@ -77,10 +72,10 @@ let order units =
 let local file = Path.(local @@ parse_filename file)
 
 let organize files =
-  let m = List.fold_left
-      (fun m n -> Name.Map.add (Unit.extract_name n) (local n) m)
-      Name.Map.empty files in
-  let units = Unit.( split @@ group_by classify files ) in
+  let add_name m n  =  Name.Map.add (Unit.extract_name n) (local n) m in
+  let m = List.fold_left add_name
+      Name.Map.empty (files.Unit.ml @ files.mli) in
+  let units = Unit.( split @@ group files ) in
   units, m
 
 let deps includes files =
@@ -171,34 +166,65 @@ let makefile includes files =
 
 let usage_msg = "codept is an alternative dependencies solver for OCaml"
 
-(* let extract_files () =
-  let current = 1 + !(Cmd.current) in
-  let rec files_from k = if k = Array.length Sys.argv then []
-    else Sys.argv.(k) :: files_from (k+1) in
-  files_from current
-*)
 
 
-let files = ref []
+let ml_synonyms = ref @@ Name.Set.singleton "ml"
+let mli_synonyms =  ref @@ Name.Set.singleton "mli"
+
+let classify f =
+  let ext = extension f in
+  if Name.Set.mem ext !mli_synonyms then
+    Unit.Signature
+  else if Name.Set.mem ext !ml_synonyms then
+    Unit.Structure
+  else
+    raise @@ Unknown_file_type ext
+
+let files = ref Unit.{ ml = []; mli = [] }
 let includes = ref []
-let anon_fun name =  files:= name :: ! files
+
+let add_impl name =
+  let {Unit.ml;mli} = !files in
+  files:= { ml = name :: ml; mli }
+
+let add_intf name =
+  let {Unit.ml;mli} = !files in
+  files:= { mli = name :: mli; ml }
+
+let add_file name =
+  match classify name with
+    | Structure -> add_impl name
+    | Signature -> add_intf name
+
+let ml_synonym s =
+  ml_synonyms := Name.Set.add s !ml_synonyms
+
+let mli_synonym s =
+  mli_synonyms := Name.Set.add s !mli_synonyms
 
 let include_ f = includes := f :: !includes
 let action = ref makefile
 let set command () = action:= command
-let set_iter command = set (fun _ -> List.iter command)
+let set_iter command = set (fun _ {Unit.ml;mli} ->
+    List.iter command (ml @ mli) )
 
 let args =
-  Cmd.["-modules", Unit (set modules), "print raw modules dependencies";
-       "-deps", Unit (set deps), "print detailed dependencies";
-       "-m2l", Unit (set_iter m2l), "print m2l ast";
-       "-one-pass", Unit (set_iter one_pass), "print m2l ast after one pass";
-       "-makefile", Unit (set makefile), "print makefile depend file";
-       "-dot", Unit (set dot), "print dependencies in dot format";
-       "-I", String include_, "include in the analyssi all cmi files in this \
-                               directory"
+  Cmd.["-modules", Unit (set modules), ": print raw modules dependencies";
+       "-deps", Unit (set deps), ": print detailed dependencies";
+       "-m2l", Unit (set_iter m2l), ": print m2l ast";
+       "-impl", String add_impl, "<f>:   read <f> as a ml file";
+       "-intf", String add_intf, "<f>:   read <f> as a mli file";
+       "-ml-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
+                                          for ml";
+       "-mli-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
+                                           for mli";
+       "-one-pass", Unit (set_iter one_pass), ": print m2l ast after one pass";
+       "-makefile", Unit (set makefile), ": print makefile depend file";
+       "-dot", Unit (set dot), ": print dependencies in dot format";
+       "-I", String include_, "<dir>:   include <dir> in the analyssi all cmi files\
+                               in <dir>"
     ]
 
 let () =
-  Cmd.parse args anon_fun usage_msg
+  Cmd.parse args add_file usage_msg
   ; !action !includes !files

@@ -81,6 +81,8 @@ let read_file kind filename =
     dependencies = Path.Set.empty
   }
 
+type 'a split = { ml:'a; mli:'a}
+
 let group_by classifier files =
   let start = Npath.Map.empty in
   List.fold_left (fun m f ->
@@ -88,7 +90,14 @@ let group_by classifier files =
       let unit = read_file kind f in
       Group.Map.add unit m) start files
 
-type 'a split = { ml:'a; mli:'a}
+let group {ml;mli} =
+  let start = Npath.Map.empty in
+  let add kind m f =
+    let unit = read_file kind f in
+    Group.Map.add unit m in
+  let mid = List.fold_left (add Structure) start ml in
+  List.fold_left (add Signature) mid mli
+
 
 let split map =
   List.fold_left ( fun {ml; mli} (_name,grp) ->
