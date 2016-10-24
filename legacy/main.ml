@@ -58,33 +58,6 @@ let m2l f =
   |> snd
   |> Pp.fp std  "%a@." M2l.pp
 
-(*
-let files = match Array.to_list Sys.argv with
-  | [] -> assert false
-  |  _ :: q -> q
-*)
-
-(*
-  let order =
-    let compute (i,m) (u:Unit.t) = i+1, Name.Map.add u.name i m in
-    snd @@ List.fold_left compute (0,Name.Map.empty) @@ List.rev_map units
-
-  let compare order x y =
-    let get x=Name.Map.find_opt x order in
-    match get x, get y with
-    | Some k , Some l -> compare k l
-    | None, Some _ -> -1
-    | Some _, None -> 1
-    | None, None -> compare x y
-*)
-
-
-(*  let files = match Array.to_list Sys.argv with
-    | [] -> assert false
-    |  _ :: q -> q
-*)
-
-
 
 let order units =
   let open Unit in

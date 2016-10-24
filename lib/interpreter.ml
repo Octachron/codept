@@ -3,7 +3,7 @@ open Work
 
 module D = Definition
 module Def = D.Def
-module P = Partial
+module P = Partial_module
 
 module M = Module
 module S = Module.Sig
@@ -19,13 +19,6 @@ module type param = sig
   val transparent_extension_nodes: bool
   val transparent_aliases: bool
 end
-
-let rec basic = function
-  | [] -> []
-  | a :: q -> match Reduce.expr a with
-    | Done (Some d) -> Defs d :: basic q
-    | Halted h -> h :: q
-    | Done None -> basic q
 
 module Make(Envt:envt)(Param:param) = struct
 
