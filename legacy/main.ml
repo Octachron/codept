@@ -12,6 +12,8 @@ module Param = struct
   let transparent_aliases = true
 end
 
+let tool_name = "codept legacy"
+let stderr= Format.err_formatter
 
 let rec last = function
   | [] -> raise @@ Invalid_argument ("Empty lists do not have last element")
@@ -208,11 +210,17 @@ let add_file name =
     | Structure -> add_impl name
     | Signature -> add_intf name
 
+
 let add_open name =
   opens := [name] :: !opens
 
+let first_ppx = Compenv.first_ppx
+
+let add_ppx ppx =
+  first_ppx := ppx :: !first_ppx
+
 let ml_synonym s =
-  ml_synonyms := Name.Set.add s !ml_synonyms
+   mli_synonyms := Name.Set.add s !mli_synonyms
 
 let mli_synonym s =
   mli_synonyms := Name.Set.add s !mli_synonyms
@@ -239,9 +247,16 @@ let args =
        "-I", String include_, "<dir>:   include <dir> in the analyssi all cmi files\
                                in <dir>";
        "-open", String add_open, "<name>: open module <name> at the start of \
-       all compilation units"
+                                  all compilation units";
+         "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
+       "<cmd>:   Pipe sources through preprocessor <cmd>";
+       "-ppx", Cmd.String add_ppx,
+       "<cmd>:   Pipe abstract syntax trees through ppx preprocessor <cmd>";
+
     ]
 
 let () =
-  Cmd.parse args add_file usage_msg
+  Compenv.readenv stderr Before_args
+  ; Cmd.parse args add_file usage_msg
+  ; Compenv.readenv stderr Before_link
   ; !action !opens !includes !files

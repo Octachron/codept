@@ -69,15 +69,22 @@ let extract_name filename = String.capitalize_ascii @@
 
 let read_file kind filename =
   let name = extract_name filename in
-  let parse = match kind with
-    | Structure -> Parse.implementation %> Ast_analyzer.structure
-    | Signature -> Parse.interface %> Ast_analyzer.signature
-  in
+  let input_file = Pparse.preprocess filename in
   let code =  try
-      parse @@ Lexing.from_channel @@ open_in filename
+      match kind with
+      | Structure ->
+        Ast_analyzer.structure @@
+        Pparse.parse_implementation Format.err_formatter ~tool_name:"codept"
+          input_file
+      | Signature ->
+        Ast_analyzer.signature @@
+        Pparse.parse_interface Format.err_formatter ~tool_name:"codept"
+          input_file
     with Syntaxerr.Error _ ->
+      Pparse.remove_preprocessed input_file;
       Error.log "Syntax error in %s\n" filename
   in
+  Pparse.remove_preprocessed input_file;
   { name;
     kind;
     path = { package= Local; file=[filename] };
