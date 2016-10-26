@@ -71,8 +71,12 @@ let read_file kind filename =
   let name = extract_name filename in
   let parse = match kind with
     | Structure -> Parse.implementation %> Ast_analyzer.structure
-    | Signature -> Parse.interface %> Ast_analyzer.signature in
-  let code = parse @@ Lexing.from_channel @@ open_in filename
+    | Signature -> Parse.interface %> Ast_analyzer.signature
+  in
+  let code =  try
+      parse @@ Lexing.from_channel @@ open_in filename
+    with Syntaxerr.Error _ ->
+      Error.log "Syntax error in %s\n" filename
   in
   { name;
     kind;
