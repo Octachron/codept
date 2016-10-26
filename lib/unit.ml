@@ -67,19 +67,21 @@ let (%>) f g x = x |> f |> g
 let extract_name filename = String.capitalize_ascii @@
   Filename.chop_extension @@ Filename.basename filename
 
+
 let read_file kind filename =
   let name = extract_name filename in
+  Location.input_name := filename;
   let input_file = Pparse.preprocess filename in
   let code =  try
       match kind with
       | Structure ->
         Ast_analyzer.structure @@
-        Pparse.parse_implementation Format.err_formatter ~tool_name:"codept"
-          input_file
+        Pparse.file Format.err_formatter ~tool_name:"codept" input_file
+          Parse.implementation Config.ast_impl_magic_number
       | Signature ->
         Ast_analyzer.signature @@
-        Pparse.parse_interface Format.err_formatter ~tool_name:"codept"
-          input_file
+        Pparse.file Format.err_formatter ~tool_name:"codept" input_file
+          Parse.interface Config.ast_intf_magic_number
     with Syntaxerr.Error _ ->
       Pparse.remove_preprocessed input_file;
       Error.log "Syntax error in %s\n" filename
