@@ -99,8 +99,10 @@ let deps opens includes files =
     Envt.create_core filemap
     @@ Envts.Layered.create includes
     @@ Envts.Envt.empty  in
-  let module Solver = Unit.Make(Param) in
-  let {Unit.ml; mli} = Solver.resolve_split_dependencies core units in
+  let module S = Solver.Make(Param) in
+  let {Unit.ml; mli} =
+    try S.resolve_split_dependencies core units with
+      S.Cycle units -> Error.log "%a" Solver.Failure.pp_cycle units in
   List.iter (Unit.pp std) mli;
   List.iter (Unit.pp std) ml
 
@@ -117,8 +119,10 @@ let analyze opens includes files =
     Envt.create_core filemap
     @@ Envts.Layered.create includes
     @@ Envts.Envt.empty  in
-  let module Solver = Unit.Make(Param) in
-  Solver.resolve_split_dependencies core units
+  let module S = Solver.Make(Param) in
+    try S.resolve_split_dependencies core units with
+      S.Cycle units -> Error.log "%a" Solver.Failure.pp_cycle units
+
 
 let modules opens includes files =
   let {Unit.ml; mli} = analyze opens includes files in
