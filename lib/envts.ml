@@ -37,15 +37,18 @@ module Base = struct
       find ~transparent ?alias level q m.signature
 
   let (>>) = Def.(+@)
-  let restrict sg _env = sg
+  let restrict _env sg = sg
   let add_module = S.add
 end
 
 module Open_world(Envt:extended) = struct
   module P = Package.Path
-  type t = { core: Envt.t; world: P.t Name.map }
+  type t = { core: Envt.t; world: P.t Name.map; mutable externs: Name.set }
 
-  let approx name = Module.(create name ~origin:Extern Sig.empty)
+  let start core world = { core; world; externs = Name.Set.empty }
+
+  let approx name =
+    Module.(create name ~origin:Extern Sig.empty)
 
  let find_name level name env =
     try Envt.find_name level name env.core with
@@ -60,10 +63,14 @@ module Open_world(Envt:extended) = struct
   let find ~transparent ?alias level path env =
     try Envt.find ~transparent ?alias level path env.core with
     | Not_found ->
-      if Name.Map.mem (List.hd path) env.world then
+      let root = List.hd path in
+      if Name.Map.mem root env.world then
         raise Not_found
       else
-        approx (last path)
+        (
+          env.externs <- Name.Set.add root env.externs;
+          approx (last path)
+        )
 
   let (>>) env sg = { env with core = Envt.( env.core >> sg ) }
   let add_module env m = { env with core = Envt.add_module env.core m }
@@ -93,7 +100,7 @@ module Layered = struct
           else m
         )
         Name.Map.empty files in
-    { origin; resolved= { core = Base.empty; world = cmis }; cmis }
+    { origin; resolved= Envt.start Base.empty cmis; cmis }
 
   type t = { local: Base.t; pkgs: source list }
 
@@ -164,9 +171,7 @@ end
 module Tracing(Envt:extended) = struct
 
   module P = Package.Path
-  type core = { env: Envt.t; protected: P.t Name.map }
   type t = { env: Envt.t;
-             protected: P.t Name.map;
              deps: P.set ref;
              cmi_deps: P.set ref
            }
@@ -188,10 +193,9 @@ module Tracing(Envt:extended) = struct
   let record_cmi n env = env.cmi_deps :=
       P.Set.add (resolve n env.env) !(env.cmi_deps)
 
-  let create_core protected env = { protected; env }
 
-  let create ({ protected; env }:core) :t =
-    { env; protected; deps = ref P.Set.empty; cmi_deps = ref P.Set.empty }
+  let extend env =
+    { env; deps = ref P.Set.empty; cmi_deps = ref P.Set.empty }
 
   let deps env = env.deps
 
@@ -227,7 +231,7 @@ module Tracing(Envt:extended) = struct
   let check_alias name env =
     match (Envt.find_name Module name env.env).origin with
     | Unit _ -> true
-    | exception Not_found -> true
+    | exception Not_found -> false
     | _ -> false
 
   let find ~transparent ?(alias=false) level path env =
@@ -239,25 +243,18 @@ module Tracing(Envt:extended) = struct
     | None, x ->
       let root = prefix level (List.hd path) env in
       (if level = Module && check_alias root env then record root env; x)
-    | exception Not_found ->
-      let root = prefix level (List.hd path) env in
-      if level = Module && Name.Map.mem root env.protected then
-        raise Not_found
-      else begin
-        if level = Module && not alias then record root env;
-        Module.create ~origin:M.Extern (name path) S.empty
-      end
 
-  let find_name level name = find ~transparent:false ~alias:false level [name]
+  let find_name level name = find ~transparent:true ~alias:false level [name]
 
   let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
 
   let restrict env m = { env with env = Envt.restrict env.env m }
   let add_module e m = { e with env = Envt.add_module e.env m }
-  let add_core (c:core) m = { c with env = Envt.add_module c.env m }
+
 end
 
-module Tr = Tracing(Layered)
+module Trl = Tracing(Layered)
+module Tr = Open_world(Trl)
 
 module Interpreters = struct
   module Sg = Interpreter.Make(Base)

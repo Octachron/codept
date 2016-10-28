@@ -89,17 +89,22 @@ let organize opens files =
   in
   units, m
 
+let start_env includes filemap =
+    Envts.Tr.start Envts.(Trl.extend @@ Layered.create includes
+    @@ Envts.Base.empty) filemap
+
 let deps opens includes files =
   let units, filemap = organize opens files in
   let module Envt = Envts.Tr in
-  let core =
-    Envt.create_core filemap
-    @@ Envts.Layered.create includes
-    @@ Envts.Base.empty  in
+  let core = start_env includes filemap in
   let module S = Solver.Make(Param) in
   let {Unit.ml; mli} =
     try S.resolve_split_dependencies core units with
-      S.Cycle units -> Error.log "%a" Solver.Failure.pp_cycle units in
+      S.Cycle (env,units) ->
+      Error.log "%a@;Env:@ %a"
+        Solver.Failure.pp_cycle units
+        Module.pp_signature env.core.env.local
+  in
   List.iter (Unit.pp std) mli;
   List.iter (Unit.pp std) ml
 
@@ -112,13 +117,13 @@ let pp_module ppf u =
 let analyze opens includes files =
   let units, filemap = organize opens files in
   let module Envt = Envts.Tr in
-  let core =
-    Envt.create_core filemap
-    @@ Envts.Layered.create includes
-    @@ Envts.Base.empty  in
+  let core = start_env includes filemap in
   let module S = Solver.Make(Param) in
     try S.resolve_split_dependencies core units with
-      S.Cycle units -> Error.log "%a" Solver.Failure.pp_cycle units
+        S.Cycle (env,units) ->
+        Error.log "%a@;Env:@ %a"
+          Solver.Failure.pp_cycle units
+          Module.pp_signature env.core.env.local
 
 
 let modules opens includes files =

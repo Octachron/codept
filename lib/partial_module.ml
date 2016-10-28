@@ -7,12 +7,14 @@ type t =
     result: M.signature }
 let empty = { origin = Submodule; args = []; result= S.empty }
 let simple defs = { empty with result = defs }
+
 let pp ppf (x:t) =
-  if x.args = [] then M.pp_signature ppf x.result
-  else Pp.fp ppf "%a@,→%a"
+  if x.args = [] then
+    Pp.fp ppf "%a(%a)" M.pp_signature x.result M.pp_origin x.origin
+  else Pp.fp ppf "%a@,→%a(%a)"
       M.pp_args x.args
       M.pp_signature x.result
-
+      M.pp_origin x.origin
 
 let no_arg x = { origin = Submodule; args = []; result = x }
 
@@ -21,7 +23,8 @@ let drop_arg (p:t) = match  p.args with
   | [] ->
     match p.origin with
     | Extern | First_class | Rec -> p (* we guessed the arg wrong *)
-    | Unit _ | Submodule | Arg | Alias _ -> Error.not_a_functor ()
+    | Unit _ | Submodule | Arg | Alias _ ->
+      Error.log "Only functor can be applied, got:%a" pp p
 (* there is an error somewhere *)
 
 let to_module ?origin name (p:t) =

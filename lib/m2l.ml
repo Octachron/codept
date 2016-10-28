@@ -1,11 +1,7 @@
 
-type resolved = private R
-type 'a declaration = private D
-type module_type_brand = private MT
-type module_brand = private M
-
 module M = Module
 module S = Module.Sig
+
 module Arg = M.Arg
 module D = Definition
 module Def = D.Def

@@ -7,12 +7,11 @@ open Unit
 module Make(Param:Interpreter.param) = struct
 
   module Eval = Eval(Param)
-  let compute_more core unit =
-    let env = Envt.create core in
+  let compute_more env unit =
     let result = Eval.m2l env unit.code in
-    !(env.deps), result
+    !(env.core.deps), result
 
-  exception Cycle of unit list
+  exception Cycle of Envt.t * unit list
 
   let eval ?(learn=true) (finished, core, rest) unit =
     let open M2l in
@@ -21,7 +20,7 @@ module Make(Param:Interpreter.param) = struct
       let core =
         if learn then begin
           let md = Module.(create ~origin:(Unit Local)) unit.name sg in
-          Envt.add_core core md
+          Envt.add_module core md
         end
         else
           core
@@ -44,7 +43,7 @@ module Make(Param:Interpreter.param) = struct
       | 0 -> env, solved
       | n when n = List.length units ->
         if alert then
-            raise @@ Cycle units
+            raise @@ Cycle (env, units)
         else resolve true env solved units'
       | _ ->
         resolve false env solved units' in
@@ -177,7 +176,8 @@ module Failure = struct
   (* Pp.(list ~sep:(s ", @ ") @@ pp ) (Set.elements units) *)
 
   let pp map ppf m =
-    Pp.fp ppf "%a" Pp.(list ~sep:(s"@;") @@ pp_cat map ) (Map.bindings m)
+    Pp.fp ppf "@[%a@]@."
+      Pp.(list ~sep:(s"@;") @@ pp_cat map ) (Map.bindings m)
 
   let pp_cycle ppf sources =
     let map = analysis sources in

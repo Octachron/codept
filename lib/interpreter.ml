@@ -151,7 +151,7 @@ module Make(Envt:envt)(Param:param) = struct
           let p = P.of_module x in
           let p = if P.is_functor p || not bind then p
             else
-              { p with origin = Alias (Npath.prefix i) } in
+              { p with origin = M.at_most p.origin @@ Alias (Npath.prefix i) } in
           Done p
         | exception Not_found -> Halted (Ident i: module_expr)
       end

@@ -35,12 +35,12 @@ let pp_origin ppf = function
   | Alias n -> Pp.fp ppf "(≡%s…)" n
 
 let at_most max v = match max, v with
+  | (First_class|Rec|Arg|Extern) , _ -> max
   | Unit _ , v -> v
   | Submodule, Unit _ -> Submodule
   |  Submodule, Alias _ -> Submodule
   | Submodule, v -> v
   | _ , (Alias _ as a) | (Alias _ as a), _ -> a
-  | (First_class|Rec|Arg|Extern) , _ -> max
 
 type t = {
   name:Name.t;
