@@ -2,13 +2,13 @@ module M = Module
 module S = Module.Sig
 module Def = Definition.Def
 
-module type local_envt = sig
+module type extended = sig
   include Interpreter.envt
   val find_name: M.level -> Name.t -> t -> Module.t
-  val reset: t -> M.signature -> t
+  val restrict: t -> M.signature -> t
 end
 
-module Envt = struct
+module Base = struct
   type t = M.signature
 
   let empty = S.empty
@@ -37,18 +37,49 @@ module Envt = struct
       find ~transparent ?alias level q m.signature
 
   let (>>) = Def.(+@)
-  let reset sg _env = sg
+  let restrict sg _env = sg
   let add_module = S.add
 end
 
-module Sg = Interpreter.Make(Envt)
+module Open_world(Envt:extended) = struct
+  module P = Package.Path
+  type t = { core: Envt.t; world: P.t Name.map }
+
+  let approx name = Module.(create name ~origin:Extern Sig.empty)
+
+ let find_name level name env =
+    try Envt.find_name level name env.core with
+    | Not_found ->
+      if Name.Map.mem name env.world then
+        raise Not_found
+      else
+        approx name
+
+  let last l = List.hd @@ List.rev l
+
+  let find ~transparent ?alias level path env =
+    try Envt.find ~transparent ?alias level path env.core with
+    | Not_found ->
+      if Name.Map.mem (List.hd path) env.world then
+        raise Not_found
+      else
+        approx (last path)
+
+  let (>>) env sg = { env with core = Envt.( env.core >> sg ) }
+  let add_module env m = { env with core = Envt.add_module env.core m }
+  let restrict env m = { env with core = Envt.restrict env.core m }
+
+end
+
+module Sg = Interpreter.Make(Base)
 
 module Layered = struct
   module P = Package.Path
+  module Envt = Open_world(Base)
   type source = {
     origin:Npath.t;
     mutable resolved: Envt.t;
-    cmis: P.t Name.Map.t
+    cmis: P.t Name.map
   }
 
   let read_dir dir =
@@ -62,13 +93,13 @@ module Layered = struct
           else m
         )
         Name.Map.empty files in
-    { origin; resolved= Envt.empty; cmis }
+    { origin; resolved= { core = Base.empty; world = cmis }; cmis }
 
-  type t = { local: Envt.t; pkgs: source list }
+  type t = { local: Base.t; pkgs: source list }
 
   let create includes env = { local = env; pkgs = List.map read_dir includes }
 
-  module I = Sg(struct
+  module I = Interpreter.Make(Envt)(struct
       let transparent_aliases = false
       (* we are not recording anything *)
       let transparent_extension_nodes = false
@@ -110,10 +141,10 @@ module Layered = struct
       try pkg_find name source with Not_found -> pkgs_find name q
 
   let find_name level name env =
-    try Envt.find_name level name env.local with
+    try Base.find_name level name env.local with
     | Not_found when level = Module -> pkgs_find name env.pkgs
 
-  let reset t sg = { t with local = sg }
+  let restrict env sg = { env with local = Base.restrict env.local sg }
 
   let rec find ~transparent ?alias level path env =
     match path with
@@ -121,16 +152,16 @@ module Layered = struct
     | [a] -> find_name level a env
     | a :: q ->
       let m = find_name M.Module a env in
-      find ~transparent ?alias level q (reset env m.signature)
+      find ~transparent ?alias level q (restrict env m.signature)
 
 
-  let (>>) e1 sg = { e1 with local = Envt.( e1.local >> sg) }
-  let add_module e m = { e with local = Envt.add_module e.local m }
+  let (>>) e1 sg = { e1 with local = Base.( e1.local >> sg) }
+  let add_module e m = { e with local = Base.add_module e.local m }
 
 end
 
 
-module Tracing(Envt: local_envt) = struct
+module Tracing(Envt:extended) = struct
 
   module P = Package.Path
   type core = { env: Envt.t; protected: P.t Name.map }
@@ -191,7 +222,7 @@ module Tracing(Envt: local_envt) = struct
       let m = Envt.find_name M.Module a env.env in
       let root = guard transparent (alias_chain start env a root) m.origin in
       find0 ~transparent false root level q
-        { env with env = Envt.reset env.env m.signature}
+        { env with env = Envt.restrict env.env m.signature}
 
   let check_alias name env =
     match (Envt.find_name Module name env.env).origin with
@@ -217,9 +248,11 @@ module Tracing(Envt: local_envt) = struct
         Module.create ~origin:M.Extern (name path) S.empty
       end
 
+  let find_name level name = find ~transparent:false ~alias:false level [name]
+
   let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
 
-  let reset sg env = { env with env = sg }
+  let restrict env m = { env with env = Envt.restrict env.env m }
   let add_module e m = { e with env = Envt.add_module e.env m }
   let add_core (c:core) m = { c with env = Envt.add_module c.env m }
 end
@@ -227,6 +260,6 @@ end
 module Tr = Tracing(Layered)
 
 module Interpreters = struct
-  module Sg = Interpreter.Make(Envt)
+  module Sg = Interpreter.Make(Base)
   module Tr = Interpreter.Make(Tr)
 end

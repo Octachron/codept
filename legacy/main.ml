@@ -62,13 +62,13 @@ let order units =
   snd @@ List.fold_left compute (0,Name.Map.empty)
   @@ List.rev @@ List.filter (fun u -> Path.is_known u.path) @@ units
 
-  let topos_compare order x y =
-    let get x=Name.Map.find_opt (Path.module_name x) order in
-    match get x, get y with
-    | Some k , Some l -> compare k l
-    | None, Some _ -> -1
-    | Some _, None -> 1
-    | None, None -> compare x y
+let topos_compare order x y =
+  let get x=Name.Map.find_opt (Path.module_name x) order in
+  match get x, get y with
+  | Some k , Some l -> compare k l
+  | None, Some _ -> -1
+  | Some _, None -> 1
+  | None, None -> compare x y
 
 
 let local file = Path.(local @@ parse_filename file)
@@ -91,16 +91,11 @@ let organize opens files =
 
 let deps opens includes files =
   let units, filemap = organize opens files in
-  let () =
-    List.iter (Unit.pp std) units.mli;
-    List.iter (Unit.pp std) units.ml;
-    Pp.p "***\n***\n***\n"
-  in
   let module Envt = Envts.Tr in
   let core =
     Envt.create_core filemap
     @@ Envts.Layered.create includes
-    @@ Envts.Envt.empty  in
+    @@ Envts.Base.empty  in
   let module S = Solver.Make(Param) in
   let {Unit.ml; mli} =
     try S.resolve_split_dependencies core units with
@@ -120,7 +115,7 @@ let analyze opens includes files =
   let core =
     Envt.create_core filemap
     @@ Envts.Layered.create includes
-    @@ Envts.Envt.empty  in
+    @@ Envts.Base.empty  in
   let module S = Solver.Make(Param) in
     try S.resolve_split_dependencies core units with
       S.Cycle units -> Error.log "%a" Solver.Failure.pp_cycle units
@@ -179,8 +174,6 @@ let makefile opens includes files =
 
 let usage_msg = "codept is an alternative dependencies solver for OCaml"
 
-
-
 let ml_synonyms = ref @@ Name.Set.singleton "ml"
 let mli_synonyms =  ref @@ Name.Set.singleton "mli"
 
@@ -226,10 +219,15 @@ let mli_synonym s =
   mli_synonyms := Name.Set.add s !mli_synonyms
 
 let include_ f = includes := f :: !includes
-let action = ref makefile
-let set command () = action:= command
-let set_iter command = set (fun _ _ {Unit.ml;mli} ->
-    List.iter command (ml @ mli) )
+let action = ref ignore
+let set command () = action:= (fun () -> command !opens !includes !files)
+let () = set makefile ()
+
+let set_iter command () = action := begin
+    fun () ->
+      let {Unit.ml;mli} = !files  in
+      List.iter command (ml @ mli)
+  end
 
 let args =
   Cmd.["-modules", Unit (set modules), ": print raw modules dependencies";
@@ -248,7 +246,7 @@ let args =
                                in <dir>";
        "-open", String add_open, "<name>: open module <name> at the start of \
                                   all compilation units";
-         "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
+       "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
        "<cmd>:   Pipe sources through preprocessor <cmd>";
        "-ppx", Cmd.String add_ppx,
        "<cmd>:   Pipe abstract syntax trees through ppx preprocessor <cmd>";
@@ -259,4 +257,4 @@ let () =
   Compenv.readenv stderr Before_args
   ; Cmd.parse args add_file usage_msg
   ; Compenv.readenv stderr Before_link
-  ; !action !opens !includes !files
+  ; !action ()
