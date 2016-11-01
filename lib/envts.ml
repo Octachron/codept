@@ -172,8 +172,8 @@ module Tracing(Envt:extended) = struct
 
   module P = Package.Path
   type t = { env: Envt.t;
-             deps: P.set ref;
-             cmi_deps: P.set ref
+             mutable deps: P.set;
+             mutable cmi_deps: P.set
            }
 
   let resolve n env =
@@ -189,13 +189,13 @@ module Tracing(Envt:extended) = struct
     { P.package; file = [n] }
 
   let record n env =
-    env.deps := P.Set.add (resolve n env.env) !(env.deps)
-  let record_cmi n env = env.cmi_deps :=
-      P.Set.add (resolve n env.env) !(env.cmi_deps)
+    env.deps <- P.Set.add (resolve n env.env) env.deps
+  let record_cmi n env = env.cmi_deps <-
+      P.Set.add (resolve n env.env) env.cmi_deps
 
 
   let extend env =
-    { env; deps = ref P.Set.empty; cmi_deps = ref P.Set.empty }
+    { env; deps = P.Set.empty; cmi_deps = P.Set.empty }
 
   let deps env = env.deps
 

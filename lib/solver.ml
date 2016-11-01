@@ -7,11 +7,18 @@ open Unit
 module Make(Param:Interpreter.param) = struct
 
   module Eval = Eval(Param)
+
   let compute_more env unit =
     let result = Eval.m2l env unit.code in
-    !(env.core.deps), result
+    env.core.deps, result
 
   exception Cycle of Envt.t * unit list
+
+  let reset_deps env =
+    let open Envt in
+    let module P = Package.Path in
+    env.core.deps <- P.Set.empty;
+    env.core.cmi_deps <- P.Set.empty
 
   let eval ?(learn=true) (finished, core, rest) unit =
     let open M2l in
@@ -28,6 +35,7 @@ module Make(Param:Interpreter.param) = struct
       let deps = Path.Set.union unit.dependencies deps in
       let unit = { unit with code = [Defs (Definition.sg_bind sg)];
                              dependencies = deps } in
+      let () = reset_deps core in
       (unit :: finished, core, rest )
     | deps, Halted code ->
       let deps = Path.Set.union unit.dependencies deps in
