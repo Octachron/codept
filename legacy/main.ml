@@ -254,6 +254,11 @@ let set_iter command () = action := begin
 let transparent_aliases value = param.transparent_aliases <- value
 let transparent_extension value = param.transparent_extension_nodes <- value
 
+let version = 0.01
+let print_vnum ()= Format.printf "%.2f@." version
+let print_version ()= Format.printf "codept, version %.2f@." version
+
+
 let args =
   Cmd.["-modules", Unit (set modules), ": print raw modules dependencies";
        "-deps", Unit (set deps), ": print detailed dependencies";
@@ -278,7 +283,10 @@ let args =
        "-transparent_extension_node", Cmd.Bool transparent_extension,
        "<bool>:   Inspect unknown extension nodes";
        "transparent_aliases", Cmd.Bool transparent_aliases,
-       "<bool>:   Delay aliases dependencies"
+       "<bool>:   Delay aliases dependencies";
+       "-vnum", Cmd.Unit print_vnum, "print version number";
+       "-version", Cmd.Unit print_version,
+       "print human-friendly version description"
     ]
 
 let () =
