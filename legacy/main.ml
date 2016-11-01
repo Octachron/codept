@@ -7,10 +7,25 @@ open M2l
 module S = Module.Sig
 let std = Format.std_formatter
 
-module Param = struct
-  let transparent_extension_nodes = true
-  let transparent_aliases = true
-end
+type param =
+  {
+    mutable transparent_aliases:bool;
+    mutable transparent_extension_nodes:bool
+  }
+
+
+let lift { transparent_extension_nodes; transparent_aliases } =
+(module struct
+    let transparent_extension_nodes = transparent_extension_nodes
+    let transparent_aliases = transparent_aliases
+  end
+  : Interpreter.param )
+
+let param = {
+  transparent_aliases = true;
+  transparent_extension_nodes = true
+}
+
 
 let tool_name = "codept legacy"
 let stderr= Format.err_formatter
@@ -42,6 +57,7 @@ let to_m2l f =
   | ext -> raise (Unknown_file_type ext)
 
 let one_pass f =
+  let module Param = (val lift param) in
   let module Sg = Envts.Interpreters.Sg(Param) in
   let start = to_m2l f in
   match start |> Sg.m2l S.empty with
@@ -97,6 +113,7 @@ let deps opens includes files =
   let units, filemap = organize opens files in
   let module Envt = Envts.Tr in
   let core = start_env includes filemap in
+  let module Param = (val lift param) in
   let module S = Solver.Make(Param) in
   let {Unit.ml; mli} =
     try S.resolve_split_dependencies core units with
@@ -118,7 +135,7 @@ let analyze opens includes files =
   let units, filemap = organize opens files in
   let module Envt = Envts.Tr in
   let core = start_env includes filemap in
-  let module S = Solver.Make(Param) in
+  let module S = Solver.Make((val lift param)) in
     try S.resolve_split_dependencies core units with
         S.Cycle (env,units) ->
         Error.log "%a@;Env:@ %a"
@@ -234,6 +251,9 @@ let set_iter command () = action := begin
       List.iter command (ml @ mli)
   end
 
+let transparent_aliases value = param.transparent_aliases <- value
+let transparent_extension value = param.transparent_extension_nodes <- value
+
 let args =
   Cmd.["-modules", Unit (set modules), ": print raw modules dependencies";
        "-deps", Unit (set deps), ": print detailed dependencies";
@@ -255,7 +275,10 @@ let args =
        "<cmd>:   Pipe sources through preprocessor <cmd>";
        "-ppx", Cmd.String add_ppx,
        "<cmd>:   Pipe abstract syntax trees through ppx preprocessor <cmd>";
-
+       "-transparent_extension_node", Cmd.Bool transparent_extension,
+       "<bool>:   Inspect unknown extension nodes";
+       "transparent_aliases", Cmd.Bool transparent_aliases,
+       "<bool>:   Delay aliases dependencies"
     ]
 
 let () =
