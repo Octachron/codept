@@ -9,12 +9,13 @@ let std = Format.std_formatter
 
 type param =
   {
+    mutable abs_path:bool;
     mutable transparent_aliases:bool;
     mutable transparent_extension_nodes:bool
   }
 
 
-let lift { transparent_extension_nodes; transparent_aliases } =
+let lift { transparent_extension_nodes; transparent_aliases; _ } =
 (module struct
     let transparent_extension_nodes = transparent_extension_nodes
     let transparent_aliases = transparent_aliases
@@ -22,6 +23,7 @@ let lift { transparent_extension_nodes; transparent_aliases } =
   : Interpreter.param )
 
 let param = {
+  abs_path = false;
   transparent_aliases = true;
   transparent_extension_nodes = true
 }
@@ -125,9 +127,16 @@ let deps opens includes files =
   List.iter (Unit.pp std) mli;
   List.iter (Unit.pp std) ml
 
+let make_abs p =
+  let open Package.Path in
+  if param.abs_path && p.package = Local then
+    { p with file = Sys.getcwd() :: p.file }
+  else
+    p
+
 let pp_module ppf u =
   let open Unit in
-  Pp.fp ppf "%a: %a\n" Path.pp u.path
+  Pp.fp ppf "%a: %a\n" Path.pp (make_abs u.path)
     Pp.( list ~sep:(s" ") Name.pp )
     ( List.map Path.module_name @@ Path.Set.elements u.dependencies)
 
@@ -171,6 +180,7 @@ let regroup {Unit.ml;mli} =
 
 let print_deps order cmo ppf unit =
   let open Unit in
+  let cmo x= make_abs @@ cmo x in
   Pp.fp ppf "%a :%a\n" Path.pp (cmo unit.path)
     Pp.(opt_list_0 ~pre:(s " ") ~sep:(s " ") Path.pp)
   @@ List.map cmo
@@ -258,6 +268,7 @@ let version = 0.01
 let print_vnum ()= Format.printf "%.2f@." version
 let print_version ()= Format.printf "codept, version %.2f@." version
 
+let abs_path () = param.abs_path <- true
 
 let args =
   Cmd.["-modules", Unit (set modules), ": print raw modules dependencies";
@@ -286,7 +297,10 @@ let args =
        "<bool>:   Delay aliases dependencies";
        "-vnum", Cmd.Unit print_vnum, "print version number";
        "-version", Cmd.Unit print_version,
-       "print human-friendly version description"
+       "print human-friendly version description";
+       "-as-map", Cmd.String add_file, "<file>:   same as <file>";
+       "-map", Cmd.String add_file, "<file>:   same as <file>";
+       "-abs-path", Cmd.Unit abs_path, ":   use absolute path name"
     ]
 
 let () =
