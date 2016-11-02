@@ -9,9 +9,10 @@ let std = Format.std_formatter
 
 type param =
   {
-    mutable abs_path:bool;
-    mutable transparent_aliases:bool;
-    mutable transparent_extension_nodes:bool
+    mutable native: bool;
+    mutable abs_path: bool;
+    mutable transparent_aliases: bool;
+    mutable transparent_extension_nodes: bool
   }
 
 
@@ -23,6 +24,7 @@ let lift { transparent_extension_nodes; transparent_aliases; _ } =
   : Interpreter.param )
 
 let param = {
+  native = false;
   abs_path = false;
   transparent_aliases = true;
   transparent_extension_nodes = true
@@ -196,18 +198,20 @@ let makefile opens includes files =
       let open Unit.Group in
       match g with
       | { impl= Some impl ; intf = Some intf } ->
-        Pp.fp ppf "%a : %a\n"
-          Pkg.pp ( make_abs @@ Pkg.cmo impl.path)
-          Pkg.pp ( make_abs @@ Pkg.cmi intf.path);
+        if not param.native then
+          Pp.fp ppf "%a : %a\n"
+            Pkg.pp ( make_abs @@ Pkg.cmo impl.path)
+            Pkg.pp ( make_abs @@ Pkg.cmi intf.path);
         Pp.fp ppf "%a : %a\n"
           Pkg.pp ( make_abs @@ Pkg.cmx impl.path)
           Pkg.pp ( make_abs @@ Pkg.cmi intf.path);
-        print_deps order Pkg.cmi Pkg.mk_dep ppf intf
+        print_deps order Pkg.cmi (Pkg.mk_dep param.native) ppf intf
       | { impl = Some intf; intf = None } ->
-        (print_deps order Pkg.cmo Pkg.cmi ppf intf;
-         print_deps order Pkg.cmx Pkg.mk_dep ppf intf)
+        (if not param.native then
+           print_deps order Pkg.cmo (Pkg.mk_dep param.native) ppf intf;
+         print_deps order Pkg.cmx (Pkg.mk_dep param.native) ppf intf)
       | { impl = None; intf = Some intf } ->
-        print_deps order Pkg.cmi Pkg.mk_dep ppf intf
+        print_deps order Pkg.cmi (Pkg.mk_dep param.native) ppf intf
       | { impl = None; intf = None } -> ()
     ) m
 
@@ -278,6 +282,8 @@ let print_version ()= Format.printf "codept, version %.2f@." version
 
 let abs_path () = param.abs_path <- true
 
+let native () = param.native <- true
+
 let args =
   Cmd.["-modules", Unit (set modules), ": print raw modules dependencies";
        "-deps", Unit (set deps), ": print detailed dependencies";
@@ -308,7 +314,8 @@ let args =
        "print human-friendly version description";
        "-as-map", Cmd.String add_file, "<file>:   same as <file>";
        "-map", Cmd.String add_file, "<file>:   same as <file>";
-       "-abs-path", Cmd.Unit abs_path, ":   use absolute path name"
+       "-abs-path", Cmd.Unit abs_path, ":   use absolute path name";
+       "-native", Cmd.Unit native, ": generate native compilation only dependencies"
     ]
 
 let () =

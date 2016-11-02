@@ -62,9 +62,9 @@ let cmo = change_extension ".cmo"
 let cmi = change_extension ".cmi"
 let cmx = change_extension ".cmx"
 
-let mk_dep = update_extension @@ function
+let mk_dep native = update_extension @@ function
   | "mli" -> ".cmi"
-  | "ml" -> ".cmo"
+  | "ml" -> if native then ".cmx" else ".cmo"
   | _ -> assert false
 
 let pp_source ppf = function
