@@ -16,7 +16,7 @@ module Make(Param:Interpreter.param) = struct
 
   let reset_deps env =
     let open Envt in
-    let module P = Package.Path in
+    let module P = Package in
     env.core.deps <- P.Set.empty;
     env.core.cmi_deps <- P.Set.empty
 
@@ -26,19 +26,19 @@ module Make(Param:Interpreter.param) = struct
     | deps, Work.Done (_,sg) ->
       let core =
         if learn then begin
-          let md = Module.(create ~origin:(Unit Local)) unit.name sg in
+          let md = Module.(create ~origin:(Unit unit.path)) unit.name sg in
           Envt.add_module core md
         end
         else
           core
       in
-      let deps = Path.Set.union unit.dependencies deps in
+      let deps = Pkg.Set.union unit.dependencies deps in
       let unit = { unit with code = [Defs (Definition.sg_bind sg)];
                              dependencies = deps } in
       let () = reset_deps core in
       (unit :: finished, core, rest )
     | deps, Halted code ->
-      let deps = Path.Set.union unit.dependencies deps in
+      let deps = Pkg.Set.union unit.dependencies deps in
       let unit = { unit with dependencies = deps; code } in
       finished, core, unit :: rest
 

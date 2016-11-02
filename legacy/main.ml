@@ -1,6 +1,6 @@
 module Cmd = Arg
 module U = Unit
-module Path = Package.Path
+module Pkg = Package
 
 open M2l
 
@@ -78,10 +78,10 @@ let order units =
   let open Unit in
   let compute (i,m) u = i+1, Name.Map.add u.Unit.name i m in
   snd @@ List.fold_left compute (0,Name.Map.empty)
-  @@ List.rev @@ List.filter (fun u -> Path.is_known u.path) @@ units
+  @@ List.rev @@ List.filter (fun u -> Pkg.is_known u.path) @@ units
 
 let topos_compare order x y =
-  let get x=Name.Map.find_opt (Path.module_name x) order in
+  let get x=Name.Map.find_opt (Pkg.module_name x) order in
   match get x, get y with
   | Some k , Some l -> compare k l
   | None, Some _ -> -1
@@ -89,7 +89,7 @@ let topos_compare order x y =
   | None, None -> compare x y
 
 
-let local file = Path.(local @@ parse_filename file)
+let local file = Pkg.(local @@ parse_filename file)
 
 let rec open_in opens m2l = match opens with
   | [] -> m2l
@@ -128,17 +128,17 @@ let deps opens includes files =
   List.iter (Unit.pp std) ml
 
 let make_abs p =
-  let open Package.Path in
-  if param.abs_path && p.package = Local then
+  let open Package in
+  if param.abs_path && p.source = Local then
     { p with file = Sys.getcwd() :: p.file }
   else
     p
 
 let pp_module ppf u =
   let open Unit in
-  Pp.fp ppf "%a: %a\n" Path.pp (make_abs u.path)
+  Pp.fp ppf "%a: %a\n" Pkg.pp (make_abs u.path)
     Pp.( list ~sep:(s" ") Name.pp )
-    ( List.map Path.module_name @@ Path.Set.elements u.dependencies)
+    ( List.map Pkg.module_name @@ Pkg.Set.elements u.dependencies)
 
 let analyze opens includes files =
   let units, filemap = organize opens files in
@@ -159,8 +159,8 @@ let modules opens includes files =
   print ml; print mli
 
 let local_dependencies unit =
-  List.filter (function {Path.package=Unknown;_} -> false | _ -> true )
-  @@ Path.Set.elements unit.U.dependencies
+  List.filter (function {Pkg.source=Unknown;_} -> false | _ -> true )
+  @@ Pkg.Set.elements unit.U.dependencies
 
 
 let dot opens includes files =
@@ -169,7 +169,7 @@ let dot opens includes files =
   Pp.fp Pp.std "digraph G {\n";
   List.iter (fun u ->
       List.iter (fun p ->
-          Pp.fp std "%s -> %s \n" u.name @@ Path.module_name p)
+          Pp.fp std "%s -> %s \n" u.name @@ Pkg.module_name p)
         (local_dependencies u)
     ) mli;
   Pp.fp Pp.std "}\n"
@@ -178,12 +178,12 @@ let regroup {Unit.ml;mli} =
   let add l m = List.fold_left (fun x y -> Unit.Group.Map.add y x) m l in
   add mli @@ add ml @@ Npath.Map.empty
 
-let print_deps order cmo ppf unit =
+let print_deps order input dep ppf unit =
   let open Unit in
-  let cmo x= make_abs @@ cmo x in
-  Pp.fp ppf "%a :%a\n" Path.pp (cmo unit.path)
-    Pp.(opt_list_0 ~pre:(s " ") ~sep:(s " ") Path.pp)
-  @@ List.map cmo
+  let dep x= make_abs @@ dep x in
+  Pp.fp ppf "%a :%a\n" Pkg.pp ( make_abs @@ input unit.path)
+    Pp.(opt_list_0 ~pre:(s " ") ~sep:(s " ") Pkg.pp)
+  @@ List.map dep
   @@ List.sort (topos_compare order)
   @@ local_dependencies unit
 
@@ -195,11 +195,19 @@ let makefile opens includes files =
   Npath.Map.iter (fun _k g ->
       let open Unit.Group in
       match g with
-      | { impl= Some _ ; intf = Some intf }
+      | { impl= Some impl ; intf = Some intf } ->
+        Pp.fp ppf "%a : %a\n"
+          Pkg.pp ( make_abs @@ Pkg.cmo impl.path)
+          Pkg.pp ( make_abs @@ Pkg.cmi intf.path);
+        Pp.fp ppf "%a : %a\n"
+          Pkg.pp ( make_abs @@ Pkg.cmx impl.path)
+          Pkg.pp ( make_abs @@ Pkg.cmi intf.path);
+        print_deps order Pkg.cmi Pkg.mk_dep ppf intf
       | { impl = Some intf; intf = None } ->
-        (print_deps order Path.cmo ppf intf; print_deps order Path.cmx ppf intf)
+        (print_deps order Pkg.cmo Pkg.cmi ppf intf;
+         print_deps order Pkg.cmx Pkg.mk_dep ppf intf)
       | { impl = None; intf = Some intf } ->
-        print_deps order Path.cmi ppf intf
+        print_deps order Pkg.cmi Pkg.mk_dep ppf intf
       | { impl = None; intf = None } -> ()
     ) m
 

@@ -1,14 +1,14 @@
 
-module Path = Package.Path
+module Pkg = Package
 
 type kind = Structure | Signature
 
 type t = {
   name: string;
-  path: Path.t;
+  path: Pkg.t;
   kind: kind;
   code: M2l.t;
-  dependencies: Path.set
+  dependencies: Pkg.set
 }
 type unit = t
 
@@ -37,7 +37,7 @@ module Map = struct
   type t = group Npath.Map.t
 
 let add unit m =
-  let key = Path.chop_suffix unit.path.file in
+  let key = Pkg.chop_suffix unit.path.file in
   let grp = Option.( Npath.Map.find_opt key m >< empty ) in
   Npath.Map.add key (add unit grp) m
 
@@ -54,9 +54,9 @@ let pp ppf unit =
              dependencies=@[%a@] @;\
              ] @] @."
     unit.name
-    Path.pp_simple unit.path
+    Pkg.pp_simple unit.path
     M2l.pp unit.code
-    Path.Set.pp unit.dependencies
+    Pkg.Set.pp unit.dependencies
 
 
 
@@ -89,9 +89,9 @@ let read_file kind filename =
   Pparse.remove_preprocessed input_file;
   { name;
     kind;
-    path = { package= Local; file=[filename] };
+    path = { Pkg.source = Local; file=[filename] };
     code;
-    dependencies = Path.Set.empty
+    dependencies = Pkg.Set.empty
   }
 
 type 'a split = { ml:'a; mli:'a}

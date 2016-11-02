@@ -13,7 +13,8 @@ module Arg = struct
     if List.length args > 0 then Pp.fp ppf "→"
 end
 
-type source = Local | Pkg of Npath.t
+module Pkg = Package
+type source = Pkg.t
 
 type origin =
   | Unit of source (** aka toplevel module *)
@@ -25,9 +26,9 @@ type origin =
   | Rec (** mockup module for recursive definitions *)
 
 let pp_origin ppf = function
-  | Unit Local -> Pp.fp ppf "#"
-  | Unit (Pkg x) -> Pp.fp ppf "#[%a]" Npath.pp x
-  | Extern -> Pp.fp ppf "!"
+  | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
+  | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Npath.pp x
+  | Unit { Pkg.source = Unknown; _} | Extern -> Pp.fp ppf "!"
   | Rec -> Pp.fp ppf "?"
   | Submodule -> Pp.fp ppf "."
   | First_class -> Pp.fp ppf "'"

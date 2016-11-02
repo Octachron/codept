@@ -42,7 +42,7 @@ module Base = struct
 end
 
 module Open_world(Envt:extended) = struct
-  module P = Package.Path
+  module P = Package
   type t = { core: Envt.t; world: P.t Name.map; mutable externs: Name.set }
 
   let start core world = { core; world; externs = Name.Set.empty }
@@ -81,7 +81,7 @@ end
 module Sg = Interpreter.Make(Base)
 
 module Layered = struct
-  module P = Package.Path
+  module P = Package
   module Envt = Open_world(Base)
   type source = {
     origin:Npath.t;
@@ -95,7 +95,7 @@ module Layered = struct
     let cmis =
       Array.fold_left (fun m x ->
           if Filename.check_suffix x ".cmi" then
-            let p = {P.package = P.Sys origin; file = P.parse_filename x} in
+            let p = {P.source = P.Pkg origin; file = P.parse_filename x} in
             Name.Map.add (P.module_name p) p m
           else m
         )
@@ -116,19 +116,20 @@ module Layered = struct
 
   let rec track source stack = match stack with
     | [] -> ()
-    | (name, code) :: q ->
+    | (name, path, code) :: q ->
       match I.m2l source.resolved code with
       | Halted code ->
         begin match M2l.Block.m2l code with
           | None -> assert false
           | Some name' ->
-            let code' = Cmi.cmi_m2l
-              @@ P.filename
-              @@ Name.Map.find name source.cmis in
-            track source ( (name',code') :: (name, code) :: q )
+            let path' = Name.Map.find name source.cmis in
+            let code' = Cmi.cmi_m2l @@ P.filename path in
+            track source ( (name', path', code') :: (name, path, code) :: q )
         end
       | Done (_, sg) ->
-        let md = M.create ~origin:(M.Unit (Pkg source.origin)) name sg in
+
+        let md = M.create
+            ~origin:(M.Unit path) name sg in
         source.resolved <- Envt.add_module source.resolved md;
         track source q
 
@@ -138,8 +139,9 @@ module Layered = struct
       in m
     with
     | Not_found ->
+      let path = Name.Map.find name source.cmis in
       track source
-        [name,Cmi.cmi_m2l (P.filename @@ Name.Map.find name source.cmis)];
+        [name, path, Cmi.cmi_m2l @@ P.filename path ];
       pkg_find name source
 
   let rec pkgs_find name = function
@@ -170,23 +172,20 @@ end
 
 module Tracing(Envt:extended) = struct
 
-  module P = Package.Path
+  module P = Package
   type t = { env: Envt.t;
              mutable deps: P.set;
              mutable cmi_deps: P.set
            }
 
-  let resolve n env =
-    let package =
-      match (Envt.find_name Module n env).M.origin with
-      | M.Unit Local | M.Alias _ -> P.Local
-      | M.Extern -> Unknown
-      | M.Unit (Pkg p) -> Sys p
-      | M.Arg | M.Rec | M.First_class | Submodule ->
-        assert false
-      | exception Not_found -> Unknown
-    in
-    { P.package; file = [n] }
+  let rec resolve n env =
+    match (Envt.find_name Module n env).M.origin with
+    | M.Unit p -> p
+    | M.Alias n -> resolve n env
+    | M.Extern -> { source = Unknown; file = [n] }
+    | exception Not_found  -> { source = Unknown; file = [n] }
+    | M.Arg | M.Rec | M.First_class | Submodule ->
+      assert false
 
   let record n env =
     env.deps <- P.Set.add (resolve n env.env) env.deps
