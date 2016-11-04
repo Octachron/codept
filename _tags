@@ -1,4 +1,9 @@
 true: warn(A-44-42-45-40-4-41-6-48-30)
+true: no_alias_deps
 true: bin_annot
+true: strict_sequence
+true: safe_string
+true: short_paths
+true: strict_formats
 <lib> or <legacy> :  include
 true: package(compiler-libs.common)

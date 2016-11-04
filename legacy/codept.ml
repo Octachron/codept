@@ -136,12 +136,6 @@ let make_abs p =
   else
     p
 
-let pp_module ppf u =
-  let open Unit in
-  Pp.fp ppf "%a: %a\n" Pkg.pp (make_abs u.path)
-    Pp.( list ~sep:(s" ") Name.pp )
-    ( List.map Pkg.module_name @@ Pkg.Set.elements u.dependencies)
-
 let analyze opens includes files =
   let units, filemap = organize opens files in
   let module Envt = Envts.Tr in
@@ -153,10 +147,32 @@ let analyze opens includes files =
           Solver.Failure.pp_cycle units
           Module.pp_signature env.core.env.local
 
+let pp_module ?filter ppf u =
+  let open Unit in
+  let elts = Pkg.Set.elements u.dependencies in
+  let elts = match filter with
+    | Some f -> List.filter f elts
+    | None -> elts in
+  Pp.fp ppf "%a: %a\n" Pkg.pp (make_abs u.path)
+    Pp.( list ~sep:(s" ") Name.pp )
+    ( List.map Pkg.module_name elts)
 
-let modules opens includes files =
+let inner_filter = function
+  | { Pkg.source = Local; _ } -> true
+  |  _ -> false
+
+let extern_filter = function
+  | { Pkg.source = Unknown; _ } -> true
+  | _ -> false
+
+let lib_filter = function
+  | { Pkg.source = Pkg _ ; _ } -> true
+  | _ -> false
+
+
+let modules ?filter opens includes files =
   let {Unit.ml; mli} = analyze opens includes files in
-  let print units = List.iter (pp_module std)
+  let print units = List.iter (pp_module ?filter std)
       (List.sort Unit.(fun x y -> compare x.path.file y.path.file) units) in
   print ml; print mli
 
@@ -285,21 +301,27 @@ let abs_path () = param.abs_path <- true
 let native () = param.native <- true
 
 let args =
-  Cmd.["-modules", Unit (set modules), ": print raw modules dependencies";
+  Cmd.["-modules", Unit (set modules), ":   print raw module dependencies";
+       "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
+       ":   print raw unresolved dependencies";
+       "-inner-modules", Unit (set @@ modules ~filter:inner_filter),
+       ":   print raw inner dependencies";
+       "-extern-modules", Unit (set @@ modules ~filter:lib_filter),
+       ":   print raw extern dependencies";
        "-deps", Unit (set deps), ": print detailed dependencies";
-       "-m2l", Unit (set_iter m2l), ": print m2l ast";
+       "-m2l", Unit (set_iter m2l), ":   print m2l ast";
        "-impl", String add_impl, "<f>:   read <f> as a ml file";
        "-intf", String add_intf, "<f>:   read <f> as a mli file";
        "-ml-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
                                           for ml";
        "-mli-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
                                            for mli";
-       "-one-pass", Unit (set_iter one_pass), ": print m2l ast after one pass";
-       "-makefile", Unit (set makefile), ": print makefile depend file";
-       "-dot", Unit (set dot), ": print dependencies in dot format";
+       "-one-pass", Unit (set_iter one_pass), ":   print m2l ast after one pass";
+       "-makefile", Unit (set makefile), ":   print makefile depend file";
+       "-dot", Unit (set dot), ":   print dependencies in dot format";
        "-I", String include_, "<dir>:   include <dir> in the analyssi all cmi files\
                                in <dir>";
-       "-open", String add_open, "<name>: open module <name> at the start of \
+       "-open", String add_open, "<name>:   open module <name> at the start of \
                                   all compilation units";
        "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
        "<cmd>:   Pipe sources through preprocessor <cmd>";
@@ -307,7 +329,7 @@ let args =
        "<cmd>:   Pipe abstract syntax trees through ppx preprocessor <cmd>";
        "-transparent_extension_node", Cmd.Bool transparent_extension,
        "<bool>:   Inspect unknown extension nodes";
-       "transparent_aliases", Cmd.Bool transparent_aliases,
+       "-transparent_aliases", Cmd.Bool transparent_aliases,
        "<bool>:   Delay aliases dependencies";
        "-vnum", Cmd.Unit print_vnum, "print version number";
        "-version", Cmd.Unit print_version,

@@ -89,7 +89,7 @@ let read_file kind filename =
   Pparse.remove_preprocessed input_file;
   { name;
     kind;
-    path = { Pkg.source = Local; file=[filename] };
+    path = { Pkg.source = Local; file=Pkg.parse_filename filename };
     code;
     dependencies = Pkg.Set.empty
   }

@@ -78,7 +78,7 @@ let pp_simple ppf {source;file}=
 let pp ppf {source;file} =
   begin match source with
     | Local -> ()
-    | Unknown -> Pp.fp ppf "?/"
+    | Unknown -> Pp.fp ppf "?"
     | Pkg s ->
       Pp.fp ppf "%a/"
         Pp.(list ~sep:(s "/") string) s

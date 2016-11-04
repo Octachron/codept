@@ -43,9 +43,9 @@ end
 
 module Open_world(Envt:extended) = struct
   module P = Package
-  type t = { core: Envt.t; world: P.t Name.map; mutable externs: Name.set }
+  type t = { core: Envt.t; world: P.t Name.map; externs: P.set ref }
 
-  let start core world = { core; world; externs = Name.Set.empty }
+  let start core world = { core; world; externs = ref P.Set.empty }
 
   let approx name =
     Module.(create name ~origin:Extern Sig.empty)
@@ -68,7 +68,8 @@ module Open_world(Envt:extended) = struct
         raise Not_found
       else
         (
-          env.externs <- Name.Set.add root env.externs;
+          env.externs := P.Set.add
+              { P.file = [root]; source = Unknown } !(env.externs);
           approx (last path)
         )
 
@@ -174,8 +175,7 @@ module Tracing(Envt:extended) = struct
 
   module P = Package
   type t = { env: Envt.t;
-             mutable deps: P.set;
-             mutable cmi_deps: P.set
+             deps: P.set ref
            }
 
   let rec resolve n env =
@@ -188,13 +188,11 @@ module Tracing(Envt:extended) = struct
       assert false
 
   let record n env =
-    env.deps <- P.Set.add (resolve n env.env) env.deps
-  let record_cmi n env = env.cmi_deps <-
-      P.Set.add (resolve n env.env) env.cmi_deps
-
+    env.deps := P.Set.add (resolve n env.env) !(env.deps)
+  let record_alias = record
 
   let extend env =
-    { env; deps = P.Set.empty; cmi_deps = P.Set.empty }
+    { env; deps = ref P.Set.empty }
 
   let deps env = env.deps
 
@@ -202,7 +200,7 @@ module Tracing(Envt:extended) = struct
 
   let alias_chain start env a root = function
     | Module.Alias n when start-> Some n
-    | Alias n -> Option.( root >>| fun r -> record_cmi r env; n )
+    | Alias n -> Option.( root >>| fun r -> record_alias r env; n )
     | Unit _ when start -> Some a
     | _ -> None
 
