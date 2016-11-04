@@ -59,6 +59,7 @@ let change_extension ext =
   update_extension ( fun _ -> ext )
 
 let cmo = change_extension ".cmo"
+let o = change_extension ".o"
 let cmi = change_extension ".cmi"
 let cmx = change_extension ".cmx"
 

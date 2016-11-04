@@ -9,6 +9,7 @@ let std = Format.std_formatter
 
 type param =
   {
+    mutable all: bool;
     mutable native: bool;
     mutable abs_path: bool;
     mutable transparent_aliases: bool;
@@ -24,6 +25,7 @@ let lift { transparent_extension_nodes; transparent_aliases; _ } =
   : Interpreter.param )
 
 let param = {
+  all = false;
   native = false;
   abs_path = false;
   transparent_aliases = true;
@@ -196,16 +198,26 @@ let regroup {Unit.ml;mli} =
   let add l m = List.fold_left (fun x y -> Unit.Group.Map.add y x) m l in
   add mli @@ add ml @@ Npath.Map.empty
 
-let print_deps order input dep ppf unit =
+let print_deps order input dep ppf (unit,imore,dmore) =
+  let if_all l = if param.all then l else [] in
   let open Unit in
   let dep x= make_abs @@ dep x in
-  Pp.fp ppf "%a :%a\n" Pkg.pp ( make_abs @@ input unit.path)
+  let ppl ppf l = Pp.(list ~sep:(s" ") Pkg.pp) ppf (List.map make_abs l) in
+  Pp.fp ppf "%a %a:%a %a\n"
+    Pkg.pp ( make_abs @@ input unit.path)
+    ppl (if_all imore)
     Pp.(opt_list_0 ~pre:(s " ") ~sep:(s " ") Pkg.pp)
-  @@ List.map dep
-  @@ List.sort (topos_compare order)
-  @@ local_dependencies unit
+    ( List.map dep
+      @@ List.sort (topos_compare order)
+      @@ local_dependencies unit
+    )
+    ppl (if_all dmore)
 
 let makefile opens includes files =
+  let all = param.all in
+  let all_cons x l =
+    List.map make_abs @@ if all then x :: l else [x] in
+  let ppl ppf (x,l) = Pp.(list ~sep:(s" ") Pkg.pp) ppf (all_cons x l) in
   let ppf = Pp.std in
   let units = analyze opens includes files in
   let order = order units.Unit.mli in
@@ -217,17 +229,23 @@ let makefile opens includes files =
         if not param.native then
           Pp.fp ppf "%a : %a\n"
             Pkg.pp ( make_abs @@ Pkg.cmo impl.path)
-            Pkg.pp ( make_abs @@ Pkg.cmi intf.path);
+            ppl  (Pkg.cmi impl.path, [impl.path]);
         Pp.fp ppf "%a : %a\n"
-          Pkg.pp ( make_abs @@ Pkg.cmx impl.path)
-          Pkg.pp ( make_abs @@ Pkg.cmi intf.path);
-        print_deps order Pkg.cmi (Pkg.mk_dep param.native) ppf intf
-      | { impl = Some intf; intf = None } ->
-        (if not param.native then
-           print_deps order Pkg.cmo (Pkg.mk_dep param.native) ppf intf;
-         print_deps order Pkg.cmx (Pkg.mk_dep param.native) ppf intf)
+          ppl (Pkg.cmx impl.path, [Pkg.o impl.path])
+          ppl  (Pkg.cmi impl.path, [impl.path]);
+        print_deps order Pkg.cmi (Pkg.mk_dep param.native) ppf
+          (intf,[],[])
+      | { impl = Some impl; intf = None } ->
+        begin
+          if not param.native then
+            print_deps order Pkg.cmo (Pkg.mk_dep param.native) ppf
+              (impl,[Pkg.cmi impl.path],[impl.path]);
+          print_deps order Pkg.cmx (Pkg.mk_dep param.native) ppf
+            (impl,[Pkg.o impl.path; Pkg.cmi impl.path],[impl.path])
+        end
       | { impl = None; intf = Some intf } ->
-        print_deps order Pkg.cmi (Pkg.mk_dep param.native) ppf intf
+        print_deps order Pkg.cmi (Pkg.mk_dep param.native) ppf
+          (intf,[],[])
       | { impl = None; intf = None } -> ()
     ) m
 
@@ -297,48 +315,49 @@ let print_vnum ()= Format.printf "%.2f@." version
 let print_version ()= Format.printf "codept, version %.2f@." version
 
 let abs_path () = param.abs_path <- true
-
+let all () = param.all <- true
 let native () = param.native <- true
 
-let args =
-  Cmd.["-modules", Unit (set modules), ":   print raw module dependencies";
-       "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
-       ":   print raw unresolved dependencies";
-       "-inner-modules", Unit (set @@ modules ~filter:inner_filter),
-       ":   print raw inner dependencies";
-       "-extern-modules", Unit (set @@ modules ~filter:lib_filter),
-       ":   print raw extern dependencies";
-       "-deps", Unit (set deps), ": print detailed dependencies";
-       "-m2l", Unit (set_iter m2l), ":   print m2l ast";
-       "-impl", String add_impl, "<f>:   read <f> as a ml file";
-       "-intf", String add_intf, "<f>:   read <f> as a mli file";
-       "-ml-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
-                                          for ml";
-       "-mli-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
-                                           for mli";
-       "-one-pass", Unit (set_iter one_pass), ":   print m2l ast after one pass";
-       "-makefile", Unit (set makefile), ":   print makefile depend file";
-       "-dot", Unit (set dot), ":   print dependencies in dot format";
-       "-I", String include_, "<dir>:   include <dir> in the analyssi all cmi files\
-                               in <dir>";
-       "-open", String add_open, "<name>:   open module <name> at the start of \
-                                  all compilation units";
-       "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
-       "<cmd>:   Pipe sources through preprocessor <cmd>";
-       "-ppx", Cmd.String add_ppx,
-       "<cmd>:   Pipe abstract syntax trees through ppx preprocessor <cmd>";
-       "-transparent_extension_node", Cmd.Bool transparent_extension,
-       "<bool>:   Inspect unknown extension nodes";
-       "-transparent_aliases", Cmd.Bool transparent_aliases,
-       "<bool>:   Delay aliases dependencies";
-       "-vnum", Cmd.Unit print_vnum, "print version number";
-       "-version", Cmd.Unit print_version,
-       "print human-friendly version description";
-       "-as-map", Cmd.String add_file, "<file>:   same as <file>";
-       "-map", Cmd.String add_file, "<file>:   same as <file>";
-       "-abs-path", Cmd.Unit abs_path, ":   use absolute path name";
-       "-native", Cmd.Unit native, ": generate native compilation only dependencies"
-    ]
+let args = Cmd.[
+    "-all", Unit all, ":   display full dependencies in makefile";
+    "-modules", Unit (set modules), ":   print raw module dependencies";
+    "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
+    ":   print raw unresolved dependencies";
+    "-inner-modules", Unit (set @@ modules ~filter:inner_filter),
+    ":   print raw inner dependencies";
+    "-extern-modules", Unit (set @@ modules ~filter:lib_filter),
+    ":   print raw extern dependencies";
+    "-deps", Unit (set deps), ": print detailed dependencies";
+    "-m2l", Unit (set_iter m2l), ":   print m2l ast";
+    "-impl", String add_impl, "<f>:   read <f> as a ml file";
+    "-intf", String add_intf, "<f>:   read <f> as a mli file";
+    "-ml-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
+                                       for ml";
+    "-mli-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
+                                        for mli";
+    "-one-pass", Unit (set_iter one_pass), ":   print m2l ast after one pass";
+    "-makefile", Unit (set makefile), ":   print makefile depend file";
+    "-dot", Unit (set dot), ":   print dependencies in dot format";
+    "-I", String include_, "<dir>:   include <dir> in the analyssi all cmi files\
+                            in <dir>";
+    "-open", String add_open, "<name>:   open module <name> at the start of \
+                               all compilation units";
+    "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
+    "<cmd>:   Pipe sources through preprocessor <cmd>";
+    "-ppx", Cmd.String add_ppx,
+    "<cmd>:   Pipe abstract syntax trees through ppx preprocessor <cmd>";
+    "-transparent_extension_node", Cmd.Bool transparent_extension,
+    "<bool>:   Inspect unknown extension nodes";
+    "-transparent_aliases", Cmd.Bool transparent_aliases,
+    "<bool>:   Delay aliases dependencies";
+    "-vnum", Cmd.Unit print_vnum, "print version number";
+    "-version", Cmd.Unit print_version,
+    "print human-friendly version description";
+    "-as-map", Cmd.String add_file, "<file>:   same as <file>";
+    "-map", Cmd.String add_file, "<file>:   same as <file>";
+    "-abs-path", Cmd.Unit abs_path, ":   use absolute path name";
+    "-native", Cmd.Unit native, ": generate native compilation only dependencies"
+  ]
 
 let () =
   Compenv.readenv stderr Before_args
