@@ -1,2 +1,3 @@
 *~
 _build/**
+tests/star/m*.mli
