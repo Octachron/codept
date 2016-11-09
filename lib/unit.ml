@@ -77,11 +77,11 @@ let read_file kind filename =
       | Structure ->
         Ast_analyzer.structure @@
         Pparse.file Format.err_formatter ~tool_name:"codept" input_file
-          Parse.implementation Config.ast_impl_magic_number
+          Parse.implementation Pparse.Structure
       | Signature ->
         Ast_analyzer.signature @@
         Pparse.file Format.err_formatter ~tool_name:"codept" input_file
-          Parse.interface Config.ast_intf_magic_number
+          Parse.interface Pparse.Signature
     with Syntaxerr.Error _ ->
       Pparse.remove_preprocessed input_file;
       Error.log "Syntax error in %s\n" filename
