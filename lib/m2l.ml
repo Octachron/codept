@@ -42,6 +42,9 @@ and module_expr =
   | Extension_node of extension (** [%ext …] *)
   | Abstract (** □ *)
   | Unpacked (** (module M *)
+  | Open_me of { resolved: Definition.t; opens:Npath.t list; expr:module_expr}
+  (** M.(…N.( module_expr)…)
+      Note: used for pattern open. *)
 and module_type =
   | Resolved of P.t (** same as in the module type *)
   | Alias of Npath.t (** module m = A…  *)
@@ -81,6 +84,8 @@ module Block = struct
     | Constraint (e,t) -> either (me e) mt t
     | Str code -> m2l code
     | Val _ | Extension_node _ | Abstract | Unpacked -> None
+    | Open_me {opens = []; expr; _ } -> me expr
+    | Open_me {opens = a::_ ; _ } -> Some (List.hd a)
   and mt = function
     | Resolved _ -> None
     | Alias n -> Some (List.hd n)
@@ -202,6 +207,11 @@ and pp_me ppf = function
   | Extension_node ext -> Pp.fp ppf "%a" pp_extension ext
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
   | Unpacked -> Pp.fp ppf "⟨unpacked⟩"
+  | Open_me {opens = a :: q ; resolved; expr} ->
+    Pp.fp ppf "%a.(%a)" Npath.pp a pp_me (Open_me{opens=q;resolved;expr})
+  | Open_me {opens=[]; resolved; expr} ->
+    Pp.fp ppf "⟨context:%a⟩ %a" D.pp resolved pp_me expr
+
 and pp_mt ppf = function
   | Resolved fdefs -> Pp.fp ppf "✔%a" P.pp fdefs
   | Alias np -> Pp.fp ppf "(≡)%a" Npath.pp np

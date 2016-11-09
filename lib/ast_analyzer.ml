@@ -98,7 +98,9 @@ module Pattern = struct
 
   (** At module level, a pattern can only access modules or
       bind a first class module *)
-  type t = { binds: module_expr M2l.bind list; annot: Annot.t }
+  type bind = module_expr M2l.bind
+  type t = { binds: bind list
+           ; annot: Annot.t }
 
   let empty = { annot = Annot.empty; binds = [] }
 
@@ -121,7 +123,9 @@ module Pattern = struct
   let opt f x = Option.( x >>| f >< empty )
   let pack o = { empty with annot = Annot.pack o }
 
-  let bind name sign = { empty with binds = [{M2l.name; expr = sign } ] }
+  let bind name sign = { empty with binds = [{M2l.name; expr = sign }] }
+
+  let open_ opens me = M2l.Open_me { opens; resolved = D.empty; expr = me }
 
   let bind_fmod p inner =
     let binded =
@@ -298,8 +302,8 @@ and expr exp =
     Annot.value [[ Bind( module_binding (m,me) );
                  Minor( expr e )
                ]]
-(*  | Pexp_letexception (c, e) (* let exception C in E *) ->
-    expression (extension_constructor env ext) e *)
+  | Pexp_letexception (_c, e) (* let exception C in E *) ->
+    expr e
   | Pexp_send (e, _) (*  E # m *)
   | Pexp_assert e (* assert E *)
   | Pexp_newtype (_ ,e) (* fun (type t) -> E *)
@@ -322,7 +326,9 @@ and expr exp =
     -> Annot.empty
   | Pexp_extension ext (* [%ext] *) ->
     (Warning.extension(); Annot.value [[extension ext]] )
-and pattern pat = match pat.ppat_desc with
+and pattern_full opens pat =
+  let pattern ?(more=[]) pat = pattern_full (more @ opens) pat in
+  match pat.ppat_desc with
   | Ppat_constant _ (* 1, 'a', "true", 1.0, 1l, 1L, 1n *)
   | Ppat_interval _ (* 'a'..'z'*)
   | Ppat_any
@@ -360,7 +366,8 @@ and pattern pat = match pat.ppat_desc with
       {ptyp_desc=Ptyp_package s; _ } ) ->
     let name = txt name in
     let mt, others = full_package_type s in
-    let bind = {M2l.name; expr = M2l.Constraint(Unpacked, mt) } in
+    let bind = {M2l.name; expr =
+                            Pattern.open_ opens @@ M2l.Constraint(Unpacked, mt) } in
     { others with binds = [bind] }
     (* todo : catch higher up *)
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
@@ -373,8 +380,8 @@ and pattern pat = match pat.ppat_desc with
            Note: (module P : S) is represented as
            Ppat_constraint(Ppat_unpack, Ptyp_package)
          *)
-(*  | Ppat_open (m,p) (* M.(P) *) ->
-    Resolver.(up env.Envt.signature) @@ pattern (do_open env m) p *)
+  | Ppat_open (m,p) (* M.(P) *) -> pattern ~more:[H.npath m] p
+and pattern pat = pattern_full [] pat
 
 and type_declaration td: M2l.annotation  =
   Annot.union_map (fun (_,t,_) -> core_type t) td.ptype_cstrs
@@ -619,7 +626,7 @@ and extension_core (name,payload) =
                            ( Pattern.to_annot (pattern p) ++ Annot.opt expr eo)
                       ; name }
 and matched_patt_expr x y =
-(** matched_patt_expr is used to catch some case of packed module
+(* matched_patt_expr is used to catch some case of packed module
     where the module signature is provided not on the pattern side
     but on the expression side
 *)

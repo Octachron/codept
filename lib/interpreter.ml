@@ -66,16 +66,17 @@ module Make(Envt:envt)(Param:param) = struct
       Done x
     | _ -> Halted path
 
+  let warn_open x = let open Module in
+      if x.signature = S.empty then
+        match x.origin with
+        | First_class -> Warning.opened_first_class x.name
+        | Unit _ | Submodule | Arg | Rec -> ()
+        | Alias _ -> ()
+        | Extern -> () (* add a hook here? *)
+
   let open_ state path =
     match find Module path state with
-    | x ->
-      if x.signature = S.empty then
-        begin match x.origin with
-          | First_class -> Warning.opened_first_class x.name
-          | Unit _ | Submodule | Arg | Rec -> ()
-          | Alias _ -> ()
-          | Extern -> () (* add a hook here? *)
-        end;
+    | x -> warn_open x;
       Done (Some( D.sg_see x.signature ))
     | exception Not_found -> Halted (Open path)
 
@@ -171,6 +172,16 @@ module Make(Envt:envt)(Param:param) = struct
       drop_state @@ m2l state str
     | Constraint(me,mt) ->
       constraint_ state me mt
+    | Open_me {opens=[]; resolved; expr } ->
+      let state = Envt.( state >> resolved.D.visible ) in
+      module_expr state expr
+    | Open_me {opens=a :: q ; resolved; expr } as me ->
+      begin match find Module a state with
+        | exception Not_found -> Halted me
+        | x -> warn_open x;
+          let resolved = Def.( resolved +| D.sg_see x.signature ) in
+          module_expr state @@ Open_me {opens = q; resolved; expr }
+      end
     | Extension_node n ->
       begin match extension state n with
         | Done () -> Done P.empty
