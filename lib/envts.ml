@@ -68,8 +68,9 @@ module Open_world(Envt:extended) = struct
         raise Not_found
       else
         (
-          env.externs := P.Set.add
-              { P.file = [root]; source = Unknown } !(env.externs);
+          if level = Module then
+            env.externs := P.Set.add
+                { P.file = [root]; source = Unknown } !(env.externs);
           approx (last path)
         )
 

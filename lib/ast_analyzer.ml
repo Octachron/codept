@@ -125,7 +125,19 @@ module Pattern = struct
 
   let bind name sign = { empty with binds = [{M2l.name; expr = sign }] }
 
-  let open_ opens me = M2l.Open_me { opens; resolved = D.empty; expr = me }
+  let open_ m { annot={values; packed; access}; binds} =
+    let values =
+      if Name.Set.cardinal access > 0 then
+        M2l.[Minor { Annot.empty with access}] :: values
+      else
+        M2l.[] :: values in
+    let values = List.map( List.cons (M2l.Open m) ) values in
+    let packed = List.map (M2l.open_me [m]) packed in
+    let binds = List.map
+        (fun {name;expr} -> {name; expr = M2l.open_me [m] expr } )
+        binds in
+    let access = Name.Set.empty in
+    { annot={values;access;packed}; binds }
 
   let bind_fmod p inner =
     let binded =
@@ -326,8 +338,7 @@ and expr exp =
     -> Annot.empty
   | Pexp_extension ext (* [%ext] *) ->
     (Warning.extension(); Annot.value [[extension ext]] )
-and pattern_full opens pat =
-  let pattern ?(more=[]) pat = pattern_full (more @ opens) pat in
+and pattern pat =
   match pat.ppat_desc with
   | Ppat_constant _ (* 1, 'a', "true", 1.0, 1l, 1L, 1n *)
   | Ppat_interval _ (* 'a'..'z'*)
@@ -366,8 +377,7 @@ and pattern_full opens pat =
       {ptyp_desc=Ptyp_package s; _ } ) ->
     let name = txt name in
     let mt, others = full_package_type s in
-    let bind = {M2l.name; expr =
-                            Pattern.open_ opens @@ M2l.Constraint(Unpacked, mt) } in
+    let bind = {M2l.name; expr = M2l.Constraint(Unpacked, mt) } in
     { others with binds = [bind] }
     (* todo : catch higher up *)
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
@@ -380,8 +390,8 @@ and pattern_full opens pat =
            Note: (module P : S) is represented as
            Ppat_constraint(Ppat_unpack, Ptyp_package)
          *)
-  | Ppat_open (m,p) (* M.(P) *) -> pattern ~more:[H.npath m] p
-and pattern pat = pattern_full [] pat
+  | Ppat_open (m,p) (* M.(P) *) ->
+    Pattern.open_ (H.npath m) @@ pattern p
 
 and type_declaration td: M2l.annotation  =
   Annot.union_map (fun (_,t,_) -> core_type t) td.ptype_cstrs

@@ -69,6 +69,10 @@ and 'a fn = { arg: module_type Arg.t option; body:'a }
 
 type arg = module_type Arg.t option
 
+let open_me ml expr = match expr with
+  | Open_me o -> Open_me { o with opens = ml @ o.opens }
+  | expr ->  Open_me { resolved = D.empty; opens = ml; expr }
+
 module Block = struct
   let either x f y = if x = None then f y else x
   let first f l = List.fold_left (fun x y -> either x f y) None l
