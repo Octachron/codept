@@ -18,7 +18,7 @@ type source = Pkg.t
 
 type origin =
   | Unit of source (** aka toplevel module *)
-  | Extern (** aka unknow module *)
+  | Extern (** aka unknown module *)
   | Alias of Name.t (** M = A… *)
   | Submodule
   | First_class (** Not resolved first-class module *)

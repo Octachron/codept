@@ -136,15 +136,14 @@ module Layered = struct
         track source q
 
   let rec pkg_find name source =
-    try
-      let m = Envt.find_name M.Module name source.resolved
-      in m
-    with
-    | Not_found ->
+    match Envt.find_name M.Module name source.resolved with
+    | { origin = Extern; _ } -> raise Not_found
+    | exception Not_found ->
       let path = Name.Map.find name source.cmis in
       track source
         [name, path, Cmi.cmi_m2l @@ P.filename path ];
       pkg_find name source
+    | m -> m
 
   let rec pkgs_find name = function
     | [] -> raise Not_found
