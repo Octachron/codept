@@ -9,12 +9,13 @@ let std = Format.std_formatter
 
 type param =
   {
-    mutable all: bool;
-    mutable native: bool;
-    mutable abs_path: bool;
-    mutable transparent_aliases: bool;
-    mutable transparent_extension_nodes: bool
+    all: bool;
+    native: bool;
+    abs_path: bool;
+    transparent_aliases: bool;
+    transparent_extension_nodes: bool
   }
+
 
 type task =
   {
@@ -32,7 +33,7 @@ let lift { transparent_extension_nodes; transparent_aliases; _ } =
   end
   : Interpreter.param )
 
-let param = {
+let param = ref {
   all = false;
   native = false;
   abs_path = false;
@@ -70,7 +71,7 @@ let to_m2l f =
     Cmi.cmi_m2l f
   | ext -> raise (Unknown_file_type ext)
 
-let one_pass f =
+let one_pass param f =
   let module Param = (val lift param) in
   let module Sg = Envts.Interpreters.Sg(Param) in
   let start = to_m2l f in
@@ -78,7 +79,7 @@ let one_pass f =
   | Done (_state,d) -> Pp.fp std "Computation finished:\n %a@." S.pp d
   | Halted h -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
 
-let m2l f =
+let m2l _param f =
   let start = to_m2l f in
   start
   |> Normalize.all
@@ -131,7 +132,7 @@ let remove_units invisibles =
       not @@ Npath.Set.mem file invisibles
     | _ -> false
 
-let analyze {opens;includes;invisibles;files} =
+let analyze param {opens;includes;invisibles;files} =
   let units, filemap = organize opens files in
   let module Envt = Envts.Tr in
   let core = start_env includes filemap in
@@ -147,27 +148,27 @@ let analyze {opens;includes;invisibles;files} =
   let mli = remove_units invisibles mli in
   { Unit.ml; mli }
 
-let deps task =
-  let {Unit.ml; mli} = analyze task in
+let deps param task =
+  let {Unit.ml; mli} = analyze param task in
   let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) std in
   print ml; print mli
 
-let make_abs p =
+let make_abs abs p =
   let open Package in
-  if param.abs_path && p.source = Local then
+  if abs && p.source = Local then
     { p with file = Sys.getcwd() :: p.file }
   else
     p
 
 
 
-let pp_module ?filter ppf u =
+let pp_module abs ?filter ppf u =
   let open Unit in
   let elts = Pkg.Set.elements u.dependencies in
   let elts = match filter with
     | Some f -> List.filter f elts
     | None -> elts in
-  Pp.fp ppf "%a: %a\n" Pkg.pp (make_abs u.path)
+  Pp.fp ppf "%a: %a\n" Pkg.pp (make_abs abs u.path)
     Pp.( list ~sep:(s" ") Name.pp )
     ( List.map Pkg.module_name elts)
 
@@ -184,9 +185,9 @@ let lib_filter = function
   | _ -> false
 
 
-let modules ?filter task =
-  let {Unit.ml; mli} = analyze task in
-  let print units = Pp.(list @@ pp_module ?filter) std
+let modules ?filter param task =
+  let {Unit.ml; mli} = analyze param task in
+  let print units = Pp.(list @@ pp_module param.abs_path ?filter) std
       (List.sort Unit.(fun x y -> compare x.path.file y.path.file) units) in
   print ml; print mli
 
@@ -195,9 +196,9 @@ let local_dependencies unit =
   @@ Pkg.Set.elements unit.U.dependencies
 
 
-let dot task =
+let dot param task =
   let open Unit in
-  let {mli; _ } = analyze task in
+  let {mli; _ } = analyze param task in
   Pp.fp Pp.std "digraph G {\n";
   List.iter (fun u ->
       List.iter (fun p ->
@@ -210,7 +211,8 @@ let regroup {Unit.ml;mli} =
   let add l m = List.fold_left (fun x y -> Unit.Group.Map.add y x) m l in
   add mli @@ add ml @@ Npath.Map.empty
 
-let print_deps order input dep ppf (unit,imore,dmore) =
+let print_deps param order input dep ppf (unit,imore,dmore) =
+  let make_abs = make_abs param.abs_path in
   let if_all l = if param.all then l else [] in
   let open Unit in
   let dep x= make_abs @@ dep x in
@@ -225,13 +227,15 @@ let print_deps order input dep ppf (unit,imore,dmore) =
     )
     ppl (if_all dmore)
 
-let makefile task =
+let makefile param task =
   let all = param.all in
+  let make_abs = make_abs param.abs_path in
+  let print_deps = print_deps param in
   let all_cons x l =
     List.map make_abs @@ if all then x :: l else [x] in
   let ppl ppf (x,l) = Pp.(list ~sep:(s" ") Pkg.pp) ppf (all_cons x l) in
   let ppf = Pp.std in
-  let units = analyze task in
+  let units = analyze param task in
   let order = order units.Unit.mli in
   let m = regroup units in
   Npath.Map.iter (fun _k g ->
@@ -264,14 +268,15 @@ let makefile task =
 
 let usage_msg = "codept is an alternative dependencies solver for OCaml"
 
-let ml_synonyms = ref @@ Name.Set.singleton "ml"
-let mli_synonyms =  ref @@ Name.Set.singleton "mli"
+let synonyms = ref {
+    Unit.ml = Name.Set.singleton "ml";
+    Unit.mli = Name.Set.singleton "mli" }
 
-let classify f =
+let classify synonyms f =
   let ext = extension f in
-  if Name.Set.mem ext !mli_synonyms then
+  if Name.Set.mem ext synonyms.Unit.mli then
     Unit.Signature
-  else if Name.Set.mem ext !ml_synonyms then
+  else if Name.Set.mem ext synonyms.ml then
     Unit.Structure
   else
     raise @@ Unknown_file_type ext
@@ -292,8 +297,8 @@ let add_intf name =
   task := {!task with files = { mli = name :: mli; ml } }
 
 let add_file name =
-  match classify name with
-    | Structure -> add_impl name
+  match classify !synonyms name with
+    | Unit.Structure -> add_impl name
     | Signature -> add_intf name
 
 let add_invisible_file name =
@@ -311,34 +316,42 @@ let add_ppx ppx =
   first_ppx := ppx :: !first_ppx
 
 let ml_synonym s =
-   mli_synonyms := Name.Set.add s !mli_synonyms
+   synonyms := { !synonyms with ml = Name.Set.add s !synonyms.ml }
 
 let mli_synonym s =
-  mli_synonyms := Name.Set.add s !mli_synonyms
+   synonyms := { !synonyms with mli = Name.Set.add s !synonyms.mli }
 
 let include_ f =
   task := { !task with includes = f :: (!task).includes }
 
 let action = ref ignore
-let set command () = action:= (fun () -> command !task)
+let set command () = action:= (fun () -> command !param !task)
 let () = set makefile ()
 
 let set_iter command () = action := begin
     fun () ->
       let {Unit.ml;mli} = (!task).files  in
-      List.iter command (ml @ mli)
+      List.iter (command !param) (ml @ mli)
   end
 
-let transparent_aliases value = param.transparent_aliases <- value
-let transparent_extension value = param.transparent_extension_nodes <- value
+let transparent_aliases value =
+  param := { !param with transparent_aliases = value }
+
+let transparent_extension value =
+  param:= { !param with transparent_extension_nodes = value }
 
 let version = 0.01
 let print_vnum ()= Format.printf "%.2f@." version
 let print_version ()= Format.printf "codept, version %.2f@." version
 
-let abs_path () = param.abs_path <- true
-let all () = param.all <- true
-let native () = param.native <- true
+let abs_path () =
+  param := { !param with abs_path = true }
+
+let all () =
+   param := { !param with all = true }
+
+let native () =
+  param := { !param with native = true }
 
 let map file =
   transparent_aliases true;
