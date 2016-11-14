@@ -127,10 +127,12 @@ module Pattern = struct
 
   let open_ m { annot={values; packed; access}; binds} =
     let values =
-      if Name.Set.cardinal access > 0 then
-        M2l.[Minor { Annot.empty with access}] :: values
-      else
-        M2l.[] :: values in
+      ( if Name.Set.cardinal access > 0 then
+          M2l.[Minor { Annot.empty with access}]
+        else
+          []
+      )
+      :: values in
     let values = List.map( List.cons (M2l.Open m) ) values in
     let packed = List.map (M2l.open_me [m]) packed in
     let binds = List.map

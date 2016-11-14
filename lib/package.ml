@@ -1,14 +1,17 @@
 type source = Local | Unknown | Pkg of Npath.t
 
+let sep = Filename.dir_sep
+
 type t = { source: source ; file: Npath.t }
 type path = t
-let filename p =
+
+let filename ?(sep=sep) p =
   begin match p.source with
-    | Pkg n -> String.concat "/" n ^ "/"
+    | Pkg n -> String.concat sep n ^ sep
     | _ -> ""
   end
   ^
-  String.concat "/" p.file
+  String.concat sep p.file
 
 let is_known = function
   | {source=Unknown; _ } -> false
@@ -76,16 +79,19 @@ let pp_source ppf = function
 let pp_simple ppf {source;file}=
   Pp.fp ppf "(%a)%a" pp_source source Npath.pp file
 
-let pp ppf {source;file} =
+let pp_gen sep ppf {source;file} =
   begin match source with
     | Local -> ()
     | Unknown -> Pp.fp ppf "?"
     | Pkg s ->
-      Pp.fp ppf "%a/"
-        Pp.(list ~sep:(s "/") string) s
+      Pp.fp ppf "%a%s"
+        Pp.(list ~sep:(const sep) string) s
+        sep
   end;
   Pp.fp ppf "%a"
-    Pp.(list ~sep:(s "/") string) file
+    Pp.(list ~sep:(const sep) string) file
+
+let pp = pp_gen sep
 
 module Set = struct
   include Set.Make(struct type t = path let compare = compare end)
@@ -94,7 +100,7 @@ end
 
 type set = Set.t
 
-let slash = '/'
+let slash = String.get sep 0
 
 let parse_filename filename =
   let n = String.length filename in

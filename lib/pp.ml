@@ -1,6 +1,7 @@
 let fp = Format.fprintf
 
 let s st ppf = fp ppf st
+let const s ppf = fp ppf "%s" s
 
 let rec list ~sep pp ppf =
   function

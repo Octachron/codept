@@ -12,6 +12,7 @@ type param =
     all: bool;
     native: bool;
     abs_path: bool;
+    slash:string;
     transparent_aliases: bool;
     transparent_extension_nodes: bool
   }
@@ -37,6 +38,7 @@ let param = ref {
   all = false;
   native = false;
   abs_path = false;
+  slash = Filename.dir_sep;
   transparent_aliases = true;
   transparent_extension_nodes = true
 }
@@ -162,13 +164,14 @@ let make_abs abs p =
 
 
 
-let pp_module abs ?filter ppf u =
+let pp_module {abs_path;slash; _ } ?filter ppf u =
+  let pp_pkg = Pkg.pp_gen slash in
   let open Unit in
   let elts = Pkg.Set.elements u.dependencies in
   let elts = match filter with
     | Some f -> List.filter f elts
     | None -> elts in
-  Pp.fp ppf "%a: %a\n" Pkg.pp (make_abs abs u.path)
+  Pp.fp ppf "%a: %a\n" pp_pkg (make_abs abs_path u.path)
     Pp.( list ~sep:(s" ") Name.pp )
     ( List.map Pkg.module_name elts)
 
@@ -187,7 +190,7 @@ let lib_filter = function
 
 let modules ?filter param task =
   let {Unit.ml; mli} = analyze param task in
-  let print units = Pp.(list @@ pp_module param.abs_path ?filter) std
+  let print units = Pp.(list @@ pp_module param ?filter) std
       (List.sort Unit.(fun x y -> compare x.path.file y.path.file) units) in
   print ml; print mli
 
@@ -214,13 +217,14 @@ let regroup {Unit.ml;mli} =
 let print_deps param order input dep ppf (unit,imore,dmore) =
   let make_abs = make_abs param.abs_path in
   let if_all l = if param.all then l else [] in
+  let pkg_pp = Pkg.pp_gen param.slash in
   let open Unit in
   let dep x= make_abs @@ dep x in
-  let ppl ppf l = Pp.(list ~sep:(s" ") Pkg.pp) ppf (List.map make_abs l) in
+  let ppl ppf l = Pp.(list ~sep:(s" ") pkg_pp) ppf (List.map make_abs l) in
   Pp.fp ppf "%a %a:%a %a\n"
-    Pkg.pp ( make_abs @@ input unit.path)
+    pkg_pp ( make_abs @@ input unit.path)
     ppl (if_all imore)
-    Pp.(opt_list_0 ~pre:(s " ") ~sep:(s " ") Pkg.pp)
+    Pp.(opt_list_0 ~pre:(s " ") ~sep:(s " ") pkg_pp)
     ( List.map dep
       @@ List.sort (topos_compare order)
       @@ local_dependencies unit
@@ -361,6 +365,9 @@ let as_map file =
   transparent_aliases true;
   add_file file
 
+let slash () =
+  param := { !param with slash = "/" }
+
 let args = Cmd.[
     "-all", Unit all, ":   display full dependencies in makefile";
     "-modules", Unit (set modules), ":   print raw module dependencies";
@@ -405,7 +412,8 @@ let args = Cmd.[
     "-native", Cmd.Unit native, ":   generate native compilation only dependencies";
     "-one-line", Cmd.Unit ignore, ":   does nothing";
     "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies\
-                                            computation but do not display it."
+                                            computation but do not display it.";
+    "-slash", Cmd.Unit slash, "use forward slash as directory separator"
   ]
 
 let () =
