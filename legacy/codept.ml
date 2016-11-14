@@ -16,6 +16,14 @@ type param =
     mutable transparent_extension_nodes: bool
   }
 
+type task =
+  {
+    files: string list Unit.split;
+    invisibles: Npath.set;
+    includes: string list;
+    opens: Npath.t list
+  }
+
 
 let lift { transparent_extension_nodes; transparent_aliases; _ } =
 (module struct
@@ -92,12 +100,14 @@ let topos_compare order x y =
   | Some _, None -> 1
   | None, None -> compare x y
 
-
 let local file = Pkg.(local @@ parse_filename file)
 
-let rec open_in opens m2l = match opens with
-  | [] -> m2l
-  | a :: q -> open_in q (M2l.Open a :: m2l)
+let open_in opens unit =
+  List.fold_right (fun m (unit:Unit.t) ->
+      match m with
+      | [root] when unit.name = root -> unit
+      | m -> { unit with code = M2l.Open m :: unit.code }
+    ) opens unit
 
 let organize opens files =
   let add_name m n  =  Name.Map.add (Unit.extract_name n) (local n) m in
@@ -105,22 +115,27 @@ let organize opens files =
       Name.Map.empty (files.Unit.ml @ files.mli) in
   let units = Unit.( split @@ group files ) in
   let units =
-    let f = List.map
-        (fun u -> { u with Unit.code = open_in opens u.Unit.code } ) in
+    let f = List.map (open_in opens) in
     { Unit.ml = f units.ml; mli = f units.mli }
   in
   units, m
 
 let start_env includes filemap =
-    Envts.Tr.start Envts.(Trl.extend @@ Layered.create includes
-    @@ Envts.Base.empty) filemap
+  Envts.Tr.start Envts.(
+      Trl.extend @@ Layered.create includes
+      @@ Envts.Base.empty) filemap
 
-let deps opens includes files =
+let remove_units invisibles =
+  List.filter @@ function
+    | { Unit.path = { Pkg.source=Local; file}; _ } ->
+      not @@ Npath.Set.mem file invisibles
+    | _ -> false
+
+let analyze {opens;includes;invisibles;files} =
   let units, filemap = organize opens files in
   let module Envt = Envts.Tr in
   let core = start_env includes filemap in
-  let module Param = (val lift param) in
-  let module S = Solver.Make(Param) in
+  let module S = Solver.Make((val lift param)) in
   let {Unit.ml; mli} =
     try S.resolve_split_dependencies core units with
       S.Cycle (env,units) ->
@@ -128,8 +143,14 @@ let deps opens includes files =
         Solver.Failure.pp_cycle units
         Module.pp_signature env.core.env.local
   in
-  List.iter (Unit.pp std) mli;
-  List.iter (Unit.pp std) ml
+  let ml = remove_units invisibles ml in
+  let mli = remove_units invisibles mli in
+  { Unit.ml; mli }
+
+let deps task =
+  let {Unit.ml; mli} = analyze task in
+  let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) std in
+  print ml; print mli
 
 let make_abs p =
   let open Package in
@@ -138,16 +159,7 @@ let make_abs p =
   else
     p
 
-let analyze opens includes files =
-  let units, filemap = organize opens files in
-  let module Envt = Envts.Tr in
-  let core = start_env includes filemap in
-  let module S = Solver.Make((val lift param)) in
-    try S.resolve_split_dependencies core units with
-        S.Cycle (env,units) ->
-        Error.log "%a@;Env:@ %a"
-          Solver.Failure.pp_cycle units
-          Module.pp_signature env.core.env.local
+
 
 let pp_module ?filter ppf u =
   let open Unit in
@@ -172,9 +184,9 @@ let lib_filter = function
   | _ -> false
 
 
-let modules ?filter opens includes files =
-  let {Unit.ml; mli} = analyze opens includes files in
-  let print units = List.iter (pp_module ?filter std)
+let modules ?filter task =
+  let {Unit.ml; mli} = analyze task in
+  let print units = Pp.(list @@ pp_module ?filter) std
       (List.sort Unit.(fun x y -> compare x.path.file y.path.file) units) in
   print ml; print mli
 
@@ -183,9 +195,9 @@ let local_dependencies unit =
   @@ Pkg.Set.elements unit.U.dependencies
 
 
-let dot opens includes files =
+let dot task =
   let open Unit in
-  let {mli; _ } = analyze opens includes files in
+  let {mli; _ } = analyze task in
   Pp.fp Pp.std "digraph G {\n";
   List.iter (fun u ->
       List.iter (fun p ->
@@ -213,13 +225,13 @@ let print_deps order input dep ppf (unit,imore,dmore) =
     )
     ppl (if_all dmore)
 
-let makefile opens includes files =
+let makefile task =
   let all = param.all in
   let all_cons x l =
     List.map make_abs @@ if all then x :: l else [x] in
   let ppl ppf (x,l) = Pp.(list ~sep:(s" ") Pkg.pp) ppf (all_cons x l) in
   let ppf = Pp.std in
-  let units = analyze opens includes files in
+  let units = analyze task in
   let order = order units.Unit.mli in
   let m = regroup units in
   Npath.Map.iter (fun _k g ->
@@ -264,26 +276,34 @@ let classify f =
   else
     raise @@ Unknown_file_type ext
 
-let files = ref Unit.{ ml = []; mli = [] }
-let includes = ref []
-let opens = ref []
+let task = ref {
+    files = { Unit.ml = []; Unit.mli = [] };
+    invisibles = Npath.Set.empty;
+    includes = [];
+    opens = []
+  }
 
 let add_impl name =
-  let {Unit.ml;mli} = !files in
-  files:= { ml = name :: ml; mli }
+  let {Unit.ml;mli} = (!task).files in
+  task := { !task with files = { ml = name :: ml; mli } }
 
 let add_intf name =
-  let {Unit.ml;mli} = !files in
-  files:= { mli = name :: mli; ml }
+  let {Unit.ml;mli} = !(task).files in
+  task := {!task with files = { mli = name :: mli; ml } }
 
 let add_file name =
   match classify name with
     | Structure -> add_impl name
     | Signature -> add_intf name
 
+let add_invisible_file name =
+  task := { !task with
+            invisibles = Npath.Set.add (Pkg.parse_filename name) (!task).invisibles
+          };
+  add_file name
 
 let add_open name =
-  opens := [name] :: !opens
+  task := { !task with opens = [name] :: (!task).opens }
 
 let first_ppx = Compenv.first_ppx
 
@@ -296,14 +316,16 @@ let ml_synonym s =
 let mli_synonym s =
   mli_synonyms := Name.Set.add s !mli_synonyms
 
-let include_ f = includes := f :: !includes
+let include_ f =
+  task := { !task with includes = f :: (!task).includes }
+
 let action = ref ignore
-let set command () = action:= (fun () -> command !opens !includes !files)
+let set command () = action:= (fun () -> command !task)
 let () = set makefile ()
 
 let set_iter command () = action := begin
     fun () ->
-      let {Unit.ml;mli} = !files  in
+      let {Unit.ml;mli} = (!task).files  in
       List.iter command (ml @ mli)
   end
 
@@ -317,6 +339,14 @@ let print_version ()= Format.printf "codept, version %.2f@." version
 let abs_path () = param.abs_path <- true
 let all () = param.all <- true
 let native () = param.native <- true
+
+let map file =
+  transparent_aliases true;
+  add_invisible_file file
+
+let as_map file =
+  transparent_aliases true;
+  add_file file
 
 let args = Cmd.[
     "-all", Unit all, ":   display full dependencies in makefile";
@@ -341,7 +371,8 @@ let args = Cmd.[
     "-I", String include_, "<dir>:   include <dir> in the analyssi all cmi files\
                             in <dir>";
     "-open", String add_open, "<name>:   open module <name> at the start of \
-                               all compilation units";
+                               all compilation units\
+                               (except units whose name is <name>).";
     "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
     "<cmd>:   Pipe sources through preprocessor <cmd>";
     "-ppx", Cmd.String add_ppx,
@@ -353,10 +384,15 @@ let args = Cmd.[
     "-vnum", Cmd.Unit print_vnum, "print version number";
     "-version", Cmd.Unit print_version,
     "print human-friendly version description";
-    "-as-map", Cmd.String add_file, "<file>:   same as <file>";
-    "-map", Cmd.String add_file, "<file>:   same as <file>";
+    "-as-map", Cmd.String as_map, "<file>:   same as \
+                                   -file <file> -transparent-aliases true";
+    "-map", Cmd.String map, "<file>: same as -transparent-aliases true \
+                            -see <file>";
     "-abs-path", Cmd.Unit abs_path, ":   use absolute path name";
-    "-native", Cmd.Unit native, ": generate native compilation only dependencies"
+    "-native", Cmd.Unit native, ":   generate native compilation only dependencies";
+    "-one-line", Cmd.Unit ignore, ":   does nothing";
+    "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies\
+                                            computation but do not display it."
   ]
 
 let () =
