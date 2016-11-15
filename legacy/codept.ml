@@ -39,7 +39,7 @@ let param = ref {
   native = false;
   abs_path = false;
   slash = Filename.dir_sep;
-  transparent_aliases = true;
+  transparent_aliases = false;
   transparent_extension_nodes = true
 }
 
@@ -270,7 +270,8 @@ let makefile param task =
     ) m
 
 
-let usage_msg = "codept is an alternative dependencies solver for OCaml"
+let usage_msg = "Codept is an alternative dependencies solver for OCaml.\n\
+                 The following options are common with ocamldep:\n"
 
 let synonyms = ref {
     Unit.ml = Name.Set.singleton "ml";
@@ -368,28 +369,30 @@ let as_map file =
 let slash () =
   param := { !param with slash = "/" }
 
+let fail_approx () =
+  Error.log "Approximation mode is not implemented:\
+             codept does not work on non-valid ocaml syntax."
+
 let args = Cmd.[
+    "-absname", Cmd.Unit abs_path, ":   use absolute path name";
     "-all", Unit all, ":   display full dependencies in makefile";
-    "-modules", Unit (set modules), ":   print raw module dependencies";
-    "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
-    ":   print raw unresolved dependencies";
-    "-inner-modules", Unit (set @@ modules ~filter:inner_filter),
-    ":   print raw inner dependencies";
-    "-extern-modules", Unit (set @@ modules ~filter:lib_filter),
-    ":   print raw extern dependencies";
-    "-deps", Unit (set deps), ": print detailed dependencies";
-    "-m2l", Unit (set_iter m2l), ":   print m2l ast";
+    "-allow-approx", Unit fail_approx,":   not implemented";
+    "-as-map", Cmd.String as_map, "<file>:   same as \
+                                   -file <file> -transparent-aliases true";
+    "-I", String include_, "<dir>:   include <dir> in the analyssi all cmi files\
+                            in <dir>";
     "-impl", String add_impl, "<f>:   read <f> as a ml file";
     "-intf", String add_intf, "<f>:   read <f> as a mli file";
+    "-map", Cmd.String map, "<file>: same as -transparent-aliases true \
+                            -see <file>";
     "-ml-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
                                        for ml";
     "-mli-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
                                         for mli";
-    "-one-pass", Unit (set_iter one_pass), ":   print m2l ast after one pass";
-    "-makefile", Unit (set makefile), ":   print makefile depend file";
-    "-dot", Unit (set dot), ":   print dependencies in dot format";
-    "-I", String include_, "<dir>:   include <dir> in the analyssi all cmi files\
-                            in <dir>";
+    "-modules", Unit (set modules), ":   print raw module dependencies";
+    "-native", Cmd.Unit native, ":   generate native compilation only dependencies";
+
+    "-one-line", Cmd.Unit ignore, ":   does nothing";
     "-open", String add_open, "<name>:   open module <name> at the start of \
                                all compilation units\
                                (except units whose name is <name>).";
@@ -397,23 +400,36 @@ let args = Cmd.[
     "<cmd>:   Pipe sources through preprocessor <cmd>";
     "-ppx", Cmd.String add_ppx,
     "<cmd>:   Pipe abstract syntax trees through ppx preprocessor <cmd>";
-    "-transparent_extension_node", Cmd.Bool transparent_extension,
-    "<bool>:   Inspect unknown extension nodes";
-    "-transparent_aliases", Cmd.Bool transparent_aliases,
-    "<bool>:   Delay aliases dependencies";
-    "-vnum", Cmd.Unit print_vnum, "print version number";
+    "-slash", Cmd.Unit slash, "use forward slash as directory separator";
+
     "-version", Cmd.Unit print_version,
     "print human-friendly version description";
-    "-as-map", Cmd.String as_map, "<file>:   same as \
-                                   -file <file> -transparent-aliases true";
-    "-map", Cmd.String map, "<file>: same as -transparent-aliases true \
-                            -see <file>";
-    "-abs-path", Cmd.Unit abs_path, ":   use absolute path name";
-    "-native", Cmd.Unit native, ":   generate native compilation only dependencies";
-    "-one-line", Cmd.Unit ignore, ":   does nothing";
+    "-vnum", Cmd.Unit print_vnum, "print version number\n\n Codept only modes:\n";
+
+
+    "-deps", Unit (set deps), ": print detailed dependencies";
+    "-dot", Unit (set dot), ":   print dependencies in dot format";
+    "-makefile", Unit (set makefile), ":   print makefile depend file(default)";
+    "-m2l", Unit (set_iter m2l), ":   print m2l ast:";
+    "-one-pass", Unit (set_iter one_pass), ":   print m2l ast after one pass\
+                                            \n\n Module suboptions:\n";
+
+    "-extern-modules", Unit (set @@ modules ~filter:lib_filter),
+    ":   print raw extern dependencies";
+    "-inner-modules", Unit (set @@ modules ~filter:inner_filter),
+    ":   print raw inner dependencies";
+    "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
+    ":   print raw unresolved dependencies\n\n Misc options:\n";
+
+
     "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies\
                                             computation but do not display it.";
-    "-slash", Cmd.Unit slash, "use forward slash as directory separator"
+
+
+    "-transparent_extension_node", Cmd.Bool transparent_extension,
+    "<bool>:   Inspect unknown extension nodes";
+    "-no_alias-deps", Cmd.Bool transparent_aliases,
+    "<bool>:   Delay aliases dependencies\n";
   ]
 
 let () =
