@@ -192,7 +192,8 @@ let lib_filter = function
 
 let modules ?filter param task =
   let {Unit.ml; mli} = analyze param task in
-  let print units = Pp.(list @@ pp_module param ?filter) std
+  let print units = Pp.fp std "@[%a@]"
+      Pp.(list ~sep:(s"@,") @@ pp_module param ?filter)
       (List.sort Unit.(fun x y -> compare x.path.file y.path.file) units) in
   print ml; print mli
 
