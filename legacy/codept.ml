@@ -11,6 +11,7 @@ type param =
   {
     all: bool;
     native: bool;
+    bytecode: bool;
     abs_path: bool;
     slash:string;
     transparent_aliases: bool;
@@ -37,6 +38,7 @@ let lift { transparent_extension_nodes; transparent_aliases; _ } =
 let param = ref {
   all = false;
   native = false;
+  bytecode = false;
   abs_path = false;
   slash = Filename.dir_sep;
   transparent_aliases = false;
@@ -250,9 +252,10 @@ let makefile param task =
           Pp.fp ppf "%a : %a\n"
             Pkg.pp ( make_abs @@ Pkg.cmo impl.path)
             ppl  (Pkg.cmi impl.path, [impl.path]);
-        Pp.fp ppf "%a : %a\n"
-          ppl (Pkg.cmx impl.path, [Pkg.o impl.path])
-          ppl  (Pkg.cmi impl.path, [impl.path]);
+        if not param.bytecode then
+          Pp.fp ppf "%a : %a\n"
+            ppl (Pkg.cmx impl.path, [Pkg.o impl.path])
+            ppl  (Pkg.cmi impl.path, [impl.path]);
         print_deps order Pkg.cmi (Pkg.mk_dep param.native) ppf
           (intf,[],[])
       | { impl = Some impl; intf = None } ->
@@ -260,8 +263,9 @@ let makefile param task =
           if not param.native then
             print_deps order Pkg.cmo (Pkg.mk_dep param.native) ppf
               (impl,[Pkg.cmi impl.path],[impl.path]);
-          print_deps order Pkg.cmx (Pkg.mk_dep param.native) ppf
-            (impl,[Pkg.o impl.path; Pkg.cmi impl.path],[impl.path])
+          if not param.bytecode then
+            print_deps order Pkg.cmx (Pkg.mk_dep param.native) ppf
+              (impl,[Pkg.o impl.path; Pkg.cmi impl.path],[impl.path])
         end
       | { impl = None; intf = Some intf } ->
         print_deps order Pkg.cmi (Pkg.mk_dep param.native) ppf
@@ -356,7 +360,11 @@ let all () =
    param := { !param with all = true }
 
 let native () =
-  param := { !param with native = true }
+  param := { !param with native = true; bytecode = false }
+
+let bytecode () =
+  param := { !param with bytecode = true; native = false }
+
 
 let map file =
   transparent_aliases true;
@@ -391,6 +399,7 @@ let args = Cmd.[
                                         for mli";
     "-modules", Unit (set modules), ":   print raw module dependencies";
     "-native", Cmd.Unit native, ":   generate native compilation only dependencies";
+    "-bytecode", Cmd.Unit bytecode, ":   generate bytecode only dependencies";
 
     "-one-line", Cmd.Unit ignore, ":   does nothing";
     "-open", String add_open, "<name>:   open module <name> at the start of \
