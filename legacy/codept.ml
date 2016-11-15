@@ -14,6 +14,7 @@ type param =
     bytecode: bool;
     abs_path: bool;
     slash:string;
+    sort:bool;
     transparent_aliases: bool;
     transparent_extension_nodes: bool
   }
@@ -40,6 +41,7 @@ let param = ref {
   native = false;
   bytecode = false;
   abs_path = false;
+  sort = false;
   slash = Filename.dir_sep;
   transparent_aliases = false;
   transparent_extension_nodes = true
@@ -166,10 +168,11 @@ let make_abs abs p =
 
 
 
-let pp_module {abs_path;slash; _ } ?filter ppf u =
+let pp_module sort {abs_path;slash; _ } ?filter ppf u =
   let pp_pkg = Pkg.pp_gen slash in
   let open Unit in
   let elts = Pkg.Set.elements u.dependencies in
+  let elts = sort elts in
   let elts = match filter with
     | Some f -> List.filter f elts
     | None -> elts in
@@ -189,27 +192,40 @@ let lib_filter = function
   | { Pkg.source = Pkg _ ; _ } -> true
   | _ -> false
 
+let id x = x
+let upath x = x.Unit.path
+
+let sort proj param mli =
+  let order = order mli in
+  let compare x y = topos_compare order (proj x) (proj y) in
+  if param.sort then List.sort compare
+  else id
+
 
 let modules ?filter param task =
   let {Unit.ml; mli} = analyze param task in
+  let sort_p = sort id param mli in
+  let sort_u = sort upath param mli in
   let print units = Pp.fp std "@[%a@]"
-      Pp.(list ~sep:(s"@,") @@ pp_module param ?filter)
-      (List.sort Unit.(fun x y -> compare x.path.file y.path.file) units) in
+      Pp.(list ~sep:(s"@,") @@ pp_module sort_p param ?filter)
+      (sort_u units) in
   print ml; print mli
 
-let local_dependencies unit =
-  List.filter (function {Pkg.source=Unknown;_} -> false | _ -> true )
+let local_dependencies sort unit =
+  sort
+  @@ List.filter (function {Pkg.source=Unknown;_} -> false | _ -> true )
   @@ Pkg.Set.elements unit.U.dependencies
 
 
 let dot param task =
   let open Unit in
   let {mli; _ } = analyze param task in
+  let sort = sort id param mli in
   Pp.fp Pp.std "digraph G {\n";
   List.iter (fun u ->
       List.iter (fun p ->
           Pp.fp std "%s -> %s \n" u.name @@ Pkg.module_name p)
-        (local_dependencies u)
+        (local_dependencies sort u)
     ) mli;
   Pp.fp Pp.std "}\n"
 
@@ -221,6 +237,7 @@ let print_deps param order input dep ppf (unit,imore,dmore) =
   let make_abs = make_abs param.abs_path in
   let if_all l = if param.all then l else [] in
   let pkg_pp = Pkg.pp_gen param.slash in
+  let sort = if param.sort then List.sort (topos_compare order) else id in
   let open Unit in
   let dep x= make_abs @@ dep x in
   let ppl ppf l = Pp.(list ~sep:(s" ") pkg_pp) ppf (List.map make_abs l) in
@@ -230,7 +247,7 @@ let print_deps param order input dep ppf (unit,imore,dmore) =
     Pp.(opt_list_0 ~pre:(s " ") ~sep:(s " ") pkg_pp)
     ( List.map dep
       @@ List.sort (topos_compare order)
-      @@ local_dependencies unit
+      @@ local_dependencies sort unit
     )
     ppl (if_all dmore)
 
@@ -244,7 +261,7 @@ let makefile param task =
   let ppf = Pp.std in
   let units = analyze param task in
   let order = order units.Unit.mli in
-  let m = regroup units in
+  let m =regroup units in
   Npath.Map.iter (fun _k g ->
       let open Unit.Group in
       match g with
@@ -378,6 +395,10 @@ let as_map file =
 let slash () =
   param := { !param with slash = "/" }
 
+let sort () =
+  param := { !param with sort = true }
+
+
 let fail_approx () =
   Error.log "Approximation mode is not implemented:\
              codept does not work on non-valid ocaml syntax."
@@ -411,7 +432,7 @@ let args = Cmd.[
     "-ppx", Cmd.String add_ppx,
     "<cmd>:   Pipe abstract syntax trees through ppx preprocessor <cmd>";
     "-slash", Cmd.Unit slash, "use forward slash as directory separator";
-
+    "-sort", Cmd.Unit slash, "sort dependencies when printing";
     "-version", Cmd.Unit print_version,
     "print human-friendly version description";
     "-vnum", Cmd.Unit print_vnum, "print version number\n\n Codept only modes:\n";
