@@ -9,8 +9,12 @@ let rec list ~sep pp ppf =
   | [a] -> fp ppf "%a" pp a
   | [] -> ()
 
-let list ?(pre=s"") ?(post=s"") ?(sep=s"; @,") pp ppf l =
+let list0 ?(pre=s"") ?(post=s"") ?(sep=s"; @,") pp ppf l =
   fp ppf "%t%a%t" pre (list ~sep pp) l post
+
+let list  ?(pre=s"") ?(post=s"") ?(sep=s"; @,") pp ppf l =
+  if l = [] then () else
+    list0 ~pre ~post ~sep pp ppf l
 
 let rec tlist ?(sep=s ";@,") pp ppf =
   function
@@ -19,8 +23,8 @@ let rec tlist ?(sep=s ";@,") pp ppf =
   | [] -> ()
 
 
-  let blist pp ppf = fp ppf "[@,%a@,]" (list pp)
-  let clist pp ppf = fp ppf "{@,%a@,}" (list pp)
+  let blist pp ppf = fp ppf "[@,%a@,]" (list0 pp)
+  let clist pp ppf = fp ppf "{@,%a@,}" (list0 pp)
 
 let opt_list ?(pre=s "") ?(post=s "")  ?(sep= s ";@, ") pp ppf = function
   | [] -> ()
@@ -29,7 +33,6 @@ let opt_list ?(pre=s "") ?(post=s "")  ?(sep= s ";@, ") pp ppf = function
 let opt_list_0 ?(pre=s "") ?(post=s "")  ?(sep= s ";@, ") pp ppf = function
   | [] -> ()
   | l -> fp ppf "%t%a%t" pre (list ~sep pp) l post
-
 
 let string ppf = fp ppf "%s"
 

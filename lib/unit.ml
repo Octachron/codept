@@ -19,13 +19,15 @@ module Group = struct
 exception Collision of { previous:unit; collision:unit}
 let add_mli mli x =
   match x.intf with
+  | Some previous when mli = previous -> x
   | Some previous -> raise @@ Collision {previous; collision=mli}
   | None -> { x with intf = Some mli }
 
 let add_ml ml x =
   match x.impl with
-  | Some previous -> raise @@ Collision {previous; collision=ml}
   | None -> { x with impl = Some ml }
+  | Some previous when ml = previous -> x
+  | Some previous -> raise @@ Collision {previous; collision=ml}
 
 let add unit x = match unit.kind with
   | Structure -> add_ml unit x

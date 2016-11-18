@@ -185,7 +185,7 @@ module Failure = struct
   (* Pp.(list ~sep:(s ", @ ") @@ pp ) (Set.elements units) *)
 
   let pp map ppf m =
-    Pp.fp ppf "@[%a@]@."
+    Pp.fp ppf "@[%a@]"
       Pp.(list ~sep:(s"@;") @@ pp_cat map ) (Map.bindings m)
 
   let pp_cycle ppf sources =

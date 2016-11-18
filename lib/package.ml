@@ -66,9 +66,11 @@ let o = change_extension ".o"
 let cmi = change_extension ".cmi"
 let cmx = change_extension ".cmx"
 
-let mk_dep native = update_extension @@ function
+let mk_dep all native = update_extension @@ function
   | "mli" -> ".cmi"
-  | "ml" -> if native then ".cmx" else ".cmo"
+  | "ml" when all -> ".cmi"
+  | "ml" ->
+    if native then ".cmx" else ".cmo"
   | _ -> assert false
 
 let pp_source ppf = function
@@ -106,7 +108,9 @@ let parse_filename filename =
   let n = String.length filename in
   let rec extract shards start current =
     if current = n - 1  then
-      List.rev @@ String.sub filename start (current-start+1) :: shards
+      let offset = if filename.[current] = slash then 0 else 1 in
+      List.rev @@
+      String.sub filename start (current-start+offset) :: shards
     else if filename.[current] = slash then
       extract (String.sub filename start (current-start) :: shards)
         (current + 1) (current + 1)
