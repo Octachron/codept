@@ -75,11 +75,11 @@ let to_m2l f =
   | "ml" ->
     f
     |> open_in |> Lexing.from_channel
-    |> Parse.implementation |> Ast_analyzer.structure
+    |> Parse.implementation |> Ast_converter.structure
   | "mli" ->
     f
     |> open_in |> Lexing.from_channel
-    |> Parse.interface |> Ast_analyzer.signature
+    |> Parse.interface |> Ast_converter.signature
   | "cmi" ->
     Cmi.cmi_m2l f
   | ext -> raise (Unknown_file_type ext)

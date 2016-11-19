@@ -170,8 +170,9 @@ end
 *)
 
 (**
-   The Block module computes the first dependencies needed to be resolved
-    before any interpreter can make progress evaluating a given code block *)
+   The Block module gathers functions that aims to compute the first
+   dependencies that need to be resolved before any interpreter can make
+   progress evaluating a given code block *)
 module Block: sig
   val m2l: m2l -> Name.t option
   val expr: expression -> Name.t option
@@ -180,8 +181,14 @@ module Block: sig
 
 end
 
+(** {Normalize} computes the normal form of a given m2l code fragment.
+    When possible, successive expression of the same kind are merged [Minor … ]
+ *)
 module Normalize: sig
+
   val all: m2l -> bool * m2l
+  (** [all fragment ≡ (has_some_simplification_been_made, resulting_m2l ] *)
+
   val minor: annotation -> annotation
   val value: annotation -> m2l -> annotation
 end

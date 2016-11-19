@@ -78,11 +78,11 @@ let read_file kind filename =
   let code =  try
       match kind with
       | Structure ->
-        Ast_analyzer.structure @@
+        Ast_converter.structure @@
         Pparse.file Format.err_formatter ~tool_name:"codept" input_file
           Parse.implementation Pparse.Structure
       | Signature ->
-        Ast_analyzer.signature @@
+        Ast_converter.signature @@
         Pparse.file Format.err_formatter ~tool_name:"codept" input_file
           Parse.interface Pparse.Signature
     with Syntaxerr.Error _ ->
