@@ -23,7 +23,7 @@ module Make(Param:Interpreter.param) = struct
   let eval ?(learn=true) (finished, core, rest) unit =
     let open M2l in
     match compute_more core unit with
-    | deps, Work.Done (_,sg) ->
+    | deps, Ok (_,sg) ->
       let core =
         if learn then begin
           let md = Module.(create ~origin:(Unit unit.path)) unit.name sg in
@@ -37,7 +37,7 @@ module Make(Param:Interpreter.param) = struct
                              dependencies = deps } in
       let () = reset_deps core in
       (unit :: finished, core, rest )
-    | deps, Halted code ->
+    | deps, Error code ->
       let deps = Pkg.Set.union unit.dependencies deps in
       let () = reset_deps core in
       let unit = { unit with dependencies = deps; code } in

@@ -289,34 +289,6 @@ module Normalize = struct
 
 end
 
-module Work = struct
-  type ('a,'b) t = Halted of 'a | Done of 'b
-
-  let is_done = function Done _ -> true | Halted _ -> false
-
-  let all_done undone l =
-    if List.for_all is_done l then
-      Done (List.map (function Done x -> x | _ -> assert false ) l)
-    else
-      Halted (List.map
-                (function Done d -> undone d
-                        | Halted h -> h ) l)
-
-  let fmap f g = function
-    | Halted x -> Halted (f x)
-    | Done r -> Done (g r)
-
-  let fmap_done f = function
-    | Halted _ as h  -> h
-    | Done r -> Done (f r)
-
-   let fmap_halted f = function
-    | Halted h  -> Halted (f h)
-    | Done _ as r -> r
-
-
-end
-
 module Build = struct
   let access path = Minor (Annot.access @@ Epath.prefix path)
   let open_ path = Open path

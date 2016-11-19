@@ -88,8 +88,8 @@ let one_pass param f =
   let module Sg = Envts.Interpreters.Sg(Param) in
   let start = to_m2l f in
   match start |> Sg.m2l S.empty with
-  | Done (_state,d) -> Pp.fp std "Computation finished:\n %a@." S.pp d
-  | Halted h -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
+  | Ok (_state,d) -> Pp.fp std "Computation finished:\n %a@." S.pp d
+  | Error h -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
 
 let m2l _param f =
   let start = to_m2l f in

@@ -120,7 +120,7 @@ module Layered = struct
     | [] -> ()
     | (name, path, code) :: q ->
       match I.m2l source.resolved code with
-      | Halted code ->
+      | Error code ->
         begin match M2l.Block.m2l code with
           | None -> assert false
           | Some name' ->
@@ -128,7 +128,7 @@ module Layered = struct
             let code' = Cmi.cmi_m2l @@ P.filename path in
             track source ( (name', path', code') :: (name, path, code) :: q )
         end
-      | Done (_, sg) ->
+      | Ok (_, sg) ->
 
         let md = M.create
             ~origin:(M.Unit path) name sg in

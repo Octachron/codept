@@ -1,5 +1,5 @@
 open M2l
-open Work
+open Result
 
 module D = Definition
 module Def = D.Def
@@ -29,28 +29,28 @@ module Make(Envt:envt)(Param:param) = struct
   type level = Module.level = Module | Module_type
   let minor module_expr str state m =
     let value l v = match str state v with
-      | Done _ -> l
-      | Halted h -> h :: l in
+      | Ok _ -> l
+      | Error h -> h :: l in
     let access n m = match find Module [n] state with
       | _ -> m
       | exception Not_found -> Name.Set.add n m in
     let packed l p = match module_expr state p with
-      | Done _ -> l
-      | Halted h -> h :: l in
+      | Ok _ -> l
+      | Error h -> h :: l in
     let values = List.fold_left value [] m.values in
     let access = Name.Set.fold access m.access Name.Set.empty in
     let packed = List.fold_left packed [] m.packed in
     (* to do opaque *)
     if access = Name.Set.empty && values = [] && packed = [] then
-      Done None
+      Ok None
     else
-      Halted { access; values; packed }
+      Error { access; values; packed }
 
 
   let mt_ident level state id =
     begin match find level id state with
-    | x -> Done(P.of_module x)
-    | exception Not_found -> Halted id
+    | x -> Ok(P.of_module x)
+    | exception Not_found -> Error id
   end
 
   let epath state path =
@@ -61,10 +61,10 @@ module Make(Envt:envt)(Param:param) = struct
       | [] -> []
     in
     match l with
-    | Done x :: q when
-        List.for_all (function Done _ -> true | Halted _ -> false) q ->
-      Done x
-    | _ -> Halted path
+    | Ok x :: q when
+        List.for_all (function Ok _ -> true | Error _ -> false) q ->
+      Ok x
+    | _ -> Error path
 
   let warn_open x = let open Module in
       if x.signature = S.empty then
@@ -77,16 +77,16 @@ module Make(Envt:envt)(Param:param) = struct
   let open_ state path =
     match find Module path state with
     | x -> warn_open x;
-      Done (Some( D.sg_see x.signature ))
-    | exception Not_found -> Halted (Open path)
+      Ok (Some( D.sg_see x.signature ))
+    | exception Not_found -> Error (Open path)
 
   let gen_include unbox box i = match unbox i with
-    | Halted h -> Halted (box h)
-    | Done fdefs ->
+    | Error h -> Error (box h)
+    | Ok fdefs ->
       if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
         Warning.included_first_class ();
       let defs = P.to_defs fdefs in
-      Done (Some defs)
+      Ok (Some defs)
 
   let include_ state module_expr =
     gen_include (module_expr state) (fun i -> Include i)
@@ -99,17 +99,17 @@ module Make(Envt:envt)(Param:param) = struct
 
   let bind state module_expr {name;expr} =
     match module_expr ?bind:(Some true) state expr with
-    | Halted h -> Halted ( Bind {name; expr = h} )
-    | Done d ->
+    | Error h -> Error ( Bind {name; expr = h} )
+    | Ok d ->
       let m = P.to_module ?origin:(aliased d) name d in
-      Done (Some(Def.md m))
+      Ok (Some(Def.md m))
 
   let bind_sig state module_type {name;expr} =
     match module_type state expr with
-    | Halted h -> Halted ( Bind_sig {name; expr = h} )
-    | Done d ->
+    | Error h -> Error ( Bind_sig {name; expr = h} )
+    | Ok d ->
       let m = P.to_module ?origin:(aliased d) name d in
-      Done (Some(Def.sg m))
+      Ok (Some(Def.sg m))
 
 
   let bind_rec state module_expr bs =
@@ -125,26 +125,26 @@ module Make(Envt:envt)(Param:param) = struct
     let undone (name,defs) = name, (Resolved defs:module_expr) in
     let recombine (name,expr) = {name;expr} in
     match all_done undone bs with
-    | Halted bs -> Halted (Bind_rec (List.map recombine bs))
-    | Done defs ->
+    | Error bs -> Error (Bind_rec (List.map recombine bs))
+    | Ok defs ->
       let defs =
         List.fold_left
           ( fun defs (name,d) ->
               D.bind (P.to_module ?origin:(aliased d) name d) defs )
           D.empty defs in
-      Done ( Some defs )
+      Ok ( Some defs )
 
   let drop_state = function
-    | Done(_state,x) -> Done x
-    | Halted _ as h -> h
+    | Ok(_state,x) -> Ok x
+    | Error _ as h -> h
 
   let rec module_expr ?(bind=false) state (me:module_expr) = match me with
-    | Abstract -> Done P.empty
-    | Unpacked -> Done P.{ empty with origin = First_class }
+    | Abstract -> Ok P.empty
+    | Unpacked -> Ok P.{ empty with origin = First_class }
     | Val m -> begin
         match minor module_expr m2l state m with
-        | Done _ -> Done { P.empty with origin = First_class }
-        | Halted h -> Halted (Val h)
+        | Ok _ -> Ok { P.empty with origin = First_class }
+        | Error h -> Error (Val h)
       end  (* todo : check warning *)
     | Ident i ->
       begin match find ~alias:bind Module i state with
@@ -153,22 +153,22 @@ module Make(Envt:envt)(Param:param) = struct
           let p = if P.is_functor p || not bind then p
             else
               { p with origin = M.at_most p.origin @@ Alias (Npath.prefix i) } in
-          Done p
-        | exception Not_found -> Halted (Ident i: module_expr)
+          Ok p
+        | exception Not_found -> Error (Ident i: module_expr)
       end
     | Apply {f;x} ->
       begin match module_expr state f, module_expr state x with
-        | Done f, Done _ -> Done (P.drop_arg f)
-        | Halted f, Halted x -> Halted (Apply {f;x} )
-        | Halted f, Done d -> Halted (Apply {f; x = Resolved d})
-        | Done f, Halted x -> Halted (Apply {f = Resolved f ;x} )
+        | Ok f, Ok _ -> Ok (P.drop_arg f)
+        | Error f, Error x -> Error (Apply {f;x} )
+        | Error f, Ok d -> Error (Apply {f; x = Resolved d})
+        | Ok f, Error x -> Error (Apply {f = Resolved f ;x} )
       end
     | Fun {arg;body} ->
       functor_expr (module_expr ~bind:false,fn, demote_str) state [] arg body
-    | Str [] -> Done P.empty
-    | Str[Defs d] -> Done (P.no_arg d.defined)
-    | Resolved d -> Done d
-    | Str str -> Work.fmap (fun s -> Str s) P.no_arg @@
+    | Str [] -> Ok P.empty
+    | Str[Defs d] -> Ok (P.no_arg d.defined)
+    | Resolved d -> Ok d
+    | Str str -> Result.fmap (fun s -> Str s) P.no_arg @@
       drop_state @@ m2l state str
     | Constraint(me,mt) ->
       constraint_ state me mt
@@ -177,125 +177,125 @@ module Make(Envt:envt)(Param:param) = struct
       module_expr state expr
     | Open_me {opens=a :: q ; resolved; expr } as me ->
       begin match find Module a state with
-        | exception Not_found -> Halted me
+        | exception Not_found -> Error me
         | x -> warn_open x;
           let resolved = Def.( resolved +| D.sg_see x.signature ) in
           module_expr state @@ Open_me {opens = q; resolved; expr }
       end
     | Extension_node n ->
       begin match extension state n with
-        | Done () -> Done P.empty
-        | Halted h -> Halted (Extension_node h)
+        | Ok () -> Ok P.empty
+        | Error h -> Error (Extension_node h)
       end
 
   and constraint_ state me mt =
     match module_expr state me, module_type state mt with
-    | Done _, (Done _ as r) -> r
-    | Done me, Halted mt ->
-      Halted (Constraint(Resolved me, mt) )
-    | Halted me, Done mt ->
-      Halted (Constraint(me, Resolved mt) )
-    | Halted me, Halted mt -> Halted ( Constraint(me,mt) )
+    | Ok _, (Ok _ as r) -> r
+    | Ok me, Error mt ->
+      Error (Constraint(Resolved me, mt) )
+    | Error me, Ok mt ->
+      Error (Constraint(me, Resolved mt) )
+    | Error me, Error mt -> Error ( Constraint(me,mt) )
 
   and module_type state = function
-    | Sig [] -> Done P.empty
-    | Sig [Defs d] -> Done (P.no_arg d.defined)
-    | Sig s -> Work.fmap (fun s -> Sig s) P.no_arg @@
+    | Sig [] -> Ok P.empty
+    | Sig [Defs d] -> Ok (P.no_arg d.defined)
+    | Sig s -> Result.fmap (fun s -> Sig s) P.no_arg @@
       drop_state @@ signature state s
-    | Resolved d -> Done d
+    | Resolved d -> Ok d
     | Ident id ->
       begin match epath state id with
-        | Done x -> Done x
-        | Halted p -> Halted (Ident p)
+        | Ok x -> Ok x
+        | Error p -> Error (Ident p)
       end
     | Alias i ->
       begin match find Module i state with
-        | x -> Done { (P.of_module x) with origin = Alias (Npath.prefix i) }
-        | exception Not_found -> Halted (Alias i)
+        | x -> Ok { (P.of_module x) with origin = Alias (Npath.prefix i) }
+        | exception Not_found -> Error (Alias i)
       end
     | With w ->
       begin
         match module_type state w.body with
-        | Halted mt -> Halted ( With { w with body = mt } )
-        | Done d ->
+        | Error mt -> Error ( With { w with body = mt } )
+        | Ok d ->
           let modules =
             Name.Set.fold Name.Map.remove w.deletions d.result.modules in
           let d = { d with result = { d.result with modules} } in
-          Done d
+          Ok d
       end
     | Fun {arg;body} ->
       functor_expr (module_type, fn_sig, demote_sig) state [] arg body
     | Of me -> of_ (module_expr state me)
-    | Abstract -> Done (P.empty)
+    | Abstract -> Ok (P.empty)
     | Extension_node n ->
       begin match extension state n with
-      | Done () -> Done (P.empty)
-      | Halted n -> Halted (Extension_node n)
+      | Ok () -> Ok (P.empty)
+      | Error n -> Error (Extension_node n)
       end
   and of_ = function
-    | Halted me -> Halted (Of me)
-    | Done d -> Done d
+    | Error me -> Error (Of me)
+    | Ok d -> Ok d
 
-  and functor_expr: 'k. (Envt.t -> 'k -> ('k, P.t) M2l.Work.t)
+  and functor_expr: 'k. (Envt.t -> 'k -> (P.t, 'k) result)
                     * ('k M2l.fn -> 'k)
                     * ('k M2l.fn -> D.t Arg.t option -> 'k M2l.fn) ->
     Envt.t ->  D.t Arg.t option list -> arg
-    -> 'k -> ('k, P.t) M2l.Work.t =
+    -> 'k -> (P.t, 'k) result =
     fun (body_type,fn,demote) state args arg body ->
     let ex_arg =
       match arg with
-      | None -> Done None
+      | None -> Ok None
       | Some arg ->
         match module_type state arg.Arg.signature with
-        | Halted h -> Halted (Some {Arg.name = arg.name; signature = h })
-        | Done d   -> Done (Some(P.to_arg arg.name d)) in
+        | Error h -> Error (Some {Arg.name = arg.name; signature = h })
+        | Ok d   -> Ok (Some(P.to_arg arg.name d)) in
     match ex_arg with
-    | Halted me -> Halted (fn @@ List.fold_left demote {arg=me;body} args )
-    | Done arg ->
+    | Error me -> Error (fn @@ List.fold_left demote {arg=me;body} args )
+    | Ok arg ->
       let sg = Option.( arg >>| S.create >< S.empty ) in
       let state =  Envt.( state >> sg ) in
       match body_type state body with
-      | Done p  -> Done { p with args = arg :: p.args }
-      | Halted me ->
+      | Ok p  -> Ok { p with args = arg :: p.args }
+      | Error me ->
         let arg = Option.(
             arg >>| fun arg ->
             { Arg.name = arg.name;
               signature:module_type= Resolved (P.of_module arg) }
           ) in
-        Halted (fn @@ List.fold_left demote {arg;body=me} args)
+        Error (fn @@ List.fold_left demote {arg;body=me} args)
 
   and m2l state = function
-    | [] -> Done (state, S.empty)
+    | [] -> Ok (state, S.empty)
     | a :: q ->
       match expr state a with
-      | Done (Some defs)  ->
+      | Ok (Some defs)  ->
         begin match m2l Envt.( state >> defs.D.visible ) q with
-          | Done (state,sg) ->  Done (state, S.merge defs.defined sg)
-          | Halted q' -> Halted ( snd @@ Normalize.all @@ Defs defs :: q')
+          | Ok (state,sg) ->  Ok (state, S.merge defs.defined sg)
+          | Error q' -> Error ( snd @@ Normalize.all @@ Defs defs :: q')
         end
-      | Done None -> m2l state q
-      | Halted h -> Halted ( snd @@ Normalize.all @@ h :: q)
+      | Ok None -> m2l state q
+      | Error h -> Error ( snd @@ Normalize.all @@ h :: q)
 
   and signature state  = m2l state
 
   and expr state =
     function
-    | Defs d -> Done (Some d)
+    | Defs d -> Ok (Some d)
     | Open p -> open_ state p
     | Include i -> include_ state module_expr i
     | SigInclude i -> sig_include state module_type i
     | Bind b -> bind state module_expr b
     | Bind_sig b -> bind_sig state module_type b
     | Bind_rec bs -> bind_rec state module_expr bs
-    | Minor m -> Work.fmap_halted (fun m -> Minor m) @@
+    | Minor m -> Result.fmap_error (fun m -> Minor m) @@
       minor module_expr m2l state m
     | Extension_node n -> begin
         match extension state n with
-        | Done () -> Done None
-        | Halted h -> Halted (Extension_node h)
+        | Ok () -> Ok None
+        | Error h -> Error (Extension_node h)
       end
   and extension state e =
-    if not transparent_extension_nodes then Done ()
+    if not transparent_extension_nodes then Ok ()
     else
       begin let open M2l in
         match e.extension with
