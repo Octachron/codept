@@ -10,7 +10,8 @@ module S = Module.Sig
 
 module type envt = sig
   type t
-  val find: transparent:bool -> ?alias:bool -> M.level -> Npath.t -> t -> Module.t
+  val find: transparent:bool -> ?alias:bool ->
+    M.level -> Paths.Simple.t -> t -> Module.t
   val (>>) : t -> M.signature -> t
   val add_module: t -> Module.t -> t
 end
@@ -54,7 +55,7 @@ module Make(Envt:envt)(Param:param) = struct
   end
 
   let epath state path =
-    let paths = Epath.multiples path in
+    let paths = Paths.Expr.multiples path in
     let l = match paths with
       | a :: q ->
         (mt_ident Module_type state a) ::  List.map (mt_ident Module state) q
@@ -152,7 +153,8 @@ module Make(Envt:envt)(Param:param) = struct
           let p = P.of_module x in
           let p = if P.is_functor p || not bind then p
             else
-              { p with origin = M.at_most p.origin @@ Alias (Npath.prefix i) } in
+              { p with origin = M.at_most p.origin @@
+                         Alias (Paths.Simple.prefix i) } in
           Ok p
         | exception Not_found -> Error (Ident i: module_expr)
       end
@@ -210,7 +212,7 @@ module Make(Envt:envt)(Param:param) = struct
       end
     | Alias i ->
       begin match find Module i state with
-        | x -> Ok { (P.of_module x) with origin = Alias (Npath.prefix i) }
+        | x -> Ok { (P.of_module x) with origin = Alias (Paths.Simple.prefix i) }
         | exception Not_found -> Error (Alias i)
       end
     | With w ->

@@ -1,5 +1,6 @@
 
-module Pkg = Package
+module Pkg = Paths.Pkg
+module Pth = Paths.Simple
 
 type kind = Structure | Signature
 
@@ -36,14 +37,14 @@ let add unit x = match unit.kind with
 let empty = { intf = None; impl = None }
 
 module Map = struct
-  type t = group Npath.Map.t
+  type t = group Paths.Simple.Map.t
 
 let add unit m =
   let key = Pkg.chop_suffix unit.path.file in
-  let grp = Option.( Npath.Map.find_opt key m >< empty ) in
-  Npath.Map.add key (add unit grp) m
+  let grp = Option.( Pth.Map.find_opt key m >< empty ) in
+  Pth.Map.add key (add unit grp) m
 
-let of_list = List.fold_left (fun x y -> add y x) Npath.Map.empty
+let of_list = List.fold_left (fun x y -> add y x) Pth.Map.empty
 end
 
 end
@@ -99,14 +100,14 @@ let read_file kind filename =
 type 'a split = { ml:'a; mli:'a}
 
 let group_by classifier files =
-  let start = Npath.Map.empty in
+  let start = Pth.Map.empty in
   List.fold_left (fun m f ->
       let kind =  classifier f in
       let unit = read_file kind f in
       Group.Map.add unit m) start files
 
 let group {ml;mli} =
-  let start = Npath.Map.empty in
+  let start = Pth.Map.empty in
   let add kind m f =
     let unit = read_file kind f in
     Group.Map.add unit m in
@@ -120,7 +121,7 @@ let split map =
       | Some ml', Some mli' -> { ml = ml' :: ml; mli = mli' :: mli }
       | None, None -> { ml; mli }
       | Some m, None | None, Some m -> { ml; mli = m :: mli }
-    ) { ml = []; mli = [] }  (Npath.Map.bindings map)
+    ) { ml = []; mli = [] }  (Pth.Map.bindings map)
 
 
 module Set = Set.Make(struct type t = unit let compare = compare end)

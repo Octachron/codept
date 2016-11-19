@@ -13,7 +13,7 @@ module Arg = struct
     if List.length args > 0 then Pp.fp ppf "→"
 end
 
-module Pkg = Package
+module Pkg = Paths.Pkg
 type source = Pkg.t
 
 type origin =
@@ -27,7 +27,7 @@ type origin =
 
 let pp_origin ppf = function
   | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
-  | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Npath.pp x
+  | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
   | Unit { Pkg.source = Unknown; _} | Extern -> Pp.fp ppf "!"
   | Rec -> Pp.fp ppf "?"
   | Submodule -> Pp.fp ppf "."
@@ -63,7 +63,7 @@ let is_functor = function
 
 type level = Module | Module_type
 
-let pp_alias = Pp.opt Epath.pp
+let pp_alias = Pp.opt Paths.Expr.pp
 
 let pp_level ppf lvl =  Pp.fp ppf "%s" (match lvl with
     | Module -> "module"

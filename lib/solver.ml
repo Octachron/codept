@@ -10,13 +10,13 @@ module Make(Param:Interpreter.param) = struct
 
   let compute_more env unit =
     let result = Eval.m2l env unit.code in
-    Package.Set.union !(env.externs) !(env.core.deps), result
+    Paths.Pkg.Set.union !(env.externs) !(env.core.deps), result
 
   exception Cycle of Envt.t * unit list
 
   let reset_deps env =
     let open Envt in
-    let module P = Package in
+    let module P = Paths.Pkg in
     env.core.deps := P.Set.empty;
     env.externs := P.Set.empty
 

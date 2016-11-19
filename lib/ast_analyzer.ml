@@ -3,11 +3,12 @@ module L = Longident
 module B = M2l.Build
 
 module D = Definition
-module S = Module.Sig
+module M = Module
+module S = M.Sig
 module Annot = M2l.Annot
 
 let rec from_lid  =
-  let open Epath in
+  let open Paths.Expr in
   function
     | L.Lident s -> A s
     | L.Ldot (lid,s) -> S(from_lid lid,s)
@@ -19,26 +20,22 @@ let module_path =
     | L.Ldot (lid, _) -> Some (from_lid lid)
     | L.Lapply _ -> None
 
-let value = Epath.Module
-let type_ = Epath.Module_type
-
-
 let txt x= x.Location.txt
 
 module H = struct
   let epath x = from_lid @@ txt x
-  let npath x = Epath.concrete @@ epath x
-  let npath_fn x = Epath.concrete_with_f @@ epath x
+  let npath x = Paths.Expr.concrete @@ epath x
+  let npath_fn x = Paths.Expr.concrete_with_f @@ epath x
 
   let access lid =
-    let open Epath in
+    let open Paths.Expr in
     match from_lid @@ txt lid with
     | A _ -> Annot.empty
     | S(p,_) -> Annot.access @@ prefix p
     | T | F _ -> assert false
 
   let access' lid =
-    let open Epath in
+    let open Paths.Expr in
     match from_lid @@ txt lid with
     | A _ -> []
     | S(p,_) -> [ B.access p ]
@@ -660,20 +657,20 @@ and matched_patt_expr x y =
         Pattern.( p ++ p'), e ++ e' ) (Pattern.empty, Annot.empty) pt et
   | Ppat_record (pr,_) , Pexp_record (er,eo) ->
     (* First, gather together pattern and expression with the same label *)
-    let m = Npath.Map.empty in
+    let m = Paths.Simple.Map.empty in
     let alt a x = match x with None -> Some a | _ -> x in
     let add_p p' (p,e) = alt p' p, e in
     let add_e e' (p,e) = p, alt e' e in
     let folder add m (key,x) =
       let key = H.npath key in
-      let v = try add x @@ Npath.Map.find key m with
+      let v = try add x @@ Paths.Simple.Map.find key m with
         | Not_found -> None, None in
-      Npath.Map.add key v m in
+      Paths.Simple.Map.add key v m in
     let m = List.fold_left (folder add_p) m pr in
     let m = List.fold_left (folder add_e) m er in
     (* Then use matched pattern expression analyse, when both pattern
        and expression are available *)
-    Npath.Map.fold (fun _ elt (acc_p,acc_e) -> match elt with
+    Paths.Simple.Map.fold (fun _ elt (acc_p,acc_e) -> match elt with
         | Some p, Some e ->
           let p, e = matched_patt_expr p e in
           Pattern.( acc_p ++ p ), acc_e ++ e

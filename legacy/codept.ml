@@ -1,6 +1,7 @@
 module Cmd = Arg
 module U = Unit
-module Pkg = Package
+module Pkg = Paths.Pkg
+module Pth = Paths.Simple
 
 open M2l
 
@@ -26,9 +27,9 @@ type param =
 type task =
   {
     files: string list Unit.split;
-    invisibles: Npath.set;
+    invisibles: Pth.set;
     libs: string list;
-    opens: Npath.t list
+    opens: Pth.t list
   }
 
 
@@ -141,7 +142,7 @@ let start_env includes filemap =
 let remove_units invisibles =
   List.filter @@ function
     | { Unit.path = { Pkg.source=Local; file}; _ } ->
-      not @@ Npath.Set.mem file invisibles
+      not @@ Pth.Set.mem file invisibles
     | _ -> false
 
 let analyze param {opens;libs;invisibles;files;_} =
@@ -164,7 +165,7 @@ let deps param task =
   print ml; print mli
 
 let make_abs abs p =
-  let open Package in
+  let open Paths.Pkg in
   if abs && p.source = Local then
     { p with file = Sys.getcwd() :: p.file }
   else
@@ -235,7 +236,7 @@ let dot param task =
 
 let regroup {Unit.ml;mli} =
   let add l m = List.fold_left (fun x y -> Unit.Group.Map.add y x) m l in
-  add mli @@ add ml @@ Npath.Map.empty
+  add mli @@ add ml @@ Pth.Map.empty
 
 
 let replace_deps includes unit =
@@ -288,7 +289,7 @@ let makefile param task =
   let units = analyze param task in
   let order = order units.Unit.mli in
   let m =regroup units in
-  Npath.Map.iter (fun _k g ->
+  Pth.Map.iter (fun _k g ->
       let open Unit.Group in
       match g with
       | { impl= Some impl ; intf = Some intf } ->
@@ -342,14 +343,14 @@ let classify synonyms f =
 
 let task = ref {
     files = { Unit.ml = []; Unit.mli = [] };
-    invisibles = Npath.Set.empty;
+    invisibles = Pth.Set.empty;
     libs = [];
     opens = []
   }
 
 let add_invi name =
   task := { !task with
-            invisibles = Npath.Set.add (Pkg.parse_filename name) (!task).invisibles
+            invisibles = Pth.Set.add (Pkg.parse_filename name) (!task).invisibles
           }
 
 let add_impl name =
@@ -517,7 +518,7 @@ let args = Cmd.[
                                in the analysis";
     "-no-alias-deps", Cmd.Unit (fun () -> transparent_aliases true),
     ":   Delay aliases dependencies\n";
-    "-no-implicits", Cmd.Unit no_implicits, ":   do not implicitely for mli file
+    "-no-implicits", Cmd.Unit no_implicits, ":   do not implicitely for mli file \
     when given a ml file input";
     "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies\
                                             computation but do not display it.";

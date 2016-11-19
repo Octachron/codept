@@ -12,7 +12,7 @@ type 'a bind = {name:Name.t; expr:'a}
 
 type expression =
   | Defs of Definition.t (** Resolved module actions M = … / include … / open … *)
-  | Open of Npath.t (** open A.B.C path *)
+  | Open of Paths.Simple.t (** open A.B.C path *)
   | Include of module_expr
   | SigInclude of module_type
   (** include (M : s with module m := (deletions)
@@ -33,7 +33,7 @@ and module_expr =
       used in subexpression when waiting for other parts
       of module expression to be resolved
   *)
-  | Ident of Npath.t (** A.B… **)
+  | Ident of Paths.Simple.t (** A.B… **)
   | Apply of {f: module_expr; x:module_expr} (** F(X) *)
   | Fun of module_expr fn (** functor (X:S) -> M *)
   | Constraint of module_expr * module_type (** M:S *)
@@ -42,13 +42,13 @@ and module_expr =
   | Extension_node of extension (** [%ext …] *)
   | Abstract (** □ *)
   | Unpacked (** (module M *)
-  | Open_me of { resolved: Definition.t; opens:Npath.t list; expr:module_expr}
+  | Open_me of { resolved: Definition.t; opens:Paths.Simple.t list; expr:module_expr}
   (** M.(…N.( module_expr)…)
       Note: used for pattern open. *)
 and module_type =
   | Resolved of P.t (** same as in the module type *)
-  | Alias of Npath.t (** module m = A…  *)
-  | Ident of Epath.t (** module M : F(X).s
+  | Alias of Paths.Simple.t (** module m = A…  *)
+  | Ident of Paths.Expr.t (** module M : F(X).s
                          epath due to F.(X).s expression *)
   | Sig of m2l (** sig end*)
   | Fun of module_type fn (** functor (X:S) → M *)
@@ -93,7 +93,7 @@ module Block = struct
   and mt = function
     | Resolved _ -> None
     | Alias n -> Some (List.hd n)
-    | Ident e -> Some (Epath.prefix e)
+    | Ident e -> Some (Paths.Expr.prefix e)
     | Sig code -> m2l code
     | Fun fn -> either
                   Option.(fn.arg >>= fun {Arg.signature;_} -> mt signature)
@@ -162,7 +162,7 @@ let rec pp_expression ppf = function
   | Defs defs -> Pp.fp ppf "define %a" D.pp defs
 
   | Minor annot -> pp_annot ppf annot
-  | Open epath -> Pp.fp ppf "@[<hv>open %a@]" Npath.pp epath
+  | Open npath -> Pp.fp ppf "@[<hv>open %a@]" Paths.Simple.pp npath
   | Include me -> Pp.fp ppf "@[<hv>include [%a]@]" pp_me me
   | SigInclude mt -> Pp.fp ppf "@[<hv>include type [%a]@]" pp_mt mt
 
@@ -183,7 +183,7 @@ and pp_opaque ppf me = Pp.fp ppf "⟨%a⟩" pp_me me
 and pp_bind ppf {name;expr} =
   match expr with
   | Constraint(Abstract, Alias np) ->
-    Pp.fp ppf "@[module %s ≡ %a" name Npath.pp np
+    Pp.fp ppf "@[module %s ≡ %a" name Paths.Simple.pp np
   | Constraint(Abstract, mt) ->
     Pp.fp ppf "@[module %s:@[<hv>%a@] @]" name pp_mt mt
   | Constraint(Unpacked, mt) ->
@@ -195,14 +195,14 @@ and pp_bind ppf {name;expr} =
 and pp_bind_sig ppf {name;expr} =
   match expr with
   | Alias id ->
-    Pp.fp ppf "@[module type %s ≡ %a @]" name Npath.pp id
+    Pp.fp ppf "@[module type %s ≡ %a @]" name Paths.Simple.pp id
   | Abstract ->
     Pp.fp ppf "@[module type %s@]" name
   | _ ->
     Pp.fp ppf "@[module type %s = @,@[<hv>%a@] @]" name pp_mt expr
 and pp_me ppf = function
   | Resolved fdefs -> Pp.fp ppf "✔%a" P.pp fdefs
-  | Ident np -> Npath.pp ppf np
+  | Ident np -> Paths.Simple.pp ppf np
   | Str m2l -> Pp.fp ppf "@,struct@, %a end" pp m2l
   | Apply {f;x} -> Pp.fp ppf "%a(@,%a@,)" pp_me f pp_me x
   | Fun { arg; body } -> Pp.fp ppf "%a@,→%a" (Arg.pp pp_mt) arg pp_me body
@@ -212,14 +212,14 @@ and pp_me ppf = function
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
   | Unpacked -> Pp.fp ppf "⟨unpacked⟩"
   | Open_me {opens = a :: q ; resolved; expr} ->
-    Pp.fp ppf "%a.(%a)" Npath.pp a pp_me (Open_me{opens=q;resolved;expr})
+    Pp.fp ppf "%a.(%a)" Paths.Simple.pp a pp_me (Open_me{opens=q;resolved;expr})
   | Open_me {opens=[]; resolved; expr} ->
     Pp.fp ppf "⟨context:%a⟩ %a" D.pp resolved pp_me expr
 
 and pp_mt ppf = function
   | Resolved fdefs -> Pp.fp ppf "✔%a" P.pp fdefs
-  | Alias np -> Pp.fp ppf "(≡)%a" Npath.pp np
-  | Ident np -> Epath.pp ppf np
+  | Alias np -> Pp.fp ppf "(≡)%a" Paths.Simple.pp np
+  | Ident np -> Paths.Expr.pp ppf np
   | Sig m2l -> Pp.fp ppf "@,sig@, %a end" pp m2l
   | Fun { arg; body } ->  Pp.fp ppf "%a@,→%a" (Arg.pp pp_mt) arg pp_mt body
   | With {body; deletions} ->
@@ -290,7 +290,7 @@ module Normalize = struct
 end
 
 module Build = struct
-  let access path = Minor (Annot.access @@ Epath.prefix path)
+  let access path = Minor (Annot.access @@ Paths.Expr.prefix path)
   let open_ path = Open path
   let value v = Minor ( Annot.value v)
   let pack o = Minor (Annot.pack o)

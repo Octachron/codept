@@ -42,7 +42,7 @@ module Base = struct
 end
 
 module Open_world(Envt:extended) = struct
-  module P = Package
+  module P = Paths.Pkg
   type t = { core: Envt.t; world: P.t Name.map; externs: P.set ref }
 
   let start core world = { core; world; externs = ref P.Set.empty }
@@ -83,10 +83,10 @@ end
 module Sg = Interpreter.Make(Base)
 
 module Layered = struct
-  module P = Package
+  module P = Paths.Pkg
   module Envt = Open_world(Base)
   type source = {
-    origin:Npath.t;
+    origin: Paths.Simple.t;
     mutable resolved: Envt.t;
     cmis: P.t Name.map
   }
@@ -173,7 +173,7 @@ end
 
 module Tracing(Envt:extended) = struct
 
-  module P = Package
+  module P = Paths.Pkg
   type t = { env: Envt.t;
              deps: P.set ref
            }

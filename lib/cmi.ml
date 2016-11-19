@@ -25,7 +25,7 @@ let module_type_declaration module_type id mtd =
 module P = Path
 
 let rec from_path  =
-  let open Epath in
+  let open Paths.Expr in
   function
     | P.Pident s -> A s.name
     | P.Pdot (p,s,_n) -> S(from_path p,s)
@@ -53,7 +53,7 @@ and module_type  = function
     let arg = Option.( mto >>|module_type >>| fun s ->
                        {Arg.name; signature = s} ) in
     Fun { arg ; body = module_type mt}
-  | Mty_alias (_,p) -> M2l.Alias (Epath.concrete @@ from_path p)
+  | Mty_alias (_,p) -> M2l.Alias (Paths.Expr.concrete @@ from_path p)
 and module_type_opt mt =  Option.( mt >>| module_type >< Abstract)
 
 let cmi_m2l path =
