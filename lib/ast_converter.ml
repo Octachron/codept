@@ -15,18 +15,11 @@ let rec from_lid  =
     | L.Ldot (lid,s) -> S(from_lid lid,s)
     | L.Lapply (f,x) -> F {f = from_lid f; x = from_lid x }
 
-let module_path =
-  function
-    | L.Lident _ -> None
-    | L.Ldot (lid, _) -> Some (from_lid lid)
-    | L.Lapply _ -> None
-
 let txt x= x.Location.txt
 
 module H = struct
   let epath x = from_lid @@ txt x
   let npath x = Paths.Expr.concrete @@ epath x
-  let npath_fn x = Paths.Expr.concrete_with_f @@ epath x
 
   let access lid =
     let open Paths.Expr in
@@ -35,30 +28,8 @@ module H = struct
     | S(p,_) -> Annot.access @@ prefix p
     | T | F _ -> assert false
 
-  let access' lid =
-    let open Paths.Expr in
-    match from_lid @@ txt lid with
-    | A _ -> []
-    | S(p,_) -> [ B.access p ]
-    | T | F _ -> assert false
-
-
   let do_open lid =
     [M2l.Open (npath lid)]
-
-  let (+?) x l = match x with None -> l | Some x -> x :: l
-
-(*
-let do_include kind extract env m=
-  let m' = extract env m in
-  R.include_ kind env m'
-*)
-
-  let first_class_approx = S.empty
-
-  let opt f x=  Option.( x >>| f >< [] )
-
-  let flip f x y = f y x
 
   let (@%) l l' =
     let open M2l in
@@ -73,17 +44,8 @@ let do_include kind extract env m=
   let mmap f = gen_mmap (@%) f
   let gmmap f = gen_mmap (@) f
 
-  let (%>) f g x = x |> f |> g
   let (%) f g x = f (g x)
 
-  let (+:) s l' =
-    if Name.Set.cardinal s = 0 then l'
-    else
-      let open M2l in
-      match l' with
-      | Minor m :: q ->
-        Minor { m with access = Name.Set.union s m.access} :: q
-      | _ -> Minor { Annot.empty with access = s } ::  l'
 end
 open H
 let (++) = Annot.(++)
@@ -119,7 +81,6 @@ module Pattern = struct
   let union_map f = List.fold_left (fun p x -> p ++ f x) empty
 
   let opt f x = Option.( x >>| f >< empty )
-  let pack o = { empty with annot = Annot.pack o }
 
   let bind name sign = { empty with binds = [{M2l.name; expr = sign }] }
 
@@ -132,9 +93,9 @@ module Pattern = struct
       )
       :: values in
     let values = List.map( List.cons (M2l.Open m) ) values in
-    let packed = List.map (M2l.Build.open_me [m]) packed in
+    let packed = List.map (B.open_me [m]) packed in
     let binds = List.map
-        (fun {name;expr} -> {name; expr = M2l.Build.open_me [m] expr } )
+        (fun {name;expr} -> {name; expr = B.open_me [m] expr } )
         binds in
     let access = Name.Set.empty in
     { annot={values;access;packed}; binds }
