@@ -1,5 +1,6 @@
 module M = Module
 module S = Module.Sig
+module Origin = M.Origin
 module Def = Definition.Def
 
 module type extended = sig
@@ -131,7 +132,7 @@ module Layered = struct
       | Ok (_, sg) ->
 
         let md = M.create
-            ~origin:(M.Unit path) name sg in
+            ~origin:(Origin.Unit path) name sg in
         source.resolved <- Envt.add_module source.resolved md;
         track source q
 
@@ -180,11 +181,11 @@ module Tracing(Envt:extended) = struct
 
   let rec resolve n env =
     match (Envt.find_name Module n env).M.origin with
-    | M.Unit p -> p
-    | M.Alias n -> resolve n env
-    | M.Extern -> { source = Unknown; file = [n] }
+    | Origin.Unit p -> p
+    | Origin.Alias n -> resolve n env
+    | Origin.Extern -> { source = Unknown; file = [n] }
     | exception Not_found  -> { source = Unknown; file = [n] }
-    | M.Arg | M.Rec | M.First_class | Submodule ->
+    | Origin.( Arg | Rec | First_class | Submodule) ->
       assert false
 
   let record n env =
@@ -199,7 +200,7 @@ module Tracing(Envt:extended) = struct
   let name path = List.hd @@ List.rev path
 
   let alias_chain start env a root = function
-    | Module.Alias n when start-> Some n
+    | Origin.Alias n when start-> Some n
     | Alias n -> Option.( root >>| fun r -> record_alias r env; n )
     | Unit _ when start -> Some a
     | _ -> None

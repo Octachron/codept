@@ -14,38 +14,41 @@ module Arg = struct
 end
 
 module Pkg = Paths.Pkg
-type source = Pkg.t
 
-type origin =
-  | Unit of source (** aka toplevel module *)
-  | Extern (** aka unknown module *)
-  | Alias of Name.t (** M = A… *)
-  | Submodule
-  | First_class (** Not resolved first-class module *)
-  | Arg (** functor argument *)
-  | Rec (** mockup module for recursive definitions *)
+module Origin = struct
+  type source = Pkg.t
 
-let pp_origin ppf = function
-  | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
-  | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
-  | Unit { Pkg.source = Unknown; _} | Extern -> Pp.fp ppf "!"
-  | Rec -> Pp.fp ppf "?"
-  | Submodule -> Pp.fp ppf "."
-  | First_class -> Pp.fp ppf "'"
-  | Arg -> Pp.fp ppf "§"
-  | Alias n -> Pp.fp ppf "(≡%s…)" n
+  type t =
+    | Unit of source (** aka toplevel module *)
+    | Extern (** aka unknown module *)
+    | Alias of Name.t (** M = A… *)
+    | Submodule
+    | First_class (** Not resolved first-class module *)
+    | Arg (** functor argument *)
+    | Rec (** mockup module for recursive definitions *)
 
-let at_most max v = match max, v with
-  | (First_class|Rec|Arg|Extern) , _ -> max
-  | Unit _ , v -> v
-  | Submodule, Unit _ -> Submodule
-  |  Submodule, Alias _ -> Submodule
-  | Submodule, v -> v
-  | _ , (Alias _ as a) | (Alias _ as a), _ -> a
+  let pp ppf = function
+    | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
+    | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
+    | Unit { Pkg.source = Unknown; _} | Extern -> Pp.fp ppf "!"
+    | Rec -> Pp.fp ppf "?"
+    | Submodule -> Pp.fp ppf "."
+    | First_class -> Pp.fp ppf "'"
+    | Arg -> Pp.fp ppf "§"
+    | Alias n -> Pp.fp ppf "(≡%s…)" n
+
+  let at_most max v = match max, v with
+    | (First_class|Rec|Arg|Extern| Alias _ ) , _ -> max
+    | Unit _ , v -> v
+    | Submodule, Unit _ -> Submodule
+    | Submodule, Alias _ -> Submodule
+    | Submodule, v -> v
+end
+type origin = Origin.t
 
 type t = {
   name:Name.t;
-  origin: origin;
+  origin: Origin.t;
   args: t option list;
   signature:signature
 }
@@ -53,6 +56,7 @@ and signature = { modules: mdict; module_types: mdict }
 and mdict = t Name.Map.t
 
 type arg = signature Arg.t
+type modul = t
 
 let of_arg ({name;signature}:arg) =
   { name; origin = Arg ; args=[]; signature }
@@ -72,7 +76,7 @@ let pp_level ppf lvl =  Pp.fp ppf "%s" (match lvl with
 
 let rec pp ppf {name;args;origin;signature} =
   Pp.fp ppf "%a%s:%a@[<hv>[@,%a@,]@]"
-    pp_origin origin name pp_args args pp_signature signature
+    Origin.pp origin name pp_args args pp_signature signature
 and pp_signature ppf {modules; module_types} =
   Pp.fp ppf "@[<hv>%a" pp_mdict modules;
   if Name.Map.cardinal module_types >0 then
@@ -89,13 +93,11 @@ and pp_args ppf args = Pp.fp ppf "%a" (Pp.(list ~sep:(s "@,→") ) @@ pp_arg ) a
 
 let empty = Name.Map.empty
 
-let create ?(args=[]) ?(origin=Submodule) name signature =
+let create ?(args=[]) ?(origin=Origin.Submodule) name signature =
   { name; origin; args; signature}
 
 
 module Sig = struct
-
-  type t = signature
 
   let card s =
     let card = Name.Map.cardinal in
@@ -133,11 +135,12 @@ module Sig = struct
 
   let pp = pp_signature
 
+  type t = signature
 end
 
 module Partial = struct
   type nonrec t =
-    { origin: origin;
+    { origin: Origin.t;
       args: t option list;
       result: signature }
   let empty = { origin = Submodule; args = []; result= Sig.empty }
@@ -145,11 +148,11 @@ module Partial = struct
 
   let pp ppf (x:t) =
     if x.args = [] then
-      Pp.fp ppf "%a(%a)" pp_signature x.result pp_origin x.origin
+      Pp.fp ppf "%a(%a)" pp_signature x.result Origin.pp x.origin
     else Pp.fp ppf "%a@,→%a(%a)"
         pp_args x.args
         pp_signature x.result
-        pp_origin x.origin
+        Origin.pp x.origin
 
   let no_arg x = { origin = Submodule; args = []; result = x }
 
@@ -163,7 +166,7 @@ module Partial = struct
 
   let to_module ?origin name (p:t) =
     let origin = match origin with
-      | Some o -> at_most p.origin o
+      | Some o -> Origin.at_most p.origin o
       | None -> p.origin
     in
     {name;origin; args = p.args; signature = p.result }

@@ -12,7 +12,7 @@ module S = Module.Sig
 module type envt = sig
   type t
   val find: transparent:bool -> ?alias:bool ->
-    M.level -> Paths.Simple.t -> t -> Module.t
+    Module.level -> Paths.Simple.t -> t -> Module.t
   val (>>) : t -> M.signature -> t
   val add_module: t -> Module.t -> t
 end
@@ -97,7 +97,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   let aliased d = match d.P.origin with
     | Alias _ -> None
-    | _ -> Some Module.Submodule
+    | _ -> Some Module.Origin.Submodule
 
   let bind state module_expr {name;expr} =
     match module_expr ?bind:(Some true) state expr with
@@ -154,7 +154,7 @@ module Make(Envt:envt)(Param:param) = struct
           let p = P.of_module x in
           let p = if P.is_functor p || not bind then p
             else
-              { p with origin = M.at_most p.origin @@
+              { p with origin = M.Origin.at_most p.origin @@
                          Alias (Paths.Simple.prefix i) } in
           Ok p
         | exception Not_found -> Error (Ident i: module_expr)
