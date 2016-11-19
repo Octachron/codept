@@ -3,7 +3,7 @@ open Result
 
 module D = Definition
 module Def = D.Def
-module P = Partial_module
+module P = Module.Partial
 
 module M = Module
 module S = Module.Sig
@@ -85,7 +85,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok fdefs ->
       if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
         Warning.included_first_class ();
-      let defs = P.to_defs fdefs in
+      let defs = D.of_partial fdefs in
       Ok (Some defs)
 
   let include_ state module_expr =

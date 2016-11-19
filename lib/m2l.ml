@@ -6,7 +6,7 @@ module Arg = M.Arg
 module D = Definition
 module Def = D.Def
 
-module P = Partial_module
+module P = M.Partial
 
 type 'a bind = {name:Name.t; expr:'a}
 
