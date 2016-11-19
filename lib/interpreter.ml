@@ -6,6 +6,7 @@ module Def = D.Def
 module P = Module.Partial
 
 module M = Module
+module Arg = M.Arg
 module S = Module.Sig
 
 module type envt = sig
@@ -166,7 +167,8 @@ module Make(Envt:envt)(Param:param) = struct
         | Ok f, Error x -> Error (Apply {f = Resolved f ;x} )
       end
     | Fun {arg;body} ->
-      functor_expr (module_expr ~bind:false,fn, demote_str) state [] arg body
+      functor_expr (module_expr ~bind:false, Build.fn, Build.demote_str)
+        state [] arg body
     | Str [] -> Ok P.empty
     | Str[Defs d] -> Ok (P.no_arg d.defined)
     | Resolved d -> Ok d
@@ -226,7 +228,7 @@ module Make(Envt:envt)(Param:param) = struct
           Ok d
       end
     | Fun {arg;body} ->
-      functor_expr (module_type, fn_sig, demote_sig) state [] arg body
+      functor_expr (module_type, Build.fn_sig, Build.demote_sig) state [] arg body
     | Of me -> of_ (module_expr state me)
     | Abstract -> Ok (P.empty)
     | Extension_node n ->
@@ -241,7 +243,7 @@ module Make(Envt:envt)(Param:param) = struct
   and functor_expr: 'k. (Envt.t -> 'k -> (P.t, 'k) result)
                     * ('k M2l.fn -> 'k)
                     * ('k M2l.fn -> D.t Arg.t option -> 'k M2l.fn) ->
-    Envt.t ->  D.t Arg.t option list -> arg
+    Envt.t ->  D.t Arg.t option list -> module_type Arg.t option
     -> 'k -> (P.t, 'k) result =
     fun (body_type,fn,demote) state args arg body ->
     let ex_arg =

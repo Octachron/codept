@@ -12,54 +12,74 @@ type 'a bind = {name:Name.t; expr:'a}
 
 type expression =
   | Defs of Definition.t (** Resolved module actions M = … / include … / open … *)
-  | Open of Paths.Simple.t (** open A.B.C path *)
-  | Include of module_expr
+  | Open of Paths.Simple.t (** [open A.B.C] ⇒ [Open [A;B;C]]  *)
+  | Include of module_expr (** [struct include A end] *)
   | SigInclude of module_type
-  (** include (M : s with module m := (deletions)
-      and module m.k = n.w (equalities) *)
+  (** [struct include A end] *)
   | Bind of module_expr bind
-  | Bind_sig of module_type bind
+  (** [struct module A = struct … end] *)
+  | Bind_sig of module_type bind   (** [struct module type A = sig … end] *)
   | Bind_rec of module_expr bind list
+  (** [module rec A = … and B = … and …] *)
   | Minor of annotation
+  (** value level expression.
+      Invariant: for any pure interpreter [f], [ f (Minor m :: q ) ≡ f q ],
+      i.e, this expression constructor is only meaningful for dependencies
+      tracking.
+ *)
   | Extension_node of extension
+  (** [[%ext …]] *)
 and annotation =
-  { access: Name.set (** M.N.L.x ⇒ access \{M\} *)
-  ; values: m2l list (** let open in ...; let module M = .. *)
-  ; packed: module_expr list (** (module M) *)
+  { access: Name.set (** [M.N.L.x] ⇒ access \{M\} *)
+  ; values: m2l list (** − [let open A in …] ⇒ [[ Open A; …  ]]
+                         − [let module M = … ] ⇒ [[ Include A; … ]]
+                     *)
+  ; packed: module_expr list (** [(module M)] *)
   }
 and module_expr =
   | Resolved of P.t
-  (** already resolved module expression, generally
+  (** Already resolved module expression, generally
       used in subexpression when waiting for other parts
       of module expression to be resolved
   *)
-  | Ident of Paths.Simple.t (** A.B… **)
-  | Apply of {f: module_expr; x:module_expr} (** F(X) *)
-  | Fun of module_expr fn (** functor (X:S) -> M *)
-  | Constraint of module_expr * module_type (** M:S *)
-  | Str of m2l (** struct … end *)
-  | Val of annotation (** (val … ) *)
-  | Extension_node of extension (** [%ext …] *)
-  | Abstract (** □ *)
-  | Unpacked (** (module M *)
+  | Ident of Paths.Simple.t (** [A.B…] **)
+  | Apply of {f: module_expr; x:module_expr} (** [F(X)] *)
+  | Fun of module_expr fn (** [functor (X:S) -> M] *)
+  | Constraint of module_expr * module_type (** [M:S] *)
+  | Str of m2l (** [struct … end] *)
+  | Val of annotation (** [val … ] *)
+  | Extension_node of extension (** [[%ext …]] *)
+  | Abstract
+  (** empty module expression, used as a placeholder.
+      In particular, it is useful for constraining first class module unpacking
+      as [Constraint(Abstract, signature)]. *)
+  | Unpacked (** [(module M)] *)
   | Open_me of { resolved: Definition.t; opens:Paths.Simple.t list; expr:module_expr}
   (** M.(…N.( module_expr)…)
-      Note: used for pattern open. *)
+      Note: This construction does not exist (yet?) in OCaml proper.
+      It is used here to simplify the interaction between
+      pattern open and first class module.*)
 and module_type =
   | Resolved of P.t (** same as in the module type *)
-  | Alias of Paths.Simple.t (** module m = A…  *)
-  | Ident of Paths.Expr.t (** module M : F(X).s
-                         epath due to F.(X).s expression *)
-  | Sig of m2l (** sig end*)
-  | Fun of module_type fn (** functor (X:S) → M *)
+  | Alias of Paths.Simple.t (** [module m = A…]  *)
+  | Ident of Paths.Expr.t
+  (** module M : F(X).s
+      Note: Paths.Expr is used due to [F.(X).s] expressions
+      that do not have an equivalent on the module level
+ *)
+  | Sig of m2l (** [sig … end] *)
+  | Fun of module_type fn (** [functor (X:S) → M] *)
   | With of {
       body: module_type;
       deletions: Name.set
       (* ; equalities: (Npath.t * Epath.t) list *)
     }
-  | Of of module_expr (** module type of … *)
+  (** [S with module N := …]
+      we are only tracking module level modification
+  *)
+  | Of of module_expr (** [module type of …] *)
   | Extension_node of extension (** [%%… ] *)
-  | Abstract
+  | Abstract (** placeholder *)
 and extension = {name:string; extension:extension_core}
 and extension_core =
   | Module of m2l
@@ -67,12 +87,10 @@ and extension_core =
 and m2l = expression list
 and 'a fn = { arg: module_type Arg.t option; body:'a }
 
-type arg = module_type Arg.t option
+type t = m2l
 
-let open_me ml expr = match expr with
-  | Open_me o -> Open_me { o with opens = ml @ o.opens }
-  | expr ->  Open_me { resolved = D.empty; opens = ml; expr }
-
+(** The Block module computes the first dependencies needed to be resolved
+    before any interpreter can make progress evaluating a given code block *)
 module Block = struct
   let either x f y = if x = None then f y else x
   let first f l = List.fold_left (fun x y -> either x f y) None l
@@ -141,22 +159,36 @@ module Annot = struct
   let opt f x = Option.( x >>| f >< empty )
 
 end
-let demote_str fn arg =
-  let body = Fun fn in
-  match arg with
-  | None -> { arg=None; body }
-  | Some ({name;signature}: _ Arg.t) ->
-    { arg = Some {name; signature=Sig [Defs signature]}; body }
+(** Helper function *)
+module Build = struct
+  let access path = Minor (Annot.access @@ Paths.Expr.prefix path)
+  let open_ path = Open path
+  let value v = Minor ( Annot.value v)
+  let pack o = Minor (Annot.pack o)
 
-let demote_sig fn arg : module_type fn  =
-  let body : module_type = Fun fn in
-  match arg with
-  | None -> { arg=None; body }
-  | Some ({name;signature}: _ Arg.t) ->
-    { arg = Some {name; signature=Sig [Defs signature]}; body }
+  let open_me ml expr = match expr with
+    | Open_me o -> Open_me { o with opens = ml @ o.opens }
+    | expr ->  Open_me { resolved = D.empty; opens = ml; expr }
 
-let fn_sig arg : module_type = Fun arg
-let fn arg : module_expr  = Fun arg
+  let demote_str fn arg =
+    let body = Fun fn in
+    match arg with
+    | None -> { arg=None; body }
+    | Some ({name;signature}: _ Arg.t) ->
+      { arg = Some {name; signature=Sig [Defs signature]}; body }
+
+  let demote_sig fn arg : module_type fn  =
+    let body : module_type = Fun fn in
+    match arg with
+    | None -> { arg=None; body }
+    | Some ({name;signature}: _ Arg.t) ->
+      { arg = Some {name; signature=Sig [Defs signature]}; body }
+
+  let fn_sig arg : module_type = Fun arg
+  let fn arg : module_expr  = Fun arg
+
+end
+
 
 let rec pp_expression ppf = function
   | Defs defs -> Pp.fp ppf "define %a" D.pp defs
@@ -234,34 +266,34 @@ and pp_extension_core ppf = function
   | Val m -> pp_annot ppf m
 and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" Pp.(list ~sep:(s " @,") pp_expression)
 
-type t = m2l
 
-let cdefs = function
-  | (Resolved fdefs:module_expr) -> Some fdefs
-  | _ -> None
-
-let sig_cdefs = function
-  | (Resolved fdefs:module_type) -> Some fdefs
-  | _ -> None
-
-let args_cdefs args =
-  let open Option in
-  let rec extract acc (args: module_type Arg.t list) =
-    acc >>= fun arg_defs ->
-    begin match args with
-      | [] -> Some arg_defs
-      | {Arg.name;signature} :: args ->
-        sig_cdefs signature >>= fun defs ->
-        let md: _ Arg.t = { name ; signature = defs } in
-        extract (Some(md :: arg_defs)) args
-    end
-  in
-  extract (Some []) args >>| List.rev
-
-let halt l = false, l
-let continue l = true, l
-
+(** {Normalize} computes the normal form of a given m2l code fragment *)
 module Normalize = struct
+  let cdefs = function
+    | (Resolved fdefs:module_expr) -> Some fdefs
+    | _ -> None
+
+  let sig_cdefs = function
+    | (Resolved fdefs:module_type) -> Some fdefs
+    | _ -> None
+
+  let args_cdefs args =
+    let open Option in
+    let rec extract acc (args: module_type Arg.t list) =
+      acc >>= fun arg_defs ->
+      begin match args with
+        | [] -> Some arg_defs
+        | {Arg.name;signature} :: args ->
+          sig_cdefs signature >>= fun defs ->
+          let md: _ Arg.t = { name ; signature = defs } in
+          extract (Some(md :: arg_defs)) args
+      end
+    in
+    extract (Some []) args >>| List.rev
+
+  let halt l = false, l
+  let continue l = true, l
+
 
   let (+:) x (more,l) =
     more, x :: l
@@ -287,11 +319,4 @@ module Normalize = struct
           { mn with values = q :: mn.values }
     | l -> { mn with values = l :: mn.values }
 
-end
-
-module Build = struct
-  let access path = Minor (Annot.access @@ Paths.Expr.prefix path)
-  let open_ path = Open path
-  let value v = Minor ( Annot.value v)
-  let pack o = Minor (Annot.pack o)
 end

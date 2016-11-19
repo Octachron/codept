@@ -6,6 +6,7 @@ module D = Definition
 module M = Module
 module S = M.Sig
 module Annot = M2l.Annot
+module Arg = M.Arg
 
 let rec from_lid  =
   let open Paths.Expr in
@@ -131,9 +132,9 @@ module Pattern = struct
       )
       :: values in
     let values = List.map( List.cons (M2l.Open m) ) values in
-    let packed = List.map (M2l.open_me [m]) packed in
+    let packed = List.map (M2l.Build.open_me [m]) packed in
     let binds = List.map
-        (fun {name;expr} -> {name; expr = M2l.open_me [m] expr } )
+        (fun {name;expr} -> {name; expr = M2l.Build.open_me [m] expr } )
         binds in
     let access = Name.Set.empty in
     { annot={values;access;packed}; binds }
