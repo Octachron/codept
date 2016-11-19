@@ -135,9 +135,10 @@ let organize opens files =
   units, m
 
 let start_env includes filemap =
-  Envts.Tr.start Envts.(
-      Trl.extend @@ Layered.create includes
-      @@ Envts.Base.empty) filemap
+  let base = Envts.Base.empty in
+  let layered = Envts.Layered.create includes base in
+  let traced = Envts.Trl.extend layered in
+  Envts.Tr.start traced filemap
 
 let remove_units invisibles =
   List.filter @@ function

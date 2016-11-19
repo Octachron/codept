@@ -59,7 +59,12 @@ module Open_world(Envt:extended) = struct
       else
         approx name
 
-  let last l = List.hd @@ List.rev l
+ let last l = List.hd @@ List.rev l
+
+ let record_level level = function
+   | _ :: _ :: _ -> true
+   | [_] -> level = M.Module
+   | [] -> false
 
   let find ~transparent ?alias level path env =
     try Envt.find ~transparent ?alias level path env.core with
@@ -69,7 +74,7 @@ module Open_world(Envt:extended) = struct
         raise Not_found
       else
         (
-          if level = Module then
+          if record_level level path then
             env.externs := P.Set.add
                 { P.file = [root]; source = Unknown } !(env.externs);
           approx (last path)
@@ -185,7 +190,7 @@ module Tracing(Envt:extended) = struct
     | Origin.Alias n -> resolve n env
     | Origin.Extern -> { source = Unknown; file = [n] }
     | exception Not_found  -> { source = Unknown; file = [n] }
-    | Origin.( Arg | Rec | First_class | Submodule) ->
+    | Origin.(Arg | Rec | First_class | Submodule) ->
       assert false
 
   let record n env =
@@ -232,15 +237,20 @@ module Tracing(Envt:extended) = struct
     | exception Not_found -> false
     | _ -> false
 
+  let record_level level = function
+    | _ :: _ :: _ -> true
+    | [_] -> level = M.Module
+    | []-> false
+
   let find ~transparent ?(alias=false) level path env =
     match find0 ~transparent true None level path env with
     | Some root, x when not transparent || not alias
       ->
-      ( if level = Module && check_alias root env then record root env; x)
+      ( if record_level level path && check_alias root env then record root env; x)
     | Some _, x -> x
     | None, x ->
       let root = prefix level (List.hd path) env in
-      (if level = Module && check_alias root env then record root env; x)
+      (if record_level level path && check_alias root env then record root env; x)
 
   let find_name level name = find ~transparent:true ~alias:false level [name]
 
