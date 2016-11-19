@@ -97,7 +97,8 @@ In more details, `codept` works by combining together two main ingredients:
   (see `Interpreter.ml`)
 
 
-  Currently, these two elements are then used in a basic solver (see `solver.ml`).
+
+Currently, these two elements are then used in a basic solver (see `solver.ml`).
 Given a list of ".ml" and ".mli" files and a starting environment,
 this basic solver iters over the list of unresolved files and try to compute
 their signature.
