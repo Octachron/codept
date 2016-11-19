@@ -83,3 +83,28 @@ let g x =
   ()
 
 ```
+
+#Codept overview
+
+In more details, `codept` works by combining together two main ingredients:
+
+- an AST, called M2l, specialized to handle only module level constructions
+  (see `M2l.mli` )
+
+- a familly of interruptible interpreters that given an environment and a
+  `m2l` Ast computes either the signature represented by the m2l ast, or in
+  presence of non-resolved dependencies, a simplified m2l ast.
+  (see `Interpreter.ml`)
+
+
+  Currently, these two elements are then used in a basic solver (see `solver.ml`).
+Given a list of ".ml" and ".mli" files and a starting environment,
+this basic solver iters over the list of unresolved files and try to compute
+their signature.
+
+If the computation is successful, the resulting signature is
+added to the current environment and file removed to the list of unresolved files.
+Otherwise the solver continues its iteration.
+
+Cycles and non-resolvable dependencies are detected when the solver does not
+make any progress after one cycle of iterations over unresolved files.
