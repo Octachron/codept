@@ -22,8 +22,12 @@ struct
   type 'a map = 'a Map.t
   let prefix = List.hd
 
+  let extension a =
+    let ext = Filename.extension a in
+    String.sub ext 1 (String.length ext - 1)
+
   let may_change_extension f a =
-    match Filename.extension a with
+    match extension a with
     | "" -> a
     | ext ->
       let base = Filename.chop_extension a in
@@ -167,7 +171,7 @@ module Pkg = struct
     | "ml" when all -> ".cmi"
     | "ml" ->
       if native then ".cmx" else ".cmo"
-    | _ -> assert false
+    | s -> raise @@Invalid_argument ("Unknown extension " ^ s)
 
   let pp_source ppf = function
     | Local -> Pp.fp ppf "Local"
