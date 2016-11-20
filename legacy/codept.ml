@@ -19,14 +19,14 @@ type param =
     transparent_aliases: bool;
     transparent_extension_nodes: bool;
     includes: Pkg.path Name.map;
-    synonyms: Name.set Unit.split;
+    synonyms: Name.set Unit.pair;
     implicits: bool;
   }
 
 
 type task =
   {
-    files: string list Unit.split;
+    files: string list Unit.pair;
     invisibles: Pth.set;
     libs: string list;
     opens: Pth.t list
@@ -291,9 +291,9 @@ let makefile param task =
   let order = order units.Unit.mli in
   let m =regroup units in
   Pth.Map.iter (fun _k g ->
-      let open Unit.Group in
+      let open Unit in
       match g with
-      | { impl= Some impl ; intf = Some intf } ->
+      | { ml= Some impl ; mli = Some intf } ->
         let cmi = Pkg.cmi impl.path in
         if not param.native then
           print_deps order (Pkg.cmo) (Pkg.mk_dep all param.native) ppf
@@ -303,7 +303,7 @@ let makefile param task =
             (impl, if_all [Pkg.o impl.path], [cmi] @ if_all [impl.path] );
         print_deps order Pkg.cmi (Pkg.mk_dep all param.native)  ppf
           (intf,[], [] )
-      | { impl = Some impl; intf = None } ->
+      | { ml = Some impl; mli = None } ->
         begin
           let cmi = Pkg.cmi impl.path in
           let imli =  param.implicits
@@ -323,10 +323,10 @@ let makefile param task =
                if_all ([Pkg.o impl.path] @ cmi_adep),
                if_all [impl.path] @ cmi_dep )
         end
-      | { impl = None; intf = Some intf } ->
+      | { ml = None; mli = Some intf } ->
         print_deps order Pkg.cmi (Pkg.mk_dep all param.native) ppf
           (intf,[],[])
-      | { impl = None; intf = None } -> ()
+      | { ml = None; mli = None } -> ()
     ) m
 
 

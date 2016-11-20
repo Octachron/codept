@@ -12,21 +12,23 @@ type t = {
   dependencies: Pkg.set
 }
 type unit = t
+type 'a pair = { ml:'a; mli:'a}
+
 
 module Group = struct
-  type t = { impl:unit option; intf:unit option }
+  type t = unit option pair
   type group = t
 
 exception Collision of { previous:unit; collision:unit}
 let add_mli mli x =
-  match x.intf with
+  match x.mli with
   | Some previous when mli = previous -> x
   | Some previous -> raise @@ Collision {previous; collision=mli}
-  | None -> { x with intf = Some mli }
+  | None -> { x with mli = Some mli }
 
 let add_ml ml x =
-  match x.impl with
-  | None -> { x with impl = Some ml }
+  match x.ml with
+  | None -> { x with ml = Some ml }
   | Some previous when ml = previous -> x
   | Some previous -> raise @@ Collision {previous; collision=ml}
 
@@ -34,7 +36,7 @@ let add unit x = match unit.kind with
   | Structure -> add_ml unit x
   | Signature -> add_mli unit x
 
-let empty = { intf = None; impl = None }
+let empty = { mli = None; ml = None }
 
 module Map = struct
   type t = group Paths.Simple.Map.t
@@ -97,7 +99,6 @@ let read_file kind filename =
     dependencies = Pkg.Set.empty
   }
 
-type 'a split = { ml:'a; mli:'a}
 
 let group_by classifier files =
   let start = Pth.Map.empty in
@@ -117,7 +118,7 @@ let group {ml;mli} =
 
 let split map =
   List.fold_left ( fun {ml; mli} (_name,grp) ->
-      match Group.(grp.impl, grp.intf) with
+      match grp.ml, grp.mli with
       | Some ml', Some mli' -> { ml = ml' :: ml; mli = mli' :: mli }
       | None, None -> { ml; mli }
       | Some m, None | None, Some m -> { ml; mli = m :: mli }
