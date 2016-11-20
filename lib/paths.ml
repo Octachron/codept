@@ -1,12 +1,11 @@
 
-
 module Simple =
 struct
   module Core = struct
     type t = Name.t list
     type npath = t
     let compare (x:t) (y:t) = compare x y
-    let pp = Pp.(list ~sep:(s".")) Name.pp
+    let pp = Pp.(list ~sep:(s".") ) Name.pp
   end
   include Core
   module Set = struct
@@ -176,10 +175,11 @@ module Pkg = struct
   let pp_source ppf = function
     | Local -> Pp.fp ppf "Local"
     | Unknown ->  Pp.fp ppf "Unknown"
-    | Pkg n -> Pp.fp ppf "Sys[%a]" Simple.pp n
+    | Pkg n -> Pp.fp ppf "Pkg [%a]" Pp.(list ~sep:(const sep) string) n
 
   let pp_simple ppf {source;file}=
-    Pp.fp ppf "(%a)%a" pp_source source Simple.pp file
+    Pp.fp ppf "(%a)%a" pp_source source
+      Pp.(list ~sep:(const sep) string) file
 
   let pp_gen sep ppf {source;file} =
     begin match source with
@@ -194,6 +194,16 @@ module Pkg = struct
       Pp.(list ~sep:(const sep) string) file
 
   let pp = pp_gen sep
+
+    let reflect_source ppf = function
+    | Local -> Pp.fp ppf "Local"
+    | Unknown ->  Pp.fp ppf "Unknown"
+    | Pkg n -> Pp.fp ppf "Pkg [%a]" Pp.(list ~sep:(s "; ") string) n
+
+  let reflect ppf {source;file} =
+    Pp.fp ppf "{source=%a; file=[%a]}"
+      reflect_source source
+      Pp.(list ~sep:(const "; ") string) file
 
   module Set = struct
     include Set.Make(struct type t = path let compare = compare end)

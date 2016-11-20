@@ -165,6 +165,16 @@ let deps param task =
   let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) std in
   print ml; print mli
 
+let export param task =
+  let {Unit.mli; _} = analyze param task in
+  let print_u ppf {Unit.name; code; _ } = match code with
+    | M2l.Defs d :: _ ->
+      Pp.fp ppf {|@[{name="%s";@, signature=%a}@]|} name
+        Module.reflect_signature d.defined
+    | _ -> () in
+  let print =  Pp.(list ~pre:(s"[") ~post:(s"]\n") ~sep:(s"\n @,") print_u ) std in
+  print mli
+
 let make_abs abs p =
   let open Paths.Pkg in
   if abs && p.source = Local then
@@ -503,7 +513,9 @@ let args = Cmd.[
     "-vnum", Cmd.Unit print_vnum, "print version number\n\n Codept only modes:\n";
 
 
-    "-deps", Unit (set deps), ": print detailed dependencies";
+    "-deps", Unit (set deps), ":   print detailed dependencies";
+    "-export", Unit (set export), ":   export resolved modules signature";
+
     "-dot", Unit (set dot), ":   print dependencies in dot format";
     "-makefile", Unit (set makefile), ":   print makefile depend file(default)";
     "-m2l", Unit (set_iter m2l), ":   print m2l ast:";

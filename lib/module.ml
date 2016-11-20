@@ -7,6 +7,10 @@ module Arg = struct
       Pp.fp ppf "(%s:%a)" arg.name pp arg.signature
     | None -> Pp.fp ppf "()"
 
+  let reflect pp ppf = function
+    | Some arg ->
+      Pp.fp ppf {|Some {name="%s"; %a}|} arg.name pp arg.signature
+    | None -> Pp.fp ppf "()"
 
   let pp_s pp_sig ppf args = Pp.fp ppf "%a"
       (Pp.(list ~sep:(s "→@,")) @@ pp pp_sig) args;
@@ -36,6 +40,15 @@ module Origin = struct
     | First_class -> Pp.fp ppf "'"
     | Arg -> Pp.fp ppf "§"
     | Alias n -> Pp.fp ppf "(≡%s…)" n
+
+    let reflect ppf = function
+    | Unit pkg  -> Pp.fp ppf "Unit %a" Pkg.reflect pkg
+    | Rec -> Pp.fp ppf "Rec"
+    | Extern -> Pp.fp ppf "Unknown"
+    | Submodule -> Pp.fp ppf "Submodule"
+    | First_class -> Pp.fp ppf "First_class"
+    | Arg -> Pp.fp ppf "Arg"
+    | Alias n -> Pp.fp ppf {|Alias "%s"|} n
 
   let at_most max v = match max, v with
     | (First_class|Rec|Arg|Extern| Alias _ ) , _ -> max
@@ -74,9 +87,36 @@ let pp_level ppf lvl =  Pp.fp ppf "%s" (match lvl with
     | Module_type -> "module type"
   )
 
+let reflect_level ppf = function
+    | Module -> Pp.string ppf "Module"
+    | Module_type -> Pp.string ppf "Module type"
+
+let rec reflect ppf {name;args;origin;signature} =
+  Pp.fp ppf "@[<hov>{name=%s; origin=%a; args=%a; signature=%a}@]"
+    name Origin.reflect origin reflect_args args reflect_signature signature
+and reflect_signature ppf {modules; module_types} =
+  match Name.Map.cardinal modules, Name.Map.cardinal module_types with
+  | 0, 0 -> Pp.string ppf "(Sig.empty)"
+  | _, 0 -> Pp.fp ppf
+              "Sig.of_list @[<hov>[%a]@]" reflect_mdict modules
+  | 0, _ -> Pp.fp ppf
+              "Sig.of_list_type @[<hov>[%a]@]"
+              reflect_mdict module_types
+  | _ ->
+    Pp.fp ppf "@[Sig.( merge @,(of_list [%a]) @,(of_list_type [%a])@, )@]"
+      reflect_mdict modules
+      reflect_mdict module_types
+and reflect_mdict ppf dict =
+      Pp.(list ~sep:(s "; @,") @@ reflect_pair) ppf (Name.Map.bindings dict)
+and reflect_pair ppf (_,md) = reflect ppf md
+and reflect_arg ppf arg = Pp.fp ppf "%a" (Pp.opt reflect) arg
+and reflect_args ppf args =
+  Pp.fp ppf "[%a]" (Pp.(list ~sep:(s "; @,") ) @@ reflect_arg ) args
+
+
 let rec pp ppf {name;args;origin;signature} =
-  Pp.fp ppf "%a%s:%a@[<hv>[@,%a@,]@]"
-    Origin.pp origin name pp_args args pp_signature signature
+  Pp.fp ppf "%s%a:%a@[<hv>[@,%a@,]@]"
+    name Origin.pp origin pp_args args pp_signature signature
 and pp_signature ppf {modules; module_types} =
   Pp.fp ppf "@[<hv>%a" pp_mdict modules;
   if Name.Map.cardinal module_types >0 then
@@ -89,6 +129,7 @@ and pp_pair ppf (_,md) = pp ppf md
 and pp_arg ppf arg = Pp.fp ppf "(%a)" (Pp.opt pp) arg
 and pp_args ppf args = Pp.fp ppf "%a" (Pp.(list ~sep:(s "@,→") ) @@ pp_arg ) args;
     if List.length args > 0 then Pp.fp ppf "→"
+
 
 
 let empty = Name.Map.empty

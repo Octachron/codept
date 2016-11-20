@@ -53,6 +53,7 @@ module Pkg :
     val pp_simple : Format.formatter -> path -> unit
     val pp_gen : string -> Format.formatter -> path -> unit
     val pp : Format.formatter -> path -> unit
+    val reflect: Format.formatter -> path -> unit
 
     val filename : ?sep:string -> t -> string
 

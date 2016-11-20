@@ -4,9 +4,17 @@ module Arg :
   sig
     type 'a t = { name : string; signature : 'a; }
     type 'a arg = 'a t
+
     val pp :
       (Format.formatter -> 'a -> unit) ->
       Format.formatter -> 'a arg option -> unit
+
+    (** print with ocaml syntax *)
+    val reflect :
+      (Format.formatter -> 'a -> unit) ->
+      Format.formatter -> 'a arg option -> unit
+
+
     val pp_s :
       (Format.formatter -> 'a -> unit) ->
       Format.formatter -> 'a arg option list -> unit
@@ -31,6 +39,7 @@ module Origin: sig
   *)
 
   val pp : Format.formatter -> t -> unit
+  val reflect : Format.formatter -> t -> unit
 end
 type origin = Origin.t
 
@@ -58,10 +67,17 @@ val create :
 
 
 (** {2 Printers} *)
+
+val pp : Format.formatter -> t -> unit
+val reflect : Format.formatter -> t -> unit
+
+val pp_signature : Format.formatter -> signature -> unit
+val reflect_signature : Format.formatter -> signature -> unit
+
+
+
 val pp_alias : Format.formatter -> Paths.Expr.t option -> unit
 val pp_level : Format.formatter -> level -> unit
-val pp : Format.formatter -> t -> unit
-val pp_signature : Format.formatter -> signature -> unit
 val pp_mdict : Format.formatter -> mdict -> unit
 val pp_pair : Format.formatter -> string * t -> unit
 val pp_arg : Format.formatter -> t option -> unit
