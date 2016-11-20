@@ -212,8 +212,8 @@ let modules ?filter param task =
   let {Unit.ml; mli} = analyze param task in
   let sort_p = sort id param mli in
   let sort_u = sort upath param mli in
-  let print units = Pp.fp std "@[%a@]"
-      Pp.(list ~sep:(s"@,") @@ pp_module sort_p param ?filter)
+  let print units = Pp.fp std "%a"
+      Pp.(list ~sep:(s"") @@ pp_module sort_p param ?filter)
       (sort_u units) in
   print ml; print mli
 
