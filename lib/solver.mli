@@ -24,7 +24,7 @@ module Make :
         ?learn:bool -> Envt.t -> Unit.unit list -> Envt.t * Unit.unit list
 
       val resolve_split_dependencies :
-        Envt.t -> Unit.unit list Unit.split -> Unit.unit list Unit.split
+        Envt.t -> Unit.unit list Unit.pair -> Unit.unit list Unit.pair
     end
 
 (** Failure handling: detection of
@@ -38,7 +38,10 @@ module Failure :
       | Depend_on of string
       | Internal_error
     val analysis : Unit.unit list -> (Unit.unit * status option ref) Name.map
-    module Map : Map.S with type key = status
+    module Map : sig
+      include Map.S with type key = status
+      val find: key -> Unit.Set.t t -> Unit.Set.t
+    end
 
     val categorize :
       (Unit.unit * status option ref) Name.map -> Unit.Set.t Map.t
