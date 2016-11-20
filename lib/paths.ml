@@ -29,11 +29,12 @@ module Expr = struct
     | S of t * Name.t
     | F of {f:t; x:t}
 
+  exception Functor_not_expected
   let concrete p: Simple.t =
     let rec concretize l = function
       | T -> l
       | A a -> a :: l
-      | F _ -> raise Error.Functor_not_expected
+      | F _ -> raise Functor_not_expected
       | S(p,s) -> concretize (s::l) p in
     concretize [] p
 
