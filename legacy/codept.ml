@@ -114,7 +114,7 @@ let topos_compare order x y =
   | Some _, None -> 1
   | None, None -> compare x y
 
-let local file = Pkg.(local @@ parse_filename file)
+let local file = Pkg.local @@ Paths.S.parse_filename file
 
 let open_in opens unit =
   List.fold_right (fun m (unit:Unit.t) ->
@@ -351,7 +351,7 @@ let task = ref {
 
 let add_invi name =
   task := { !task with
-            invisibles = Pth.Set.add (Pkg.parse_filename name) (!task).invisibles
+            invisibles = Pth.Set.add (Paths.S.parse_filename name) (!task).invisibles
           }
 
 let add_impl name =
@@ -450,14 +450,14 @@ let fail_approx () =
 
 let add_include dir =
   let files = Sys.readdir dir in
-  let dir = if dir = "." then [] else Pkg.parse_filename dir in
+  let dir = if dir = "." then [] else Paths.S.parse_filename dir in
   let includes =
     Array.fold_left (fun m x ->
         match classify !param.synonyms x with
         | exception Unknown_file_type _ -> m
         | _ ->
           Name.Map.add (Unit.extract_name x)
-            (Pkg.local @@ dir @ Pkg.parse_filename x) m )
+            (Pkg.local @@ dir @ Paths.S.parse_filename x) m )
       !param.includes files
   in
   param :=

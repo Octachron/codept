@@ -1,3 +1,5 @@
+
+
 module Simple =
 struct
   module Core = struct
@@ -19,6 +21,27 @@ struct
   type set = Set.t
   type 'a map = 'a Map.t
   let prefix = List.hd
+
+  let may_change_extension f a =
+    match Filename.extension a with
+    | "" -> a
+    | ext ->
+      let base = Filename.chop_extension a in
+      base ^ f ext
+
+  let rec change_file_extension f = function
+    | [] -> []
+    | [a] -> [may_change_extension f a ]
+    | a :: q -> a :: change_file_extension f q
+
+  let rec chop_extension l = match l with
+    | [] -> []
+    | [a] -> [Filename.chop_extension a]
+    | a :: q -> a :: chop_extension q
+
+  let parse_filename =
+    String.split_on_char (String.get (Filename.dir_sep) 0)
+
 end
 module S = Simple
 
@@ -128,19 +151,8 @@ module Pkg = struct
   let module_name {file; _ } =
     String.capitalize_ascii @@ may_chop_extension @@ last @@ file
 
-  let rec chop_suffix l = match l with
-    | [] -> []
-    | [a] -> [Filename.chop_extension a]
-    | a :: q -> a :: chop_suffix q
-
-  let rec change_file_extension f = function
-    | [] -> []
-    | [a] -> [may_change_extension f a ]
-    | a :: q -> a :: change_file_extension f q
-
-
   let update_extension f p =
-    { p with file = change_file_extension f p.file }
+    { p with file = Simple.change_file_extension f p.file }
 
   let change_extension ext =
     update_extension ( fun _ -> ext )
@@ -187,20 +199,6 @@ module Pkg = struct
   type set = Set.t
 
   let slash = String.get sep 0
-
-  let parse_filename filename =
-    let n = String.length filename in
-    let rec extract shards start current =
-      if current = n - 1  then
-        let offset = if filename.[current] = slash then 0 else 1 in
-        List.rev @@
-        String.sub filename start (current-start+offset) :: shards
-      else if filename.[current] = slash then
-        extract (String.sub filename start (current-start) :: shards)
-          (current + 1) (current + 1)
-      else
-        extract shards start (current + 1) in
-    extract [] 0 0
 
   let local file = { source = Local; file }
 

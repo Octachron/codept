@@ -89,11 +89,11 @@ module Layered = struct
 
   let read_dir dir =
     let files = Sys.readdir dir in
-    let origin = P.parse_filename dir in
+    let origin = Paths.S.parse_filename dir in
     let cmis =
       Array.fold_left (fun m x ->
           if Filename.check_suffix x ".cmi" then
-            let p = {P.source = P.Pkg origin; file = P.parse_filename x} in
+            let p = {P.source = P.Pkg origin; file = Paths.S.parse_filename x} in
             Name.Map.add (P.module_name p) p m
           else m
         )

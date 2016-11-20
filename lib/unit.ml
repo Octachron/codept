@@ -40,7 +40,7 @@ module Map = struct
   type t = group Paths.Simple.Map.t
 
 let add unit m =
-  let key = Pkg.chop_suffix unit.path.file in
+  let key = Paths.S.chop_extension unit.path.file in
   let grp = Option.( Pth.Map.find_opt key m >< empty ) in
   Pth.Map.add key (add unit grp) m
 
@@ -92,7 +92,7 @@ let read_file kind filename =
   Pparse.remove_preprocessed input_file;
   { name;
     kind;
-    path = { Pkg.source = Local; file=Pkg.parse_filename filename };
+    path = { Pkg.source = Local; file=Paths.S.parse_filename filename };
     code;
     dependencies = Pkg.Set.empty
   }
