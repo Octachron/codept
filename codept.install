@@ -1,0 +1,2 @@
+bin: ["codept"]
+lib: ["META"]

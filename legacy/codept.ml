@@ -330,8 +330,10 @@ let makefile param task =
     ) m
 
 
-let usage_msg = "Codept is an alternative dependencies solver for OCaml.\n\
-                 The following options are common with ocamldep:\n"
+let usage_msg =
+  "Codept is an alternative dependencies solver for OCaml.\n\
+   Usage: codept [options] file_1 … file_n.\
+   The following options are common with ocamldep:\n"
 
 let classify synonyms f =
   let ext = extension f in
@@ -515,12 +517,13 @@ let args = Cmd.[
     "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
     ":   print raw unresolved dependencies\n\n Misc options:\n";
 
-    "-L", String lib, "<dir>: use all cmi files in <dir>\
+    "-L", String lib, "<dir>: use all cmi files in <dir> \
                                in the analysis";
     "-no-alias-deps", Cmd.Unit (fun () -> transparent_aliases true),
     ":   Delay aliases dependencies\n";
-    "-no-implicits", Cmd.Unit no_implicits, ":   do not implicitely for mli file \
-    when given a ml file input";
+    "-no-implicits", Cmd.Unit no_implicits,
+    ":   do not implicitly search for mli \
+         files when given a ml file input";
     "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies\
                                             computation but do not display it.";
     "-transparent_extension_node", Cmd.Bool transparent_extension,

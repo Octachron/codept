@@ -1,0 +1,4 @@
+name="codept"
+description="Alternative dependencies solver for OCaml project"
+version="0.1"
+executable="codept"
