@@ -1,3 +1,5 @@
+(** Functions for handling unit (aka .ml/.mli) files *)
+
 module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 type kind = Structure | Signature
@@ -33,7 +35,7 @@ module Group :
   end
 
 
-val extract_name : string -> string
+val extract_name : string -> Name.t
 (** extract a module name from a file name*)
 
 val read_file : kind -> string -> unit
