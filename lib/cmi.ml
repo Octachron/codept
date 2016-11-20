@@ -56,6 +56,6 @@ and module_type  = function
   | Mty_alias (_,p) -> M2l.Alias (Paths.Expr.concrete @@ from_path p)
 and module_type_opt mt =  Option.( mt >>| module_type >< Abstract)
 
-let cmi_m2l path =
+let m2l path =
   let cm2i = cmi_infos path in
   signature @@ cm2i.cmi_sign

@@ -81,7 +81,7 @@ let to_m2l f =
     |> open_in |> Lexing.from_channel
     |> Parse.interface |> Ast_converter.signature
   | "cmi" ->
-    Cmi.cmi_m2l f
+    Cmi.m2l f
   | ext -> raise (Unknown_file_type ext)
 
 let one_pass param f =

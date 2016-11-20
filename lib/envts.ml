@@ -131,7 +131,7 @@ module Layered = struct
           | None -> assert false
           | Some name' ->
             let path' = Name.Map.find name source.cmis in
-            let code' = Cmi.cmi_m2l @@ P.filename path in
+            let code' = Cmi.m2l @@ P.filename path in
             track source ( (name', path', code') :: (name, path, code) :: q )
         end
       | Ok (_, sg) ->
@@ -147,7 +147,7 @@ module Layered = struct
     | exception Not_found ->
       let path = Name.Map.find name source.cmis in
       track source
-        [name, path, Cmi.cmi_m2l @@ P.filename path ];
+        [name, path, Cmi.m2l @@ P.filename path ];
       pkg_find name source
     | m -> m
 
