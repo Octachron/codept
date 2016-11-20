@@ -18,14 +18,6 @@ module Base = struct
     | M.Module -> env.M.modules
     | M.Module_type -> env.module_types
 
-  let root_origin level path env =
-    let a, lvl = match path with
-      | []-> raise @@ Invalid_argument "Compute.Envt.root_origin: empty path"
-      | [a] -> a, level
-      | a :: _ -> a, M.Module in
-    let m = Name.Map.find a @@ proj lvl env in
-    m.origin
-
   let find_name level name env =
     Name.Map.find name @@ proj level env
 
@@ -85,8 +77,6 @@ module Open_world(Envt:extended) = struct
   let restrict env m = { env with core = Envt.restrict env.core m }
 
 end
-
-module Sg = Interpreter.Make(Base)
 
 module Layered = struct
   module P = Paths.Pkg
@@ -199,10 +189,6 @@ module Tracing(Envt:extended) = struct
 
   let extend env =
     { env; deps = ref P.Set.empty }
-
-  let deps env = env.deps
-
-  let name path = List.hd @@ List.rev path
 
   let alias_chain start env a root = function
     | Origin.Alias n when start-> Some n
