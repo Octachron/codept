@@ -5,5 +5,5 @@ true: strict_sequence
 true: safe_string
 true: short_paths
 true: strict_formats
-<lib> or <legacy> :  include
+<lib> or <legacy> or <precomputed> :  include
 true: package(compiler-libs.common)

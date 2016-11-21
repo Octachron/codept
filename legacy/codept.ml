@@ -20,6 +20,7 @@ type param =
     transparent_extension_nodes: bool;
     includes: Pkg.path Name.map;
     synonyms: Name.set Unit.pair;
+    no_stdlib:bool;
     implicits: bool;
   }
 
@@ -51,6 +52,7 @@ let param = ref {
   transparent_extension_nodes = true;
   includes = Name.Map.empty;
   implicits = true;
+  no_stdlib = false;
   synonyms = {Unit.ml = Name.Set.singleton "ml" ; mli = Name.Set.singleton "mli" }
 }
 
@@ -134,9 +136,14 @@ let organize opens files =
   in
   units, m
 
-let start_env includes filemap =
-  let base = Envts.Base.empty in
-  let layered = Envts.Layered.create includes base in
+let base_env no_stdlib =
+  if no_stdlib then
+    Envts.Base.empty
+  else
+    Stdlib.signature
+
+let start_env no_stdlib includes filemap =
+  let layered = Envts.Layered.create includes @@ base_env no_stdlib in
   let traced = Envts.Trl.extend layered in
   Envts.Tr.start traced filemap
 
@@ -149,7 +156,7 @@ let remove_units invisibles =
 let analyze param {opens;libs;invisibles;files;_} =
   let units, filemap = organize opens files in
   let module Envt = Envts.Tr in
-  let core = start_env libs filemap in
+  let core = start_env param.no_stdlib libs filemap in
   let module S = Solver.Make((val lift param)) in
   let {Unit.ml; mli} =
     try S.resolve_split_dependencies core units with
@@ -167,13 +174,30 @@ let deps param task =
 
 let export param task =
   let {Unit.mli; _} = analyze param task in
-  let print_u ppf {Unit.name; code; _ } = match code with
-    | M2l.Defs d :: _ ->
-      Pp.fp ppf {|@[{name="%s";@, signature=%a}@]|} name
-        Module.reflect_signature d.defined
-    | _ -> () in
-  let print =  Pp.(list ~pre:(s"[") ~post:(s"]\n") ~sep:(s"\n @,") print_u ) std in
-  print mli
+  let sign = function
+    | {Unit.code = M2l.Defs d :: _ ; _ } ->
+      d.defined
+    | _ -> Module.Sig.empty in
+  let md (unit:Unit.t) =
+    {Module.
+      name = unit.name
+    ; origin = Unit { source=Pkg.Pkg ["*codept*"]; file = [unit.name] }
+    ; args = []
+    ; signature = sign unit
+    } in
+  let m =
+    { Module.name = "*codept*"
+    ; origin=Unit {source=Pkg.Pkg ["*codept*"]; file = [] }
+    ; args = []
+    ; signature =
+        let open Module.Sig in
+        List.fold_left (fun sg u -> merge sg @@ create @@ md u) empty mli
+    } in
+  Pp.fp std "@[let signature=@;\
+             let open Module in @;\
+             let open Sig in @;\
+             %a\
+             @]@." Module.reflect m
 
 let make_abs abs p =
   let open Paths.Pkg in
@@ -181,8 +205,6 @@ let make_abs abs p =
     { p with file = Sys.getcwd() :: p.file }
   else
     p
-
-
 
 let pp_module sort {abs_path;slash; _ } ?filter ppf u =
   let pp_pkg = Pkg.pp_gen slash in
@@ -431,7 +453,10 @@ let abs_path () =
   param := { !param with abs_path = true }
 
 let all () =
-   param := { !param with all = true }
+  param := { !param with all = true }
+
+let no_stdlib () =
+   param := { !param with no_stdlib = true }
 
 let native () =
   param := { !param with native = true; bytecode = false }
@@ -535,7 +560,8 @@ let args = Cmd.[
     ":   Delay aliases dependencies\n";
     "-no-implicits", Cmd.Unit no_implicits,
     ":   do not implicitly search for mli \
-         files when given a ml file input";
+     files when given a ml file input";
+    "-no-stdlib", Cmd.Unit no_stdlib, "do not use precomputed stdlib environment";
     "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies\
                                             computation but do not display it.";
     "-transparent_extension_node", Cmd.Bool transparent_extension,

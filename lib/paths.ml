@@ -194,16 +194,18 @@ module Pkg = struct
       Pp.(list ~sep:(const sep) string) file
 
   let pp = pp_gen sep
+  let es ppf = Pp.fp ppf {|"%s"|}
 
-    let reflect_source ppf = function
+  let reflect_source ppf =
+    function
     | Local -> Pp.fp ppf "Local"
     | Unknown ->  Pp.fp ppf "Unknown"
-    | Pkg n -> Pp.fp ppf "Pkg [%a]" Pp.(list ~sep:(s "; ") string) n
+    | Pkg n -> Pp.fp ppf "Pkg [%a]" Pp.(list ~sep:(s "; ") es) n
 
   let reflect ppf {source;file} =
     Pp.fp ppf "{source=%a; file=[%a]}"
       reflect_source source
-      Pp.(list ~sep:(const "; ") string) file
+      Pp.(list ~sep:(const "; ") es) file
 
   module Set = struct
     include Set.Make(struct type t = path let compare = compare end)

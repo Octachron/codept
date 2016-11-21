@@ -92,24 +92,27 @@ let reflect_level ppf = function
     | Module_type -> Pp.string ppf "Module type"
 
 let rec reflect ppf {name;args;origin;signature} =
-  Pp.fp ppf "@[<hov>{name=%s; origin=%a; args=%a; signature=%a}@]"
+  Pp.fp ppf {|@[<hov>{name="%s"; origin=%a; args=%a; signature=%a}@]|}
     name Origin.reflect origin reflect_args args reflect_signature signature
 and reflect_signature ppf {modules; module_types} =
   match Name.Map.cardinal modules, Name.Map.cardinal module_types with
-  | 0, 0 -> Pp.string ppf "(Sig.empty)"
+  | 0, 0 -> Pp.string ppf "empty"
   | _, 0 -> Pp.fp ppf
-              "Sig.of_list @[<hov>[%a]@]" reflect_mdict modules
+              "of_list @[<hov>[%a]@]" reflect_mdict modules
   | 0, _ -> Pp.fp ppf
-              "Sig.of_list_type @[<hov>[%a]@]"
+              "of_list_type @[<hov>[%a]@]"
               reflect_mdict module_types
   | _ ->
-    Pp.fp ppf "@[Sig.( merge @,(of_list [%a]) @,(of_list_type [%a])@, )@]"
+    Pp.fp ppf "@[(merge @,(of_list [%a]) @,(of_list_type [%a])@, )@]"
       reflect_mdict modules
       reflect_mdict module_types
 and reflect_mdict ppf dict =
       Pp.(list ~sep:(s "; @,") @@ reflect_pair) ppf (Name.Map.bindings dict)
 and reflect_pair ppf (_,md) = reflect ppf md
-and reflect_arg ppf arg = Pp.fp ppf "%a" (Pp.opt reflect) arg
+and reflect_opt reflect ppf = function
+  | None -> Pp.string ppf "None"
+  | Some x -> Pp.fp ppf "Some %a" reflect x
+and reflect_arg ppf arg = Pp.fp ppf "%a" (reflect_opt reflect) arg
 and reflect_args ppf args =
   Pp.fp ppf "[%a]" (Pp.(list ~sep:(s "; @,") ) @@ reflect_arg ) args
 
