@@ -23,7 +23,10 @@ struct
 
   let extension a =
     let ext = Filename.extension a in
-    String.sub ext 1 (String.length ext - 1)
+    if not (ext = "") && ext.[0] = '.' then
+      String.sub ext 1 (String.length ext - 1)
+    else
+      ext
 
   let may_change_extension f a =
     match extension a with
@@ -108,7 +111,7 @@ end
 module E = Expr
 
 module Pkg = struct
-  type source = Local | Unknown | Pkg of Simple.t
+  type source = Local | Unknown | Pkg of Simple.t | Special of Name.t
 
   let sep = Filename.dir_sep
 
@@ -132,24 +135,9 @@ module Pkg = struct
     | [] -> raise  @@  Invalid_argument "last expected a non-empty-file"
     | _ :: q -> last q
 
-
-  let extension name =
-    let n = String.length name in
-    try
-      let r = String.rindex name '.' in
-      Some (String.sub name (r+1) (n-r-1))
-    with Not_found -> None
-
   let may_chop_extension a =
     try Filename.chop_extension a with
       Invalid_argument _ -> a
-
-  let may_change_extension f a =
-    match extension a with
-    | None -> a
-    | Some ext ->
-      let base = Filename.chop_extension a in
-      base ^ f ext
 
   let module_name {file; _ } =
     String.capitalize_ascii @@ may_chop_extension @@ last @@ file
@@ -176,6 +164,8 @@ module Pkg = struct
     | Local -> Pp.fp ppf "Local"
     | Unknown ->  Pp.fp ppf "Unknown"
     | Pkg n -> Pp.fp ppf "Pkg [%a]" Pp.(list ~sep:(const sep) string) n
+    | Special s -> Pp.fp ppf "Special %s" s
+
 
   let pp_simple ppf {source;file}=
     Pp.fp ppf "(%a)%a" pp_source source
@@ -189,6 +179,7 @@ module Pkg = struct
         Pp.fp ppf "%a%s"
           Pp.(list ~sep:(const sep) string) s
           sep
+      | Special s -> Pp.fp ppf "(*%s*)" s
     end;
     Pp.fp ppf "%a"
       Pp.(list ~sep:(const sep) string) file
@@ -201,6 +192,7 @@ module Pkg = struct
     | Local -> Pp.fp ppf "Local"
     | Unknown ->  Pp.fp ppf "Unknown"
     | Pkg n -> Pp.fp ppf "Pkg [%a]" Pp.(list ~sep:(s "; ") es) n
+    | Special n -> Pp.fp ppf "Special %a" es n
 
   let reflect ppf {source;file} =
     Pp.fp ppf "{source=%a; file=[%a]}"

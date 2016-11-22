@@ -181,23 +181,19 @@ let export param task =
   let md (unit:Unit.t) =
     {Module.
       name = unit.name
-    ; origin = Unit { source=Pkg.Pkg ["*codept*"]; file = [unit.name] }
+    ; origin = Unit { source=Pkg.Special "exported"; file = [unit.name] }
     ; args = []
     ; signature = sign unit
     } in
-  let m =
-    { Module.name = "*codept*"
-    ; origin=Unit {source=Pkg.Pkg ["*codept*"]; file = [] }
-    ; args = []
-    ; signature =
-        let open Module.Sig in
-        List.fold_left (fun sg u -> merge sg @@ create @@ md u) empty mli
-    } in
-  Pp.fp std "@[let signature=@;\
+  let s =
+    let open Module.Sig in
+    List.fold_left (fun sg u -> merge sg @@ create @@ md u) empty mli
+  in
+  Pp.fp std "@[<hov>let signature=@;\
              let open Module in @;\
              let open Sig in @;\
              %a\
-             @]@." Module.reflect m
+             @]@." Module.reflect_signature s
 
 let make_abs abs p =
   let open Paths.Pkg in
@@ -251,7 +247,9 @@ let modules ?filter param task =
 
 let local_dependencies sort unit =
   sort
-  @@ List.filter (function {Pkg.source=Unknown; _ } -> false | _ -> true )
+  @@ List.filter
+    (function {Pkg.source=Unknown; _ }
+            | {Pkg.source=Special _ ; _ } -> false | _ -> true )
   @@ Pkg.Set.elements unit.U.dependencies
 
 

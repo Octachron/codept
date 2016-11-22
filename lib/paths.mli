@@ -44,7 +44,7 @@ module E = Expr
 (** Localized path for package *)
 module Pkg :
   sig
-    type source = Local | Unknown | Pkg of Simple.t
+    type source = Local | Unknown | Pkg of Simple.t | Special of Name.t
     type t = { source : source; file : Simple.t; }
     type path = t
 
