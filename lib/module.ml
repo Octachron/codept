@@ -35,6 +35,7 @@ module Origin = struct
     | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
     | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
     | Unit { Pkg.source = Unknown; _} | Extern -> Pp.fp ppf "!"
+    | Unit { Pkg.source = Special n; _} -> Pp.fp ppf "*(%s)" n
     | Rec -> Pp.fp ppf "?"
     | Submodule -> Pp.fp ppf "."
     | First_class -> Pp.fp ppf "'"
