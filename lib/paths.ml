@@ -3,7 +3,7 @@ module Simple =
 struct
   module Core = struct
     type t = Name.t list
-    type npath = t
+
     let compare (x:t) (y:t) = compare x y
     let pp = Pp.(list ~sep:(s".") ) Name.pp
   end
@@ -205,9 +205,6 @@ module Pkg = struct
   end
 
   type set = Set.t
-
-  let slash = String.get sep 0
-
   let local file = { source = Local; file }
 
 end

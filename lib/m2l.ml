@@ -1,6 +1,5 @@
 
 module M = Module
-module S = Module.Sig
 
 module Arg = M.Arg
 module D = Definition
@@ -159,6 +158,7 @@ module Annot = struct
   let opt f x = Option.( x >>| f >< empty )
 
 end
+
 (** Helper function *)
 module Build = struct
   let access path = Minor (Annot.access @@ Paths.Expr.prefix path)
@@ -269,27 +269,6 @@ and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" Pp.(list ~sep:(s " @,") pp_expression
 
 (** {Normalize} computes the normal form of a given m2l code fragment *)
 module Normalize = struct
-  let cdefs = function
-    | (Resolved fdefs:module_expr) -> Some fdefs
-    | _ -> None
-
-  let sig_cdefs = function
-    | (Resolved fdefs:module_type) -> Some fdefs
-    | _ -> None
-
-  let args_cdefs args =
-    let open Option in
-    let rec extract acc (args: module_type Arg.t list) =
-      acc >>= fun arg_defs ->
-      begin match args with
-        | [] -> Some arg_defs
-        | {Arg.name;signature} :: args ->
-          sig_cdefs signature >>= fun defs ->
-          let md: _ Arg.t = { name ; signature = defs } in
-          extract (Some(md :: arg_defs)) args
-      end
-    in
-    extract (Some []) args >>| List.rev
 
   let halt l = false, l
   let continue l = true, l

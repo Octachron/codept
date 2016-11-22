@@ -1,5 +1,3 @@
-let p fmt = Format.eprintf fmt
-  let fp fmt = Format.fprintf fmt
 
 let log fmt = Format.kfprintf
     (fun _ppf -> exit 1) Format.err_formatter

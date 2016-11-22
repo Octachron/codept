@@ -54,7 +54,6 @@ and module_type  = function
                        {Arg.name; signature = s} ) in
     Fun { arg ; body = module_type mt}
   | Mty_alias (_,p) -> M2l.Alias (Paths.Expr.concrete @@ from_path p)
-and module_type_opt mt =  Option.( mt >>| module_type >< Abstract)
 
 let m2l path =
   let cm2i = cmi_infos path in

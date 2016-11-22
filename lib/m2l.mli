@@ -136,7 +136,10 @@ module Annot : sig
   val is_empty: t -> bool
 
   val merge: t -> t -> t
-  val (++): t -> t -> t (** [ (++) ≡ merge ]*)
+
+  val (++): t -> t -> t
+  (** [ (++) ≡ merge ]*)
+
   val union: t list -> t
   val union_map: ('a -> t) -> 'a list -> t
 

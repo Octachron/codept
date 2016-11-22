@@ -1,6 +1,3 @@
-let p fmt = Format.eprintf fmt
-let fp fmt = Format.fprintf fmt
-
 
 let log fmt = Format.eprintf @@ "@[<hov2>\x1b[35mWarning\x1b[39m:@,@ @["
                                 ^^ fmt ^^ "@]@]@."

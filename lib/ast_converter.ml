@@ -2,9 +2,7 @@
 module L = Longident
 module B = M2l.Build
 
-module D = Definition
 module M = Module
-module S = M.Sig
 module Annot = M2l.Annot
 module Arg = M.Arg
 

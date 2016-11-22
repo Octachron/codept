@@ -63,13 +63,8 @@ let pp ppf unit =
     M2l.pp unit.code
     Pkg.Set.pp unit.dependencies
 
-
-let (@<) f g x = f @@ g x
-let (%>) f g x = x |> f |> g
-
 let extract_name filename = String.capitalize_ascii @@
   Filename.chop_extension @@ Filename.basename filename
-
 
 let read_file kind filename =
   let name = extract_name filename in
