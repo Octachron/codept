@@ -57,7 +57,7 @@ let param = ref {
 }
 
 
-let tool_name = "codept legacy"
+let tool_name = "codept light"
 let stderr= Format.err_formatter
 
 let rec last = function

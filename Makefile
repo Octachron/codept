@@ -1,5 +1,5 @@
-codept: lib/*.ml lib/*.mli legacy/*.ml
-	ocamlbuild -use-ocamlfind -package compiler-libs.common codept.native\
+codept: lib/*.ml lib/*.mli light/*.ml
+	ocamlbuild -use-ocamlfind codept.native\
 		&& mv codept.native codept
 
 clean:
