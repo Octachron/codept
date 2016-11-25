@@ -6,7 +6,7 @@ let make n n_max =
   let f = open_out @@ filename n in
   let fp = Format.fprintf (Format.formatter_of_out_channel f) in
   if n < n_max then
-    for i = n_max downto 0 do
+    for i = n_max downto 1 do
       fp "open %s\n" (name i)
     done;
   for i = 1 to n do

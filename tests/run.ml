@@ -75,6 +75,7 @@ let deps_test {Unit.ml; mli} =
   exp =? ml && exp =? mli
 
 let ml_only ml = { Unit.mli = []; ml }
+let mli_only mli = { Unit.ml = []; mli }
 
 let result =
   Sys.chdir "tests";
@@ -123,6 +124,18 @@ let result =
   &&
   ( Sys.chdir "../pair";
   deps_test (ml_only ["a.ml", ["B"];  "b.ml", ["Extern"] ] )
+  )
+  && (
+    let n = 100 in
+    let dep = [ Printf.sprintf "M%d" n ] in
+    Sys.chdir "../star";
+    ignore @@ Sys.command (Printf.sprintf "ocaml generator.ml %d" 100);
+    let rec deps k =
+      if k >= n then
+        [ Printf.sprintf "m%03d.mli" k, [] ]
+      else
+        (Printf.sprintf "m%03d.mli" k, dep) :: (deps @@ k+1) in
+    deps_test (mli_only @@ deps 1)
   )
 
 let () =
