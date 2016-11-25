@@ -103,6 +103,9 @@ let result =
     ml_only ["recmods.ml", ["Ext"]];
     ml_only ["record.ml", ["Ext";"E2";"E3"]];
     ml_only ["simple.ml", ["G";"E"; "I"; "A"; "W"; "B"; "C"; "Y"; "Ext"]];
+    ml_only ["solvable.ml", ["Extern"]];
+    ml_only ["tuple.ml", ["A"; "B"; "C"]];
+    ml_only ["with.ml", ["Ext"] ]
 
 
   ]
