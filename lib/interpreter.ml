@@ -114,27 +114,46 @@ module Make(Envt:envt)(Param:param) = struct
       Ok (Some(Def.sg m))
 
 
-  let bind_rec state module_expr bs =
-    let pair x y = x,y in
+  let bind_rec state module_expr module_type bs =
+    let pair name expr = {name;expr} in
+    let triple name me mt = name, me, mt in
+    (* first we try to compute the signature of each argument using
+       approximative signature *)
     let mockup ({name;_}:_ M2l.bind) =
       {M.origin = Rec; name; args = []; signature = S.empty } in
     let add_mockup defs arg = Envt.add_module defs @@ mockup arg in
     let state' = List.fold_left add_mockup state bs in
     let mapper {name;expr} =
-      expr |> module_expr ?bind:(Some true) state'
-      |> fmap (pair name) (pair name) in
-    let bs = List.map mapper bs in
-    let undone (name,defs) = name, (Resolved defs:module_expr) in
-    let recombine (name,expr) = {name;expr} in
-    match all_done undone bs with
+      match expr with
+      | Constraint(me,mt) ->
+        mt |> module_type state'
+        |> fmap (triple name me) (triple name me)
+      | _ -> assert false (* recursive module are always constrained *)
+    in
+    let mts = List.map mapper bs in
+    let undone (name, me, defs) = name, me, (Resolved defs:module_type) in
+    let recombine (name,me,mt) = {name;expr = Constraint(me,mt) } in
+    match all_done undone mts with
     | Error bs -> Error (Bind_rec (List.map recombine bs))
     | Ok defs ->
-      let defs =
-        List.fold_left
-          ( fun defs (name,d) ->
-              D.bind (P.to_module ?origin:(aliased d) name d) defs )
-          D.empty defs in
-      Ok ( Some defs )
+      (* if we did obtain the argument signature, we go on
+         and try to resolve the whole recursive binding *)
+      let add_arg defs (name, _me, arg) = Envt.add_module defs @@
+        P.to_module ~origin:Arg name arg in
+      let state' = List.fold_left add_arg state defs in
+      let mapper {name;expr} =
+        expr |> module_expr state' |> fmap (pair name) (pair name) in
+      let bs = List.map mapper bs in
+      let undone { name; expr } = { name; expr = (Resolved expr:module_expr) } in
+      match all_done undone bs with
+      | Error bs -> Error (Bind_rec bs)
+      | Ok defs ->
+        let defs =
+          List.fold_left
+            ( fun defs {name;expr} ->
+                D.bind (P.to_module ?origin:(aliased expr) name expr) defs )
+            D.empty defs in
+        Ok ( Some defs )
 
   let drop_state = function
     | Ok(_state,x) -> Ok x
@@ -290,7 +309,7 @@ module Make(Envt:envt)(Param:param) = struct
     | SigInclude i -> sig_include state module_type i
     | Bind b -> bind state module_expr b
     | Bind_sig b -> bind_sig state module_type b
-    | Bind_rec bs -> bind_rec state module_expr bs
+    | Bind_rec bs -> bind_rec state module_expr module_type bs
     | Minor m -> Result.fmap_error (fun m -> Minor m) @@
       minor module_expr m2l state m
     | Extension_node n -> begin
