@@ -113,6 +113,13 @@ let result =
   ( Sys.chdir "network";
   deps_test (ml_only ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ] )
   )
+  &&
+  ( Sys.chdir "../collision";
+    deps_test (ml_only ["a.ml", ["B"; "Ext"];
+                        "b.ml", [];
+                        "c.ml", ["B"];
+                        "d.ml", ["B"] ] )
+  )
 
 let () =
   if result then
