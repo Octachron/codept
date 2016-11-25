@@ -6,6 +6,8 @@ val fp : Format.formatter -> ('a, Format.formatter, unit) format -> 'a
 val s : ('a, Format.formatter, unit) format -> Format.formatter -> 'a
 val const : string -> Format.formatter -> unit
 val string : Format.formatter -> string -> unit
+val estring : Format.formatter -> string -> unit
+
 val std : Format.formatter
 val err : Format.formatter
 val p : ('a, Format.formatter, unit) format -> 'a

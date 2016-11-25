@@ -40,8 +40,18 @@ module Open_world(Envt:extended) = struct
 
   let start core world = { core; world; externs = ref P.Set.empty }
 
-  let approx name =
-    Module.(create name ~origin:Extern Sig.empty)
+  let last l = List.hd @@ List.rev l
+
+  let approx path =
+    match path with
+    | [] -> raise (Invalid_argument "Empty path")
+    | [name] ->
+      Module.(create name
+                ~origin:(Unit {Paths.P.source=Unknown; file=[name]})
+                Sig.empty)
+    | l ->
+      let name = last l in
+      Module.(create name ~origin:Extern Sig.empty)
 
  let find_name level name env =
     try Envt.find_name level name env.core with
@@ -49,28 +59,32 @@ module Open_world(Envt:extended) = struct
       if Name.Map.mem name env.world then
         raise Not_found
       else
-        approx name
-
- let last l = List.hd @@ List.rev l
+        approx [name]
 
  let record_level level = function
    | _ :: _ :: _ -> true
    | [_] -> level = M.Module
    | [] -> false
 
-  let find ~transparent ?alias level path env =
-    try Envt.find ~transparent ?alias level path env.core with
+  let find ~transparent ?(alias=false) level path env =
+    try Envt.find ~transparent ~alias level path env.core with
     | Not_found ->
       let root = List.hd path in
+      let undefined root =
+        match Envt.find ~transparent:true ~alias:true level [root] env.core with
+        | exception Not_found -> true
+        | _ -> false in
       if Name.Map.mem root env.world then
         raise Not_found
-      else
+      else if not (alias && transparent) && undefined root then
         (
           if record_level level path then
             env.externs := P.Set.add
                 { P.file = [root]; source = Unknown } !(env.externs);
-          approx (last path)
+          approx path
         )
+      else
+        approx path
 
   let (>>) env sg = { env with core = Envt.( env.core >> sg ) }
   let add_module env m = { env with core = Envt.add_module env.core m }
@@ -180,63 +194,55 @@ module Tracing(Envt:extended) = struct
     | Origin.Alias n -> resolve n env
     | Origin.Extern -> { source = Unknown; file = [n] }
     | exception Not_found  -> { source = Unknown; file = [n] }
-    | Origin.(Arg | Rec | First_class | Submodule) ->
+    | Arg | Rec | First_class | Submodule ->
       assert false
 
   let record n env =
     env.deps := P.Set.add (resolve n env.env) !(env.deps)
-  let record_alias = record
+
 
   let extend env =
     { env; deps = ref P.Set.empty }
 
-  let alias_chain start env a root = function
-    | Origin.Alias n when start-> Some n
-    | Alias n -> Option.( root >>| fun r -> record_alias r env; n )
-    | Unit _ when start -> Some a
+  let smart_record alias env m =
+    let open Module in
+    match m.origin with
+    | Origin.Unit _ -> record m.name env; None
+    | Alias n ->
+      if not alias then
+        (record n env; None)
+      else
+        Some n
     | _ -> None
 
-  let guard transparent f x = if transparent then f x else None
+  let delayed_record env = Option.iter (fun n ->
+      record n env
+    )
 
-  let prefix level a env =
-    match Envt.find_name level a env.env with
-    | exception Not_found -> a
-    | { origin = Alias n; _ } -> n
-    | _ -> a
-
-  let rec find0 ~transparent start root level path env =
+  let rec find0 ~transparent start delayed level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | [a] ->
+      delayed_record env delayed;
       let m = Envt.find_name level a env.env in
-      let root = guard transparent (alias_chain start env a root) m.origin in
-      root, m
+      if start && level = Module then
+        ignore @@ smart_record transparent env m;
+      m
     | a :: q ->
+      delayed_record env delayed;
       let m = Envt.find_name M.Module a env.env in
-      let root = guard transparent (alias_chain start env a root) m.origin in
-      find0 ~transparent false root level q
+      let delayed =
+        if start then
+          smart_record transparent env m
+        else
+          match delayed, m.origin with
+          | Some _, Alias w -> Some w
+          | _ -> None in
+      find0 ~transparent false delayed level q
         { env with env = Envt.restrict env.env m.signature}
 
-  let check_alias name env =
-    match (Envt.find_name Module name env.env).origin with
-    | Unit _ -> true
-    | exception Not_found -> false
-    | _ -> false
-
-  let record_level level = function
-    | _ :: _ :: _ -> true
-    | [_] -> level = M.Module
-    | []-> false
-
   let find ~transparent ?(alias=false) level path env =
-    match find0 ~transparent true None level path env with
-    | Some root, x when not transparent || not alias
-      ->
-      ( if record_level level path && check_alias root env then record root env; x)
-    | Some _, x -> x
-    | None, x ->
-      let root = prefix level (List.hd path) env in
-      (if record_level level path && check_alias root env then record root env; x)
+    find0 ~transparent:(transparent && alias) true None level path env
 
   let find_name level name = find ~transparent:true ~alias:false level [name]
 

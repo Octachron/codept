@@ -35,6 +35,7 @@ let opt_list_0 ?(pre=s "") ?(post=s "")  ?(sep= s ";@, ") pp ppf = function
   | l -> fp ppf "%t%a%t" pre (list ~sep pp) l post
 
 let string ppf = fp ppf "%s"
+let estring ppf = fp ppf {|"%s"|}
 
 let decorate left right pp ppf x=
   fp ppf "%s%a%s" left pp x right

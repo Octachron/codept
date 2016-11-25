@@ -34,7 +34,8 @@ module Origin = struct
   let pp ppf = function
     | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
     | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
-    | Unit { Pkg.source = Unknown; _} | Extern -> Pp.fp ppf "!"
+    | Unit { Pkg.source = Unknown; _} -> Pp.fp ppf "#!"
+    | Extern -> Pp.fp ppf "!"
     | Unit { Pkg.source = Special n; _} -> Pp.fp ppf "*(%s)" n
     | Rec -> Pp.fp ppf "?"
     | Submodule -> Pp.fp ppf "."
@@ -205,7 +206,9 @@ module Partial = struct
     | _ :: args -> { p with args }
     | [] ->
       match p.origin with
-      | Extern | First_class | Rec -> p (* we guessed the arg wrong *)
+      | Extern | First_class | Rec
+      | Unit {Paths.P.source = Unknown; _ }
+        -> p (* we guessed the arg wrong *)
       | Unit _ | Submodule | Arg | Alias _ ->
         Error.log "Only functor can be applied, got:%a" pp p
 

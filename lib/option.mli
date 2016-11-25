@@ -2,7 +2,9 @@
 
 val bind : 'a option -> ('a -> 'b option) -> 'b option
 val fmap : ('a -> 'b) -> 'a option -> 'b option
+val iter: ('a -> unit) -> 'a option -> unit
 val join : 'a option option -> 'a option
+
 
 val either : ('a -> 'b) -> 'b -> 'a option -> 'b
 val default : 'a -> 'a option -> 'a
