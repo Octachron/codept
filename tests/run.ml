@@ -68,7 +68,7 @@ let deps_test {Unit.ml; mli} =
       if not r then
         Pp.p "Failure %a: expected:[%a], got:@[[%a]@]\n"
           Pth.pp u.Unit.path
-          Pp.(list estring) expected
+          Pp.(list estring) (List.sort compare expected)
           Pp.(list estring) (normalize u.Unit.dependencies);
       r
     ) files in
@@ -95,6 +95,14 @@ let result =
     ml_only ["include_functor.ml", ["A"] ];
     ml_only ["letin.ml", ["List"] ];
     ml_only ["module_rec.ml", ["Set"] ];
+    ml_only ["more_functor.ml", ["Ext";"Ext2"] ];
+    ml_only ["nested_modules.ml", [] ];
+    ml_only ["no_deps.ml", [] ];
+    ml_only ["opens.ml", ["A";"B"] ];
+    ml_only ["pattern_open.ml", ["E1"; "E2"; "E3";"E4"] ];
+    ml_only ["recmods.ml", ["Ext"]];
+    ml_only ["record.ml", ["Ext";"E2";"E3"]];
+    ml_only ["simple.ml", ["G";"E"; "I"; "A"; "W"; "B"; "C"; "Y"; "Ext"]];
 
 
   ]

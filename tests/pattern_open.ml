@@ -5,11 +5,12 @@ let f (M.((module N:s))) =
         let open A in
         ()
 
-let g (E1.((module N:s))) =
+let g (E1.((module N:M.s))) =
   let open N in
   let open A in
-  let open B in
+  let open E4 in
   ()
+
 
 let w = function
   | E2.(A) -> A
