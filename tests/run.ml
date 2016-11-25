@@ -29,17 +29,13 @@ module Param = struct
   let no_stdlib = false
 end
 
+module S = Solver.Make(Param)
+
 let analyze files =
   let units, filemap = organize files in
   let module Envt = Envts.Tr in
   let core = start_env filemap in
-  let module S = Solver.Make(Param) in
-  let {Unit.ml; mli} =
-    try S.resolve_split_dependencies core units with
-      S.Cycle (_env,units) ->
-      Error.log "%a" Solver.Failure.pp_cycle units
-  in
-  { Unit.ml; mli }
+    S.resolve_split_dependencies core units
 
 let normalize set =
   set
@@ -152,6 +148,23 @@ let result =
                        ; "z.ml", []
                        ] )
   )
+    && (
+      Sys.chdir "..";
+      try
+        deps_test (ml_only ["self_cycle.ml", ["Self_cycle"] ]) && false
+      with
+        S.Cycle (_,units) ->
+          let open Solver.Failure in
+          let map = analysis units in
+          let cmap = categorize map in
+          let cmap = normalize map cmap in
+          let errs = Map.bindings cmap in
+          let r = List.map fst errs = [ Cycle "Self_cycle" ] in
+          if not r then
+            ( Solver.Failure.pp map Pp.std cmap; r )
+          else
+            r
+    )
 
 let () =
   if result then
