@@ -1,0 +1,1 @@
+module M = F(X)

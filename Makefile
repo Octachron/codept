@@ -4,3 +4,7 @@ codept: lib/*.ml lib/*.mli light/*.ml
 
 clean:
 	ocamlbuild -clean
+
+test: tests/**/*.ml codept
+	ocamlbuild -use-ocamlfind run.native\
+	&& ./run.native
