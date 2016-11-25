@@ -120,6 +120,10 @@ let result =
                         "c.ml", ["B"];
                         "d.ml", ["B"] ] )
   )
+  &&
+  ( Sys.chdir "../pair";
+  deps_test (ml_only ["a.ml", ["B"];  "b.ml", ["Extern"] ] )
+  )
 
 let () =
   if result then
