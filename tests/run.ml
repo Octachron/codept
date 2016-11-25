@@ -137,6 +137,21 @@ let result =
         (Printf.sprintf "m%03d.mli" k, dep) :: (deps @@ k+1) in
     deps_test (mli_only @@ deps 1)
   )
+    &&
+  ( Sys.chdir "../stops";
+    deps_test (ml_only ["a.ml", ["B"; "C"; "D"; "E"; "F"]
+                       ; "b.ml", ["Z"]
+                       ; "c.ml", ["Y"]
+                       ; "d.ml", ["X"]
+                       ; "e.ml", ["W"]
+                       ; "f.ml", ["V"]
+                       ; "v.ml", ["E"]
+                       ; "w.ml", ["D"]
+                       ; "x.ml", ["C"]
+                       ; "y.ml", ["B"]
+                       ; "z.ml", []
+                       ] )
+  )
 
 let () =
   if result then
