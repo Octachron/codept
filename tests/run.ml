@@ -109,6 +109,10 @@ let result =
 
 
   ]
+  &&
+  ( Sys.chdir "network";
+  deps_test (ml_only ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ] )
+  )
 
 let () =
   if result then
