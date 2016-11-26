@@ -1,3 +1,5 @@
+(** Basic function and modules over string as name *)
+
 type t = string
 type name = t
 val pp: Format.formatter -> t -> unit

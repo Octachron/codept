@@ -2,7 +2,9 @@
 
 module Envt =  Envts.Tr
 
-(** Create a solver using the parameter module [Param] *)
+(** Create a solver using the environment module [Envt] for
+    name resolution and dependendy trackinf and
+    the parameter module [Param] *)
 module Make (Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
   sig
       exception Cycle of Envt.t * Unit.unit list

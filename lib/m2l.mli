@@ -87,7 +87,7 @@ and module_expr =
       as [Constraint(Abstract, signature)]. *)
   | Unpacked (** [(module M)] *)
   | Open_me of { resolved: Definition.t; opens:Paths.Simple.t list; expr:module_expr}
-  (** M.(…N.( module_expr)…)
+  (** [M.(…N.( module_expr)…)]
       Note: This construction does not exist (yet?) in OCaml proper.
       It is used here to simplify the interaction between
       pattern open and first class module.*)
@@ -97,7 +97,7 @@ and module_type =
   | Resolved of Module.Partial.t (** same as in the module type *)
   | Alias of Paths.Simple.t (** [module m = A…]  *)
   | Ident of Paths.Expr.t
-  (** module M : F(X).s
+  (** [module M : F(X).s]
       Note: Paths.Expr is used due to [F.(X).s] expressions
       that do not have an equivalent on the module level
  *)
@@ -184,13 +184,13 @@ module Block: sig
 
 end
 
-(** {Normalize} computes the normal form of a given m2l code fragment.
-    When possible, successive expression of the same kind are merged [Minor … ]
+(** {!Normalize} computes the normal form of a given m2l code fragment.
+    When possible, successive expression of the same kind are merged.
  *)
 module Normalize: sig
 
   val all: m2l -> bool * m2l
-  (** [all fragment ≡ (has_some_simplification_been_made, resulting_m2l ] *)
+  (** [all fragment ≡ (has_some_simplification_been_made, resulting_m2l) ] *)
 
   val minor: annotation -> annotation
   val value: annotation -> m2l -> annotation

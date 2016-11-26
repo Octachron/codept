@@ -8,5 +8,11 @@ dev-repo: "https://github.com/Octachron/codept"
 build: [
   [make]
 ]
+build-test: [
+  [make "test"]
+]
+build-doc: [
+  [make "doc"]
+]
 remove: ["ocamlfind" "remove" "codept"]
 depends: "ocamlfind {build} ocamlbuild {build}"

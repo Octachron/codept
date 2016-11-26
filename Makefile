@@ -8,3 +8,6 @@ clean:
 test: tests/**/*.ml codept
 	ocamlbuild -use-ocamlfind run.native\
 	&& ./run.native
+
+doc: codept
+	ocamlbuild -use-ocamlfind codept.docdir/index.html

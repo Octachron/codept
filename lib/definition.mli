@@ -11,7 +11,7 @@ val empty : definition
 (** Empty definition *)
 
 val only_visible : definition -> Module.signature
-(** List modules that visible and not defined *)
+(** List modules that are visibles and not defined *)
 
 val sg_bind : Module.signature -> definition
 (** define the given signature *)
@@ -50,7 +50,7 @@ module Def :
 
   end
 
-(** Basic definition extension *)
+(** {2 Basic definition extension} *)
 
 val bind : Module.t -> definition -> definition
 (** [bind m def] binds the module m in [def] *)
