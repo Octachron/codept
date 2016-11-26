@@ -8,3 +8,4 @@ true: strict_formats
 <lib> or <light> or <precomputed> or <tests> :  include
 <**/*.ml> or <**/*.mli>: package(compiler-libs.common)
 "light/codept.native" or "tests/run.native": package(compiler-libs.common)
+"light/codept.native": use_unix

@@ -483,6 +483,15 @@ let fail_approx () =
              codept does not work on non-syntactically valid \
              files."
 
+let pkg name =
+  let cmd = "ocamlfind query " ^ name in
+  let cin = Unix.open_process_in cmd in
+  try
+    let result = input_line cin in
+    lib result
+  with
+  End_of_file -> ()
+
 let add_include dir =
   let files = Sys.readdir dir in
   let dir = if dir = "." then [] else Paths.S.parse_filename dir in
@@ -559,7 +568,10 @@ let args = Cmd.[
     "-no-implicits", Cmd.Unit no_implicits,
     ":   do not implicitly search for mli \
      files when given a ml file input";
-    "-no-stdlib", Cmd.Unit no_stdlib, "do not use precomputed stdlib environment";
+    "-no-stdlib", Cmd.Unit no_stdlib,
+    ":   do not use precomputed stdlib environment";
+    "-pkg", Cmd.String pkg, "<pkg_name>:   use the ocamlfind package <pkg_name>
+    during the analysis";
     "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies\
                                             computation but do not display it.";
     "-transparent_extension_node", Cmd.Bool transparent_extension,
