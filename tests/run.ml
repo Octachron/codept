@@ -17,17 +17,8 @@ let start_env includes fileset filemap =
   Envt.start traced filemap
 
 module Param = struct
-  let all = false
-  let native = false
-  let bytecode = false
-  let abs_path = false
-  let sort = false
-  let slash = Filename.dir_sep
   let transparent_aliases = true
   let transparent_extension_nodes = true
-  let includes = Name.Map.empty
-  let implicits = true
-  let no_stdlib = false
 end
 
 module S = Solver.Make(Envt)(Param)
