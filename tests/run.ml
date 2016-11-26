@@ -10,8 +10,8 @@ let organize files =
   units, m
 
 
-let start_env fileset filemap =
-  let layered = Envts.Layered.create [] fileset @@ Stdlib.signature in
+let start_env includes fileset filemap =
+  let layered = Envts.Layered.create includes fileset @@ Stdlib.signature in
   let traced = Envts.Trl.extend layered in
   Envts.Tr.start traced filemap
 
@@ -31,13 +31,13 @@ end
 
 module S = Solver.Make(Param)
 
-let analyze files =
+let analyze pkgs files =
   let units, filemap = organize files in
   let fileset = units.Unit.mli
                 |> List.map (fun u -> u.Unit.name)
                 |> Name.Set.of_list in
   let module Envt = Envts.Tr in
-  let core = start_env fileset filemap in
+  let core = start_env pkgs fileset filemap in
     S.resolve_split_dependencies core units
 
 let normalize set =
@@ -47,8 +47,46 @@ let normalize set =
   |> List.sort compare
 
 
-let (%=%) list set =
-  normalize set = List.sort compare list
+let simple_dep_test name list set =
+  let r = normalize set = List.sort compare list in
+  if not r then
+    Pp.p "Failure %a: expected:[%a], got:@[[%a]@]\n"
+      Pth.pp name
+      Pp.(list estring) (List.sort compare list)
+      Pp.(list estring) (normalize set);
+  r
+
+
+let (%) f g x = f (g x)
+
+let normalize_2 set =
+  let l = Pth.Set.elements set in
+  let is_inner =
+    function { Pth.source = Local; _ } -> true | _ -> false in
+  let is_lib =
+    function { Pth.source = (Pkg _ | Special _ ) ; _ } -> true
+           | _ -> false in
+  let inner, rest = List.partition is_inner l in
+  let lib, unkn = List.partition is_lib rest in
+  let norm = List.sort compare % List.map Pth.module_name in
+  norm inner, norm lib, norm unkn
+
+
+let precise_deps_test name (inner,lib,unkw) set =
+  let sort = List.sort compare in
+  let inner, lib, unkw = sort inner, sort lib, sort unkw in
+  let inner', lib', unkw' = normalize_2 set in
+  let test subtitle x y =
+    let r = x = y  in
+    if not r then
+      Pp.p "Failure %a %s: expected:[%a], got:@[[%a]@]\n"
+      Pth.pp name subtitle
+      Pp.(list estring) x
+      Pp.(list estring) y;
+    r in
+  test "local" inner inner'
+  && test "lib" lib lib'
+  && test "unknwon" unkw unkw'
 
 let add_info {Unit.ml; mli} info = match Filename.extension @@ fst info with
   | ".ml" -> { Unit.ml = info :: ml; mli }
@@ -61,7 +99,7 @@ let add_file {Unit.ml; mli} info = match Filename.extension @@ info with
   | _ -> raise (Invalid_argument "unknown extension")
 
 
-let deps_test l =
+let gen_deps_test libs inner_test l =
   let {Unit.ml;mli} = List.fold_left add_info {Unit.ml=[]; mli=[]} l in
   let module M = Paths.S.Map in
   let build exp = List.fold_left (fun m (x,l) ->
@@ -69,27 +107,29 @@ let deps_test l =
       M.empty exp in
   let exp = M.union' (build ml) (build mli) in
   let files = { Unit.ml = List.map fst ml; mli =  List.map fst mli} in
-  let {Unit.ml; mli} = analyze files in
+  let {Unit.ml; mli} = analyze libs files in
   let (=?) expect files = List.for_all (fun u ->
       let path = u.Unit.path.Pth.file in
       let expected =
           Paths.S.Map.find path expect
       in
-      let r = expected %=% u.Unit.dependencies in
-      if not r then
-        Pp.p "Failure %a: expected:[%a], got:@[[%a]@]\n"
-          Pth.pp u.Unit.path
-          Pp.(list estring) (List.sort compare expected)
-          Pp.(list estring) (normalize u.Unit.dependencies);
-      r
+      inner_test u.path expected u.dependencies
     ) files in
   exp =? ml && exp =? mli
 
-let (%) f g x = f (g x)
+let deps_test = gen_deps_test [] simple_dep_test
+
+let ocamlfind name =
+  let cmd = "ocamlfind query " ^ name in
+  let cin = Unix.open_process_in cmd in
+  try
+    [input_line cin]
+  with
+    End_of_file -> []
 
 let cycle_test expected l =
     let files = List.fold_left add_file {Unit.ml=[]; mli=[]} l in
-    try ignore @@ analyze files; false with
+    try ignore @@ analyze [] files; false with
       S.Cycle (_,units) ->
       let open Solver.Failure in
       let map = analysis units in
@@ -226,6 +266,63 @@ let result =
     && (
       Sys.chdir "../2+2-cycles";
       cycle_test [["A";"B"]; ["C";"D"]] [ "a.ml" ; "b.ml"; "c.ml"; "d.ml"]
+    )
+    &&
+    ( Sys.chdir "../../lib";
+      gen_deps_test (ocamlfind "compiler-libs") precise_deps_test
+        [
+          "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
+          "ast_converter.ml", ( ["M2l"; "Name"; "Option"; "Module";
+                                 "Paths"; "Warning"],
+                                ["List";"Longident"; "Location"; "Parsetree"], [] );
+          "cmi.mli", (["M2l"], [], []);
+          "cmi.ml", (["M2l";"Module"; "Option"; "Paths"],
+                     ["Cmi_format";"Path";"Types"], []);
+          "definition.mli", (["Module"], ["Format"], []);
+          "definition.ml", (["Module"; "Name"; "Pp"], ["List"], []);
+          "envts.mli", (["M2l";"Module";"Name"; "Interpreter"; "Paths"], [], []);
+          "envts.ml", (
+            ["Cmi"; "Definition"; "Interpreter"; "M2l"; "Module"; "Name";
+             "Option"; "Paths"],
+            ["Array"; "Filename"; "List";"Sys"],
+            []);
+          "error.mli", ([],["Format"],[]);
+          "error.ml", ([],["Format"],[]);
+          "interpreter.mli", (["Module";"Paths";"M2l"],[],[]);
+          "interpreter.ml", (
+            ["Definition"; "M2l"; "Module"; "Name"; "Option"; "Paths";
+             "Result"; "Warning"]
+          ,["List"],[]);
+          "m2l.mli", (["Module";"Name";"Definition";"Paths" ],["Format"],[]);
+          "m2l.ml", (["Module";"Name";"Option";"Definition";"Paths"; "Pp" ],
+                     ["List"],[]);
+          "module.mli", ( ["Paths";"Name"], ["Format"], [] );
+          "module.ml", ( ["Error";"Paths";"Name"; "Pp" ], ["List"], [] );
+          "name.mli", ( [], ["Format";"Set";"Map"], [] );
+          "name.ml", ( ["Pp"], ["Set";"Map"], [] );
+          "option.mli", ([],[],[]);
+          "option.ml", ([],[],[]);
+          "paths.mli", (["Name"], ["Map";"Set";"Format"],[]);
+          "paths.ml", (["Name"; "Pp" ],
+                       ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
+          "pp.mli", ([], ["Format"],[]);
+          "pp.ml", ([], ["Format"],[]);
+          "result.mli", ([],[],[]);
+          "result.ml", ([],["List"],[]);
+          "solver.mli", (["Envts";"Unit";"Name";"Interpreter"],["Format";"Map"],[]);
+          "solver.ml", (
+            ["Definition"; "Envts"; "Interpreter"; "M2l"; "Module"; "Name";
+             "Option"; "Paths"; "Pp"; "Unit"],
+            ["List"; "Map"],[]);
+          "unit.mli", (["Paths"; "Name";"M2l"],["Format";"Set"],[]);
+          "unit.ml", (
+            ["Ast_converter"; "Error"; "M2l"; "Option"; "Paths"; "Pp"],
+            ["Filename"; "Format"; "List"; "Location"; "Parse"; "Pparse";
+             "Set"; "String"; "Syntaxerr"],
+            []);
+          "warning.mli", ([],["Format"],[]);
+          "warning.ml", ([],["Format"],[]);
+        ]
     )
 
 let () =
