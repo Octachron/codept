@@ -63,7 +63,7 @@ let tool_name = "codept light"
 let stderr= Format.err_formatter
 
 let rec last = function
-  | [] -> raise @@ Invalid_argument ("Empty lists do not have last element")
+  | [] -> raise @@ Invalid_argument ("Empty lists do not have a last element")
   | [a] -> a
   | _ :: q -> last q
 
@@ -168,7 +168,6 @@ let remove_units invisibles =
 let analyze param {opens;libs;invisibles;files;_} =
   let units, filemap = organize opens files in
   let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
-
   let E ((module Envt), core) = start_env param libs files_set filemap in
   let module S = Solver.Make(Envt)((val lift param)) in
   let {Unit.ml; mli} =
@@ -373,11 +372,6 @@ let makefile param task =
     ) m
 
 
-let usage_msg =
-  "Codept is an alternative dependencies solver for OCaml.\n\
-   Usage: codept [options] file_1 … file_n.\n\
-   The following options are common with ocamldep:\n"
-
 let classify synonyms f =
   let ext = extension f in
   if Name.Set.mem ext synonyms.Unit.mli then
@@ -526,74 +520,80 @@ let add_include dir =
 let no_implicits () =
   param := { !param with implicits = false }
 
+let usage_msg =
+  "Codept is an alternative dependencies solver for OCaml.\n\
+   Usage: codept [options] ⟨source files⟩.\n\
+   The following options are common with ocamldep:\n"
+
+
 let args = Cmd.[
-    "-absname", Cmd.Unit abs_path, ":   use absolute path name";
-    "-all", Unit all, ":   display full dependencies in makefile";
-    "-allow-approx", Unit fail_approx,":   not implemented";
-    "-as-map", Cmd.String as_map, "<file>:   same as \
+    "-absname", Cmd.Unit abs_path, ": use absolute path name";
+    "-all", Unit all, ": display full dependencies in makefile";
+    "-allow-approx", Unit fail_approx,": not implemented";
+    "-as-map", Cmd.String as_map, "<file>: same as \
                                    \"-no-alias-deps <file>\"";
-    "-I", String add_include,"<dir>:   do not filter files in <dir> when printing \
+    "-I", String add_include,"<dir>: do not filter files in <dir> when printing \
                           dependencies";
-    "-impl", String add_impl, "<f>:   read <f> as a ml file";
-    "-intf", String add_intf, "<f>:   read <f> as a mli file";
+    "-impl", String add_impl, "<f>: read <f> as a ml file";
+    "-intf", String add_intf, "<f>: read <f> as a mli file";
     "-map", Cmd.String map, "<file>: same as \"-no-alias-deps \
                             -see <file>\"";
-    "-ml-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
+    "-ml-synonym", String ml_synonym, "<s>: use <s> extension as a synonym \
                                        for ml";
-    "-mli-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
+    "-mli-synonym", String ml_synonym, "<s>: use <s> extension as a synonym \
                                         for mli";
-    "-modules", Unit (set modules), ":   print raw module dependencies";
-    "-native", Cmd.Unit native, ":   generate native compilation only dependencies";
-    "-bytecode", Cmd.Unit bytecode, ":   generate bytecode only dependencies";
+    "-modules", Unit (set modules), ": print raw module dependencies";
+    "-native", Cmd.Unit native, ": generate native compilation only dependencies";
+    "-bytecode", Cmd.Unit bytecode, ": generate bytecode only dependencies";
 
-    "-one-line", Cmd.Unit ignore, ":   does nothing";
-    "-open", String add_open, "<name>:   open module <name> at the start of \
+    "-one-line", Cmd.Unit ignore, ": does nothing";
+    "-open", String add_open, "<name>: open module <name> at the start of \
                                all compilation units \n\
                                (except units whose name is <name>).";
     "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
-    "<cmd>:   Pipe sources through preprocessor <cmd>";
+    "<cmd>: pipe sources through preprocessor <cmd>";
     "-ppx", Cmd.String add_ppx,
-    "<cmd>:   Pipe abstract syntax trees through ppx preprocessor <cmd>";
-    "-slash", Cmd.Unit slash, "use forward slash as directory separator";
-    "-sort", Cmd.Unit slash, "sort dependencies when printing";
+    "<cmd>: pipe abstract syntax trees through ppx preprocessor <cmd>";
+    "-slash", Cmd.Unit slash, ": use forward slash as directory separator";
+    "-sort", Cmd.Unit slash, ": sort dependencies when printing";
     "-version", Cmd.Unit print_version,
-    "print human-friendly version description";
-    "-vnum", Cmd.Unit print_vnum, "print version number\n\n Codept only modes:\n";
+    ": print human-friendly version description";
+    "-vnum", Cmd.Unit print_vnum, ": print version number\n\n Codept only modes:\n";
 
 
-    "-deps", Unit (set deps), ":   print detailed dependencies";
-    "-export", Unit (set export), ":   export resolved modules signature";
+    "-deps", Unit (set deps), ": print detailed dependencies";
+    "-export", Unit (set export), ": export resolved modules signature";
 
-    "-dot", Unit (set dot), ":   print dependencies in dot format";
-    "-makefile", Unit (set makefile), ":   print makefile depend file(default)";
-    "-m2l", Unit (set_iter m2l), ":   print m2l ast:";
-    "-one-pass", Unit (set_iter one_pass), ":   print m2l ast after one pass\
+    "-dot", Unit (set dot), ": print dependencies in dot format";
+    "-makefile", Unit (set makefile), ": print makefile depend file(default)";
+    "-m2l", Unit (set_iter m2l), ": print m2l ast:";
+    "-one-pass", Unit (set_iter one_pass), ": print m2l ast after one pass\
                                             \n\n Module suboptions:\n";
 
     "-extern-modules", Unit (set @@ modules ~filter:lib_filter),
-    ":   print raw extern dependencies";
+    ": print raw extern dependencies";
     "-inner-modules", Unit (set @@ modules ~filter:inner_filter),
-    ":   print raw inner dependencies";
+    ": print raw inner dependencies";
     "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
-    ":   print raw unresolved dependencies\n\n Misc options:\n";
+    ": print raw unresolved dependencies\n\n Misc options:\n";
     "-closed-world", Unit close_world,
-    ":   require that all dependencies are provided";
+    ": require that all dependencies are provided";
 
     "-L", String lib, "<dir>: use all cmi files in <dir> \
                                in the analysis";
     "-no-alias-deps", Cmd.Unit (fun () -> transparent_aliases true),
-    ":   Delay aliases dependencies";
+    ": Delay aliases dependencies";
     "-no-implicits", Cmd.Unit no_implicits,
-    ":   do not implicitly search for mli \
-     files when given a ml file input";
+    ": do not implicitly search for a mli \
+     file when given a ml file input";
     "-no-stdlib", Cmd.Unit no_stdlib,
-    ":   do not use precomputed stdlib environment";
-    "-pkg", Cmd.String pkg, "<pkg_name>:   use the ocamlfind package <pkg_name> \
+    ": do not use precomputed stdlib environment";
+    "-pkg", Cmd.String pkg, "<pkg_name>: use the ocamlfind package <pkg_name> \
                              during the analysis";
-    "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies \
+    "-see", Cmd.String add_invisible_file, "<file>: use <file> in dependencies \
                                             computation but do not display it.";
     "-transparent_extension_node", Cmd.Bool transparent_extension,
-    "<bool>:   Inspect unknown extension nodes"
+    "<bool>: inspect unknown extension nodes"
   ]
 
 let () =
