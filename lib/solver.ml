@@ -167,14 +167,18 @@ module Failure = struct
     match st with
     | Internal_error -> Pp.fp ppf "@[ Internal error for units: {%a} @]"
                           Pp.(list ~sep:(s ", @ ") @@ string ) (names units)
-    | Extern name -> Pp.fp ppf "@[ External dependency (non-resolved) %s: {%a} @]"
-                       name
+    | Extern name -> Pp.fp ppf "Non-resolved external dependency.\n@[\
+                                The following units {%a} depend on \
+                                the unknown module \"%s\" @]"
                        Pp.(list ~sep:(s ", @ ") @@ string ) (names units)
+                       name
     | Depend_on name ->
-      Pp.fp ppf "@[ Internal dependency (non-resolved) %s: {%a} @]"
-        name
+      Pp.fp ppf "Non-resolved internal dependency.@;\
+                 The following modules {%a} depend on the unit \
+                 \"%s\" that could not be resolved."
         Pp.(list ~sep:(s ", @ ") @@ string ) (names units)
-    | Cycle name ->  Pp.fp ppf "@[ Circular dependencies: %a @]"
+        name
+    | Cycle name ->  Pp.fp ppf "Circular dependencies: %a"
                         (pp_circular map name true) name
   (* Pp.(list ~sep:(s ", @ ") @@ pp ) (Set.elements units) *)
 

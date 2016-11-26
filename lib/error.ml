@@ -1,7 +1,7 @@
 
 let log fmt = Format.kfprintf
     (fun _ppf -> exit 1) Format.err_formatter
-    ("@[<hov2>[\x1b[31mError\x1b[39m]:@,@ @["^^fmt^^"@]@]@.")
+    ("@[[\x1b[31mError\x1b[39m]: @[<hov>"^^fmt^^"@]@]@.")
 
 let log_s s = log "%s" s
 
