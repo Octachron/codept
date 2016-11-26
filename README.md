@@ -4,12 +4,14 @@ Both ocamldep and codept computes an over-approximation of the dependencies grap
 
 More precisely, ocamldep introduces fictional dependencies when opening foreign submodules within a given unit. For instance, if we have two files, `a.ml`
 ```OCaml
+(* a.ml *)
 open B
 open C
 open D
 ```
 and b.ml
 ```OCaml
+(* b.ml *)
 module C = struct end
 module D = struct end
 ```
@@ -48,7 +50,7 @@ b.ml: A
 ```
 as expected.
 
-However, if the inference of the first class module signature is more involved, codept will produce inexact dependency graph:
+However, if the inference of the first class module signature is more involved, codept will produce an inexact dependency graph:
 
 ```OCaml
 (* a.ml *)
@@ -109,3 +111,70 @@ Otherwise the solver continues its iteration.
 
 Cycles and non-resolvable dependencies are detected when the solver does not
 make any progress after one cycle of iterations over unresolved files.
+
+#Usage
+
+Codept can be used as a drop-in replacement for ocamldep, on Linux at least.
+More tests are needed on other platforms.
+
+##Compatibility with ocamldep
+The only ocamldep options not implemented by codept is `-allox-approx`:
+codept can only process syntactically valid files.
+
+However, some of the ocamldep options are slightly reinterpreted:
+
+  * `-one-line` is the default and only mode of codept makefile output and
+  thus adding this option does nothing.
+
+  *`-as-map <file>` and `-map <file>` are both reinterpreted to use the
+  codept specific `-no-alias-deps` option which provides a better handling of
+  delayed alias dependencies.
+
+  * `-open <module>` does not open the module `<module>` when analyzing the
+    `<module.ml>` or `<module.mli>`
+
+Another possible difference between codept and ocamldep output is codept
+built-in detection of dependency cycles. Within codept, cycles triggers a
+fatal error message and stops the current analysis.
+
+
+##Codept-only options
+
+Some new options explore codept possibilities and intermediary representations
+
+  * ` -m2l` prints the `m2l` intermediary representation of the source files
+    rather than their dependencies
+
+  * `-deps` prints a textual representation of the result of codept analysis.
+
+  * `-dot` export the dependency graph in the graphviz format
+
+  * `-L <dir>` tells codept to use the cmi files in directory `<dir>` to
+    resolve unknown module names during the analysis.
+
+  * `-pkg <module_name>` is equivalent to `-L $(ocamlfind query module_name)`
+
+  * `-inner-modules`, `-unknown-modules` and `-extern-modules`
+    refine the `-modules` option by splitting the list of dependencies
+    in three subsets:
+      *  inner modules are the one provided to `codept` directly throught the
+         command line,
+      *  external modules are modules discovered due to either the `-pkg`
+         or `-L` options or precomputed package (like the standard library),
+      *  unknown modules are the one that could not be resolved.
+
+  * `-no-alias-deps` delays alias dependency up to the use point of the alias.
+    For instance, in the code gragment `module M = A open M` the `A`
+    dependency is recorded only when the module `M` is opened in `open M`
+    not during the definition of the alias.
+
+  * `-closed-world` stops the analysis as soon as a non-resolvable module is
+    identified. Contrarily, codept default mode assumes that non-resolvable
+    module have for signature `sig end`. Note that this approximation can only
+    lead to an over-approximation of dependencies.
+
+For a more exhaustive list of options, see `codept -help`.
+
+# Installation
+
+opam pin add codept https://github.com/Octachron/codept.git
