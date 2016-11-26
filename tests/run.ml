@@ -205,6 +205,10 @@ let result =
                     ; "w.ml"
                                               ]
     )
+    && (
+      Sys.chdir "../2+2-cycles";
+      cycle_test [["A";"B"]; ["C";"D"]] [ "a.ml" ; "b.ml"; "c.ml"; "d.ml"]
+    )
 
 let () =
   if result then
