@@ -4,21 +4,16 @@ module Envt =  Envts.Tr
 
 open Unit
 
-module Make(Param:Interpreter.param) = struct
+module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
 
-  module Eval = Eval(Param)
+  module Eval = Interpreter.Make(Envt)(Param)
 
   let compute_more env unit =
     let result = Eval.m2l env unit.code in
-    Paths.Pkg.Set.union !(env.externs) !(env.core.deps), result
+    Envt.deps env, result
+    (*Paths.Pkg.Set.union !(env.externs) !(env.core.deps), result*)
 
   exception Cycle of Envt.t * unit list
-
-  let reset_deps env =
-    let open Envt in
-    let module P = Paths.Pkg in
-    env.core.deps := P.Set.empty;
-    env.externs := P.Set.empty
 
   let eval ?(learn=true) (finished, core, rest) unit =
     let open M2l in
@@ -35,14 +30,13 @@ module Make(Param:Interpreter.param) = struct
       let deps = Pkg.Set.union unit.dependencies deps in
       let unit = { unit with code = [Defs (Definition.sg_bind sg)];
                              dependencies = deps } in
-      let () = reset_deps core in
+      let () = Envt.reset_deps core in
       (unit :: finished, core, rest )
     | deps, Error code ->
       let deps = Pkg.Set.union unit.dependencies deps in
-      let () = reset_deps core in
+      let () = Envt.reset_deps core in
       let unit = { unit with dependencies = deps; code } in
       finished, core, unit :: rest
-
 
   let resolve_dependencies ?(learn=true) core units =
     let rec resolve alert env solved units =

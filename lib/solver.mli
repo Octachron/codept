@@ -3,8 +3,7 @@
 module Envt =  Envts.Tr
 
 (** Create a solver using the parameter module [Param] *)
-module Make :
-  functor (Param : Interpreter.param) ->
+module Make (Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
   sig
       exception Cycle of Envt.t * Unit.unit list
 

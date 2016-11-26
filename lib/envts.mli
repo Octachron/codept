@@ -5,26 +5,44 @@
 module type extended =
 sig
   include Interpreter.envt
+
   val find_name : bool -> Module.level -> string -> t -> Module.t
+(** [find_name is_root level name env] find if there is a module [name]
+    at [level] in the environment [env]. The first argument indicates
+    if we are looking for a toplevel module, this is useful for both
+    dependency tracking and when using external dependency.
+*)
+
   val restrict : t -> Module.signature -> t
+(** [restrict env sign] results in the environment restricted to
+    the identifiers visible from [sign]
+*)
+
+end
+
+module type extended_with_deps =
+sig
+  type t
+  include extended with type t:=t
+  include Interpreter.with_deps with type t := t
 end
 
 (** Basic environment *)
 module Base :
 sig
-  include extended with type t = Module.signature
+  include extended_with_deps with type t = Module.signature
   val empty: t
 end
 
 (** Extend environment with unknowable module handling *)
 module Open_world :
-  functor (Envt : extended) ->
+  functor (Envt : extended_with_deps ) ->
   sig
     type t ={ core : Envt.t;
               world : Paths.Pkg.t Name.map;
               externs : Paths.Pkg.set ref; }
 
-    include extended with type t := t
+    include extended_with_deps with type t := t
 end
 
 
@@ -57,7 +75,7 @@ module Trl :
 sig
   type t = Tracing(Layered).t =
     { env : Layered.t; deps : Paths.Pkg.set ref; }
-  include extended with type t:= t
+  include extended_with_deps with type t:= t
   val extend: Layered.t -> t
 end
 
@@ -69,7 +87,7 @@ sig
       world : Paths.Pkg.t Name.map;
       externs : Paths.Pkg.set ref; }
 
-  include extended with type t := t
+  include extended_with_deps with type t := t
   val start : Trl.t -> Paths.Pkg.t Name.map -> t
 end
 

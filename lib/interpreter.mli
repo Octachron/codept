@@ -9,6 +9,18 @@ module type envt = sig
   val add_module: t -> Module.t -> t
 end
 
+module type with_deps = sig
+  type t
+  val deps: t -> Paths.Pkg.set
+  val reset_deps: t -> unit
+end
+
+module type envt_with_deps = sig
+  type t
+  include envt with type t := t
+  include with_deps with type t := t
+end
+
 (** Interpreter parameter *)
 module type param =
   sig
@@ -16,9 +28,12 @@ module type param =
     val transparent_aliases : bool
   end
 
+(** resulting signature *)
+module type s =
+sig
+  type envt
+  val m2l : envt -> M2l.t -> (envt * Module.Sig.t, M2l.t) result
+end
 (** Create an interpreter adapted for the environment type *)
 module Make :
-  functor (Envt : envt) (Param : param) ->
-    sig
-      val m2l : Envt.t -> M2l.t -> (Envt.t * Module.Sig.t, M2l.t) result
-    end
+  functor (Envt : envt) (Param : param) -> s with type envt := Envt.t

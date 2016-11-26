@@ -158,7 +158,7 @@ let analyze param {opens;libs;invisibles;files;_} =
   let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
   let module Envt = Envts.Tr in
   let core = start_env param.no_stdlib libs files_set filemap in
-  let module S = Solver.Make((val lift param)) in
+  let module S = Solver.Make(Envt)((val lift param)) in
   let {Unit.ml; mli} =
     try S.resolve_split_dependencies core units with
       S.Cycle (_env,units) ->
@@ -363,7 +363,7 @@ let makefile param task =
 
 let usage_msg =
   "Codept is an alternative dependencies solver for OCaml.\n\
-   Usage: codept [options] file_1 … file_n.\
+   Usage: codept [options] file_1 … file_n.\n\
    The following options are common with ocamldep:\n"
 
 let classify synonyms f =
@@ -516,13 +516,13 @@ let args = Cmd.[
     "-all", Unit all, ":   display full dependencies in makefile";
     "-allow-approx", Unit fail_approx,":   not implemented";
     "-as-map", Cmd.String as_map, "<file>:   same as \
-                                   -file <file> -transparent-aliases true";
+                                   \"-no-alias-deps <file>\"";
     "-I", String add_include,"<dir>:   do not filter files in <dir> when printing \
                           dependencies";
     "-impl", String add_impl, "<f>:   read <f> as a ml file";
     "-intf", String add_intf, "<f>:   read <f> as a mli file";
-    "-map", Cmd.String map, "<file>: same as -transparent-aliases true \
-                            -see <file>";
+    "-map", Cmd.String map, "<file>: same as \"-no-alias-deps \
+                            -see <file>\"";
     "-ml-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
                                        for ml";
     "-mli-synonym", String ml_synonym, "<s>:   use <s> extension as a synonym \
@@ -533,7 +533,7 @@ let args = Cmd.[
 
     "-one-line", Cmd.Unit ignore, ":   does nothing";
     "-open", String add_open, "<name>:   open module <name> at the start of \
-                               all compilation units\
+                               all compilation units \n\
                                (except units whose name is <name>).";
     "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
     "<cmd>:   Pipe sources through preprocessor <cmd>";
@@ -565,7 +565,7 @@ let args = Cmd.[
     "-L", String lib, "<dir>: use all cmi files in <dir> \
                                in the analysis";
     "-no-alias-deps", Cmd.Unit (fun () -> transparent_aliases true),
-    ":   Delay aliases dependencies\n";
+    ":   Delay aliases dependencies";
     "-no-implicits", Cmd.Unit no_implicits,
     ":   do not implicitly search for mli \
      files when given a ml file input";
@@ -573,7 +573,7 @@ let args = Cmd.[
     ":   do not use precomputed stdlib environment";
     "-pkg", Cmd.String pkg, "<pkg_name>:   use the ocamlfind package <pkg_name> \
                              during the analysis";
-    "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies\
+    "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies \
                                             computation but do not display it.";
     "-transparent_extension_node", Cmd.Bool transparent_extension,
     "<bool>:   Inspect unknown extension nodes"

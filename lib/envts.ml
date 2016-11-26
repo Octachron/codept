@@ -9,6 +9,13 @@ module type extended = sig
   val restrict: t -> M.signature -> t
 end
 
+module type extended_with_deps =
+sig
+  type t
+  include extended with type t:=t
+  include Interpreter.with_deps with type t := t
+end
+
 module Base = struct
   type t = M.signature
 
@@ -18,7 +25,7 @@ module Base = struct
     | M.Module -> env.M.modules
     | M.Module_type -> env.module_types
 
-  let find_name root level name env =
+  let find_name _root level name env =
     Name.Map.find name @@ proj level env
 
   let rec find ~transparent ?alias level path env =
@@ -29,18 +36,28 @@ module Base = struct
       let m = find_name false M.Module a env in
       find ~transparent ?alias level q m.signature
 
+  let deps _env = Paths.P.Set.empty
+  let reset_deps = ignore
+
   let (>>) = Def.(+@)
   let restrict _env sg = sg
   let add_module = S.add
 end
 
-module Open_world(Envt:extended) = struct
+module Open_world(Envt:extended_with_deps) = struct
   module P = Paths.Pkg
   type t = { core: Envt.t; world: P.t Name.map; externs: P.set ref }
 
   let start core world = { core; world; externs = ref P.Set.empty }
 
   let last l = List.hd @@ List.rev l
+
+  let reset_deps env =
+    env.externs := P.Set.empty;
+    Envt.reset_deps env.core
+
+  let deps env =
+    Paths.Pkg.Set.union !(env.externs) (Envt.deps env.core)
 
   let approx path =
     match path with
@@ -293,6 +310,9 @@ module Tracing(Envt:extended) = struct
 
   let restrict env m = { env with env = Envt.restrict env.env m }
   let add_module e m = { e with env = Envt.add_module e.env m }
+
+  let deps env = !(env.deps)
+  let reset_deps env =  env.deps := Paths.P.Set.empty
 
 end
 

@@ -9,11 +9,12 @@ let organize files =
   let units = Unit.( split @@ group files ) in
   units, m
 
+module Envt = Envts.Tr
 
 let start_env includes fileset filemap =
   let layered = Envts.Layered.create includes fileset @@ Stdlib.signature in
   let traced = Envts.Trl.extend layered in
-  Envts.Tr.start traced filemap
+  Envt.start traced filemap
 
 module Param = struct
   let all = false
@@ -29,7 +30,7 @@ module Param = struct
   let no_stdlib = false
 end
 
-module S = Solver.Make(Param)
+module S = Solver.Make(Envt)(Param)
 
 let analyze pkgs files =
   let units, filemap = organize files in
