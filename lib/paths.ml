@@ -158,6 +158,7 @@ module Pkg = struct
     | "ml" when all -> ".cmi"
     | "ml" ->
       if native then ".cmx" else ".cmo"
+    | "cmi" -> ".cmi"
     | s -> raise @@Invalid_argument ("Unknown extension " ^ s)
 
   let pp_source ppf = function

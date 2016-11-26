@@ -22,6 +22,7 @@ type param =
     synonyms: Name.set Unit.pair;
     no_stdlib:bool;
     implicits: bool;
+    closed_world: bool;
   }
 
 
@@ -53,7 +54,8 @@ let param = ref {
   includes = Name.Map.empty;
   implicits = true;
   no_stdlib = false;
-  synonyms = {Unit.ml = Name.Set.singleton "ml" ; mli = Name.Set.singleton "mli" }
+  synonyms = {Unit.ml = Name.Set.singleton "ml" ; mli = Name.Set.singleton "mli" };
+  closed_world = false
 }
 
 
@@ -142,10 +144,20 @@ let base_env no_stdlib =
   else
     Stdlib.signature
 
-let start_env no_stdlib includes fileset filemap =
-  let layered = Envts.Layered.create includes fileset @@ base_env no_stdlib in
+type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
+type envt = E: 'a envt_kind * 'a -> envt
+
+let start_env param  includes fileset filemap
+  =
+  let layered = Envts.Layered.create includes fileset @@ base_env param.no_stdlib in
   let traced = Envts.Trl.extend layered in
-  Envts.Tr.start traced filemap
+  if not param.closed_world then
+    E ((module Envts.Tr: Interpreter.envt_with_deps with type t = Envts.Tr.t ) ,
+       Envts.Tr.start traced filemap )
+  else
+    E ( (module Envts.Trl: Interpreter.envt_with_deps with type t = Envts.Trl.t),
+        traced
+      )
 
 let remove_units invisibles =
   List.filter @@ function
@@ -156,8 +168,8 @@ let remove_units invisibles =
 let analyze param {opens;libs;invisibles;files;_} =
   let units, filemap = organize opens files in
   let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
-  let module Envt = Envts.Tr in
-  let core = start_env param.no_stdlib libs files_set filemap in
+
+  let E ((module Envt), core) = start_env param libs files_set filemap in
   let module S = Solver.Make(Envt)((val lift param)) in
   let {Unit.ml; mli} =
     try S.resolve_split_dependencies core units with
@@ -478,6 +490,9 @@ let slash () =
 let sort () =
   param := { !param with sort = true }
 
+let close_world () =
+    param := { !param with closed_world = true }
+
 
 let fail_approx () =
   Error.log "Approximation mode is not implemented: \
@@ -561,6 +576,8 @@ let args = Cmd.[
     ":   print raw inner dependencies";
     "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
     ":   print raw unresolved dependencies\n\n Misc options:\n";
+    "-closed-world", Unit close_world,
+    ":   require that all dependencies are provided";
 
     "-L", String lib, "<dir>: use all cmi files in <dir> \
                                in the analysis";
