@@ -190,6 +190,21 @@ let result =
       Sys.chdir "..";
       cycle_test [["Self_cycle"]] ["self_cycle.ml"]
     )
+    &&
+    (
+      Sys.chdir "ω-cycle";
+      cycle_test [["C1";"C2";"C3";"C4";"C5"]] [ "a.ml"
+                    ; "b.ml"
+                    ; "c1.ml"
+                    ; "c2.ml"
+                    ; "c3.ml"
+                    ; "c4.ml"
+                    ; "c5.ml"
+                    ; "k.ml"
+                    ; "l.ml"
+                    ; "w.ml"
+                                              ]
+    )
 
 let () =
   if result then
