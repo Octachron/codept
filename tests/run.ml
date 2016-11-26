@@ -47,7 +47,19 @@ let normalize set =
 let (%=%) list set =
   normalize set = List.sort compare list
 
-let deps_test {Unit.ml; mli} =
+let add_info {Unit.ml; mli} info = match Filename.extension @@ fst info with
+  | ".ml" -> { Unit.ml = info :: ml; mli }
+  | ".mli" -> { Unit.mli = info :: mli; ml }
+  | _ -> raise (Invalid_argument "unknown extension")
+
+let add_file {Unit.ml; mli} info = match Filename.extension @@ info with
+  | ".ml" -> { Unit.ml = info :: ml; mli }
+  | ".mli" -> { Unit.mli = info :: mli; ml }
+  | _ -> raise (Invalid_argument "unknown extension")
+
+
+let deps_test l =
+  let {Unit.ml;mli} = List.fold_left add_info {Unit.ml=[]; mli=[]} l in
   let module M = Paths.S.Map in
   let build exp = List.fold_left (fun m (x,l) ->
       M.add (Paths.S.parse_filename x) l m)
@@ -70,56 +82,82 @@ let deps_test {Unit.ml; mli} =
     ) files in
   exp =? ml && exp =? mli
 
-let ml_only ml = { Unit.mli = []; ml }
-let mli_only mli = { Unit.ml = []; mli }
+let (%) f g x = f (g x)
+
+let cycle_test expected l =
+    let files = List.fold_left add_file {Unit.ml=[]; mli=[]} l in
+    try ignore @@ analyze files; false with
+      S.Cycle (_,units) ->
+      let open Solver.Failure in
+      let map = analysis units in
+      let cmap = categorize map in
+      let cmap = normalize map cmap in
+      let errs = Map.bindings cmap in
+      let name unit = unit.Unit.name in
+      let cycles = errs
+                  |> List.filter (function (Cycle _, _) -> true | _ -> false)
+                  |> List.map snd
+                  |> List.map (List.map name % Unit.Set.elements) in
+      let expected = List.sort compare expected in
+      let cycles = List.sort compare cycles in
+      let r = cycles = expected in
+      if not r then
+        ( Pp.fp Pp.std "Failure: expected %a, got %a\n"
+            Pp.(list @@ list string) expected
+            Pp.(list @@ list string) cycles;
+          r )
+      else
+        r
+
+
 
 let result =
   Sys.chdir "tests";
   List.for_all deps_test [
-    ml_only ["abstract_module_type.ml", []];
-    ml_only ["alias_map.ml", ["Aliased__B"; "Aliased__C"] ];
-    ml_only ["apply.ml", ["F"; "X"]];
-    ml_only ["basic.ml", ["Ext"; "Ext2"]];
-    ml_only ["bindings.ml", []];
-    ml_only ["bug.ml", ["Sys"] ];
-    ml_only ["case.ml", ["A"; "B";"C";"D";"F"]];
-    ml_only ["even_more_functor.ml", ["E"; "A"]];
-    ml_only ["first-class-modules.ml", ["Mark";"B"] ];
-    ml_only ["first_class_more.ml", [] ];
-    ml_only ["functor.ml", [] ];
-    ml_only ["functor_with_include.ml", [] ];
-    ml_only ["include.ml", ["List"] ];
-    ml_only ["include_functor.ml", ["A"] ];
-    ml_only ["letin.ml", ["List"] ];
-    ml_only ["module_rec.ml", ["Set"] ];
-    ml_only ["more_functor.ml", ["Ext";"Ext2"] ];
-    ml_only ["nested_modules.ml", [] ];
-    ml_only ["no_deps.ml", [] ];
-    ml_only ["opens.ml", ["A";"B"] ];
-    ml_only ["pattern_open.ml", ["E1"; "E2"; "E3";"E4"] ];
-    ml_only ["recmods.ml", ["Ext"]];
-    ml_only ["record.ml", ["Ext";"E2";"E3"]];
-    ml_only ["simple.ml", ["G";"E"; "I"; "A"; "W"; "B"; "C"; "Y"; "Ext"]];
-    ml_only ["solvable.ml", ["Extern"]];
-    ml_only ["tuple.ml", ["A"; "B"; "C"]];
-    ml_only ["with.ml", ["Ext"] ]
+    ["abstract_module_type.ml", []];
+    ["alias_map.ml", ["Aliased__B"; "Aliased__C"] ];
+    ["apply.ml", ["F"; "X"]];
+    ["basic.ml", ["Ext"; "Ext2"]];
+    ["bindings.ml", []];
+    ["bug.ml", ["Sys"] ];
+    ["case.ml", ["A"; "B";"C";"D";"F"]];
+    ["even_more_functor.ml", ["E"; "A"]];
+    ["first-class-modules.ml", ["Mark";"B"] ];
+    ["first_class_more.ml", [] ];
+    ["functor.ml", [] ];
+    ["functor_with_include.ml", [] ];
+    ["include.ml", ["List"] ];
+    ["include_functor.ml", ["A"] ];
+    ["letin.ml", ["List"] ];
+    ["module_rec.ml", ["Set"] ];
+    ["more_functor.ml", ["Ext";"Ext2"] ];
+    ["nested_modules.ml", [] ];
+    ["no_deps.ml", [] ];
+    ["opens.ml", ["A";"B"] ];
+    ["pattern_open.ml", ["E1"; "E2"; "E3";"E4"] ];
+    ["recmods.ml", ["Ext"]];
+    ["record.ml", ["Ext";"E2";"E3"]];
+    ["simple.ml", ["G";"E"; "I"; "A"; "W"; "B"; "C"; "Y"; "Ext"]];
+    ["solvable.ml", ["Extern"]];
+    ["tuple.ml", ["A"; "B"; "C"]];
+    ["with.ml", ["Ext"] ]
 
 
   ]
   &&
   ( Sys.chdir "network";
-  deps_test (ml_only ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ] )
+  deps_test ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ]
   )
   &&
   ( Sys.chdir "../collision";
-    deps_test (ml_only ["a.ml", ["B"; "Ext"];
-                        "b.ml", [];
-                        "c.ml", ["B"];
-                        "d.ml", ["B"] ] )
+    deps_test ["a.ml", ["B"; "Ext"];
+               "b.ml", [];
+               "c.ml", ["B"];
+               "d.ml", ["B"] ]
   )
   &&
   ( Sys.chdir "../pair";
-  deps_test (ml_only ["a.ml", ["B"];  "b.ml", ["Extern"] ] )
+  deps_test ["a.ml", ["B"];  "b.ml", ["Extern"] ]
   )
   && (
     let n = 100 in
@@ -131,39 +169,26 @@ let result =
         [ Printf.sprintf "m%03d.mli" k, [] ]
       else
         (Printf.sprintf "m%03d.mli" k, dep) :: (deps @@ k+1) in
-    deps_test (mli_only @@ deps 1)
+    deps_test @@ deps 1
   )
     &&
   ( Sys.chdir "../stops";
-    deps_test (ml_only ["a.ml", ["B"; "C"; "D"; "E"; "F"]
-                       ; "b.ml", ["Z"]
-                       ; "c.ml", ["Y"]
-                       ; "d.ml", ["X"]
-                       ; "e.ml", ["W"]
-                       ; "f.ml", ["V"]
-                       ; "v.ml", ["E"]
-                       ; "w.ml", ["D"]
-                       ; "x.ml", ["C"]
-                       ; "y.ml", ["B"]
-                       ; "z.ml", []
-                       ] )
-  )
+    deps_test ["a.ml", ["B"; "C"; "D"; "E"; "F"]
+              ; "b.ml", ["Z"]
+              ; "c.ml", ["Y"]
+              ; "d.ml", ["X"]
+              ; "e.ml", ["W"]
+              ; "f.ml", ["V"]
+              ; "v.ml", ["E"]
+              ; "w.ml", ["D"]
+              ; "x.ml", ["C"]
+              ; "y.ml", ["B"]
+              ; "z.ml", []
+              ]
+)
     && (
       Sys.chdir "..";
-      try
-        deps_test (ml_only ["self_cycle.ml", ["Self_cycle"] ]) && false
-      with
-        S.Cycle (_,units) ->
-          let open Solver.Failure in
-          let map = analysis units in
-          let cmap = categorize map in
-          let cmap = normalize map cmap in
-          let errs = Map.bindings cmap in
-          let r = List.map fst errs = [ Cycle "Self_cycle" ] in
-          if not r then
-            ( Solver.Failure.pp map Pp.std cmap; r )
-          else
-            r
+      cycle_test [["Self_cycle"]] ["self_cycle.ml"]
     )
 
 let () =
