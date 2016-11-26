@@ -93,7 +93,7 @@ In more details, `codept` works by combining together two main ingredients:
 - an AST, called M2l, specialized to handle only module level constructions
   (see `M2l.mli` )
 
-- a familly of interruptible interpreters that given an environment and a
+- a family of interruptible interpreters that given an environment and a
   `m2l` Ast computes either the signature represented by the m2l ast, or in
   presence of non-resolved dependencies, a simplified m2l ast.
   (see `Interpreter.ml`)
@@ -102,7 +102,7 @@ In more details, `codept` works by combining together two main ingredients:
 
 Currently, these two elements are then used in a basic solver (see `solver.ml`).
 Given a list of ".ml" and ".mli" files and a starting environment,
-this basic solver iters over the list of unresolved files and try to compute
+this basic solver iterates over the list of unresolved files and try to compute
 their signature.
 
 If the computation is successful, the resulting signature is
@@ -118,7 +118,7 @@ Codept can be used as a drop-in replacement for ocamldep, on Linux at least.
 More tests are needed on other platforms.
 
 ##Compatibility with ocamldep
-The only ocamldep options not implemented by codept is `-allox-approx`:
+The only ocamldep options not implemented by codept is `-allow-approx`:
 codept can only process syntactically valid files.
 
 However, some of the ocamldep options are slightly reinterpreted:
@@ -157,14 +157,14 @@ Some new options explore codept possibilities and intermediary representations
   * `-inner-modules`, `-unknown-modules` and `-extern-modules`
     refine the `-modules` option by splitting the list of dependencies
     in three subsets:
-      *  inner modules are the one provided to `codept` directly throught the
+      *  inner modules are the one provided to `codept` directly through the
          command line,
       *  external modules are modules discovered due to either the `-pkg`
          or `-L` options or precomputed package (like the standard library),
       *  unknown modules are the one that could not be resolved.
 
   * `-no-alias-deps` delays alias dependency up to the use point of the alias.
-    For instance, in the code gragment `module M = A open M` the `A`
+    For instance, in the code fragment `module M = A open M` the `A`
     dependency is recorded only when the module `M` is opened in `open M`
     not during the definition of the alias.
 
@@ -177,4 +177,4 @@ For a more exhaustive list of options, see `codept -help`.
 
 # Installation
 
-opam pin add codept https://github.com/Octachron/codept.git
+`opam pin add codept https://github.com/Octachron/codept.git`
