@@ -152,6 +152,13 @@ let result =
                  "d.mli", []
                 ]
     )
+  && ( Sys.chdir "../aliases";
+       deps_test [ "amap.ml", ["Long__B"];
+                   "user.ml", ["Amap"; "Long__A"];
+                   "long__A.ml", [];
+                   "long__B.ml", []
+                 ]
+     )
   &&
   ( Sys.chdir "../network";
   deps_test ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ]
