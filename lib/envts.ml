@@ -213,13 +213,16 @@ module Tracing(Envt:extended) = struct
   let extend env =
     { env; deps = ref P.Set.empty }
 
-  let smart_record alias env m =
+  let smart_record alias global_env env m =
     let open Module in
     match m.origin with
-    | Origin.Unit _ -> record m.name env; None
+    | Origin.Unit _ -> if not alias then
+        (record m.name env; None)
+      else
+        Some m.name
     | Alias n ->
       if not alias then
-        (record n env; None)
+        (record n global_env; None)
       else
         Some n
     | _ -> None
@@ -228,41 +231,41 @@ module Tracing(Envt:extended) = struct
       record n env
     )
 
-  let rec find0 ~transparent start delayed level path env =
+  let rec find0 ~transparent start_env start delayed level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | [a] ->
-      delayed_record env delayed;
+      delayed_record start_env delayed;
       let m = Envt.find_name level a env.env in
       if start && level = Module then
-        ignore @@ smart_record transparent env m;
+        ignore @@ smart_record transparent start_env env m;
       if not transparent then
         begin
           match m.origin with
-          | Alias n -> record_alias_origin n env
+          | Alias n -> record_alias_origin n start_env
           | _ -> ()
         end;
       m
     | a :: q ->
-      delayed_record env delayed;
+      delayed_record start_env delayed;
       let m = Envt.find_name M.Module a env.env in
       let delayed =
         if start then
-          smart_record transparent env m
+          smart_record transparent start_env env m
         else if transparent then
           match delayed, m.origin with
           | Some _, Alias w -> Some w
           | _ -> None
         else
           match m.origin with
-          | Alias n -> record_alias_origin n env; None
+          | Alias n -> record_alias_origin n start_env; None
           | _ -> None
       in
-      find0 ~transparent false delayed level q
+      find0 ~transparent start_env false delayed level q
         { env with env = Envt.restrict env.env m.signature}
 
   let find ~transparent ?(alias=false) level path env =
-    find0 ~transparent:(transparent && alias) true None level path env
+    find0 ~transparent:(transparent && alias) env true None level path env
 
   let find_name level name = find ~transparent:true ~alias:false level [name]
 
