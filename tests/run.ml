@@ -10,8 +10,8 @@ let organize files =
   units, m
 
 
-let start_env filemap =
-  let layered = Envts.Layered.create [] @@ Stdlib.signature in
+let start_env fileset filemap =
+  let layered = Envts.Layered.create [] fileset @@ Stdlib.signature in
   let traced = Envts.Trl.extend layered in
   Envts.Tr.start traced filemap
 
@@ -33,8 +33,11 @@ module S = Solver.Make(Param)
 
 let analyze files =
   let units, filemap = organize files in
+  let fileset = units.Unit.mli
+                |> List.map (fun u -> u.Unit.name)
+                |> Name.Set.of_list in
   let module Envt = Envts.Tr in
-  let core = start_env filemap in
+  let core = start_env fileset filemap in
     S.resolve_split_dependencies core units
 
 let normalize set =

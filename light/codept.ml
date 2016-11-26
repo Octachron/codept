@@ -142,8 +142,8 @@ let base_env no_stdlib =
   else
     Stdlib.signature
 
-let start_env no_stdlib includes filemap =
-  let layered = Envts.Layered.create includes @@ base_env no_stdlib in
+let start_env no_stdlib includes fileset filemap =
+  let layered = Envts.Layered.create includes fileset @@ base_env no_stdlib in
   let traced = Envts.Trl.extend layered in
   Envts.Tr.start traced filemap
 
@@ -155,8 +155,9 @@ let remove_units invisibles =
 
 let analyze param {opens;libs;invisibles;files;_} =
   let units, filemap = organize opens files in
+  let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
   let module Envt = Envts.Tr in
-  let core = start_env param.no_stdlib libs filemap in
+  let core = start_env param.no_stdlib libs files_set filemap in
   let module S = Solver.Make((val lift param)) in
   let {Unit.ml; mli} =
     try S.resolve_split_dependencies core units with
@@ -223,7 +224,7 @@ let extern_filter = function
   | _ -> false
 
 let lib_filter = function
-  | { Pkg.source = Pkg _ ; _ } -> true
+  | { Pkg.source = (Pkg _ | Special _ ) ; _ } -> true
   | _ -> false
 
 let id x = x
@@ -570,8 +571,8 @@ let args = Cmd.[
      files when given a ml file input";
     "-no-stdlib", Cmd.Unit no_stdlib,
     ":   do not use precomputed stdlib environment";
-    "-pkg", Cmd.String pkg, "<pkg_name>:   use the ocamlfind package <pkg_name>
-    during the analysis";
+    "-pkg", Cmd.String pkg, "<pkg_name>:   use the ocamlfind package <pkg_name> \
+                             during the analysis";
     "-see", Cmd.String add_invisible_file, "<file>:   use <file> in dependencies\
                                             computation but do not display it.";
     "-transparent_extension_node", Cmd.Bool transparent_extension,

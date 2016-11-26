@@ -5,7 +5,7 @@
 module type extended =
 sig
   include Interpreter.envt
-  val find_name : Module.level -> string -> t -> Module.t
+  val find_name : bool -> Module.level -> string -> t -> Module.t
   val restrict : t -> Module.signature -> t
 end
 
@@ -37,9 +37,9 @@ sig
     mutable resolved: Envt.t;
     cmis: Paths.Pkg.t Name.map
   }
-  type t = { local : Base.t; pkgs : source list; }
+  type t = { local : Base.t; local_units:Name.set; pkgs : source list; }
 
-  val create : string list -> Base.t -> t
+  val create : string list -> Name.set -> Base.t -> t
   include extended with type t := t
 
 end
