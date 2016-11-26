@@ -144,8 +144,16 @@ let result =
 
 
   ]
+  &&( Sys.chdir "mixed";
+      deps_test ["a.ml", ["D"];
+                 "a.mli", ["D";"B"];
+                 "b.ml", ["C"];
+                 "c.mli", ["D"];
+                 "d.mli", []
+                ]
+    )
   &&
-  ( Sys.chdir "network";
+  ( Sys.chdir "../network";
   deps_test ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ]
   )
   &&
