@@ -204,3 +204,15 @@ let g x =
   ()
 
 ```
+
+# To do
+
+- Improved exterior api for integration in build tools
+
+- Parallelized version:
+  - ast parsing
+  - solver
+
+- Portability
+
+- Bugs tracking
