@@ -56,7 +56,7 @@ However, some of the ocamldep options are slightly reinterpreted:
   * `-one-line` is the default and only mode of codept makefile output and
   thus adding this option does nothing.
 
-  *`-as-map <file>` and `-map <file>` are both reinterpreted to use the
+  * `-as-map <file>` and `-map <file>` are both reinterpreted to use the
   codept specific `-no-alias-deps` option which provides a better handling of
   delayed alias dependencies.
 
