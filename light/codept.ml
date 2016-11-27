@@ -402,14 +402,17 @@ let add_intf name =
   task := {!task with files = { mli = name :: mli; ml } }
 
 let add_file name =
-  match classify !param.synonyms name with
-  | Unit.Structure ->
-    add_impl name
-  | Signature -> add_intf name
+  if Sys.file_exists name then
+    match classify !param.synonyms name with
+    | Unit.Structure ->
+      add_impl name
+    | Signature -> add_intf name
 
 let add_invisible_file name =
-  add_invi name;
-  add_file name
+  if Sys.file_exists name then
+    ( add_invi name;
+      add_file name
+    )
 
 let add_open name =
   task := { !task with opens = [name] :: (!task).opens }
@@ -511,7 +514,7 @@ let add_include dir =
         | exception Unknown_file_type _ -> m
         | _ ->
           Name.Map.add (Unit.extract_name x)
-            (Pkg.local @@ dir @ Paths.S.parse_filename x) m )
+            (Pkg.local @@  dir @ Paths.S.parse_filename x) m )
       !param.includes files
   in
   param :=
@@ -521,7 +524,7 @@ let no_implicits () =
   param := { !param with implicits = false }
 
 let usage_msg =
-  "Codept is an alternative dependencies solver for OCaml.\n\
+  "Codept is an alternative dependency solver for OCaml.\n\
    Usage: codept [options] ⟨source files⟩.\n\
    The following options are common with ocamldep:\n"
 
