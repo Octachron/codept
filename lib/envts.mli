@@ -3,7 +3,8 @@
 (** Extended environment for composition *)
 module type extended =
 sig
-  include Interpreter.envt
+  open Interpreter
+  include envt
 
   val find_name : bool -> Module.level -> string -> t -> Module.t
 (** [find_name is_root level name env] find if there is a module [name]
