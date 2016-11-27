@@ -4,7 +4,7 @@ Both ocamldep and codept computes an over-approximation of the dependencies grap
 
 Consequently, codept can compute exact dependency graph in any situation that does not involve first class modules, and is still reliable in some standard use cases of first class modules.
 
-More precisely, codept start to fail to compute exact dependencies if a first class module whom signature can not be locally inferred at the point of binding is opened or included. Then subsequent access to the submodules of this first class module will generate fictitious dependency. For instance, with a file `a.ml` such as
+More precisely, codept start to fail to compute exact dependencies if a first class module whom signature can not be locally inferred at the point of binding is opened or included. Then subsequent access to the submodules of this first class module will generate fictitious dependency. For instance, for a file `a.ml` such as
 ```OCaml
 (* a.ml *)
 module type S = sig module B: sig end end
@@ -16,8 +16,11 @@ let g x =
   ()
 
 ```
-`codept a.ml` generate a fictitious `B` dependency and a warning.
-
+`codept a.ml` generate a fictitious `B` dependency and a warning
+```
+[Warning]:
+  First-class module M was opened while its signature was unknown.
+```
 
 #Codept overview
 
