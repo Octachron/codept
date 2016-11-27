@@ -274,7 +274,7 @@ let result =
           "definition.ml", (["Module"; "Name"; "Pp"], ["List"], []);
           "envts.mli", (["M2l";"Module";"Name"; "Interpreter"; "Paths"], [], []);
           "envts.ml", (
-            ["Cmi"; "Definition"; "Interpreter"; "M2l"; "Module"; "Name";
+            ["Cmi"; "Definition"; "Error"; "Interpreter"; "M2l"; "Module"; "Name";
              "Option"; "Paths"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
@@ -301,10 +301,10 @@ let result =
           "pp.ml", ([], ["Format"],[]);
           "result.mli", ([],[],[]);
           "result.ml", ([],["List"],[]);
-          "solver.mli", (["Envts";"Unit";"Name";"Interpreter"],["Format";"Map"],[]);
+          "solver.mli", (["Unit";"Name";"Interpreter"],["Format";"Map"],[]);
           "solver.ml", (
-            ["Definition"; "Envts"; "Interpreter"; "M2l"; "Module"; "Name";
-             "Option"; "Paths"; "Pp"; "Unit"],
+            ["Definition"; "Interpreter"; "M2l"; "Module"; "Name";
+             "Option"; "Pp"; "Unit"],
             ["List"; "Map"],[]);
           "unit.mli", (["Paths"; "Name";"M2l"],["Format";"Set"],[]);
           "unit.ml", (
