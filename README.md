@@ -2,9 +2,10 @@ Codept intends to be a dependency solver for OCaml project and an alternative to
 
 Both ocamldep and codept computes an over-approximation of the dependencies graph of OCaml project. However, codept uses whole project analysis to reduce the number of fictitious dependencies inferred at the project scale, whereas ocamldep is, by design, limited to local file analysis.
 
-Consequently, codept can compute exact dependency graph in any situation that does not involve first class modules, and is still reliable in some standard use cases of first class modules.
+Consequently, bugs notwithstanding, codept can compute exact dependency graph in any situation that does not involve first class modules, and is still reliable in some standard use cases of first class modules.
 
-More precisely, codept start to fail to compute exact dependencies if a first class module whom signature can not be locally inferred at the point of binding is opened or included. Then subsequent access to the submodules of this first class module will generate fictitious dependency. For instance, for a file `a.ml` such as
+## Limitations
+More precisely, codept start to fail to compute exact dependencies if a first class module whom signature can not be locally inferred at the point of binding is opened or included. Then subsequent access to submodules of this first class module will generate fictitious dependency. For instance, for a file `a.ml` such as
 ```OCaml
 (* a.ml *)
 module type S = sig module B: sig end end
@@ -24,19 +25,21 @@ let g x =
 
 #Codept overview
 
-In more details, `codept` works by combining together two main ingredients:
+In more details, `codept` works by combining together three main ingredients:
 
 - an AST, called M2l, specialized to handle only module level constructions
   (see `M2l.mli` )
 
-- a family of interruptible interpreters that given an environment and a
+- an interruptible interpreter which given an environment and a
   `m2l` Ast computes either the signature represented by the m2l ast, or in
   presence of non-resolved dependencies, a simplified m2l ast.
   (see `Interpreter.ml`)
 
+- a family of environment modules that can for instance track dependencies on the
+  fly, search for signature of included library toplevel modules, or approximate
+  unknowable modules (see `Envts.ml`).
 
-
-Currently, these two elements are then used in a basic solver (see `solver.ml`). Given a list of ".ml" and ".mli" files and a starting environment, this basic solver iterates over the list of unresolved files and try to compute their signature.
+Currently, these three elements are then used in a basic solver (see `solver.ml`). Given a list of ".ml" and ".mli" files and a starting environment, this basic solver iterates over the list of unresolved files and try to compute their signature.
 
 If the computation is successful, the resulting signature is added to the current environment and the current file is removed from the list of unresolved files. Otherwise the solver continues its iteration.
 
@@ -45,11 +48,19 @@ Cycles and non-resolvable dependencies are detected when the solver does not mak
 #Usage
 
 Codept can be used as a drop-in replacement for ocamldep, on Linux at least.
-More tests are needed on other platforms.
+More tests are needed on other platforms. Unfortunately, most of OCaml build systems
+are built around ocamldep limitation and would not benefit directly from replacing ocamldep by codept. A possible exception is self-cycle detection: invoking ocamldep
+on the following "a.ml" file
+```
+(* a.ml *)
+open A
+```
+yields directly a circular dependency error.
+
 
 ##Compatibility with ocamldep
-The only ocamldep options not implemented by codept is `-allow-approx`:
-codept can only process syntactically valid files.
+Most of the ocamldep options are also supported by codept. The only ocamldep options not implemented by codept is `-allow-approx`: codept can only process syntactically valid files (if the main OCaml migrates to a menhir parser, it might be worthwile
+to reimplement a similar feature in codept).
 
 However, some of the ocamldep options are slightly reinterpreted:
 
@@ -63,7 +74,7 @@ However, some of the ocamldep options are slightly reinterpreted:
   * `-open <module>` does not open the module `<module>` when analyzing the
     `<module.ml>` or `<module.mli>`
 
-Another possible difference between codept and ocamldep output is codept built-in detection of dependency cycles. Within codept, cycles triggers a fatal error message and stops the current analysis.
+Another possible difference between codept and ocamldep output is codept built-in detection of dependency cycles. Within codept, cycles triggers a fatal error message andstops the current analysis.
 
 
 ##Codept-only options
@@ -98,8 +109,8 @@ Some new options explore codept possibilities and intermediary representations
 
   * `-closed-world` stops the analysis as soon as a non-resolvable module is
     identified. Contrarily, codept default mode assumes that non-resolvable
-    module have for signature `sig end`. Note that this approximation can only
-    lead to an over-approximation of dependencies.
+    module have for signature `sig end` (this approximation can only
+    lead to an over-approximation of dependencies).
 
 For a more exhaustive list of options, see `codept -help`.
 
