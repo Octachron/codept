@@ -45,8 +45,11 @@ struct
     | [a] -> [Filename.chop_extension a]
     | a :: q -> a :: chop_extension q
 
-  let parse_filename =
-    String.split_on_char (String.get (Filename.dir_sep) 0)
+  let parse_filename name =
+    let l = String.split_on_char (String.get (Filename.dir_sep) 0) name in
+    match List.rev l with
+    | "" :: q -> List.rev q
+    | l -> List.rev l
 
 end
 module S = Simple

@@ -1,7 +1,5 @@
 (** Basic solver *)
 
-module Envt =  Envts.Tr
-
 (** Create a solver using the environment module [Envt] for
     name resolution and dependendy trackinf and
     the parameter module [Param] *)

@@ -1,17 +1,12 @@
 
-module Eval = Envts.Interpreters.Tr
-module Envt =  Envts.Tr
-
-open Unit
-
 module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
+  open Unit
 
   module Eval = Interpreter.Make(Envt)(Param)
 
   let compute_more env unit =
     let result = Eval.m2l env unit.code in
     Envt.deps env, result
-    (*Paths.Pkg.Set.union !(env.externs) !(env.core.deps), result*)
 
   exception Cycle of Envt.t * unit list
 
@@ -60,7 +55,7 @@ end
 
 
 module Failure = struct
-
+  open Unit
   type status =
     | Cycle of Name.t
     | Extern of Name.t

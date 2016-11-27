@@ -157,10 +157,10 @@ let signature=
 {name="Snapshot"; origin=Submodule; args=[]; signature=empty}]}; 
 {name="Stack"; origin=Unit {source=Special "stdlib"; file=["Stack"]}; args=[]; signature=empty}; 
 {name="StdLabels"; origin=Unit {source=Special "stdlib"; file=["StdLabels"]}; args=[]; signature=of_list 
-[{name="Array"; origin=Alias "ArrayLabels"; args=[]; signature=empty}; 
-{name="Bytes"; origin=Alias "BytesLabels"; args=[]; signature=empty}; 
-{name="List"; origin=Alias "ListLabels"; args=[]; signature=empty}; 
-{name="String"; origin=Alias "StringLabels"; args=[]; signature=empty}]}; 
+[{name="Array"; origin=Alias (Unit {source=Special "stdlib"; file=["ArrayLabels"]}); args=[]; signature=empty}; 
+{name="Bytes"; origin=Alias (Unit {source=Special "stdlib"; file=["BytesLabels"]}); args=[]; signature=empty}; 
+{name="List"; origin=Alias (Unit {source=Special "stdlib"; file=["ListLabels"]}); args=[]; signature=empty}; 
+{name="String"; origin=Alias (Unit {source=Special "stdlib"; file=["StringLabels"]}); args=[]; signature=empty}]}; 
 {name="Str"; origin=Unit {source=Special "stdlib"; file=["Str"]}; args=[]; signature=empty}; 
 {name="Stream"; origin=Unit {source=Special "stdlib"; file=["Stream"]}; args=[]; signature=empty}; 
 {name="String"; origin=Unit {source=Special "stdlib"; file=["String"]}; args=[]; signature=empty}; 

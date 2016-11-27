@@ -223,47 +223,28 @@ module Tracing(Envt:extended) = struct
              deps: P.set ref
            }
 
-  let rec resolve n env =
-    match (Envt.find_name true Module n env).M.origin with
-    | Origin.Unit p -> p
-    | Origin.Alias n -> resolve n env
-    | Origin.Extern -> { source = Unknown; file = [n] }
-    | exception Not_found  -> { source = Unknown; file = [n] }
-    | Arg | Rec | First_class | Submodule ->
-      assert false
-
-  let record n env =
-    env.deps := P.Set.add (resolve n env.env) !(env.deps)
-
-
-  let rec record_alias_origin n env =
-    match (Envt.find_name true Module n env.env).M.origin with
-    | Origin.Unit _ -> record n env
-    | Origin.Alias n -> record_alias_origin n env
-    | exception Not_found  -> record n env
-    (* if an aliased module is not found, then it is an external module which
-       dependency should be recorded. *)
-    | Arg | Rec | First_class | Submodule | Extern -> ()
+  let record p env =
+    env.deps := P.Set.add p !(env.deps)
 
   let extend env =
     { env; deps = ref P.Set.empty }
 
-  let smart_record alias global_env env m =
+  let record_or_delay alias env m =
     let open Module in
     match m.origin with
-    | Origin.Unit _ -> if not alias then
-        (record m.name env; None)
+    | Origin.Unit p -> if not alias then
+        (record p env; None)
       else
-        Some m.name
-    | Alias n ->
+        Some p
+    | Alias (Unit p) ->
       if not alias then
-        (record n global_env; None)
+        (record p env; None)
       else
-        Some n
+        Some p
     | _ -> None
 
-  let delayed_record env = Option.iter (fun n ->
-      record n env
+  let delayed_record env = Option.iter (fun p ->
+      record p env
     )
 
   let rec find0 ~transparent start_env start delayed level path env =
@@ -273,11 +254,11 @@ module Tracing(Envt:extended) = struct
       delayed_record start_env delayed;
       let m = Envt.find_name start level a env.env in
       if start && level = Module then
-        ignore @@ smart_record transparent start_env env m;
+        ignore @@ record_or_delay transparent env m;
       if not transparent then
         begin
           match m.origin with
-          | Alias n -> record_alias_origin n start_env
+          | Alias (Unit p) -> record p start_env
           | _ -> ()
         end;
       m
@@ -286,14 +267,14 @@ module Tracing(Envt:extended) = struct
       let m = Envt.find_name start M.Module a env.env in
       let delayed =
         if start then
-          smart_record transparent start_env env m
+          record_or_delay transparent env m
         else if transparent then
           match delayed, m.origin with
-          | Some _, Alias w -> Some w
+          | Some _, Alias (Unit w) -> Some w
           | _ -> None
         else
           match m.origin with
-          | Alias n -> record_alias_origin n start_env; None
+          | Alias (Unit p) -> record p start_env; None
           | _ -> None
       in
       find0 ~transparent start_env false delayed level q

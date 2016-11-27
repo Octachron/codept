@@ -25,13 +25,13 @@ module Origin = struct
   type t =
     | Unit of source (** aka toplevel module *)
     | Extern (** aka unknown module *)
-    | Alias of Name.t (** M = A… *)
+    | Alias of t (** M = A… *)
     | Submodule
     | First_class (** Not resolved first-class module *)
     | Arg (** functor argument *)
     | Rec (** mockup module for recursive definitions *)
 
-  let pp ppf = function
+  let rec pp ppf = function
     | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
     | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
     | Unit { Pkg.source = Unknown; _} -> Pp.fp ppf "#!"
@@ -41,16 +41,16 @@ module Origin = struct
     | Submodule -> Pp.fp ppf "."
     | First_class -> Pp.fp ppf "'"
     | Arg -> Pp.fp ppf "§"
-    | Alias n -> Pp.fp ppf "(≡%s…)" n
+    | Alias n -> Pp.fp ppf "(≡%a)" pp n
 
-    let reflect ppf = function
+    let rec reflect ppf = function
     | Unit pkg  -> Pp.fp ppf "Unit %a" Pkg.reflect pkg
     | Rec -> Pp.fp ppf "Rec"
     | Extern -> Pp.fp ppf "Unknown"
     | Submodule -> Pp.fp ppf "Submodule"
     | First_class -> Pp.fp ppf "First_class"
     | Arg -> Pp.fp ppf "Arg"
-    | Alias n -> Pp.fp ppf {|Alias "%s"|} n
+    | Alias n -> Pp.fp ppf {|Alias (%a)|} reflect n
 
   let at_most max v = match max, v with
     | (First_class|Rec|Arg|Extern| Alias _ ) , _ -> max

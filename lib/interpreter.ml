@@ -190,8 +190,7 @@ module Make(Envt:envt)(Param:param) = struct
           let p = P.of_module x in
           let p = if P.is_functor p || not bind then p
             else
-              { p with origin = M.Origin.at_most p.origin @@
-                         Alias (Paths.Simple.prefix i) } in
+              { p with origin = Alias p.origin } in
           Ok p
         | exception Not_found -> Error (Ident i: module_expr)
       end
@@ -250,7 +249,9 @@ module Make(Envt:envt)(Param:param) = struct
       end
     | Alias i ->
       begin match find Module i state with
-        | x -> Ok { (P.of_module x) with origin = Alias (Paths.Simple.prefix i) }
+        | x ->
+          let m = P.of_module x in
+          Ok { m with origin = Alias m.origin }
         | exception Not_found -> Error (Alias i)
       end
     | With w ->

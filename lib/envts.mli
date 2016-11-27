@@ -1,4 +1,3 @@
-
 (** Different environment implementations *)
 
 (** Extended environment for composition *)

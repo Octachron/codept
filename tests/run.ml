@@ -275,7 +275,7 @@ let result =
           "definition.ml", (["Module"; "Name"; "Pp"], ["List"], []);
           "envts.mli", (["M2l";"Module";"Name"; "Interpreter"; "Paths"], [], []);
           "envts.ml", (
-            ["Cmi"; "Definition"; "Error"; "Interpreter"; "M2l"; "Module"; "Name";
+            ["Cmi"; "Definition"; "Interpreter"; "M2l"; "Module"; "Name";
              "Option"; "Paths"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
