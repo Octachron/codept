@@ -161,6 +161,7 @@ let result =
     ["first_class_more.ml", [] ];
     ["functor.ml", [] ];
     ["functor_with_include.ml", [] ];
+    [ "hidden.ml", ["Ext"] ];
     ["include.ml", ["List"] ];
     ["include_functor.ml", ["A"] ];
     ["letin.ml", ["List"] ];
