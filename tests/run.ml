@@ -3,7 +3,7 @@ module Pth = Paths.Pkg
 let local file = Pth.local @@ Paths.S.parse_filename file
 
 let organize files =
-  let add_name m n  =  Name.Map.add (Unit.extract_name n) (local n) m in
+  let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
   let units = Unit.( split @@ group files ) in
@@ -300,6 +300,10 @@ let result =
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
+          "read.mli", (["M2l";"Name"],[],[]);
+          "read.ml", (["Ast_converter"; "Error"; "M2l"],
+                      ["Filename"; "Format"; "Location"; "Parse"; "Pparse";
+                       "String"; "Syntaxerr"],[]);
           "result.mli", ([],[],[]);
           "result.ml", ([],["List"],[]);
           "solver.mli", (["Unit";"Name";"Interpreter"],["Format";"Map"],[]);
@@ -307,11 +311,10 @@ let result =
             ["Definition"; "Interpreter"; "M2l"; "Module"; "Name";
              "Option"; "Pp"; "Unit"],
             ["List"; "Map"],[]);
-          "unit.mli", (["Paths"; "Name";"M2l"],["Format";"Set"],[]);
+          "unit.mli", (["Paths"; "M2l"],["Format";"Set"],[]);
           "unit.ml", (
-            ["Ast_converter"; "Error"; "M2l"; "Option"; "Paths"; "Pp"],
-            ["Filename"; "Format"; "List"; "Location"; "Parse"; "Pparse";
-             "Set"; "String"; "Syntaxerr"],
+            ["M2l"; "Option"; "Paths"; "Pp"; "Read"],
+            [ "List"; "Set"],
             []);
           "warning.mli", ([],["Format"],[]);
           "warning.ml", ([],["Format"],[]);
