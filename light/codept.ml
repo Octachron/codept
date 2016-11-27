@@ -74,30 +74,32 @@ let extension name =
   let r = try String.rindex name '.' with Not_found -> n-1 in
   String.sub name (r+1) (n-r-1)
 
-let to_m2l f =
-  match extension f with
-  | "ml" ->
-    f
-    |> open_in |> Lexing.from_channel
-    |> Parse.implementation |> Ast_converter.structure
-  | "mli" ->
-    f
-    |> open_in |> Lexing.from_channel
-    |> Parse.interface |> Ast_converter.signature
-  | "cmi" ->
+let classify synonyms f =
+  let ext = extension f in
+  if Name.Set.mem ext synonyms.Unit.mli then
+    M2l.Signature
+  else if Name.Set.mem ext synonyms.ml then
+    M2l.Structure
+  else
+    raise @@ Unknown_file_type ext
+
+let to_m2l synonyms f =
+  if extension f = "cmi" then
     Cmi.m2l f
-  | ext -> raise (Unknown_file_type ext)
+  else
+    let kind = classify synonyms f in
+    snd @@ Read.file kind f
 
 let one_pass param f =
   let module Param = (val lift param) in
   let module Sg = Envts.Interpreters.Sg(Param) in
-  let start = to_m2l f in
+  let start = to_m2l param.synonyms f in
   match start |> Sg.m2l S.empty with
   | Ok (_state,d) -> Pp.fp std "Computation finished:\n %a@." S.pp d
   | Error h -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
 
-let m2l _param f =
-  let start = to_m2l f in
+let m2l param f =
+  let start = to_m2l param.synonyms f in
   start
   |> Normalize.all
   |> snd
@@ -371,15 +373,6 @@ let makefile param task =
       | { ml = None; mli = None } -> ()
     ) m
 
-
-let classify synonyms f =
-  let ext = extension f in
-  if Name.Set.mem ext synonyms.Unit.mli then
-    M2l.Signature
-  else if Name.Set.mem ext synonyms.ml then
-    M2l.Structure
-  else
-    raise @@ Unknown_file_type ext
 
 let task = ref {
     files = { Unit.ml = []; Unit.mli = [] };
