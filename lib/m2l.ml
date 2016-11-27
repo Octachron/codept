@@ -9,6 +9,8 @@ module P = M.Partial
 
 type 'a bind = {name:Name.t; expr:'a}
 
+type kind = Structure | Signature
+
 type expression =
   | Defs of Definition.t (** Resolved module actions M = … / include … / open … *)
   | Open of Paths.Simple.t (** [open A.B.C] ⇒ [Open [A;B;C]]  *)

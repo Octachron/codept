@@ -2,12 +2,10 @@
 module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 
-type kind = Structure | Signature
-
 type t = {
   name: string;
   path: Pkg.t;
-  kind: kind;
+  kind: M2l.kind;
   code: M2l.t;
   dependencies: Pkg.set
 }
@@ -63,28 +61,8 @@ let pp ppf unit =
     M2l.pp unit.code
     Pkg.Set.pp unit.dependencies
 
-let extract_name filename = String.capitalize_ascii @@
-  Filename.chop_extension @@ Filename.basename filename
-
 let read_file kind filename =
-  let name = extract_name filename in
-  Location.input_name := filename;
-  let input_file = Pparse.preprocess filename in
-  let code =  try
-      match kind with
-      | Structure ->
-        Ast_converter.structure @@
-        Pparse.file Format.err_formatter ~tool_name:"codept" input_file
-          Parse.implementation Pparse.Structure
-      | Signature ->
-        Ast_converter.signature @@
-        Pparse.file Format.err_formatter ~tool_name:"codept" input_file
-          Parse.interface Pparse.Signature
-    with Syntaxerr.Error _ ->
-      Pparse.remove_preprocessed input_file;
-      Error.log "Syntax error in %s\n" filename
-  in
-  Pparse.remove_preprocessed input_file;
+  let name, code = Read.file kind filename in
   { name;
     kind;
     path = { Pkg.source = Local; file=Paths.S.parse_filename filename };

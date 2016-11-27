@@ -128,7 +128,7 @@ let open_in opens unit =
     ) opens unit
 
 let organize opens files =
-  let add_name m n  =  Name.Map.add (Unit.extract_name n) (local n) m in
+  let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
   let units = Unit.( split @@ group files ) in
@@ -375,9 +375,9 @@ let makefile param task =
 let classify synonyms f =
   let ext = extension f in
   if Name.Set.mem ext synonyms.Unit.mli then
-    Unit.Signature
+    M2l.Signature
   else if Name.Set.mem ext synonyms.ml then
-    Unit.Structure
+    M2l.Structure
   else
     raise @@ Unknown_file_type ext
 
@@ -404,7 +404,7 @@ let add_intf name =
 let add_file name =
   if Sys.file_exists name then
     match classify !param.synonyms name with
-    | Unit.Structure ->
+    | M2l.Structure ->
       add_impl name
     | Signature -> add_intf name
 
@@ -513,7 +513,7 @@ let add_include dir =
         match classify !param.synonyms x with
         | exception Unknown_file_type _ -> m
         | _ ->
-          Name.Map.add (Unit.extract_name x)
+          Name.Map.add (Read.name x)
             (Pkg.local @@  dir @ Paths.S.parse_filename x) m )
       !param.includes files
   in

@@ -30,6 +30,8 @@
 type 'a bind = { name: Name.t; expr:'a }
 (** ['a bind] is an auxilliary type used for module/module type binding *)
 
+type kind = Structure | Signature
+(** The nature (ml/mli) of an m2l ast *)
 
 (** An m2l ast/code fragment is a list of module level expression *)
 type m2l = expression list

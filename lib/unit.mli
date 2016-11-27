@@ -2,11 +2,11 @@
 
 module Pkg = Paths.Pkg
 module Pth = Paths.Simple
-type kind = Structure | Signature
+
 type t = {
   name : string;
   path : Pkg.t;
-  kind : kind;
+  kind : M2l.kind;
   code : M2l.t;
   dependencies : Pkg.set;
 }
@@ -34,16 +34,12 @@ module Group :
       end
   end
 
-
-val extract_name : string -> Name.t
-(** extract a module name from a file name*)
-
-val read_file : kind -> string -> unit
+val read_file : M2l.kind -> string -> unit
 (** [read_file kind filename] reads the file, extracting
     the corresponding m2l ast
 *)
 
-val group_by : (string -> kind) -> string list -> Group.t Pth.map
+val group_by : (string -> M2l.kind) -> string list -> Group.t Pth.map
 val group : string list pair -> Group.t Pth.map
 
 val split : Group.t Pth.map -> unit list pair
