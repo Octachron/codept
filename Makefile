@@ -10,4 +10,4 @@ test: tests/**/*.ml codept
 	&& ./run.native
 
 doc: codept
-	ocamlbuild -use-ocamlfind codept.docdir/index.html
+	ocamlbuild -use-ocamlfind -docflags -charset,utf-8 codept.docdir/index.html
