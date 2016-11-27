@@ -220,7 +220,14 @@ module Partial = struct
     {name;origin; args = p.args; signature = p.result }
 
   let to_arg name (p:t) =
-    {name;origin=Arg; args = p.args; signature = p.result }
+    let origin =
+      (*if the signature of the argument is unknwon, we need
+        to keep this information for drop_arg *)
+      if p.origin = Extern then
+        Origin.Extern
+      else
+        Origin.Arg in
+    {name; origin; args = p.args; signature = p.result }
 
   let of_module {args;signature;origin; _} = {origin;result=signature;args}
 

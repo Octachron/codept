@@ -159,6 +159,7 @@ let result =
     ["even_more_functor.ml", ["E"; "A"]];
     ["first-class-modules.ml", ["Mark";"B"] ];
     ["first_class_more.ml", [] ];
+    ["foreign_arg_sig.ml", ["Ext";"Ext2"] ];
     ["functor.ml", [] ];
     ["functor_with_include.ml", [] ];
     [ "hidden.ml", ["Ext"] ];
