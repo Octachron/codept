@@ -109,7 +109,10 @@ let gen_deps_test libs inner_test l =
     ) files in
   exp =? ml && exp =? mli
 
-let deps_test = gen_deps_test [] simple_dep_test
+let deps_test l =
+  try gen_deps_test [] simple_dep_test l with
+  | S.Cycle (_,units) ->
+    Error.log "%a" Solver.Failure.pp_cycle units
 
 let ocamlfind name =
   let cmd = "ocamlfind query " ^ name in
@@ -170,6 +173,7 @@ let result =
     ["more_functor.ml", ["Ext";"Ext2"] ];
     ["nested_modules.ml", [] ];
     ["no_deps.ml", [] ];
+    ["not_self_cycle.ml", ["E"] ];
     ["opens.ml", ["A";"B"] ];
     ["pattern_open.ml", ["E1"; "E2"; "E3";"E4"] ];
     ["recmods.ml", ["Ext"]];
@@ -177,6 +181,7 @@ let result =
     ["simple.ml", ["G";"E"; "I"; "A"; "W"; "B"; "C"; "Y"; "Ext"]];
     ["solvable.ml", ["Extern"]];
     ["tuple.ml", ["A"; "B"; "C"]];
+    ["unknown_arg.ml", ["Ext"] ];
     ["with.ml", ["Ext"] ]
 
 

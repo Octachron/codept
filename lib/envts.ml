@@ -91,13 +91,19 @@ module Open_world(Envt:extended_with_deps) = struct
         match Envt.find ~transparent:true ~alias:true level [root] env.core with
         | exception Not_found -> true
         | _ -> false in
-      if Name.Map.mem root env.world then
+      if Name.Map.mem root env.world
+      && record_level level path (* module types never come from files *)
+      && undefined root (* is root defined to be something else than
+                           the unit root? *)
+      then
         raise Not_found
       else if not (alias && transparent) && undefined root then
         (
           if record_level level path then
-            env.externs := P.Set.add
-                { P.file = [root]; source = Unknown } !(env.externs);
+            begin
+              env.externs := P.Set.add
+                  { P.file = [root]; source = Unknown } !(env.externs)
+            end;
           approx path
         )
       else
@@ -258,7 +264,9 @@ module Tracing(Envt:extended) = struct
       if not transparent then
         begin
           match m.origin with
-          | Alias (Unit p) -> record p start_env
+          | Alias (Unit p) ->
+            if not (level = Module_type && start) then
+                record p start_env
           | _ -> ()
         end;
       m
