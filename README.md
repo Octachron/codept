@@ -216,3 +216,7 @@ let g x =
 - Portability
 
 - Bugs tracking
+
+- Proper library documentation
+
+- Improved library packaging
