@@ -18,11 +18,15 @@
 *)
 
 
-let (@%) l l' =
-  let open M2l in
-  match l,l' with
-  | [Minor m] , Minor m' :: q -> Minor( Annot.merge m m') :: q
-  | _ -> l @ l'
+let (@%) opt_name l =
+  match opt_name with
+  | None -> l
+  | Some name ->
+    let open M2l in
+    match l with
+    | Minor m :: q ->
+      Minor { m with access = Name.Set.add name m.access} :: q
+    | l -> Minor (Annot.access name) :: l
 
 
 let token = Lexer.token
@@ -32,33 +36,35 @@ let rec inf_start lexbuf =
   | Parser.INCLUDE -> ~~inf_include lexbuf
   | Parser.MODULE -> ~~inf_module lexbuf
   | Parser.UIDENT name ->
-    let access =  ~~(inf_uident name) lexbuf in
-    access @% ~~inf_start lexbuf
+    let access =  inf_uident name lexbuf in
+    access @% inf_start lexbuf
   | Parser.EOF -> []
-  | _ -> ~~inf_start lexbuf
+  | _ -> inf_start lexbuf
+  | exception Lexer.Error _ -> inf_start lexbuf
 and inf_module lexbuf =
   match token lexbuf with
-  | Parser.UIDENT name -> M2l.(Bind { name; expr = Str []}) :: ~~inf_start lexbuf
+  | Parser.UIDENT name -> M2l.(Bind { name; expr = Str []}) :: inf_start lexbuf
   | Parser.EOF -> []
-  | _ -> ~~inf_start lexbuf
+  | _ -> inf_start lexbuf
 and inf_open lexbuf =
   match token lexbuf with
   | Parser.UIDENT name ->
-    M2l.Open ( name :: !inf_path_at_dot lexbuf)  :: ~~inf_start lexbuf
+    M2l.Open ( name :: !inf_path_at_dot lexbuf)  :: inf_start lexbuf
   | Parser.EOF -> []
-  | _ -> ~~inf_start lexbuf
+  | _ -> inf_start lexbuf
 and inf_include lexbuf =
   match token lexbuf with
   | Parser.UIDENT name ->
-    M2l.(Include (Ident (name :: !inf_path_at_dot lexbuf)))  :: ~~inf_start lexbuf
+    M2l.(Include (Ident (name :: !inf_path_at_dot lexbuf)))  :: inf_start lexbuf
   | Parser.EOF -> []
-  | _ -> ~~inf_start lexbuf
+  | _ -> inf_start lexbuf
 and inf_uident name lexbuf =
   match token lexbuf with
   | Parser.DOT ->
     let _ = !inf_path lexbuf in
-    [M2l.Minor (M2l.Annot.access name)]
-  | _ -> []
+    Some name
+  | _ -> None
+  | exception Lexer.Error _ -> None
 and inf_path lexbuf =
   match token lexbuf with
   | Parser.UIDENT name -> name :: !inf_path_at_dot lexbuf
@@ -67,12 +73,11 @@ and inf_path_at_dot lexbuf =
   match token lexbuf with
   | Parser.DOT -> inf_path lexbuf
   | _ -> []
-and (~~) f x =
-    try f x with Lexer.Error _ -> inf_start x
-and (!) f x =
-    try f x with Lexer.Error _ -> []
+and (~~) f x = try f x with Lexer.Error _ -> inf_start x
+and (!) f x = try f x with Lexer.Error _ -> []
 
-let lower lex = snd @@ M2l.Normalize.all @@ ~~inf_start lex
+
+let lower lex = snd @@ M2l.Normalize.all @@ inf_start lex
 
 let to_upper m2l =
   let add, union = Name.Set.(add,union) in
