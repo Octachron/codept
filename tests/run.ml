@@ -1,6 +1,6 @@
 module Pth = Paths.Pkg
 
-let local file = Pth.local @@ Paths.S.parse_filename file
+let local = Pth.local
 
 let organize files =
   let add_name m n  =  Name.Map.add (Read.name n) (local n) m in

@@ -209,7 +209,8 @@ module Pkg = struct
   end
 
   type set = Set.t
-  let local file = { source = Local; file }
+  let local file = { source = Local; file = S.parse_filename file }
+  let (/) simple {source; file} = {source; file = simple @ file }
 
 end
 module P = Pkg

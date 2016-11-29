@@ -65,7 +65,7 @@ let read_file kind filename =
   let name, code = Read.file kind filename in
   { name;
     kind;
-    path = { Pkg.source = Local; file=Paths.S.parse_filename filename };
+    path = Pkg.local filename;
     code;
     dependencies = Pkg.Set.empty
   }

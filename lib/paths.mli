@@ -57,8 +57,8 @@ module Pkg :
 
     val filename : ?sep:string -> t -> string
 
-
-    val local : Simple.t -> path
+    val local : string -> path
+    val (/): S.t -> t -> t
 
     val is_known : t -> bool
     val module_name : path -> string

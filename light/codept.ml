@@ -125,7 +125,7 @@ let topos_compare order x y =
   | Some _, None -> 1
   | None, None -> compare x y
 
-let local file = Pkg.local @@ Paths.S.parse_filename file
+let local = Pkg.local
 
 let open_in opens unit =
   List.fold_right (fun m (unit:Unit.t) ->
@@ -512,7 +512,8 @@ let add_include dir =
         | exception Unknown_file_type _ -> m
         | _ ->
           Name.Map.add (Read.name x)
-            (Pkg.local @@  dir @ Paths.S.parse_filename x) m )
+            Pkg.( dir / local x) m
+      )
       !param.includes files
   in
   param :=
