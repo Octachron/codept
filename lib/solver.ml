@@ -8,7 +8,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
     let result = Eval.m2l env unit.code in
     Envt.deps env, result
 
-  exception Cycle of Envt.t * unit list
+  exception Cycle of Envt.t * u list
 
   let eval ?(learn=true) (finished, core, rest) unit =
     let open M2l in

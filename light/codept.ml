@@ -4,6 +4,7 @@ module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 
 open M2l
+let (%) f g x = f (g x)
 
 module S = Module.Sig
 let std = Format.std_formatter
@@ -138,11 +139,16 @@ let organize opens files =
   let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
-  let units = Unit.( split @@ group files ) in
-  let units =
-    let f = List.map (open_in opens) in
-    { Unit.ml = f units.ml; mli = f units.mli }
+    let read =
+    let open Unit in
+    map @@ unimap (Option.fmap % read_file) { ml=M2l.Structure; mli=M2l.Signature}
   in
+  let units = Unit.Groups.Unit.split
+    @@ Paths.S.Map.map read
+    @@ Unit.Groups.Filename.group
+    @@ files in
+  let units =
+    Unit.unimap (List.map @@ open_in opens) units in
   units, m
 
 let base_env no_stdlib =
@@ -285,7 +291,7 @@ let dot param task =
   Pp.fp Pp.std "}\n"
 
 let regroup {Unit.ml;mli} =
-  let add l m = List.fold_left (fun x y -> Unit.Group.Map.add y x) m l in
+  let add l m = List.fold_left (fun x y -> Unit.Groups.Unit.Map.add y x) m l in
   add mli @@ add ml @@ Pth.Map.empty
 
 
