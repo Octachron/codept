@@ -90,6 +90,11 @@ let to_m2l synonyms f =
     let kind = classify synonyms f in
     snd @@ Read.file kind f
 
+let approx_file _param f =
+  let _name, lower, upper = Approx_parser.file f in
+  Pp.fp std  "lower bound:%a@. upper bound:%a@."
+    M2l.pp lower M2l.pp upper
+
 let one_pass param f =
   let module Param = (val lift param) in
   let module Sg = Envts.Interpreters.Sg(Param) in
@@ -562,6 +567,7 @@ let args = Cmd.[
 
     "-dot", Unit (set dot), ": print dependencies in dot format";
     "-makefile", Unit (set makefile), ": print makefile depend file(default)";
+    "-approx-m2l", Unit (set_iter approx_file), ": print approximated m2l ast:";
     "-m2l", Unit (set_iter m2l), ": print m2l ast:";
     "-one-pass", Unit (set_iter one_pass), ": print m2l ast after one pass\
                                             \n\n Module suboptions:\n";

@@ -17,6 +17,14 @@
    dependencies from this AST will gives us an upper bound of wished dependencies.
 *)
 
+
+let (@%) l l' =
+  let open M2l in
+  match l,l' with
+  | [Minor m] , Minor m' :: q -> Minor( Annot.merge m m') :: q
+  | _ -> l @ l'
+
+
 let token = Lexer.token
 let rec inf_start lexbuf =
   match token lexbuf with
@@ -25,7 +33,7 @@ let rec inf_start lexbuf =
   | Parser.MODULE -> ~~inf_module lexbuf
   | Parser.UIDENT name ->
     let access =  ~~(inf_uident name) lexbuf in
-    access @ ~~inf_start lexbuf
+    access @% ~~inf_start lexbuf
   | Parser.EOF -> []
   | _ -> ~~inf_start lexbuf
 and inf_module lexbuf =
@@ -64,7 +72,7 @@ and (~~) f x =
 and (!) f x =
     try f x with Lexer.Error _ -> []
 
-let lower = ~~inf_start
+let lower lex = snd @@ M2l.Normalize.all @@ ~~inf_start lex
 
 let to_upper m2l =
   let add, union = Name.Set.(add,union) in
@@ -76,4 +84,11 @@ let to_upper m2l =
        | Include (Ident path) -> add (List.hd path) s
        | _ -> s
       ) Name.Set.empty m2l in
-  Minor { Annot.empty with access }
+  [Minor { Annot.empty with access }]
+
+let file filename =
+  let name = Read.name filename in
+  let chan = open_in filename in
+  let lex = Lexing.from_channel chan in
+  let low = lower lex in
+  name, low, to_upper low
