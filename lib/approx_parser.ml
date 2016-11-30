@@ -28,8 +28,15 @@ let (@%) opt_name l =
       Minor { m with access = Name.Set.add name m.access} :: q
     | l -> Minor (Annot.access name) :: l
 
+let stack = ref []
 
-let token = Lexer.token
+let token lexbuf =
+  match !stack with
+  | [] -> Lexer.token lexbuf
+  | a :: q -> stack := q; a
+
+let rewind a = stack := a :: !stack
+
 let rec inf_start lexbuf =
   match token lexbuf with
   | Parser.OPEN -> ~~inf_open lexbuf
@@ -43,9 +50,22 @@ let rec inf_start lexbuf =
   | exception Lexer.Error _ -> inf_start lexbuf
 and inf_module lexbuf =
   match token lexbuf with
-  | Parser.UIDENT name -> M2l.(Bind { name; expr = Str []}) :: inf_start lexbuf
+  | Parser.UIDENT name ->
+    begin match inf_bind lexbuf with
+    | None ->  M2l.(Bind { name; expr = Str []}) :: inf_start lexbuf
+    | Some alias ->
+      M2l.(Bind { name; expr = Ident alias}) :: inf_start lexbuf
+    end
   | Parser.EOF -> []
   | _ -> inf_start lexbuf
+and inf_bind lexbuf = match token lexbuf with
+  | Parser.EQUAL ->
+    begin match token lexbuf with
+      | UIDENT name -> Some (name :: !inf_path_at_dot lexbuf)
+      | _ -> None
+    end
+  | _ -> None
+
 and inf_open lexbuf =
   match token lexbuf with
   | Parser.UIDENT name ->
@@ -63,7 +83,7 @@ and inf_uident name lexbuf =
   | Parser.DOT ->
     let _ = !inf_path lexbuf in
     Some name
-  | _ -> None
+  | x -> rewind x; None
   | exception Lexer.Error _ -> None
 and inf_path lexbuf =
   match token lexbuf with
@@ -72,7 +92,7 @@ and inf_path lexbuf =
 and inf_path_at_dot lexbuf =
   match token lexbuf with
   | Parser.DOT -> inf_path lexbuf
-  | _ -> []
+  | a -> rewind a; []
 and (~~) f x = try f x with Lexer.Error _ -> inf_start x
 and (!) f x = try f x with Lexer.Error _ -> []
 
