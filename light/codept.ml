@@ -24,6 +24,7 @@ type param =
     no_stdlib:bool;
     implicits: bool;
     closed_world: bool;
+    fail_early:bool;
   }
 
 
@@ -56,7 +57,8 @@ let param = ref {
   implicits = true;
   no_stdlib = false;
   synonyms = {Unit.ml = Name.Set.singleton "ml" ; mli = Name.Set.singleton "mli" };
-  closed_world = false
+  closed_world = false;
+  fail_early = true;
 }
 
 
@@ -137,24 +139,51 @@ let open_in opens unit =
       | m -> { unit with code = M2l.Open m :: unit.code }
     ) opens unit
 
-let organize opens files =
+let read_mli fail_early (map,brokens) kind mli =
+  let module Approx = Approx_parser.Unit in
+  let module M = Unit.Groups.Unit.Map in
+  match Unit.read_file kind mli with
+  | Ok u -> M.add u map, brokens
+  | Error msg ->
+    if fail_early then
+      Error.syntaxerr msg
+    else
+      let fiction = Approx.fiction kind mli  in
+      let broken = Approx.under kind mli in
+      M.add fiction map, Unit.Set.add broken brokens
+
+let read fail_early (_arg) { Unit.ml; mli } mb =
+  let module Approx = Approx_parser.Unit in
+  let module M = Unit.Groups.Unit.Map in
+  match mli, ml with
+  | None , None -> mb
+  | Some mli, Some ml ->
+     let map, brokens = read_mli fail_early mb Signature mli  in
+     begin match Unit.read_file Structure ml with
+       | Ok ml -> M.add ml map, brokens
+       | Error msg ->
+         if fail_early then
+           Error.syntaxerr msg
+         else
+         map, Unit.Set.add (Approx.under Structure ml) brokens
+     end
+  | None, Some mli ->
+    read_mli fail_early mb Signature mli
+  | Some ml, None ->
+    read_mli fail_early mb Structure ml
+
+
+let organize fail_early opens files =
   let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
-    let read =
-      let open Unit in
-      let rd kind x = match read_file kind x with
-        | Ok x -> x
-        | Error msg -> Error.syntaxerr msg in
-    map @@ unimap (Option.fmap % rd) { ml=M2l.Structure; mli=M2l.Signature}
-  in
   let grp = Unit.Groups.Filename.group files in
-  let units = Unit.Groups.Unit.split
-    @@ Paths.S.Map.map read
-    @@ grp in
+  let units, brokens = Paths.S.Map.fold (read fail_early) grp
+      (Paths.S.Map.empty, Unit.Set.empty) in
+  let units = Unit.Groups.Unit.split units in
   let units =
     Unit.unimap (List.map @@ open_in opens) units in
-  units, m
+  units, brokens, m
 
 let base_env no_stdlib =
   if no_stdlib then
@@ -184,7 +213,7 @@ let remove_units invisibles =
     | _ -> false
 
 let analyze param {opens;libs;invisibles;files;_} =
-  let units, filemap = organize opens files in
+  let units, _brokens, filemap = organize param.fail_early opens files in
   let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
   let E ((module Envt), core) = start_env param libs files_set filemap in
   let module S = Solver.Make(Envt)((val lift param)) in
@@ -500,10 +529,8 @@ let close_world () =
     param := { !param with closed_world = true }
 
 
-let fail_approx () =
-  Error.log "Approximation mode is not implemented: \
-             codept does not work on non-syntactically valid \
-             files."
+let allow_approx () =
+  param := { !param with fail_early = false }
 
 let pkg name =
   let cmd = "ocamlfind query " ^ name in
@@ -542,7 +569,8 @@ let usage_msg =
 let args = Cmd.[
     "-absname", Cmd.Unit abs_path, ": use absolute path name";
     "-all", Unit all, ": display full dependencies in makefile";
-    "-allow-approx", Unit fail_approx,": not implemented";
+    "-allow-approx", Unit allow_approx,": fall back to approximated parser \
+                                        in presence of syntax errors.";
     "-as-map", Cmd.String as_map, "<file>: same as \
                                    \"-no-alias-deps <file>\"";
     "-I", String add_include,"<dir>: do not filter files in <dir> when printing \

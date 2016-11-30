@@ -7,4 +7,4 @@ let log_s s = log "%s" s
 
 let signature_expected () = log "Expected signature, got a functor"
 
-let syntaxerr x = Syntaxerr.report_error Pp.err x; exit 1
+let syntaxerr x = Syntaxerr.report_error Pp.err x; Pp.fp Pp.err "\n%!"; exit 1

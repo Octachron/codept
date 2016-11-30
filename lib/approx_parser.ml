@@ -103,13 +103,19 @@ let to_upper m2l =
   let add, union = Name.Set.(add,union) in
   let open M2l in
   let access =
-  List.fold_left (fun s elt -> match elt with
-       | Minor { access; _ } -> union access s
-       | Open path -> add (List.hd path) s
-       | Include (Ident path) -> add (List.hd path) s
-       | _ -> s
+    List.fold_left (fun s elt -> match elt with
+        | Minor { access; _ } -> union access s
+        | Open path -> add (List.hd path) s
+        | Bind {expr = Ident path; _}
+        | Include (Ident path) -> add (List.hd path) s
+        | _ -> s
       ) Name.Set.empty m2l in
   [Minor { Annot.empty with access }]
+
+let under filename =
+  let chan = open_in filename in
+  let lex = Lexing.from_channel chan in
+  lower lex
 
 let file filename =
   let name = Read.name filename in
@@ -117,3 +123,21 @@ let file filename =
   let lex = Lexing.from_channel chan in
   let low = lower lex in
   name, low, to_upper low
+
+module Unit = struct
+  let fiction kind file =
+    { Unit.name = Read.name file;
+      path = {Paths.P.source = Unknown; file = Paths.S.parse_filename file};
+      kind;
+      code = [];
+      dependencies = Paths.P.Set.empty
+    }
+
+  let under kind filename =
+    { Unit.name = Read.name filename;
+      path = Paths.P.local filename;
+      kind;
+      code = under filename;
+      dependencies = Paths.P.Set.empty
+    }
+end
