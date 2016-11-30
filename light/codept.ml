@@ -212,6 +212,27 @@ let remove_units invisibles =
       not @@ Pth.Set.mem file invisibles
     | _ -> false
 
+let broken_analyze resolve unit =
+  let open Unit in
+  let elts = Paths.P.Set.elements in
+  let u_lower = resolve [unit] in
+  let d_lower = u_lower.dependencies in
+  let u_upper = resolve [
+      {unit with code = Approx_parser.to_upper unit.code} ] in
+  let d_upper = u_upper.dependencies in
+  if elts d_upper = elts d_lower then
+    Warning.log "Approximate parsing of %a" Paths.P.pp u_upper.path
+  else
+    Warning.log "Approximate parsing of %a.\n\
+                 Computed dependencies: at least {%a}, maybe: {%a}"
+      Paths.P.pp u_upper.path
+      Pp.(list string) (List.map Paths.P.module_name @@ elts d_lower)
+      Pp.(list string) ( List.map Paths.P.module_name @@ elts
+                         @@ Paths.P.Set.diff d_upper d_lower);
+  u_upper
+
+
+
 let analyze param {opens;libs;invisibles;files;_} =
   let units, brokens, filemap = organize param.fail_early opens files in
   let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
@@ -221,8 +242,9 @@ let analyze param {opens;libs;invisibles;files;_} =
     try
       let env, mli = S.resolve_dependencies ~learn:true core units.mli in
       let _, ml = S.resolve_dependencies ~learn:false env units.ml in
-      let _, brokens = S.resolve_dependencies ~learn:false env @@
-        Unit.Set.elements brokens in
+      let brokens = List.map (broken_analyze
+          @@ List.hd % snd % S.resolve_dependencies ~learn:false env)
+          (Unit.Set.elements brokens) in
       { Unit.ml = ml @ brokens; mli }
     with
       S.Cycle (_env,units) ->
