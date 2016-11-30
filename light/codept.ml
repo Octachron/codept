@@ -213,12 +213,18 @@ let remove_units invisibles =
     | _ -> false
 
 let analyze param {opens;libs;invisibles;files;_} =
-  let units, _brokens, filemap = organize param.fail_early opens files in
+  let units, brokens, filemap = organize param.fail_early opens files in
   let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
   let E ((module Envt), core) = start_env param libs files_set filemap in
   let module S = Solver.Make(Envt)((val lift param)) in
   let {Unit.ml; mli} =
-    try S.resolve_split_dependencies core units with
+    try
+      let env, mli = S.resolve_dependencies ~learn:true core units.mli in
+      let _, ml = S.resolve_dependencies ~learn:false env units.ml in
+      let _, brokens = S.resolve_dependencies ~learn:false env @@
+        Unit.Set.elements brokens in
+      { Unit.ml = ml @ brokens; mli }
+    with
       S.Cycle (_env,units) ->
       Error.log "%a" Solver.Failure.pp_cycle units
   in
