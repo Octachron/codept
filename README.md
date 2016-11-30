@@ -59,8 +59,7 @@ yields directly a circular dependency error.
 
 
 ##Compatibility with ocamldep
-Most of the ocamldep options are also supported by codept. The only ocamldep options not implemented by codept is `-allow-approx`: codept can only process syntactically valid files (if the main OCaml migrates to a menhir parser, it might be worthwile
-to reimplement a similar feature in codept).
+Most of the ocamldep options are also supported by codept.
 
 However, some of the ocamldep options are slightly reinterpreted:
 
@@ -73,6 +72,9 @@ However, some of the ocamldep options are slightly reinterpreted:
 
   * `-open <module>` does not open the module `<module>` when analyzing the
     `<module.ml>` or `<module.mli>`
+
+  * `-allow-approx` use a new experimental heuristic for parsing syntactically
+    invalid file that might be more precise − or brittle. More tests are needed.
 
 Another possible difference between codept and ocamldep output is codept built-in detection of dependency cycles. Within codept, cycles triggers a fatal error message andstops the current analysis.
 
