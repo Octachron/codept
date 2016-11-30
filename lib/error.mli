@@ -8,3 +8,6 @@ val log_s : string -> 'a
 
 (** Error message for using a functor when a signature was expected *)
 val signature_expected : unit -> 'a
+
+(** Report compiler syntax error *)
+val syntaxerr: Syntaxerr.error -> 'a

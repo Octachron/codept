@@ -12,7 +12,7 @@ type t = {
 }
 type u = t
 
-val read_file : M2l.kind -> string -> u
+val read_file : M2l.kind -> string -> (u, Syntaxerr.error) result
 (** [read_file kind filename] reads the file, extracting
     the corresponding m2l ast
 *)

@@ -6,3 +6,5 @@ let log fmt = Format.kfprintf
 let log_s s = log "%s" s
 
 let signature_expected () = log "Expected signature, got a functor"
+
+let syntaxerr x = Syntaxerr.report_error Pp.err x; exit 1

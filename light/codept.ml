@@ -89,7 +89,9 @@ let to_m2l synonyms f =
     Cmi.m2l f
   else
     let kind = classify synonyms f in
-    snd @@ Read.file kind f
+    match Read.file kind f with
+    | _name, Ok x -> x
+    | _, Error msg -> Error.syntaxerr msg
 
 let approx_file _param f =
   let _name, lower, upper = Approx_parser.file f in
@@ -140,13 +142,16 @@ let organize opens files =
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
     let read =
-    let open Unit in
-    map @@ unimap (Option.fmap % read_file) { ml=M2l.Structure; mli=M2l.Signature}
+      let open Unit in
+      let rd kind x = match read_file kind x with
+        | Ok x -> x
+        | Error msg -> Error.syntaxerr msg in
+    map @@ unimap (Option.fmap % rd) { ml=M2l.Structure; mli=M2l.Signature}
   in
+  let grp = Unit.Groups.Filename.group files in
   let units = Unit.Groups.Unit.split
     @@ Paths.S.Map.map read
-    @@ Unit.Groups.Filename.group
-    @@ files in
+    @@ grp in
   let units =
     Unit.unimap (List.map @@ open_in opens) units in
   units, m

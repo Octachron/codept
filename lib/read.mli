@@ -3,4 +3,4 @@
 val name: string -> Name.t
 (** [name filename] gives the module name corresponding to filename *)
 
-val file: M2l.kind -> string -> Name.t * M2l.t
+val file: M2l.kind -> string -> Name.t * (M2l.t,Syntaxerr.error) result

@@ -12,12 +12,14 @@ type t = {
 type u = t
 let read_file kind filename =
   let name, code = Read.file kind filename in
+  Result.fmap_ok (fun code ->
   { name;
     kind;
     path = Pkg.local filename;
     code;
     dependencies = Pkg.Set.empty
   }
+    ) code
 
 type 'a pair = { ml:'a; mli:'a}
 let map fs xs = { ml = fs.ml xs.ml; mli = fs.mli xs.mli}

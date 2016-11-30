@@ -14,9 +14,12 @@ let organize files =
   let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
+  let rd kind x = match Unit.read_file kind x with
+    | Ok x -> x
+    | Error x -> Error.syntaxerr x in
   let read =
     let open Unit in
-    map @@ unimap (Option.fmap % read_file) { ml=M2l.Structure; mli=M2l.Signature}
+    map @@ unimap (Option.fmap % rd) { ml=M2l.Structure; mli=M2l.Signature}
   in
   let units = Unit.Groups.Unit.split
     @@ Paths.S.Map.map read
@@ -297,8 +300,8 @@ let result =
              "Option"; "Paths"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
-          "error.mli", ([],["Format"],[]);
-          "error.ml", ([],["Format"],[]);
+          "error.mli", ([],["Format";"Syntaxerr"],[]);
+          "error.ml", (["Pp"],["Format";"Syntaxerr"],[]);
           "interpreter.mli", (["Module";"Paths";"M2l"],[],[]);
           "interpreter.ml", (
             ["Definition"; "M2l"; "Module"; "Name"; "Option"; "Paths";
@@ -318,8 +321,8 @@ let result =
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
-          "read.mli", (["M2l";"Name"],[],[]);
-          "read.ml", (["Ast_converter"; "Error"; "M2l"],
+          "read.mli", (["M2l";"Name"],["Syntaxerr"],[]);
+          "read.ml", (["Ast_converter"; "M2l"],
                       ["Filename"; "Format"; "Location"; "Parse"; "Pparse";
                        "String"; "Syntaxerr"],[]);
           "result.mli", ([],[],[]);
@@ -329,9 +332,9 @@ let result =
             ["Definition"; "Interpreter"; "M2l"; "Module"; "Name";
              "Option"; "Pp"; "Unit"],
             ["List"; "Map"],[]);
-          "unit.mli", (["Paths"; "M2l"],["Format";"Set"],[]);
+          "unit.mli", (["Paths"; "M2l"],["Format";"Set";"Syntaxerr"],[]);
           "unit.ml", (
-            ["M2l"; "Option"; "Paths"; "Pp"; "Read"],
+            ["M2l"; "Option"; "Paths"; "Pp"; "Read"; "Result"],
             [ "List"; "Set"],
             []);
           "warning.mli", ([],["Format"],[]);
