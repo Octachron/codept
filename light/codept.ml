@@ -165,11 +165,11 @@ let read fail_early (_arg) { Unit.ml; mli } mb =
          if fail_early then
            Error.syntaxerr msg
          else
-         map, Unit.Set.add (Approx.under Structure ml) brokens
+           map, Unit.Set.add (Approx.under Structure ml) brokens
      end
-  | None, Some mli ->
+  | Some mli, None ->
     read_mli fail_early mb Signature mli
-  | Some ml, None ->
+  | None, Some ml ->
     read_mli fail_early mb Structure ml
 
 
