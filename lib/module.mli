@@ -31,13 +31,10 @@ end
 module Origin: sig
   type t =
     | Unit of Paths.Pkg.t (** toplevel module mapped from a unit file *)
-    | Extern (** aka unknown module *)
     | Alias of t (** [Alias t]: alias to [t] *)
     | Submodule (** non top-level module *)
     | First_class (** unpacked first-class module *)
     | Arg (** module created for functor application *)
-    | Rec (** mock module for computing recursive module signatures *)
-
 
   val at_most : t -> t -> t
   (** [at_most origin origin'] cap the origin [origin'] at

@@ -89,9 +89,8 @@ module Make(Envt:envt)(Param:param) = struct
       if x.signature = S.empty then
         match x.origin with
         | First_class -> Warning.opened_first_class x.name
-        | Unit _ | Submodule | Arg | Rec -> ()
+        | Unit _ | Submodule | Arg -> ()
         | Alias _ -> ()
-        | Extern -> () (* add a hook here? *)
 
   let open_ state path =
     match find Module path state with
@@ -137,7 +136,11 @@ module Make(Envt:envt)(Param:param) = struct
     (* first we try to compute the signature of each argument using
        approximative signature *)
     let mockup ({name;_}:_ M2l.bind) =
-      {M.origin = Rec; precision = Unknown; name; args = []; signature = S.empty } in
+      {M.name;
+       origin = Submodule;
+       precision = Unknown;
+       args = [];
+       signature = S.empty } in
     let add_mockup defs arg = Envt.add_module defs @@ mockup arg in
     let state' = List.fold_left add_mockup state bs in
     let mapper {name;expr} =

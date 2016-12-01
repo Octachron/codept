@@ -35,20 +35,16 @@ module Origin = struct
 
   type t =
     | Unit of source (** aka toplevel module *)
-    | Extern (** aka unknown module *)
     | Alias of t (** M = A… *)
     | Submodule
     | First_class (** Not resolved first-class module *)
     | Arg (** functor argument *)
-    | Rec (** mockup module for recursive definitions *)
 
   let rec pp ppf = function
     | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
     | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
     | Unit { Pkg.source = Unknown; _} -> Pp.fp ppf "#!"
-    | Extern -> Pp.fp ppf "!"
     | Unit { Pkg.source = Special n; _} -> Pp.fp ppf "*(%s)" n
-    | Rec -> Pp.fp ppf "?"
     | Submodule -> Pp.fp ppf "."
     | First_class -> Pp.fp ppf "'"
     | Arg -> Pp.fp ppf "§"
@@ -56,15 +52,13 @@ module Origin = struct
 
     let rec reflect ppf = function
     | Unit pkg  -> Pp.fp ppf "Unit %a" Pkg.reflect pkg
-    | Rec -> Pp.fp ppf "Rec"
-    | Extern -> Pp.fp ppf "Unknown"
     | Submodule -> Pp.fp ppf "Submodule"
     | First_class -> Pp.fp ppf "First_class"
     | Arg -> Pp.fp ppf "Arg"
     | Alias n -> Pp.fp ppf {|Alias (%a)|} reflect n
 
   let at_most max v = match max, v with
-    | (First_class|Rec|Arg|Extern| Alias _ ) , _ -> max
+    | (First_class|Arg| Alias _ ) , _ -> max
     | Unit _ , v -> v
     | Submodule, Unit _ -> Submodule
     | Submodule, Alias _ -> Submodule
@@ -237,14 +231,11 @@ module Partial = struct
     {name;origin; precision = p.precision; args = p.args; signature = p.result }
 
   let to_arg name (p:t) =
-    let origin =
-      (*if the signature of the argument is unknwon, we need
-        to keep this information for drop_arg *)
-      if p.origin = Extern then
-        Origin.Extern
-      else
-        Origin.Arg in
-    {name; origin; precision = p.precision; args = p.args; signature = p.result }
+    {name;
+     origin = p.origin;
+     precision = p.precision;
+     args = p.args;
+     signature = p.result }
 
   let of_module {args;signature;origin; precision; _} =
     {precision;origin;result=signature;args}
