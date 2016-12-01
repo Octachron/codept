@@ -148,9 +148,8 @@ let read_mli fail_early (map,brokens) kind mli =
     if fail_early then
       Error.syntaxerr msg
     else
-      let fiction = Approx.fiction kind mli  in
       let broken = Approx.under kind mli in
-      M.add fiction map, Unit.Set.add broken brokens
+      map, Unit.{ brokens with mli = broken :: brokens.mli }
 
 let read fail_early (_arg) { Unit.ml; mli } mb =
   let module Approx = Approx_parser.Unit in
@@ -165,7 +164,7 @@ let read fail_early (_arg) { Unit.ml; mli } mb =
          if fail_early then
            Error.syntaxerr msg
          else
-           map, Unit.Set.add (Approx.under Structure ml) brokens
+           map, { brokens with ml = (Approx.under Structure ml) :: brokens.ml }
      end
   | Some mli, None ->
     read_mli fail_early mb Signature mli
@@ -179,7 +178,7 @@ let organize fail_early opens files =
       Name.Map.empty (files.Unit.ml @ files.mli) in
   let grp = Unit.Groups.Filename.group files in
   let units, brokens = Paths.S.Map.fold (read fail_early) grp
-      (Paths.S.Map.empty, Unit.Set.empty) in
+      (Paths.S.Map.empty, {Unit.ml = []; mli = [] }) in
   let units = Unit.Groups.Unit.split units in
   let units =
     Unit.unimap (List.map @@ open_in opens) units in
@@ -231,30 +230,31 @@ let broken_analyze resolve unit =
                          @@ Paths.P.Set.diff d_upper d_lower);
   u_upper
 
-let reinject_broken units u =
-  let update u u' =
-    let open Unit in
-    Format.printf "u:%a, u':%a\n" Paths.P.pp u.path  Paths.P.pp u'.path;
-    match u.path, u'.path with
-    | { source=Local; file= p} , { source = Unknown; file } when p = file ->
-      Format.printf "EQUALITY\n";
-      { u' with path = u.path; dependencies = u'.dependencies }
-    | _ -> u' in
-  Unit.unimap (List.map @@ update u) units
+
+let add_brokens_to_env (E((module Env),env)) mlis =
+  let add env u =
+    Format.printf "Adding module %s\n" u.Unit.name;
+    let m = Approx_parser.Unit.fictious_module u in
+    Env.add_module env m in
+  E((module Env), List.fold_left add env mlis)
+
 
 let analyze param {opens;libs;invisibles;files;_} =
   let units, brokens, filemap = organize param.fail_early opens files in
   let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
-  let E ((module Envt), core) = start_env param libs files_set filemap in
+  let pe = start_env param libs files_set filemap in
+  let E((module Envt), core) = add_brokens_to_env pe brokens.Unit.mli in
   let module S = Solver.Make(Envt)((val lift param)) in
   let {Unit.ml; mli} =
     try
       let env, mli = S.resolve_dependencies ~learn:true core units.mli in
       let _, ml = S.resolve_dependencies ~learn:false env units.ml in
-      let brokens = List.map (broken_analyze
+      let brokens = Unit.unimap (List.map (broken_analyze
           @@ List.hd % snd % S.resolve_dependencies ~learn:false env)
-          (Unit.Set.elements brokens) in
-      List.fold_left reinject_broken {Unit.ml; mli} brokens
+                                ) brokens in
+      Unit.{ ml =  ml @ brokens.ml
+           ; mli = mli @ brokens.mli
+           }
     with
       S.Cycle (_env,units) ->
       Error.log "%a" Solver.Failure.pp_cycle units

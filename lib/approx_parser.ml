@@ -124,6 +124,7 @@ let file filename =
   let low = lower lex in
   name, low, to_upper low
 
+
 module Unit = struct
   let fiction kind file =
     { Unit.name = Read.name file;
@@ -132,6 +133,15 @@ module Unit = struct
       code = [];
       dependencies = Paths.P.Set.empty
     }
+
+  let fictious_module unit =
+    Module.{
+      name = unit.Unit.name;
+      origin = Unit ({ unit.path with source = Local });
+      precision = Unknown;
+      args = [];
+      signature = Sig.empty
+  }
 
   let under kind filename =
     { Unit.name = Read.name filename;
