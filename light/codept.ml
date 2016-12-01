@@ -231,7 +231,16 @@ let broken_analyze resolve unit =
                          @@ Paths.P.Set.diff d_upper d_lower);
   u_upper
 
-
+let reinject_broken units u =
+  let update u u' =
+    let open Unit in
+    Format.printf "u:%a, u':%a\n" Paths.P.pp u.path  Paths.P.pp u'.path;
+    match u.path, u'.path with
+    | { source=Local; file= p} , { source = Unknown; file } when p = file ->
+      Format.printf "EQUALITY\n";
+      { u' with path = u.path; dependencies = u'.dependencies }
+    | _ -> u' in
+  Unit.unimap (List.map @@ update u) units
 
 let analyze param {opens;libs;invisibles;files;_} =
   let units, brokens, filemap = organize param.fail_early opens files in
@@ -245,7 +254,7 @@ let analyze param {opens;libs;invisibles;files;_} =
       let brokens = List.map (broken_analyze
           @@ List.hd % snd % S.resolve_dependencies ~learn:false env)
           (Unit.Set.elements brokens) in
-      { Unit.ml = ml @ brokens; mli }
+      List.fold_left reinject_broken {Unit.ml; mli} brokens
     with
       S.Cycle (_env,units) ->
       Error.log "%a" Solver.Failure.pp_cycle units
