@@ -137,7 +137,7 @@ module Make(Envt:envt)(Param:param) = struct
     (* first we try to compute the signature of each argument using
        approximative signature *)
     let mockup ({name;_}:_ M2l.bind) =
-      {M.origin = Rec; name; args = []; signature = S.empty } in
+      {M.origin = Rec; precision = Unknown; name; args = []; signature = S.empty } in
     let add_mockup defs arg = Envt.add_module defs @@ mockup arg in
     let state' = List.fold_left add_mockup state bs in
     let mapper {name;expr} =

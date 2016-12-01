@@ -271,6 +271,7 @@ let export param task =
     ; origin = Unit { source=Pkg.Special "exported"; file = [unit.name] }
     ; args = []
     ; signature = sign unit
+    ;  precision = Exact
     } in
   let s =
     let open Module.Sig in

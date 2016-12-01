@@ -65,10 +65,11 @@ module Open_world(Envt:extended_with_deps) = struct
     | [name] ->
       Module.(create name
                 ~origin:(Unit {Paths.P.source=Unknown; file=[name]})
+                ~precision:Unknown
                 Sig.empty)
     | l ->
       let name = last l in
-      Module.(create name ~origin:Extern Sig.empty)
+      Module.(create name ~origin:Submodule ~precision:Unknown Sig.empty)
 
  let find_name root level name env =
     try Envt.find_name root level name env.core with
@@ -171,7 +172,6 @@ module Layered = struct
 
   let rec pkg_find name source =
     match Envt.find_name true M.Module name source.resolved with
-    | { origin = Extern; _ }
     | { origin = Unit { source = Unknown; _ }; _ } ->
       raise Not_found
     | exception Not_found ->

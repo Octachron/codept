@@ -1,3 +1,5 @@
+module Pkg = Paths.Pkg
+
 module Arg = struct
   type 'a t = { name:Name.t; signature:'a }
   type 'a arg = 'a t
@@ -17,7 +19,16 @@ module Arg = struct
     if List.length args > 0 then Pp.fp ppf "→"
 end
 
-module Pkg = Paths.Pkg
+module Precision = struct
+  type t =
+    | Exact
+    | Unknown
+
+  let reflect ppf = function
+    | Exact -> Pp.fp ppf "Exact";
+    | Unknown -> Pp.fp ppf "Unknwonw";
+
+end
 
 module Origin = struct
   type source = Pkg.t
@@ -63,9 +74,10 @@ type origin = Origin.t
 
 type t = {
   name:Name.t;
+  precision: Precision.t;
   origin: Origin.t;
   args: t option list;
-  signature:signature
+  signature:signature;
 }
 and signature = { modules: mdict; module_types: mdict }
 and mdict = t Name.Map.t
@@ -73,8 +85,8 @@ and mdict = t Name.Map.t
 type arg = signature Arg.t
 type modul = t
 
-let of_arg ({name;signature}:arg) =
-  { name; origin = Arg ; args=[]; signature }
+let of_arg ?(precision=Precision.Exact) ({name;signature}:arg) =
+  { name; precision; origin = Arg ; args=[]; signature }
 
 let is_functor = function
   | { args = []; _ } -> false
@@ -93,9 +105,13 @@ let reflect_level ppf = function
     | Module -> Pp.string ppf "Module"
     | Module_type -> Pp.string ppf "Module type"
 
-let rec reflect ppf {name;args;origin;signature} =
-  Pp.fp ppf {|@[<hov>{name="%s"; origin=%a; args=%a; signature=%a}@]|}
-    name Origin.reflect origin reflect_args args reflect_signature signature
+let rec reflect ppf {name;args;precision;origin;signature} =
+  Pp.fp ppf {|@[<hov>{name="%s"; precision=%a; origin=%a; args=%a; signature=%a}@]|}
+    name
+    Precision.reflect precision
+    Origin.reflect origin
+    reflect_args args
+    reflect_signature signature
 and reflect_signature ppf {modules; module_types} =
   match Name.Map.cardinal modules, Name.Map.cardinal module_types with
   | 0, 0 -> Pp.string ppf "empty"
@@ -119,7 +135,7 @@ and reflect_args ppf args =
   Pp.fp ppf "[%a]" (Pp.(list ~sep:(s "; @,") ) @@ reflect_arg ) args
 
 
-let rec pp ppf {name;args;origin;signature} =
+let rec pp ppf {name;args;origin;signature;_} =
   Pp.fp ppf "%s%a:%a@[<hv>[@,%a@,]@]"
     name Origin.pp origin pp_args args pp_signature signature
 and pp_signature ppf {modules; module_types} =
@@ -139,8 +155,11 @@ and pp_args ppf args = Pp.fp ppf "%a" (Pp.(list ~sep:(s "@,→") ) @@ pp_arg ) a
 
 let empty = Name.Map.empty
 
-let create ?(args=[]) ?(origin=Origin.Submodule) name signature =
-  { name; origin; args; signature}
+let create
+    ?(args=[])
+    ?(precision=Precision.Exact)
+    ?(origin=Origin.Submodule) name signature =
+  { name; origin; precision; args; signature}
 
 
 module Sig = struct
@@ -186,10 +205,11 @@ end
 
 module Partial = struct
   type nonrec t =
-    { origin: Origin.t;
+    { precision: Precision.t;
+      origin: Origin.t;
       args: t option list;
       result: signature }
-  let empty = { origin = Submodule; args = []; result= Sig.empty }
+  let empty = { origin = Submodule; precision=Exact; args = []; result= Sig.empty }
   let simple defs = { empty with result = defs }
 
   let pp ppf (x:t) =
@@ -200,24 +220,21 @@ module Partial = struct
         pp_signature x.result
         Origin.pp x.origin
 
-  let no_arg x = { origin = Submodule; args = []; result = x }
+  let no_arg x = { origin = Submodule; precision=Exact; args = []; result = x }
 
   let drop_arg (p:t) = match  p.args with
     | _ :: args -> { p with args }
     | [] ->
-      match p.origin with
-      | Extern | First_class | Rec
-      | Unit {Paths.P.source = Unknown; _ }
-        -> p (* we guessed the arg wrong *)
-      | Unit _ | Submodule | Arg | Alias _ ->
-        Error.log "Only functor can be applied, got:%a" pp p
+      match p.precision with
+      | Exact -> Error.log "Only functor can be applied, got:%a" pp p
+      | Unknown ->  p (* we guessed the arg wrong *)
 
   let to_module ?origin name (p:t) =
     let origin = match origin with
       | Some o -> Origin.at_most p.origin o
       | None -> p.origin
     in
-    {name;origin; args = p.args; signature = p.result }
+    {name;origin; precision = p.precision; args = p.args; signature = p.result }
 
   let to_arg name (p:t) =
     let origin =
@@ -227,9 +244,10 @@ module Partial = struct
         Origin.Extern
       else
         Origin.Arg in
-    {name; origin; args = p.args; signature = p.result }
+    {name; origin; precision = p.precision; args = p.args; signature = p.result }
 
-  let of_module {args;signature;origin; _} = {origin;result=signature;args}
+  let of_module {args;signature;origin; precision; _} =
+    {precision;origin;result=signature;args}
 
   let is_functor x = x.args <> []
 

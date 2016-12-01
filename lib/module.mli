@@ -20,11 +20,18 @@ module Arg :
       Format.formatter -> 'a arg option list -> unit
   end
 
+module Precision:sig
+  type t =
+    | Exact
+    | Unknown
+end
+
+
 (** Module origin *)
 module Origin: sig
   type t =
     | Unit of Paths.Pkg.t (** toplevel module mapped from a unit file *)
-    | Extern (** external module *)
+    | Extern (** aka unknown module *)
     | Alias of t (** [Alias t]: alias to [t] *)
     | Submodule (** non top-level module *)
     | First_class (** unpacked first-class module *)
@@ -46,6 +53,7 @@ type origin = Origin.t
 (** Main module type *)
 type t = {
   name : string;
+  precision: Precision.t;
   origin : Origin.t;
   args : t option list;
   signature : signature;
@@ -59,11 +67,12 @@ type level = Module | Module_type
 type modul = t
 
 (** {2 Helper function} *)
-val of_arg : arg -> t
+val of_arg : ?precision:Precision.t -> arg -> t
 val is_functor : t -> bool
 val empty : 'a Name.map
 val create :
-  ?args:t option list -> ?origin:origin -> string -> signature -> t
+  ?args:t option list -> ?precision:Precision.t ->
+  ?origin:origin -> string -> signature -> t
 
 
 (** {2 Printers} *)
@@ -105,6 +114,7 @@ module Sig :
 module Partial :
   sig
     type nonrec t = {
+      precision: Precision.t;
       origin : origin;
       args : t option list;
       result : signature;
