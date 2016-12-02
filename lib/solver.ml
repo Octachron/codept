@@ -4,9 +4,27 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
 
   module Eval = Interpreter.Make(Envt)(Param)
 
+  let prefilter env units =
+    List.fold_left (fun (postponed, env, direct) u ->
+        match u.precision with
+        | Exact -> (postponed,env, u :: direct)
+        | Approx ->
+          let fictious =
+            { Module.name = u.name;
+              origin = Unit u.path;
+              precision = Module.Precision.Unknown;
+              args = [];
+              signature = Module.Sig.empty
+            } in
+          u::postponed, Envt.add_module env fictious, direct
+      )
+      ([],env,[]) units
+
   let compute_more env unit =
     let result = Eval.m2l env unit.code in
-    Envt.deps env, result
+    let deps = Envt.deps env in
+    Envt.reset_deps env;
+    deps, result
 
   exception Cycle of Envt.t * u list
 
@@ -25,15 +43,37 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       let deps = Pkg.Set.union unit.dependencies deps in
       let unit = { unit with code = [Defs (Definition.sg_bind sg)];
                              dependencies = deps } in
-      let () = Envt.reset_deps core in
       (unit :: finished, core, rest )
     | deps, Error code ->
       let deps = Pkg.Set.union unit.dependencies deps in
-      let () = Envt.reset_deps core in
       let unit = { unit with dependencies = deps; code } in
       finished, core, unit :: rest
 
-  let resolve_dependencies ?(learn=true) core units =
+  let eval_bounded core unit =
+    let open M2l in
+    let unit' = Unit.{ unit with code = Approx_parser.to_upper unit.code } in
+    let r, r' = compute_more core unit, compute_more core unit' in
+    let lower, upper = fst r, fst r' in
+    let code = match snd r, snd r' with
+      | _ , Ok (_,sg)
+      | Ok(_,sg) , Error _  -> [Defs (Definition.sg_bind sg)]
+      | Error _, Error _ -> unit.code
+        (* something bad happened but we are already parsing problematic
+           input *) in
+    let elts = Paths.P.Set.elements in
+    if elts upper = elts lower then
+      Warning.log "Approximate parsing of %a" Paths.P.pp unit.path
+    else
+      Warning.log "Approximate parsing of %a.\n\
+                   Computed dependencies: at least {%a}, maybe: {%a}"
+        Paths.P.pp unit.path
+        Pp.(list string) (List.map Paths.P.module_name @@ elts lower)
+        Pp.(list string) ( List.map Paths.P.module_name @@ elts
+                           @@ Paths.P.Set.diff upper lower);
+    { unit with dependencies = upper; code }
+
+
+  let resolve_dependencies_main ?(learn=true) core units =
     let rec resolve alert env solved units =
       let solved, env, units' =
         List.fold_left (eval ~learn) (solved,env,[]) units in
@@ -46,6 +86,12 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       | _ ->
         resolve false env solved units' in
     resolve false core [] units
+
+  let resolve_dependencies ?(learn=true) core units =
+    let postponed, core, units = prefilter core units in
+    let core, units = resolve_dependencies_main ~learn core units in
+    let units' = List.map (eval_bounded core) postponed in
+    core, units' @ units
 
   let resolve_split_dependencies env {ml; mli} =
     let env, mli = resolve_dependencies env mli in

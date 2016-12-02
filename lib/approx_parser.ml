@@ -123,31 +123,3 @@ let file filename =
   let lex = Lexing.from_channel chan in
   let low = lower lex in
   name, low, to_upper low
-
-
-module Unit = struct
-  let fiction kind file =
-    { Unit.name = Read.name file;
-      path = {Paths.P.source = Unknown; file = Paths.S.parse_filename file};
-      kind;
-      code = [];
-      dependencies = Paths.P.Set.empty
-    }
-
-  let fictious_module unit =
-    Module.{
-      name = unit.Unit.name;
-      origin = Unit ({ unit.path with source = Local });
-      precision = Unknown;
-      args = [];
-      signature = Sig.empty
-  }
-
-  let under kind filename =
-    { Unit.name = Read.name filename;
-      path = Paths.P.local filename;
-      kind;
-      code = under filename;
-      dependencies = Paths.P.Set.empty
-    }
-end

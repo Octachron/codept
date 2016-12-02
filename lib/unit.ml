@@ -2,24 +2,36 @@
 module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 
+type precision =
+  | Exact
+  | Approx
+
 type t = {
   name: string;
   path: Pkg.t;
   kind: M2l.kind;
+  precision: precision;
   code: M2l.t;
   dependencies: Pkg.set
 }
 type u = t
-let read_file kind filename =
+let read_file allow_approx kind filename =
   let name, code = Read.file kind filename in
-  Result.fmap_ok (fun code ->
-  { name;
-    kind;
-    path = Pkg.local filename;
-    code;
-    dependencies = Pkg.Set.empty
-  }
-    ) code
+  let precision, code = match code with
+    | Ok c -> Exact, c
+    | Error msg ->
+      if not allow_approx then
+        Error.syntaxerr msg
+      else
+       Approx, Approx_parser.under filename
+  in
+      { name;
+        kind;
+        precision;
+        path = Pkg.local filename;
+        code;
+        dependencies = Pkg.Set.empty
+      }
 
 type 'a pair = { ml:'a; mli:'a}
 let map fs xs = { ml = fs.ml xs.ml; mli = fs.mli xs.mli}

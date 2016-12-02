@@ -3,18 +3,24 @@
 module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 
+type precision =
+  | Exact
+  | Approx
+
 type t = {
   name : string;
   path : Pkg.t;
   kind : M2l.kind;
+  precision: precision;
   code : M2l.t;
   dependencies : Pkg.set;
 }
 type u = t
 
-val read_file : M2l.kind -> string -> (u, Syntaxerr.error) result
-(** [read_file kind filename] reads the file, extracting
-    the corresponding m2l ast
+val read_file : bool -> M2l.kind -> string -> u
+(** [read_file allow_approx kind filename] reads the file [filename],
+    extracting the corresponding m2l ast. If the file is not synctatically
+    valid Ocaml and [allow_approx=true] the approximative parser is used.
 *)
 
 val pp : Format.formatter -> t -> unit
