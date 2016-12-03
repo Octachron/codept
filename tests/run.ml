@@ -14,7 +14,7 @@ let organize files =
   let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
-  let rd = Unit.read_file true in
+  let rd = Unit.read_file ~may_approx:true in
   let read =
     let open Unit in
     map @@ unimap (Option.fmap % rd) { ml=M2l.Structure; mli=M2l.Signature}

@@ -15,12 +15,12 @@ type t = {
   dependencies: Pkg.set
 }
 type u = t
-let read_file allow_approx kind filename =
+let read_file ?(may_approx=false) kind filename =
   let name, code = Read.file kind filename in
   let precision, code = match code with
     | Ok c -> Exact, c
     | Error msg ->
-      if not allow_approx then
+      if not may_approx then
         Error.syntaxerr msg
       else
        Approx, Approx_parser.under filename

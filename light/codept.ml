@@ -24,7 +24,7 @@ type param =
     no_stdlib:bool;
     implicits: bool;
     closed_world: bool;
-    fail_early:bool;
+    may_approx:bool;
   }
 
 
@@ -58,7 +58,7 @@ let param = ref {
   no_stdlib = false;
   synonyms = {Unit.ml = Name.Set.singleton "ml" ; mli = Name.Set.singleton "mli" };
   closed_world = false;
-  fail_early = true;
+  may_approx = true;
 }
 
 
@@ -140,20 +140,18 @@ let open_in opens unit =
     ) opens unit
 
 
-let read fail_early (_arg) { Unit.ml; mli } map =
+let read may_approx (_arg) { Unit.ml; mli } map =
   let module M = Unit.Groups.Unit.Map in
-  let allow_approx = not fail_early in
-
   match mli, ml with
   | None , None -> map
   | Some mli, Some ml ->
     map
-    |> M.add @@ Unit.read_file allow_approx Signature mli
-    |> M.add @@ Unit.read_file allow_approx Structure ml
+    |> M.add @@ Unit.read_file ~may_approx Signature mli
+    |> M.add @@ Unit.read_file ~may_approx Structure ml
   | Some mli, None ->
-    map |> M.add @@ Unit.read_file allow_approx Signature mli
+    map |> M.add @@ Unit.read_file ~may_approx Signature mli
   | None, Some ml ->
-    map |> M.add @@ Unit.read_file allow_approx Structure ml
+    map |> M.add @@ Unit.read_file ~may_approx Structure ml
 
 
 let organize fail_early opens files =
@@ -196,7 +194,7 @@ let remove_units invisibles =
     | _ -> false
 
 let analyze param {opens;libs;invisibles;files;_} =
-  let units, filemap = organize param.fail_early opens files in
+  let units, filemap = organize param.may_approx opens files in
   let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
   let E((module Envt),core) = start_env param libs files_set filemap in
   (*  let E((module Envt), core) = add_brokens_to_env pe brokens.Unit.mli in *)
@@ -526,7 +524,7 @@ let close_world () =
 
 
 let allow_approx () =
-  param := { !param with fail_early = false }
+  param := { !param with may_approx = true }
 
 let pkg name =
   let cmd = "ocamlfind query " ^ name in
