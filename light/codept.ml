@@ -58,7 +58,7 @@ let param = ref {
   no_stdlib = false;
   synonyms = {Unit.ml = Name.Set.singleton "ml" ; mli = Name.Set.singleton "mli" };
   closed_world = false;
-  may_approx = true;
+  may_approx = false;
 }
 
 
@@ -139,31 +139,16 @@ let open_in opens unit =
       | m -> { unit with code = M2l.Open m :: unit.code }
     ) opens unit
 
-
-let read may_approx (_arg) { Unit.ml; mli } map =
-  let module M = Unit.Groups.Unit.Map in
-  match mli, ml with
-  | None , None -> map
-  | Some mli, Some ml ->
-    map
-    |> M.add @@ Unit.read_file ~may_approx Signature mli
-    |> M.add @@ Unit.read_file ~may_approx Structure ml
-  | Some mli, None ->
-    map |> M.add @@ Unit.read_file ~may_approx Signature mli
-  | None, Some ml ->
-    map |> M.add @@ Unit.read_file ~may_approx Structure ml
-
-
-let organize fail_early opens files =
+let organize ~may_approx opens files =
   let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
-  let grp = Unit.Groups.Filename.group files in
-  let units = Paths.S.Map.fold (read fail_early) grp
-      Paths.S.Map.empty in
-  let units = Unit.Groups.Unit.split units in
-  let units =
-    Unit.unimap (List.map @@ open_in opens) units in
+  let units = Unit.map (
+    Unit.unimap (List.map % Unit.read_file ~may_approx )
+      { ml=M2l.Structure; mli=M2l.Signature}
+    ) files in
+  let units = Unit.unimap (List.map @@ open_in opens) units in
+  let units = Unit.Groups.Unit.(split % group) units in
   units, m
 
 let base_env no_stdlib =
@@ -197,20 +182,10 @@ let analyze param {opens;libs;invisibles;files;_} =
   let units, filemap = organize param.may_approx opens files in
   let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
   let E((module Envt),core) = start_env param libs files_set filemap in
-  (*  let E((module Envt), core) = add_brokens_to_env pe brokens.Unit.mli in *)
   let module S = Solver.Make(Envt)((val lift param)) in
   let {Unit.ml; mli} =
     try
-      let env, mli = S.resolve_dependencies ~learn:true core units.mli in
-      let _, ml = S.resolve_dependencies ~learn:false env units.ml in
-      (*
-      let brokens = Unit.unimap (List.map (broken_analyze
-          @@ List.hd % snd % S.resolve_dependencies ~learn:false env)
-                                ) brokens in
-      Unit.{ ml =  ml @ brokens.ml
-           ; mli = mli @ brokens.mli
-           }*)
-      {Unit.ml; mli}
+      S.resolve_split_dependencies core units
     with
       S.Cycle (_env,units) ->
       Error.log "%a" Solver.Failure.pp_cycle units

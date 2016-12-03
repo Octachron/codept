@@ -97,7 +97,10 @@ and (~~) f x = try f x with Lexer.Error _ -> inf_start x
 and (!) f x = try f x with Lexer.Error _ -> []
 
 
-let lower lex = snd @@ M2l.Normalize.all @@ inf_start lex
+let lower lex =
+  let r = snd @@ M2l.Normalize.all @@ inf_start lex in
+  stack := [];
+  r
 
 let to_upper m2l =
   let add, union = Name.Set.(add,union) in
@@ -115,11 +118,14 @@ let to_upper m2l =
 let under filename =
   let chan = open_in filename in
   let lex = Lexing.from_channel chan in
-  lower lex
+  let r = lower lex in
+  let () = close_in chan in
+  r
 
 let file filename =
   let name = Read.name filename in
   let chan = open_in filename in
   let lex = Lexing.from_channel chan in
   let low = lower lex in
+  let () = close_in chan in
   name, low, to_upper low

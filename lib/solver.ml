@@ -62,7 +62,9 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
            input *) in
     let elts = Paths.P.Set.elements in
     if elts upper = elts lower then
-      Warning.log "Approximate parsing of %a" Paths.P.pp unit.path
+      Warning.log "Approximate parsing of %a.\n\
+                   However, lower and upper bound agreed upon dependencies."
+        Paths.P.pp unit.path
     else
       Warning.log "Approximate parsing of %a.\n\
                    Computed dependencies: at least {%a}, maybe: {%a}"

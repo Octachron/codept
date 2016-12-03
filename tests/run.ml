@@ -10,20 +10,16 @@ let classify filename =  match Filename.extension filename with
   | _ -> raise (Invalid_argument "unknown extension")
 
 
-let organize files =
-  let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
+let organize ~may_approx files =
+   let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
-  let rd = Unit.read_file ~may_approx:true in
-  let read =
-    let open Unit in
-    map @@ unimap (Option.fmap % rd) { ml=M2l.Structure; mli=M2l.Signature}
-  in
-  let units = Unit.Groups.Unit.split
-    @@ Paths.S.Map.map read
-    @@ Unit.Groups.Filename.group
-    @@ files in
-  units, m
+  let units = Unit.map (
+    Unit.unimap (List.map % Unit.read_file ~may_approx )
+      { ml=M2l.Structure; mli=M2l.Signature}
+    ) files in
+  let units = Unit.Groups.Unit.(split % group) units in
+   units, m
 
 module Envt = Envts.Tr
 
@@ -39,8 +35,8 @@ end
 
 module S = Solver.Make(Envt)(Param)
 
-let analyze pkgs files =
-  let units, filemap = organize files in
+let analyze ~may_approx pkgs files =
+  let units, filemap = organize ~may_approx files in
   let fileset = units.Unit.mli
                 |> List.map (fun u -> u.Unit.name)
                 |> Name.Set.of_list in
@@ -104,7 +100,7 @@ let add_file {Unit.ml; mli} info = match classify info with
   | M2l.Structure -> { Unit.ml = info :: ml; mli }
   | M2l.Signature -> { Unit.mli = info :: mli; ml }
 
-let gen_deps_test libs inner_test l =
+let gen_deps_test ~may_approx libs inner_test l =
   let {Unit.ml;mli} = List.fold_left add_info {Unit.ml=[]; mli=[]} l in
   let module M = Paths.S.Map in
   let build exp = List.fold_left (fun m (x,l) ->
@@ -112,7 +108,7 @@ let gen_deps_test libs inner_test l =
       M.empty exp in
   let exp = M.union' (build ml) (build mli) in
   let files = { Unit.ml = List.map fst ml; mli =  List.map fst mli} in
-  let {Unit.ml; mli} = analyze libs files in
+  let {Unit.ml; mli} = analyze may_approx libs files in
   let (=?) expect files = List.for_all (fun u ->
       let path = u.Unit.path.Pth.file in
       let expected =
@@ -123,9 +119,15 @@ let gen_deps_test libs inner_test l =
   exp =? ml && exp =? mli
 
 let deps_test l =
-  try gen_deps_test [] simple_dep_test l with
+  try gen_deps_test ~may_approx:false [] simple_dep_test l with
   | S.Cycle (_,units) ->
     Error.log "%a" Solver.Failure.pp_cycle units
+
+let deps_test_approx l =
+  try gen_deps_test ~may_approx:true [] simple_dep_test l with
+  | S.Cycle (_,units) ->
+    Error.log "%a" Solver.Failure.pp_cycle units
+
 
 let ocamlfind name =
   let cmd = "ocamlfind query " ^ name in
@@ -137,7 +139,7 @@ let ocamlfind name =
 
 let cycle_test expected l =
     let files = List.fold_left add_file {Unit.ml=[]; mli=[]} l in
-    try ignore @@ analyze [] files; false with
+    try ignore @@ analyze ~may_approx:false [] files; false with
       S.Cycle (_,units) ->
       let open Solver.Failure in
       let map = analysis units in
@@ -199,6 +201,12 @@ let result =
 
 
   ]
+  &&
+  List.for_all deps_test_approx [
+    ["broken.ml", ["Ext"; "Ext2"; "Ext3"; "Ext4"; "Ext5" ] ];
+    ["broken2.ml", ["A"; "Ext"; "Ext2" ]];
+      ["broken3.ml", []];
+  ]
   &&( Sys.chdir "mixed";
       deps_test ["a.ml", ["D"];
                  "a.mli", ["D";"B"];
@@ -214,6 +222,13 @@ let result =
                    "long__B.ml", []
                  ]
      )
+  &&
+  ( Sys.chdir "../broken_network";
+    deps_test_approx [
+      "a.ml", ["Broken"; "B"; "C"];
+      "broken.ml", ["B"];
+      "c.ml", ["Extern"] ]
+  )
   &&
   ( Sys.chdir "../network";
   deps_test ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ]
@@ -281,7 +296,7 @@ let result =
     )
     &&
     ( Sys.chdir "../../lib";
-      gen_deps_test (ocamlfind "compiler-libs") precise_deps_test
+      gen_deps_test ~may_approx:false (ocamlfind "compiler-libs") precise_deps_test
         [
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
           "ast_converter.ml", ( ["M2l"; "Name"; "Option"; "Module";
