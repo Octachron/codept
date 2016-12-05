@@ -151,8 +151,8 @@ let cycle_test expected l =
                   |> List.filter (function (Cycle _, _) -> true | _ -> false)
                   |> List.map snd
                   |> List.map (List.map name % Unit.Set.elements) in
-      let expected = List.sort compare expected in
-      let cycles = List.sort compare cycles in
+      let expected = List.map (List.sort compare) expected in
+      let cycles = List.map (List.sort compare) cycles in
       let r = cycles = expected in
       if not r then
         ( Pp.fp Pp.std "Failure: expected %a, got %a\n"
