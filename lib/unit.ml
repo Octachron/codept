@@ -23,7 +23,7 @@ let read_file ?(may_approx=false) kind filename =
       if not may_approx then
         Error.syntaxerr msg
       else
-       Approx, Approx_parser.under filename
+       Approx, Approx_parser.lower_bound filename
   in
       { name;
         kind;

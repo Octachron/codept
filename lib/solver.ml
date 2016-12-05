@@ -51,7 +51,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
 
   let eval_bounded core unit =
     let open M2l in
-    let unit' = Unit.{ unit with code = Approx_parser.to_upper unit.code } in
+    let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
     let r, r' = compute_more core unit, compute_more core unit' in
     let lower, upper = fst r, fst r' in
     let code = match snd r, snd r' with

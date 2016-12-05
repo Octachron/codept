@@ -102,7 +102,7 @@ let lower lex =
   stack := [];
   r
 
-let to_upper m2l =
+let to_upper_bound m2l =
   let add, union = Name.Set.(add,union) in
   let open M2l in
   let access =
@@ -115,7 +115,7 @@ let to_upper m2l =
       ) Name.Set.empty m2l in
   [Minor { Annot.empty with access }]
 
-let under filename =
+let lower_bound filename =
   let chan = open_in filename in
   let lex = Lexing.from_channel chan in
   let r = lower lex in
@@ -128,4 +128,4 @@ let file filename =
   let lex = Lexing.from_channel chan in
   let low = lower lex in
   let () = close_in chan in
-  name, low, to_upper low
+  name, low, to_upper_bound low
