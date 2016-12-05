@@ -39,7 +39,7 @@ module Base = struct
   let deps _env = Paths.P.Set.empty
   let reset_deps = ignore
 
-  let (>>) = Def.(+@)
+  let (>>) env def = Def.(env +@ def.Definition.visible)
   let restrict _env sg = sg
   let add_module = S.add
 end

@@ -13,7 +13,7 @@ module type envt = sig
   type t
   val find: transparent:bool -> ?alias:bool ->
     Module.level -> Paths.Simple.t -> t -> Module.t
-  val (>>) : t -> M.signature -> t
+  val (>>) : t -> D.t -> t
   val add_module: t -> Module.t -> t
 end
 
@@ -215,7 +215,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Constraint(me,mt) ->
       constraint_ state me mt
     | Open_me {opens=[]; resolved; expr } ->
-      let state = Envt.( state >> resolved.D.visible ) in
+      let state = Envt.( state >> resolved ) in
       module_expr state expr
     | Open_me {opens=a :: q ; resolved; expr } as me ->
       begin match find Module a state with
@@ -296,7 +296,7 @@ module Make(Envt:envt)(Param:param) = struct
     match ex_arg with
     | Error me -> Error (fn @@ List.fold_left demote {arg=me;body} args )
     | Ok arg ->
-      let sg = Option.( arg >>| S.create >< S.empty ) in
+      let sg = Option.( arg >>| Def.md >< D.empty ) in
       let state =  Envt.( state >> sg ) in
       match body_type state body with
       | Ok p  -> Ok { p with args = arg :: p.args }
@@ -313,7 +313,7 @@ module Make(Envt:envt)(Param:param) = struct
     | a :: q ->
       match expr state a with
       | Ok (Some defs)  ->
-        begin match m2l Envt.( state >> defs.D.visible ) q with
+        begin match m2l Envt.( state >> defs ) q with
           | Ok (state,sg) ->  Ok (state, S.merge defs.defined sg)
           | Error q' -> Error ( snd @@ Normalize.all @@ Defs defs :: q')
         end

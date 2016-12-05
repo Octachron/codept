@@ -317,7 +317,7 @@ let result =
             []);
           "error.mli", ([],["Format";"Syntaxerr"],[]);
           "error.ml", (["Pp"],["Format";"Syntaxerr"],[]);
-          "interpreter.mli", (["Module";"Paths";"M2l"],[],[]);
+          "interpreter.mli", (["Module";"Paths";"M2l";"Definition"],[],[]);
           "interpreter.ml", (
             ["Definition"; "M2l"; "Module"; "Name"; "Option"; "Paths";
              "Result"; "Warning"]

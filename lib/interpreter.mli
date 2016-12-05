@@ -5,7 +5,7 @@ module type envt = sig
   type t
   val find: transparent:bool -> ?alias:bool ->
     Module.level -> Paths.Simple.t -> t -> Module.t
-  val (>>) : t -> Module.signature -> t
+  val (>>) : t -> Definition.t -> t
   val add_module: t -> Module.t -> t
 end
 
