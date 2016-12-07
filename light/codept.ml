@@ -25,6 +25,7 @@ type param =
     implicits: bool;
     closed_world: bool;
     may_approx:bool;
+    polycy: Messages.Polycy.t;
   }
 
 
@@ -37,12 +38,15 @@ type task =
   }
 
 
-let lift { transparent_extension_nodes; transparent_aliases; _ } =
-(module struct
+let lift { polycy; transparent_extension_nodes; transparent_aliases; _ } =
+  (module struct
+    let polycy = polycy
     let transparent_extension_nodes = transparent_extension_nodes
     let transparent_aliases = transparent_aliases
   end
   : Interpreter.param )
+
+let polycy = Messages.Polycy.default
 
 let param = ref {
   all = false;
@@ -59,6 +63,7 @@ let param = ref {
   synonyms = {Unit.ml = Name.Set.singleton "ml" ; mli = Name.Set.singleton "mli" };
   closed_world = false;
   may_approx = false;
+  polycy
 }
 
 
@@ -86,12 +91,12 @@ let classify synonyms f =
   else
     raise @@ Unknown_file_type ext
 
-let to_m2l synonyms f =
+let to_m2l conv synonyms f =
   if extension f = "cmi" then
     Cmi.m2l f
   else
     let kind = classify synonyms f in
-    match Read.file kind f with
+    match Read.file conv kind f with
     | _name, Ok x -> x
     | _, Error msg -> Error.syntaxerr msg
 
@@ -102,14 +107,16 @@ let approx_file _param f =
 
 let one_pass param f =
   let module Param = (val lift param) in
+  let ast = Ast_converter.with_polycy param.polycy in
   let module Sg = Envts.Interpreters.Sg(Param) in
-  let start = to_m2l param.synonyms f in
+  let start = to_m2l ast param.synonyms f in
   match start |> Sg.m2l S.empty with
   | Ok (_state,d) -> Pp.fp std "Computation finished:\n %a@." S.pp d
   | Error h -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
 
 let m2l param f =
-  let start = to_m2l param.synonyms f in
+  let ast = Ast_converter.with_polycy param.polycy in
+  let start = to_m2l ast param.synonyms f in
   start
   |> Normalize.all
   |> snd
@@ -139,12 +146,12 @@ let open_in opens unit =
       | m -> { unit with code = M2l.Open m :: unit.code }
     ) opens unit
 
-let organize ~may_approx opens files =
+let organize polycy opens files =
   let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
   let units = Unit.map (
-    Unit.unimap (List.map % Unit.read_file ~may_approx )
+    Unit.unimap (List.map % Unit.read_file polycy )
       { ml=M2l.Structure; mli=M2l.Signature}
     ) files in
   let units = Unit.unimap (List.map @@ open_in opens) units in
@@ -179,7 +186,7 @@ let remove_units invisibles =
     | _ -> false
 
 let analyze param {opens;libs;invisibles;files;_} =
-  let units, filemap = organize param.may_approx opens files in
+  let units, filemap = organize param.polycy opens files in
   let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
   let E((module Envt),core) = start_env param libs files_set filemap in
   let module S = Solver.Make(Envt)((val lift param)) in
@@ -499,7 +506,17 @@ let close_world () =
 
 
 let allow_approx () =
-  param := { !param with may_approx = true }
+  param := { !param with polycy = Messages.Polycy.parsing_approx }
+
+let keep_going () =
+  param := { !param with polycy = Messages.Polycy.lax }
+
+let quiet () =
+  param := { !param with polycy = Messages.Polycy.quiet }
+
+
+let strict () =
+  param := { !param with polycy = Messages.Polycy.strict }
 
 let pkg name =
   let cmd = "ocamlfind query " ^ name in
@@ -589,6 +606,9 @@ let args = Cmd.[
     ": print raw unresolved dependencies\n\n Misc options:\n";
     "-closed-world", Unit close_world,
     ": require that all dependencies are provided";
+    "-strict", Unit strict, "Fail rather than approximate anything";
+    "-k", Unit keep_going, "Ignore most recoverable errors and keep going";
+    "-q", Unit quiet, "Ignore and silent all recoverable errors and keep going";
 
     "-L", String lib, "<dir>: use all cmi files in <dir> \
                                in the analysis";

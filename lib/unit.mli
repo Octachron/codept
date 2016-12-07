@@ -17,10 +17,11 @@ type t = {
 }
 type u = t
 
-val read_file : ?may_approx:bool -> M2l.kind -> string -> u
-(** [read_file allow_approx kind filename] reads the file [filename],
+val read_file : Messages.Polycy.t -> M2l.kind -> string -> u
+(** [read_file polycy kind filename] reads the file [filename],
     extracting the corresponding m2l ast. If the file is not synctatically
-    valid Ocaml and [allow_approx=true] the approximative parser is used.
+    valid Ocaml and syntax errors are not set to critical level in [polycy],
+    the approximative parser is used.
 *)
 
 val pp : Format.formatter -> t -> unit

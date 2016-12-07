@@ -23,10 +23,11 @@ end
 
 (** Interpreter parameter *)
 module type param =
-  sig
-    val transparent_extension_nodes : bool
-    val transparent_aliases : bool
-  end
+sig
+  val polycy: Messages.Polycy.t
+  val transparent_extension_nodes : bool
+  val transparent_aliases : bool
+end
 
 (** resulting signature *)
 module type s =

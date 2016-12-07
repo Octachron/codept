@@ -10,12 +10,14 @@ let classify filename =  match Filename.extension filename with
   | _ -> raise (Invalid_argument "unknown extension")
 
 
-let organize ~may_approx files =
+let polycy = Messages.Polycy.quiet
+
+let organize polycy files =
    let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
   let units = Unit.map (
-    Unit.unimap (List.map % Unit.read_file ~may_approx )
+    Unit.unimap (List.map % Unit.read_file polycy )
       { ml=M2l.Structure; mli=M2l.Signature}
     ) files in
   let units = Unit.Groups.Unit.(split % group) units in
@@ -29,14 +31,15 @@ let start_env includes fileset filemap =
   Envt.start traced filemap
 
 module Param = struct
+  let polycy = polycy
   let transparent_aliases = true
   let transparent_extension_nodes = true
 end
 
 module S = Solver.Make(Envt)(Param)
 
-let analyze ~may_approx pkgs files =
-  let units, filemap = organize ~may_approx files in
+let analyze pkgs files =
+  let units, filemap = organize polycy files in
   let fileset = units.Unit.mli
                 |> List.map (fun u -> u.Unit.name)
                 |> Name.Set.of_list in
@@ -100,7 +103,7 @@ let add_file {Unit.ml; mli} info = match classify info with
   | M2l.Structure -> { Unit.ml = info :: ml; mli }
   | M2l.Signature -> { Unit.mli = info :: mli; ml }
 
-let gen_deps_test ~may_approx libs inner_test l =
+let gen_deps_test libs inner_test l =
   let {Unit.ml;mli} = List.fold_left add_info {Unit.ml=[]; mli=[]} l in
   let module M = Paths.S.Map in
   let build exp = List.fold_left (fun m (x,l) ->
@@ -108,7 +111,7 @@ let gen_deps_test ~may_approx libs inner_test l =
       M.empty exp in
   let exp = M.union' (build ml) (build mli) in
   let files = { Unit.ml = List.map fst ml; mli =  List.map fst mli} in
-  let {Unit.ml; mli} = analyze may_approx libs files in
+  let {Unit.ml; mli} = analyze libs files in
   let (=?) expect files = List.for_all (fun u ->
       let path = u.Unit.path.Pth.file in
       let expected =
@@ -119,15 +122,9 @@ let gen_deps_test ~may_approx libs inner_test l =
   exp =? ml && exp =? mli
 
 let deps_test l =
-  try gen_deps_test ~may_approx:false [] simple_dep_test l with
+  try gen_deps_test [] simple_dep_test l with
   | S.Cycle (_,units) ->
     Error.log "%a" Solver.Failure.pp_cycle units
-
-let deps_test_approx l =
-  try gen_deps_test ~may_approx:true [] simple_dep_test l with
-  | S.Cycle (_,units) ->
-    Error.log "%a" Solver.Failure.pp_cycle units
-
 
 let ocamlfind name =
   let cmd = "ocamlfind query " ^ name in
@@ -139,7 +136,7 @@ let ocamlfind name =
 
 let cycle_test expected l =
     let files = List.fold_left add_file {Unit.ml=[]; mli=[]} l in
-    try ignore @@ analyze ~may_approx:false [] files; false with
+    try ignore @@ analyze [] files; false with
       S.Cycle (_,units) ->
       let open Solver.Failure in
       let map = analysis units in
@@ -202,7 +199,7 @@ let result =
 
   ]
   &&
-  List.for_all deps_test_approx [
+  List.for_all deps_test [
     ["broken.ml", ["Ext"; "Ext2"; "Ext3"; "Ext4"; "Ext5" ] ];
     ["broken2.ml", ["A"; "Ext"; "Ext2" ]];
       ["broken3.ml", []];
@@ -224,7 +221,7 @@ let result =
      )
   &&
   ( Sys.chdir "../broken_network";
-    deps_test_approx [
+    deps_test [
       "a.ml", ["Broken"; "B"; "C"];
       "broken.ml", ["B"];
       "c.ml", ["Extern"] ]
@@ -296,11 +293,11 @@ let result =
     )
     &&
     ( Sys.chdir "../../lib";
-      gen_deps_test ~may_approx:false (ocamlfind "compiler-libs") precise_deps_test
+      gen_deps_test (ocamlfind "compiler-libs") precise_deps_test
         [
-          "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
+          "ast_converter.mli", ( ["M2l"; "Messages"], ["Parsetree"], [] );
           "ast_converter.ml", ( ["M2l"; "Name"; "Option"; "Module";
-                                 "Paths"; "Warning"],
+                                 "Paths"; "Messages"],
                                 ["List";"Longident"; "Location"; "Parsetree"], [] );
           "approx_parser.mli", (["M2l"], [],[]);
           "approx_parser.ml", (["Read";"M2l";"Name"],
@@ -310,25 +307,27 @@ let result =
           "cmi.ml", (["M2l";"Module"; "Option"; "Paths"],
                      ["Cmi_format";"Path";"Types"], []);
           "definition.mli", (["Module"], ["Format"], []);
-          "definition.ml", (["Module"; "Name"; "Pp"], ["List"], []);
+          "definition.ml", (["Module"; "Name"; "Pp"; "Result"], ["List"], []);
           "envts.mli", (["M2l";"Module";"Name"; "Interpreter"; "Paths"], [], []);
           "envts.ml", (
-            ["Cmi"; "Definition"; "Interpreter"; "M2l"; "Module"; "Name";
+            ["Cmi"; "Definition"; "Interpreter"; "M2l"; "Messages"; "Module"; "Name";
              "Option"; "Paths"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
           "error.mli", ([],["Format";"Syntaxerr"],[]);
           "error.ml", (["Pp"],["Format";"Syntaxerr"],[]);
-          "interpreter.mli", (["Module";"Paths";"M2l";"Definition"],[],[]);
+          "interpreter.mli", (["Messages";"Module";"Paths";"M2l";"Definition"],[],[]);
           "interpreter.ml", (
             ["Definition"; "M2l"; "Module"; "Name"; "Option"; "Paths";
-             "Result"; "Warning"]
+             "Result"; "Messages"]
           ,["List"],[]);
           "m2l.mli", (["Module";"Name";"Definition";"Paths" ],["Format"],[]);
           "m2l.ml", (["Module";"Name";"Option";"Definition";"Paths"; "Pp" ],
                      ["List"],[]);
+          "messages.ml", (["Module"; "Name";"Paths"; "Pp"],
+                          ["Array"; "Format"; "List"; "Location";"Syntaxerr"],[]);
           "module.mli", ( ["Paths";"Name"], ["Format"], [] );
-          "module.ml", ( ["Error";"Paths";"Name"; "Pp" ], ["List"], [] );
+          "module.ml", ( ["Paths";"Name"; "Pp" ], ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map"], [] );
           "option.mli", ([],[],[]);
@@ -338,7 +337,7 @@ let result =
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
-          "read.mli", (["M2l";"Name"],["Syntaxerr"],[]);
+          "read.mli", (["M2l"; "Ast_converter"; "Name"],["Syntaxerr"],[]);
           "read.ml", (["Ast_converter"; "M2l"],
                       ["Filename"; "Format"; "Location"; "Parse"; "Pparse";
                        "String"; "Syntaxerr"],[]);
@@ -347,18 +346,17 @@ let result =
           "solver.mli", (["Unit";"Name";"Interpreter"],["Format";"Map"],[]);
           "solver.ml", (
             ["Approx_parser"; "Definition"; "Interpreter"; "M2l"; "Module"; "Name";
-             "Option"; "Pp"; "Paths"; "Unit"; "Warning"],
+             "Option"; "Pp"; "Paths"; "Unit"; "Messages"],
             ["List"; "Map"],[]);
-          "unit.mli", (["Paths"; "M2l"],["Format";"Set"],[]);
+          "unit.mli", (["Paths"; "M2l"; "Messages"],["Format";"Set"],[]);
           "unit.ml", (
-            ["Approx_parser"; "Error"; "M2l"; "Option"; "Paths"; "Pp"; "Read"],
+            ["Approx_parser"; "Ast_converter"; "M2l"; "Messages"; "Option"; "Paths"; "Pp"; "Read"],
             [ "List"; "Set"],
             []);
           "warning.mli", ([],["Format"],[]);
           "warning.ml", ([],["Format"],[]);
         ]
     )
-
 let () =
   if result then
     Format.printf "Success.\n"

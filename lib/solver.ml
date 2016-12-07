@@ -62,16 +62,13 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
            input *) in
     let elts = Paths.P.Set.elements in
     if elts upper = elts lower then
-      Warning.log "Approximate parsing of %a.\n\
-                   However, lower and upper bound agreed upon dependencies."
-        Paths.P.pp unit.path
+      Messages.(send Param.polycy concordant_approximation unit.path)
     else
-      Warning.log "Approximate parsing of %a.\n\
-                   Computed dependencies: at least {%a}, maybe: {%a}"
-        Paths.P.pp unit.path
-        Pp.(list string) (List.map Paths.P.module_name @@ elts lower)
-        Pp.(list string) ( List.map Paths.P.module_name @@ elts
-                           @@ Paths.P.Set.diff upper lower);
+      Messages.(send Param.polycy discordant_approximation
+        unit.path
+        (List.map Paths.P.module_name @@ elts lower)
+        ( List.map Paths.P.module_name @@ elts
+          @@ Paths.P.Set.diff upper lower) );
     { unit with dependencies = upper; code }
 
 

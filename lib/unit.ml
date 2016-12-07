@@ -15,15 +15,15 @@ type t = {
   dependencies: Pkg.set
 }
 type u = t
-let read_file ?(may_approx=false) kind filename =
-  let name, code = Read.file kind filename in
+let read_file polycy =
+  let astc = Ast_converter.with_polycy polycy in
+  fun kind filename ->
+  let name, code = Read.file astc kind filename in
   let precision, code = match code with
     | Ok c -> Exact, c
     | Error msg ->
-      if not may_approx then
-        Error.syntaxerr msg
-      else
-       Approx, Approx_parser.lower_bound filename
+      Messages.(send polycy syntaxerr msg);
+      Approx, Approx_parser.lower_bound filename
   in
       { name;
         kind;

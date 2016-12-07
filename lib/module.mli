@@ -120,10 +120,10 @@ module Partial :
     val simple : signature -> t
     val pp : Format.formatter -> t -> unit
     val no_arg : signature -> t
-    val drop_arg : t -> t
+    val drop_arg : t -> t option
     val to_module : ?origin:origin -> string -> t -> modul
     val to_arg : string -> t -> modul
     val of_module : modul -> t
     val is_functor : t -> bool
-    val to_sign : t -> signature
+    val to_sign : t -> (signature,signature) result
   end

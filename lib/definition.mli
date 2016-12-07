@@ -67,5 +67,5 @@ val bind_gen : Module.level -> Module.t -> definition -> definition
 val binds : (Module.level * Module.t) list -> definition
 (** [bind [level,m;…] def] binds the modules [m] at [level] in [def] *)
 
-val of_partial : Module.Partial.t -> definition
+val of_partial : Module.Partial.t -> (definition,definition) result
 (** Create a definition from a partial module *)

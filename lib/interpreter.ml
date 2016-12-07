@@ -35,15 +35,30 @@ module type s = sig
 end
 
 module type param = sig
+  val polycy: Messages.Polycy.t
   val transparent_extension_nodes: bool
   val transparent_aliases: bool
 end
 
 module Make(Envt:envt)(Param:param) = struct
 
+
   include Param
   let find = Envt.find ~transparent:transparent_aliases
 
+  let drop_arg (p:Module.Partial.t) =  match  p.args with
+      | _ :: args -> { p with args }
+      | [] ->
+        match p.precision with
+        | Exact -> Messages.(send polycy applied_structure) p; p
+        | Unknown -> p (* we guessed the arg wrong *)
+
+
+  let of_partial p =
+    match D.of_partial p with
+    | Error def -> Messages.(send polycy signature_expected p);
+      def
+    | Ok def -> def
 
   type level = Module.level = Module | Module_type
   let minor module_expr str state m =
@@ -88,7 +103,7 @@ module Make(Envt:envt)(Param:param) = struct
   let warn_open x = let open Module in
       if x.signature = S.empty then
         match x.origin with
-        | First_class -> Warning.opened_first_class x.name
+        | First_class -> Messages.(send polycy opened_first_class x.name)
         | Unit _ | Submodule | Arg -> ()
         | Alias _ -> ()
 
@@ -102,8 +117,8 @@ module Make(Envt:envt)(Param:param) = struct
     | Error h -> Error (box h)
     | Ok fdefs ->
       if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
-        Warning.included_first_class ();
-      let defs = D.of_partial fdefs in
+        Messages.(send polycy included_first_class );
+      let defs = of_partial fdefs in
       Ok (Some defs)
 
   let include_ state module_expr =
@@ -199,7 +214,7 @@ module Make(Envt:envt)(Param:param) = struct
       end
     | Apply {f;x} ->
       begin match module_expr state f, module_expr state x with
-        | Ok f, Ok _ -> Ok (P.drop_arg f)
+        | Ok f, Ok _ -> Ok (drop_arg f)
         | Error f, Error x -> Error (Apply {f;x} )
         | Error f, Ok d -> Error (Apply {f; x = Resolved d})
         | Ok f, Error x -> Error (Apply {f = Resolved f ;x} )

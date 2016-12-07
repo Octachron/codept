@@ -217,11 +217,8 @@ module Partial = struct
   let no_arg x = { origin = Submodule; precision=Exact; args = []; result = x }
 
   let drop_arg (p:t) = match  p.args with
-    | _ :: args -> { p with args }
-    | [] ->
-      match p.precision with
-      | Exact -> Error.log "Only functor can be applied, got:%a" pp p
-      | Unknown ->  p (* we guessed the arg wrong *)
+    | _ :: args -> Some { p with args }
+    | [] -> None
 
   let to_module ?origin name (p:t) =
     let origin = match origin with
@@ -244,10 +241,9 @@ module Partial = struct
 
   let to_sign fdefs =
     if fdefs.args <> [] then
-      ( Pp.fp Pp.err "%a@." pp fdefs;
-        Error.signature_expected ()
-      )
+      Error fdefs.result
+
     else
-      fdefs.result
+      Ok fdefs.result
 
 end
