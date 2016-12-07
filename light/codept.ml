@@ -98,7 +98,7 @@ let to_m2l conv synonyms f =
     let kind = classify synonyms f in
     match Read.file conv kind f with
     | _name, Ok x -> x
-    | _, Error msg -> Error.syntaxerr msg
+    | _, Error msg -> Messages.(syntaxerr.send Level.critical msg); exit 1
 
 let approx_file _param f =
   let _name, lower, upper = Approx_parser.file f in
@@ -195,7 +195,7 @@ let analyze param {opens;libs;invisibles;files;_} =
       S.resolve_split_dependencies core units
     with
       S.Cycle (_env,units) ->
-      Error.log "%a" Solver.Failure.pp_cycle units
+      Messages.critical "%a" Solver.Failure.pp_cycle units
   in
   let ml = remove_units invisibles ml in
   let mli = remove_units invisibles mli in

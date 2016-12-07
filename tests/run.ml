@@ -124,7 +124,7 @@ let gen_deps_test libs inner_test l =
 let deps_test l =
   try gen_deps_test [] simple_dep_test l with
   | S.Cycle (_,units) ->
-    Error.log "%a" Solver.Failure.pp_cycle units
+    Messages.critical "%a" Solver.Failure.pp_cycle units
 
 let ocamlfind name =
   let cmd = "ocamlfind query " ^ name in
@@ -314,8 +314,6 @@ let result =
              "Option"; "Paths"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
-          "error.mli", ([],["Format";"Syntaxerr"],[]);
-          "error.ml", (["Pp"],["Format";"Syntaxerr"],[]);
           "interpreter.mli", (["Messages";"Module";"Paths";"M2l";"Definition"],[],[]);
           "interpreter.ml", (
             ["Definition"; "M2l"; "Module"; "Name"; "Option"; "Paths";
@@ -325,7 +323,7 @@ let result =
           "m2l.ml", (["Module";"Name";"Option";"Definition";"Paths"; "Pp" ],
                      ["List"],[]);
           "messages.ml", (["Module"; "Name";"Paths"; "Pp"],
-                          ["Array"; "Format"; "List"; "Location";"Syntaxerr"],[]);
+                          ["Array"; "Format"; "Location";"Syntaxerr"],[]);
           "module.mli", ( ["Paths";"Name"], ["Format"], [] );
           "module.ml", ( ["Paths";"Name"; "Pp" ], ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
@@ -353,8 +351,6 @@ let result =
             ["Approx_parser"; "Ast_converter"; "M2l"; "Messages"; "Option"; "Paths"; "Pp"; "Read"],
             [ "List"; "Set"],
             []);
-          "warning.mli", ([],["Format"],[]);
-          "warning.ml", ([],["Format"],[]);
         ]
     )
 let () =
