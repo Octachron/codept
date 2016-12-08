@@ -546,23 +546,33 @@ let add_include dir =
 let no_implicits () =
   param := { !param with implicits = false }
 
+let level_of_string =
+  let open Fault.Level in
+  function
+  | "whisper" | "0" -> whisper
+  | "notification" | "1" -> notification
+  | "warning" | "2" -> warning
+  | "error" | "3" -> error
+  | "critical" | "4" -> critical
+  | _ -> whisper
+
 let fault s =
   match String.split_on_char '=' s with
   | [] | [_]| _ :: _ :: _ :: _ -> ()
   | [a;b] ->
     let path= List.map String.trim @@ String.split_on_char '.' a in
-    let level =
-      let open Fault.Level in
-      match b with
-      | "whisper" | "0" -> whisper
-      | "notification" | "1" -> notification
-      | "warning" | "2" -> warning
-      | "error" | "3" -> error
-      | "critical" | "4" -> critical
-      | _ -> whisper
-    in
+    let level = level_of_string b in
     let polycy = (!param).polycy in
     param := { !param with polycy = Fault.Polycy.set (path,level) polycy }
+
+let silent_level s =
+  let polycy = (!param).polycy in
+  param := { !param with polycy = { polycy with silent = level_of_string s} }
+
+let exit_level s =
+  let polycy = (!param).polycy in
+  param := { !param with polycy = { polycy with exit = level_of_string s} }
+
 
 let usage_msg =
   "Codept is an alternative dependency solver for OCaml.\n\
@@ -622,13 +632,18 @@ let args = Cmd.[
     ": print raw inner dependencies";
     "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
     ": print raw unresolved dependencies\n\n Fault polycy:\n";
+
     "-closed-world", Unit close_world,
     ": require that all dependencies are provided";
     "-k", Unit keep_going, ": ignore most recoverable errors and keep going";
     "-strict", Unit strict, ": fail rather than approximate anything";
     "-q", Unit quiet, ": ignore and silent all recoverable errors and keep going";
     "-fault", String fault, "<fault.path=level>: update fault polycy for the given\
-                            fault.\n Misc options:";
+                             fault.\n Misc options:";
+    "-silent-fault-level", String silent_level,
+    "<level>: only print fault beyond level <level>";
+    "-exit-fault-level", String exit_level,
+    "<level>: exit for fault at level <level> and beyond";
 
     "-L", String lib, "<dir>: use all cmi files in <dir> \
                                in the analysis";
