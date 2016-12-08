@@ -10,7 +10,7 @@ let classify filename =  match Filename.extension filename with
   | _ -> raise (Invalid_argument "unknown extension")
 
 
-let polycy = Messages.Polycy.quiet
+let polycy = Fault.Polycy.quiet
 
 let organize polycy files =
    let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
@@ -124,7 +124,7 @@ let gen_deps_test libs inner_test l =
 let deps_test l =
   try gen_deps_test [] simple_dep_test l with
   | S.Cycle (_,units) ->
-    Messages.critical "%a" Solver.Failure.pp_cycle units
+    Fault.Log.critical "%a" Solver.Failure.pp_cycle units
 
 let ocamlfind name =
   let cmd = "ocamlfind query " ^ name in
@@ -295,9 +295,9 @@ let result =
     ( Sys.chdir "../../lib";
       gen_deps_test (ocamlfind "compiler-libs") precise_deps_test
         [
-          "ast_converter.mli", ( ["M2l"; "Messages"], ["Parsetree"], [] );
+          "ast_converter.mli", ( ["M2l"; "Fault"], ["Parsetree"], [] );
           "ast_converter.ml", ( ["M2l"; "Name"; "Option"; "Module";
-                                 "Paths"; "Messages"],
+                                 "Paths"; "Fault"],
                                 ["List";"Longident"; "Location"; "Parsetree"], [] );
           "approx_parser.mli", (["M2l"], [],[]);
           "approx_parser.ml", (["Read";"M2l";"Name"],
@@ -310,19 +310,19 @@ let result =
           "definition.ml", (["Module"; "Name"; "Pp"; "Result"], ["List"], []);
           "envts.mli", (["M2l";"Module";"Name"; "Interpreter"; "Paths"], [], []);
           "envts.ml", (
-            ["Cmi"; "Definition"; "Interpreter"; "M2l"; "Messages"; "Module"; "Name";
+            ["Cmi"; "Definition"; "Interpreter"; "M2l"; "Fault"; "Module"; "Name";
              "Option"; "Paths"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
-          "interpreter.mli", (["Messages";"Module";"Paths";"M2l";"Definition"],[],[]);
+          "interpreter.mli", (["Fault";"Module";"Paths";"M2l";"Definition"],[],[]);
           "interpreter.ml", (
             ["Definition"; "M2l"; "Module"; "Name"; "Option"; "Paths";
-             "Result"; "Messages"]
+             "Result"; "Fault"]
           ,["List"],[]);
           "m2l.mli", (["Module";"Name";"Definition";"Paths" ],["Format"],[]);
           "m2l.ml", (["Module";"Name";"Option";"Definition";"Paths"; "Pp" ],
                      ["List"],[]);
-          "messages.ml", (["Module"; "Name";"Paths"; "Pp"],
+          "fault.ml", (["Module"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"; "Location";"Syntaxerr"],[]);
           "module.mli", ( ["Paths";"Name"], ["Format"], [] );
           "module.ml", ( ["Paths";"Name"; "Pp" ], ["List"], [] );
@@ -344,11 +344,11 @@ let result =
           "solver.mli", (["Unit";"Name";"Interpreter"],["Format";"Map"],[]);
           "solver.ml", (
             ["Approx_parser"; "Definition"; "Interpreter"; "M2l"; "Module"; "Name";
-             "Option"; "Pp"; "Paths"; "Unit"; "Messages"],
+             "Option"; "Pp"; "Paths"; "Unit"; "Fault"],
             ["List"; "Map"],[]);
-          "unit.mli", (["Paths"; "M2l"; "Messages"],["Format";"Set"],[]);
+          "unit.mli", (["Paths"; "M2l"; "Fault"],["Format";"Set"],[]);
           "unit.ml", (
-            ["Approx_parser"; "Ast_converter"; "M2l"; "Messages"; "Option"; "Paths"; "Pp"; "Read"],
+            ["Approx_parser"; "Ast_converter"; "M2l"; "Fault"; "Option"; "Paths"; "Pp"; "Read"],
             [ "List"; "Set"],
             []);
         ]
