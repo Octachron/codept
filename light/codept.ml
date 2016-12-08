@@ -546,6 +546,24 @@ let add_include dir =
 let no_implicits () =
   param := { !param with implicits = false }
 
+let fault s =
+  match String.split_on_char '=' s with
+  | [] | [_]| _ :: _ :: _ :: _ -> ()
+  | [a;b] ->
+    let path= List.map String.trim @@ String.split_on_char '.' a in
+    let level =
+      let open Fault.Level in
+      match b with
+      | "whisper" | "0" -> whisper
+      | "notification" | "1" -> notification
+      | "warning" | "2" -> warning
+      | "error" | "3" -> error
+      | "critical" | "4" -> critical
+      | _ -> whisper
+    in
+    let polycy = (!param).polycy in
+    param := { !param with polycy = Fault.Polycy.set (path,level) polycy }
+
 let usage_msg =
   "Codept is an alternative dependency solver for OCaml.\n\
    Usage: codept [options] ⟨source files⟩.\n\
@@ -603,12 +621,14 @@ let args = Cmd.[
     "-inner-modules", Unit (set @@ modules ~filter:inner_filter),
     ": print raw inner dependencies";
     "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
-    ": print raw unresolved dependencies\n\n Misc options:\n";
+    ": print raw unresolved dependencies\n\n Fault polycy:\n";
     "-closed-world", Unit close_world,
     ": require that all dependencies are provided";
-    "-strict", Unit strict, "Fail rather than approximate anything";
-    "-k", Unit keep_going, "Ignore most recoverable errors and keep going";
-    "-q", Unit quiet, "Ignore and silent all recoverable errors and keep going";
+    "-k", Unit keep_going, ": ignore most recoverable errors and keep going";
+    "-strict", Unit strict, ": fail rather than approximate anything";
+    "-q", Unit quiet, ": ignore and silent all recoverable errors and keep going";
+    "-fault", String fault, "<fault.path=level>: update fault polycy for the given\
+                            fault.\n Misc options:";
 
     "-L", String lib, "<dir>: use all cmi files in <dir> \
                                in the analysis";
