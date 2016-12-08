@@ -98,7 +98,7 @@ let to_m2l conv synonyms f =
     let kind = classify synonyms f in
     match Read.file conv kind f with
     | _name, Ok x -> x
-    | _, Error msg -> Fault.(syntaxerr.send Level.critical msg); exit 1
+    | _, Error msg -> Fault.(handle Polycy.strict syntaxerr msg ); exit 1
 
 let approx_file _param f =
   let _name, lower, upper = Approx_parser.file f in

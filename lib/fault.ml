@@ -28,10 +28,11 @@ let whisper fmt = Format.eprintf @@
   "@[<hov2>[Misc]:@,@ @[" ^^ fmt ^^ "@]@]@."
 end
 
-let log level fmt =
+type log_info = { silent:Level.t; level:Level.t; exit:Level.t}
+let log {silent;level;exit} fmt =
   let fns = Log.[| whisper; notification; warning; error; critical |] in
-  if level <= Level.whisper then Format.ifprintf Format.err_formatter fmt
-  else if level >= Level.critical then
+  if level <= silent then Format.ifprintf Format.err_formatter fmt
+  else if level >= min Level.critical exit then
     Log.critical fmt
   else
     fns.(level) fmt
@@ -40,7 +41,7 @@ let log level fmt =
 let llog fmt = fun level -> log level fmt
 let with_lvl f = fun lvl -> f lvl
 
-type 'a t = { path: Paths.S.t; send: int -> 'a }
+type 'a t = { path: Paths.S.t; send: log_info -> 'a }
 
 
 (** Warnings *)
@@ -129,7 +130,9 @@ let syntaxerr =
   }
 
 module Polycy = struct
-  type t = Level of Level.t | Map of Level.t * t Name.Map.t
+  type map = Level of Level.t | Map of Level.t * map Name.Map.t
+  type t = { silent: Level.t; exit:Level.t; map:map}
+
   let rec find pol l  =
     match pol, l with
     | Level h, _ -> h
@@ -139,6 +142,8 @@ module Polycy = struct
           Not_found -> h
       end
     | Map (h,_), [] -> h
+
+  let find {map; _ } = find map
 
   let rec set (path,lvl) env = match path, env with
     | [], Level _ -> Level lvl
@@ -153,37 +158,36 @@ module Polycy = struct
       let m = Name.Map.add a elt m in
       Map(h, m)
 
+  let set x p = { p with map = set x p.map }
+
   let set_err (error,lvl) polycy = set (error.path,lvl) polycy
 
-  let strict = Level Level.critical
+  let strict = Level.{ silent = whisper; exit = critical ; map= Level critical }
 
   let default =
-    Level Level.critical
+    strict
     |> set_err (applied_unknown, Level.warning )
     |> set (["first_class"], Level.warning )
     |> set (["extension"], Level.warning)
 
   let parsing_approx =
-    Level Level.critical
-    |> set_err (applied_unknown, Level.warning )
-    |> set (["first_class"], Level.warning )
-    |> set (["extension"], Level.warning)
+    default
     |> set (["parsing"], Level.warning)
     |> set_err (concordant_approximation, Level.notification)
 
   let lax =
-    Level Level.critical
-    |> set_err (applied_unknown, Level.warning )
-    |> set (["first_class"], Level.warning )
-    |> set (["extension"], Level.warning)
-    |> set (["parsing"], Level.warning)
-    |> set_err (concordant_approximation, Level.notification)
+    parsing_approx
     |> set (["typing"], Level.error)
 
-  let quiet = Level Level.whisper
+  let quiet = { lax with silent = Level.error }
 
   end
 
 let set = Polycy.set_err
-let handle polycy error =
-  error.send @@ Polycy.find polycy error.path
+let handle (polycy:Polycy.t) error =
+  error.send {
+    level =
+      Polycy.find polycy error.path;
+    silent = polycy.silent;
+    exit = polycy.exit;
+  }
