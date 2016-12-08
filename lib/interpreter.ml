@@ -117,7 +117,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Error h -> Error (box h)
     | Ok fdefs ->
       if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
-        Messages.(send polycy included_first_class );
+        Messages.(send polycy included_first_class);
       let defs = of_partial fdefs in
       Ok (Some defs)
 
@@ -194,6 +194,30 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok(_state,x) -> Ok x
     | Error _ as h -> h
 
+   let functor_expr module_type (body_type,fn,demote) state args arg body =
+    let ex_arg =
+      match arg with
+      | None -> Ok None
+      | Some arg ->
+        match module_type state arg.Arg.signature with
+        | Error h -> Error (Some {Arg.name = arg.name; signature = h })
+        | Ok d   -> Ok (Some(P.to_arg arg.name d)) in
+    match ex_arg with
+    | Error me -> Error (fn @@ List.fold_left demote {arg=me;body} args )
+    | Ok arg ->
+      let sg = Option.( arg >>| Def.md >< D.empty ) in
+      let state =  Envt.( state >> sg ) in
+      match body_type state body with
+      | Ok p  -> Ok { p with P.args = arg :: p.P.args }
+      | Error me ->
+        let arg = Option.(
+            arg >>| fun arg ->
+            { Arg.name = arg.name;
+              signature:module_type= Resolved (P.of_module arg) }
+          ) in
+        Error (fn @@ List.fold_left demote {arg;body=me} args)
+
+
   let rec module_expr ?(bind=false) state (me:module_expr) = match me with
     | Abstract -> Ok P.empty
     | Unpacked -> Ok P.{ empty with origin = First_class }
@@ -220,7 +244,7 @@ module Make(Envt:envt)(Param:param) = struct
         | Ok f, Error x -> Error (Apply {f = Resolved f ;x} )
       end
     | Fun {arg;body} ->
-      functor_expr (module_expr ~bind:false, Build.fn, Build.demote_str)
+      functor_expr module_type (module_expr ~bind:false, Build.fn, Build.demote_str)
         state [] arg body
     | Str [] -> Ok P.empty
     | Str[Defs d] -> Ok (P.no_arg d.defined)
@@ -283,7 +307,8 @@ module Make(Envt:envt)(Param:param) = struct
           Ok d
       end
     | Fun {arg;body} ->
-      functor_expr (module_type, Build.fn_sig, Build.demote_sig) state [] arg body
+      functor_expr module_type (module_type, Build.fn_sig, Build.demote_sig)
+        state [] arg body
     | Of me -> of_ (module_expr state me)
     | Abstract -> Ok (P.empty)
     | Extension_node n ->
@@ -295,33 +320,6 @@ module Make(Envt:envt)(Param:param) = struct
     | Error me -> Error (Of me)
     | Ok d -> Ok d
 
-  and functor_expr: 'k. (Envt.t -> 'k -> (P.t, 'k) result)
-                    * ('k M2l.fn -> 'k)
-                    * ('k M2l.fn -> D.t Arg.t option -> 'k M2l.fn) ->
-    Envt.t ->  D.t Arg.t option list -> module_type Arg.t option
-    -> 'k -> (P.t, 'k) result =
-    fun (body_type,fn,demote) state args arg body ->
-    let ex_arg =
-      match arg with
-      | None -> Ok None
-      | Some arg ->
-        match module_type state arg.Arg.signature with
-        | Error h -> Error (Some {Arg.name = arg.name; signature = h })
-        | Ok d   -> Ok (Some(P.to_arg arg.name d)) in
-    match ex_arg with
-    | Error me -> Error (fn @@ List.fold_left demote {arg=me;body} args )
-    | Ok arg ->
-      let sg = Option.( arg >>| Def.md >< D.empty ) in
-      let state =  Envt.( state >> sg ) in
-      match body_type state body with
-      | Ok p  -> Ok { p with args = arg :: p.args }
-      | Error me ->
-        let arg = Option.(
-            arg >>| fun arg ->
-            { Arg.name = arg.name;
-              signature:module_type= Resolved (P.of_module arg) }
-          ) in
-        Error (fn @@ List.fold_left demote {arg;body=me} args)
 
   and m2l state = function
     | [] -> Ok (state, S.empty)
