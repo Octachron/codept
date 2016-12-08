@@ -5,4 +5,4 @@ type t= { structure: Parsetree.structure -> M2l.t;
           signature: Parsetree.signature -> M2l.t
         }
 
-val with_polycy: Messages.Polycy.t -> t
+val with_polycy: Fault.Polycy.t -> t

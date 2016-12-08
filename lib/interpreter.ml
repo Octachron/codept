@@ -35,7 +35,7 @@ module type s = sig
 end
 
 module type param = sig
-  val polycy: Messages.Polycy.t
+  val polycy: Fault.Polycy.t
   val transparent_extension_nodes: bool
   val transparent_aliases: bool
 end
@@ -44,19 +44,20 @@ module Make(Envt:envt)(Param:param) = struct
 
 
   include Param
+  let fault x = Fault.handle polycy x
   let find = Envt.find ~transparent:transparent_aliases
 
   let drop_arg (p:Module.Partial.t) =  match  p.args with
       | _ :: args -> { p with args }
       | [] ->
         match p.precision with
-        | Exact -> Messages.(send polycy applied_structure) p; p
+        | Exact -> Fault.(handle polycy applied_structure) p; p
         | Unknown -> p (* we guessed the arg wrong *)
 
 
   let of_partial p =
     match D.of_partial p with
-    | Error def -> Messages.(send polycy signature_expected p);
+    | Error def -> fault Fault.signature_expected p;
       def
     | Ok def -> def
 
@@ -103,7 +104,7 @@ module Make(Envt:envt)(Param:param) = struct
   let warn_open x = let open Module in
       if x.signature = S.empty then
         match x.origin with
-        | First_class -> Messages.(send polycy opened_first_class x.name)
+        | First_class -> fault Fault.opened_first_class x.name
         | Unit _ | Submodule | Arg -> ()
         | Alias _ -> ()
 
@@ -117,7 +118,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Error h -> Error (box h)
     | Ok fdefs ->
       if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
-        Messages.(send polycy included_first_class);
+        fault Fault.included_first_class;
       let defs = of_partial fdefs in
       Ok (Some defs)
 

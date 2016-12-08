@@ -22,7 +22,7 @@ let read_file polycy =
   let precision, code = match code with
     | Ok c -> Exact, c
     | Error msg ->
-      Messages.(send polycy syntaxerr msg);
+      Fault.(handle polycy syntaxerr msg);
       Approx, Approx_parser.lower_bound filename
   in
       { name;

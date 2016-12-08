@@ -24,7 +24,7 @@ end
 (** Interpreter parameter *)
 module type param =
 sig
-  val polycy: Messages.Polycy.t
+  val polycy: Fault.Polycy.t
   val transparent_extension_nodes : bool
   val transparent_aliases : bool
 end

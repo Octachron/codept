@@ -128,8 +128,8 @@ let minor x =
 (** {2 From OCaml ast to m2l } *)
 open Parsetree
 let with_polycy pol =
-  let msg m = Messages.send pol m in
-  let msg_extension = msg Messages.extension in
+  let msg m = Fault.handle pol m in
+  let msg_extension = msg Fault.extension in
 
 let rec structure str =
   mmap structure_item str

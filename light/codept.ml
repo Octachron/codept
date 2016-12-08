@@ -25,7 +25,7 @@ type param =
     implicits: bool;
     closed_world: bool;
     may_approx:bool;
-    polycy: Messages.Polycy.t;
+    polycy: Fault.Polycy.t;
   }
 
 
@@ -46,7 +46,7 @@ let lift { polycy; transparent_extension_nodes; transparent_aliases; _ } =
   end
   : Interpreter.param )
 
-let polycy = Messages.Polycy.default
+let polycy = Fault.Polycy.default
 
 let param = ref {
   all = false;
@@ -98,7 +98,7 @@ let to_m2l conv synonyms f =
     let kind = classify synonyms f in
     match Read.file conv kind f with
     | _name, Ok x -> x
-    | _, Error msg -> Messages.(syntaxerr.send Level.critical msg); exit 1
+    | _, Error msg -> Fault.(syntaxerr.send Level.critical msg); exit 1
 
 let approx_file _param f =
   let _name, lower, upper = Approx_parser.file f in
@@ -195,7 +195,7 @@ let analyze param {opens;libs;invisibles;files;_} =
       S.resolve_split_dependencies core units
     with
       S.Cycle (_env,units) ->
-      Messages.critical "%a" Solver.Failure.pp_cycle units
+      Fault.Log.critical "%a" Solver.Failure.pp_cycle units
   in
   let ml = remove_units invisibles ml in
   let mli = remove_units invisibles mli in
@@ -506,17 +506,17 @@ let close_world () =
 
 
 let allow_approx () =
-  param := { !param with polycy = Messages.Polycy.parsing_approx }
+  param := { !param with polycy = Fault.Polycy.parsing_approx }
 
 let keep_going () =
-  param := { !param with polycy = Messages.Polycy.lax }
+  param := { !param with polycy = Fault.Polycy.lax }
 
 let quiet () =
-  param := { !param with polycy = Messages.Polycy.quiet }
+  param := { !param with polycy = Fault.Polycy.quiet }
 
 
 let strict () =
-  param := { !param with polycy = Messages.Polycy.strict }
+  param := { !param with polycy = Fault.Polycy.strict }
 
 let pkg name =
   let cmd = "ocamlfind query " ^ name in

@@ -17,7 +17,7 @@ type t = {
 }
 type u = t
 
-val read_file : Messages.Polycy.t -> M2l.kind -> string -> u
+val read_file : Fault.Polycy.t -> M2l.kind -> string -> u
 (** [read_file polycy kind filename] reads the file [filename],
     extracting the corresponding m2l ast. If the file is not synctatically
     valid Ocaml and syntax errors are not set to critical level in [polycy],

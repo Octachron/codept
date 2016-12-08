@@ -62,9 +62,9 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
            input *) in
     let elts = Paths.P.Set.elements in
     if elts upper = elts lower then
-      Messages.(send Param.polycy concordant_approximation unit.path)
+      Fault.(handle Param.polycy concordant_approximation unit.path)
     else
-      Messages.(send Param.polycy discordant_approximation
+      Fault.(handle Param.polycy discordant_approximation
         unit.path
         (List.map Paths.P.module_name @@ elts lower)
         ( List.map Paths.P.module_name @@ elts

@@ -8,7 +8,7 @@ let error = 3
 let critical = 4
 end
 
-
+module Log = struct
 let critical fmt =
   Format.kfprintf
   (fun _ppf -> exit 1) Format.err_formatter
@@ -26,14 +26,16 @@ let notification fmt = Format.eprintf @@
 
 let whisper fmt = Format.eprintf @@
   "@[<hov2>[Misc]:@,@ @[" ^^ fmt ^^ "@]@]@."
+end
 
 let log level fmt =
-  let fns = [| whisper; notification; warning; error; critical |] in
+  let fns = Log.[| whisper; notification; warning; error; critical |] in
   if level <= Level.whisper then Format.ifprintf Format.err_formatter fmt
   else if level >= Level.critical then
-    critical fmt
+    Log.critical fmt
   else
     fns.(level) fmt
+
 
 let llog fmt = fun level -> log level fmt
 let with_lvl f = fun lvl -> f lvl
@@ -183,5 +185,5 @@ module Polycy = struct
   end
 
 let set = Polycy.set_err
-let send polycy error =
+let handle polycy error =
   error.send @@ Polycy.find polycy error.path
