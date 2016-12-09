@@ -6,18 +6,35 @@ type precision =
   | Exact
   | Approx
 
-type t = {
+type s = {
   name: string;
   path: Pkg.t;
   kind: M2l.kind;
   precision: precision;
   code: M2l.t;
+}
+
+type r = {
+  name: string;
+  path: Pkg.t;
+  kind: M2l.kind;
+  precision: precision;
+  code: M2l.t;
+  signature: Module.signature;
   dependencies: Pkg.set
 }
-type u = t
+type u = r
+
+let lift signature dependencies ({name;path;kind;precision;code}:s) =
+  {signature;dependencies; name;path;kind;precision;code}
+
+let proj {name;path;kind;precision;code; _ }: s=
+  {name;path;kind;precision;code}
+
+
 let read_file polycy =
   let astc = Ast_converter.with_polycy polycy in
-  fun kind filename ->
+  fun kind filename: s ->
   let name, code = Read.file astc kind filename in
   let precision, code = match code with
     | Ok c -> Exact, c
@@ -29,8 +46,7 @@ let read_file polycy =
         kind;
         precision;
         path = Pkg.local filename;
-        code;
-        dependencies = Pkg.Set.empty
+        code
       }
 
 type 'a pair = { ml:'a; mli:'a}
@@ -142,10 +158,17 @@ module Groups = struct
       end)
 
     module Unit = Make(struct
-        type elt = t
+        type elt = s
         type ('a,'b) arrow = 'b
-        let lift f = f (fun u -> u.kind)
-        let key unit = Paths.S.chop_extension unit.path.file
+        let lift f = f (fun (u:elt) -> u.kind)
+        let key (unit:elt) = Paths.S.chop_extension unit.path.file
+      end)
+
+    module R = Make(struct
+        type elt = r
+        type ('a,'b) arrow = 'b
+        let lift f = f (fun (u:elt) -> u.kind)
+        let key (unit:elt) = Paths.S.chop_extension unit.path.file
       end)
 
 end
@@ -155,12 +178,21 @@ end
 let pp ppf unit =
   Pp.fp ppf "@[<hov2>[ name=%s; @, path=%a; @;\
              m2l = @[%a@]; @;\
+             signature=@[%a@] ];\
              dependencies=@[%a@] @;\
              ] @] @."
     unit.name
     Pkg.pp_simple unit.path
     M2l.pp unit.code
+    Module.pp_signature unit.signature
     Pkg.Set.pp unit.dependencies
 
+let pp_input ppf (unit:s) =
+  Pp.fp ppf "@[<hov2>[ name=%s; @, path=%a; @;\
+             m2l = @[%a@]; @;\
+             ] @] @."
+    unit.name
+    Pkg.pp_simple unit.path
+    M2l.pp unit.code
 
 module Set = Set.Make(struct type t = u let compare = compare end)

@@ -7,24 +7,38 @@ type precision =
   | Exact
   | Approx
 
-type t = {
-  name : string;
-  path : Pkg.t;
-  kind : M2l.kind;
+type s = {
+  name: string;
+  path: Pkg.t;
+  kind: M2l.kind;
   precision: precision;
-  code : M2l.t;
-  dependencies : Pkg.set;
+  code: M2l.t;
 }
-type u = t
 
-val read_file : Fault.Polycy.t -> M2l.kind -> string -> u
+type r = {
+  name: string;
+  path: Pkg.t;
+  kind: M2l.kind;
+  precision: precision;
+  code: M2l.t;
+  signature: Module.signature;
+  dependencies: Pkg.set
+}
+type u = r
+
+val lift: Module.signature -> Pkg.set -> s -> r
+val proj: r -> s
+
+val read_file : Fault.Polycy.t -> M2l.kind -> string -> s
 (** [read_file polycy kind filename] reads the file [filename],
     extracting the corresponding m2l ast. If the file is not synctatically
     valid Ocaml and syntax errors are not set to critical level in [polycy],
     the approximative parser is used.
 *)
 
-val pp : Format.formatter -> t -> unit
+val pp : Format.formatter -> r -> unit
+val pp_input : Format.formatter -> s -> unit
+
 
 type 'a pair = { ml : 'a; mli : 'a; }
 val map: ('a -> 'b) pair -> 'a pair -> 'b pair
@@ -71,7 +85,11 @@ module Groups: sig
     type elt = string and type ('a,'b) arrow = 'a -> 'b
 
   module Unit: group with
-    type elt = u and type ('a,'b) arrow = 'b
+    type elt = s and type ('a,'b) arrow = 'b
+
+  module R: group with
+    type elt = r and type ('a,'b) arrow = 'b
+
 end
 
 

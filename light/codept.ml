@@ -140,7 +140,7 @@ let topos_compare order x y =
 let local = Pkg.local
 
 let open_in opens unit =
-  List.fold_right (fun m (unit:Unit.t) ->
+  List.fold_right (fun m (unit:Unit.s) ->
       match m with
       | [root] when unit.name = root -> unit
       | m -> { unit with code = M2l.Open m :: unit.code }
@@ -187,7 +187,9 @@ let remove_units invisibles =
 
 let analyze param {opens;libs;invisibles;files;_} =
   let units, filemap = organize param.polycy opens files in
-  let files_set = units.mli |> List.map (fun u -> u.Unit.name) |> Name.Set.of_list in
+  let files_set = units.mli
+                  |> List.map (fun (u:Unit.s) -> u.name)
+                  |> Name.Set.of_list in
   let E((module Envt),core) = start_env param libs files_set filemap in
   let module S = Solver.Make(Envt)((val lift param)) in
   let {Unit.ml; mli} =
@@ -208,11 +210,8 @@ let deps param task =
 
 let export param task =
   let {Unit.mli; _} = analyze param task in
-  let sign = function
-    | {Unit.code = M2l.Defs d :: _ ; _ } ->
-      d.defined
-    | _ -> Module.Sig.empty in
-  let md (unit:Unit.t) =
+  let sign (u:Unit.r)= u.signature in
+  let md (unit:Unit.r) =
     {Module.
       name = unit.name
     ; origin = Unit { source=Pkg.Special "exported"; file = [unit.name] }
@@ -301,7 +300,7 @@ let dot param task =
   Pp.fp Pp.std "}\n"
 
 let regroup {Unit.ml;mli} =
-  let add l m = List.fold_left (fun x y -> Unit.Groups.Unit.Map.add y x) m l in
+  let add l m = List.fold_left (fun x y -> Unit.Groups.R.Map.add y x) m l in
   add mli @@ add ml @@ Pth.Map.empty
 
 

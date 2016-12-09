@@ -1,13 +1,17 @@
 
+type i = { input: Unit.s; code: M2l.t; deps: Paths.P.set }
+
 module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
   open Unit
 
   module Eval = Interpreter.Make(Envt)(Param)
 
-  let prefilter env units =
-    List.fold_left (fun (postponed, env, direct) u ->
+  let start input = { input; code = input.code; deps = Paths.P.Set.empty }
+
+  let prefilter env (units:Unit.s list) =
+    List.fold_left (fun (postponed, env, direct) (u:Unit.s) ->
         match u.precision with
-        | Exact -> (postponed,env, u :: direct)
+        | Exact -> (postponed,env, start u :: direct)
         | Approx ->
           let fictious =
             { Module.name = u.name;
@@ -20,44 +24,42 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       )
       ([],env,[]) units
 
-  let compute_more env unit =
-    let result = Eval.m2l env unit.code in
+  let compute_more env (u:i) =
+    let result = Eval.m2l env u.code in
     let deps = Envt.deps env in
     Envt.reset_deps env;
     deps, result
 
-  exception Cycle of Envt.t * u list
+  exception Cycle of Envt.t * i list
 
   let eval ?(learn=true) (finished, core, rest) unit =
-    let open M2l in
     match compute_more core unit with
     | deps, Ok (_,sg) ->
       let core =
         if learn then begin
-          let md = Module.(create ~origin:(Unit unit.path)) unit.name sg in
+          let input = unit.input in
+          let md = Module.(create ~origin:(Unit input.path)) input.name sg in
           Envt.add_module core md
         end
         else
           core
       in
-      let deps = Pkg.Set.union unit.dependencies deps in
-      let unit = { unit with code = [Defs (Definition.sg_bind sg)];
-                             dependencies = deps } in
+      let deps = Pkg.Set.union unit.deps deps in
+      let unit = Unit.lift sg deps unit.input in
       (unit :: finished, core, rest )
     | deps, Error code ->
-      let deps = Pkg.Set.union unit.dependencies deps in
-      let unit = { unit with dependencies = deps; code } in
+      let deps = Pkg.Set.union unit.deps deps in
+      let unit = { unit with deps; code } in
       finished, core, unit :: rest
 
-  let eval_bounded core unit =
-    let open M2l in
+  let eval_bounded core (unit:Unit.s) =
     let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
-    let r, r' = compute_more core unit, compute_more core unit' in
+    let r, r' = compute_more core @@ start unit, compute_more core @@ start unit' in
     let lower, upper = fst r, fst r' in
-    let code = match snd r, snd r' with
+    let sign = match snd r, snd r' with
       | _ , Ok (_,sg)
-      | Ok(_,sg) , Error _  -> [Defs (Definition.sg_bind sg)]
-      | Error _, Error _ -> unit.code
+      | Ok(_,sg) , Error _  ->  sg
+      | Error _, Error _ -> Module.Sig.empty
         (* something bad happened but we are already parsing problematic
            input *) in
     let elts = Paths.P.Set.elements in
@@ -69,7 +71,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
         (List.map Paths.P.module_name @@ elts lower)
         ( List.map Paths.P.module_name @@ elts
           @@ Paths.P.Set.diff upper lower) );
-    { unit with dependencies = upper; code }
+    Unit.lift sign upper unit
 
 
   let resolve_dependencies_main ?(learn=true) core units =
@@ -100,21 +102,23 @@ end
 
 
 module Failure = struct
-  open Unit
+  module Set = Set.Make(struct type t = i let compare = compare end)
+
   type status =
     | Cycle of Name.t
     | Extern of Name.t
     | Depend_on of Name.t
     | Internal_error
 
-  let analysis sources =
-    let m = List.fold_left (fun m u -> Name.Map.add u.name (u, ref None) m )
+
+  let analysis (sources: i list) =
+    let m = List.fold_left (fun m u -> Name.Map.add u.input.name (u, ref None) m )
         Name.Map.empty sources in
-    let s = Name.Set.of_list @@ List.map (fun x -> x.name) @@ sources
+    let s = Name.Set.of_list @@ List.map (fun (x:i) -> x.input.name) @@ sources
     in
-    let rec track s map (u,r) =
-      let s = Name.Set.remove u.name s in
-      let update r = s, Name.Map.add u.name (u,r) map in
+    let rec track s map ((u:i),r) =
+      let s = Name.Set.remove u.input.name s in
+      let update r = s, Name.Map.add u.input.name (u,r) map in
       match M2l.Block.m2l u.code with
       | None -> update (ref @@ Some Internal_error)
       | Some name' ->
@@ -125,17 +129,17 @@ module Failure = struct
           match !r' with
           | None ->
             if r' != r then begin
-              let map = Name.Map.add u'.name (u',r) map in
+              let map = Name.Map.add u'.input.name (u',r) map in
               track s map (u',r)
             end
             else begin
-              r:= Some (Cycle u'.name);
+              r:= Some (Cycle u'.input.name);
               s, map
             end
           | Some (Depend_on name| Cycle name) ->
             (r := Some (Depend_on name); s, map)
           | Some (Extern _ | Internal_error ) ->
-            (r := Some (Depend_on u'.name); s, map)
+            (r := Some (Depend_on u'.input.name); s, map)
 
 
     in
@@ -202,7 +206,7 @@ module Failure = struct
         end
 
   let pp_cat map ppf (st, units) =
-    let name u = u.name in
+    let name u = u.input.name in
     let names units = List.map name @@ Set.elements units in
     match st with
     | Internal_error -> Pp.fp ppf "@[ Internal error for units: {%a} @]"

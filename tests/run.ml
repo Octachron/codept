@@ -41,7 +41,7 @@ module S = Solver.Make(Envt)(Param)
 let analyze pkgs files =
   let units, filemap = organize polycy files in
   let fileset = units.Unit.mli
-                |> List.map (fun u -> u.Unit.name)
+                |> List.map (fun (u:Unit.s) -> u.name)
                 |> Name.Set.of_list in
   let module Envt = Envts.Tr in
   let core = start_env pkgs fileset filemap in
@@ -143,11 +143,11 @@ let cycle_test expected l =
       let cmap = categorize map in
       let cmap = normalize map cmap in
       let errs = Map.bindings cmap in
-      let name unit = unit.Unit.name in
+      let name unit = Solver.(unit.input.name) in
       let cycles = errs
                   |> List.filter (function (Cycle _, _) -> true | _ -> false)
                   |> List.map snd
-                  |> List.map (List.map name % Unit.Set.elements) in
+                  |> List.map (List.map name % Solver.Failure.Set.elements) in
       let expected = List.map (List.sort compare) expected in
       let cycles = List.map (List.sort compare) cycles in
       let r = cycles = expected in
@@ -341,14 +341,16 @@ let result =
                        "String"; "Syntaxerr"],[]);
           "result.mli", ([],[],[]);
           "result.ml", ([],["List"],[]);
-          "solver.mli", (["Unit";"Name";"Interpreter"],["Format";"Map"],[]);
+          "solver.mli", (["Unit";"M2l";"Name";"Interpreter";"Paths"],
+                         ["Format";"Map";"Set"],[]);
           "solver.ml", (
-            ["Approx_parser"; "Definition"; "Interpreter"; "M2l"; "Module"; "Name";
+            ["Approx_parser"; "Interpreter"; "M2l"; "Module"; "Name";
              "Option"; "Pp"; "Paths"; "Unit"; "Fault"],
-            ["List"; "Map"],[]);
-          "unit.mli", (["Paths"; "M2l"; "Fault"],["Format";"Set"],[]);
+            ["List"; "Map"; "Set"],[]);
+          "unit.mli", (["Paths"; "M2l"; "Module";"Fault"],["Format";"Set"],[]);
           "unit.ml", (
-            ["Approx_parser"; "Ast_converter"; "M2l"; "Fault"; "Option"; "Paths"; "Pp"; "Read"],
+            ["Approx_parser"; "Ast_converter"; "M2l"; "Module"; "Fault";
+             "Option"; "Paths"; "Pp"; "Read"],
             [ "List"; "Set"],
             []);
         ]

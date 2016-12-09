@@ -1,16 +1,18 @@
 (** Basic solver *)
 
+type i = { input: Unit.s; code: M2l.t; deps: Paths.P.set }
+
 (** Create a solver using the environment module [Envt] for
     name resolution and dependendy trackinf and
     the parameter module [Param] *)
 module Make (Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
   sig
-      exception Cycle of Envt.t * Unit.t list
+      exception Cycle of Envt.t * i list
 
       val eval :
         ?learn:bool ->
-        Unit.t list * Envt.t * Unit.t list ->
-        Unit.t -> Unit.t list * Envt.t * Unit.t list
+        Unit.r list * Envt.t * i list ->
+        i -> Unit.r list * Envt.t * i list
       (** [eval ~learn (resolved, envt, unresolved) unit]
           try to compute the signature of unit, and if successful
           add the unit to the resolved list. Otherwise, the unit
@@ -20,10 +22,10 @@ module Make (Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
       *)
 
       val resolve_dependencies :
-        ?learn:bool -> Envt.t -> Unit.t list -> Envt.t * Unit.t list
+        ?learn:bool -> Envt.t -> Unit.s list -> Envt.t * Unit.r list
 
       val resolve_split_dependencies :
-        Envt.t -> Unit.t list Unit.pair -> Unit.t list Unit.pair
+        Envt.t -> Unit.s list Unit.pair -> Unit.r list Unit.pair
     end
 
 (** Failure handling: detection of
@@ -36,29 +38,32 @@ module Failure :
       | Extern of string
       | Depend_on of string
       | Internal_error
-    val analysis : Unit.t list -> (Unit.t * status option ref) Name.map
+    val analysis : i list -> (i * status option ref) Name.map
+
+    module Set: Set.S with type elt = i
+
     module Map : sig
       include Map.S with type key = status
-      val find: key -> Unit.Set.t t -> Unit.Set.t
+      val find: key -> Set.t t -> Set.t
     end
 
     val categorize :
-      (Unit.t * status option ref) Name.map -> Unit.Set.t Map.t
+      (i * status option ref) Name.map -> Set.t Map.t
 
     val kernel :
-      (Unit.t * 'a) Name.map -> Unit.Set.t -> Unit.t -> Unit.Set.t
+      (i * _) Name.map -> Set.t -> i -> Set.t
 
     val normalize :
-      (Unit.t * 'a) Name.map -> Unit.Set.t Map.t -> Unit.Set.t Map.t
+      (i * _) Name.map -> Set.t Map.t -> Set.t Map.t
 
     val pp_circular :
-      (Unit.t * 'a) Name.map ->
+      (i * 'a) Name.map ->
       string -> bool -> Format.formatter -> string -> unit
     val pp_cat :
-      (Unit.t * 'a) Name.map ->
-      Format.formatter -> status * Unit.Set.t -> unit
+      (i * _) Name.map ->
+      Format.formatter -> status * Set.t -> unit
     val pp :
-      (Unit.t * 'a) Name.map ->
-      Format.formatter -> Unit.Set.t Map.t -> unit
-    val pp_cycle : Format.formatter -> Unit.t list -> unit
+      (i * _) Name.map ->
+      Format.formatter -> Set.t Map.t -> unit
+    val pp_cycle : Format.formatter -> i list -> unit
   end
