@@ -627,13 +627,14 @@ let args = Cmd.[
     ": require that all dependencies are provided";
     "-k", Unit keep_going, ": ignore most recoverable errors and keep going";
     "-strict", Unit strict, ": fail rather than approximate anything";
-    "-q", Unit quiet, ": ignore and silent all recoverable errors and keep going";
+    "-quiet", Unit quiet,
+    ": ignore and silent all recoverable errors and keep going";
     "-fault", String fault, "<fault.path=level>: update fault polycy for the given\
-                             fault.\n Misc options:";
+                             fault.";
     "-silent-fault-level", String silent_level,
     "<level>: only print fault beyond level <level>";
     "-exit-fault-level", String exit_level,
-    "<level>: exit for fault at level <level> and beyond";
+    "<level>: exit for fault at level <level> and beyond.\n Misc options:";
 
     "-L", String lib, "<dir>: use all cmi files in <dir> \
                                in the analysis";
@@ -648,7 +649,7 @@ let args = Cmd.[
                              during the analysis";
     "-see", Cmd.String add_invisible_file, "<file>: use <file> in dependencies \
                                             computation but do not display it.";
-    "-transparent_extension_node", Cmd.Bool transparent_extension,
+    "-transparent-extension-node", Cmd.Bool transparent_extension,
     "<bool>: inspect unknown extension nodes"
   ]
 
