@@ -1,10 +1,10 @@
 %token <string> TEXT
 %token L, R, ARGS, MODULES, MODULE_TYPES, EOF
 
-%type <Module.t> top_module
+%type <Module.t list> top_modules
 %type <Module.signature> top_signature
 %start top_signature
-%start top_module
+%start top_modules
 
 %{
 open Module
@@ -12,8 +12,9 @@ open Module
 
 %%
 
-top_module:
-  | module_ EOF {$1}
+top_modules:
+  | EOF {[]}
+  | module_ top_modules {$1 :: $2}
 
 top_signature:
   | signature EOF {$1}
