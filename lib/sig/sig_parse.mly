@@ -35,7 +35,7 @@ module_args:
 
 module_arg:
   | L R { None }
-  | L module_ R { Some $2 }
+  | module_ { Some $1 }
 
 signature:
   | { Sig.empty }
