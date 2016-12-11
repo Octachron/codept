@@ -228,7 +228,7 @@ module Polycy = struct
 
 
   let lax =
-    { default with exit = Level.critical }
+    { parsing_approx with exit = Level.critical }
 
   let quiet = { lax with silent = Level.error }
 
