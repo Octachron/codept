@@ -145,6 +145,28 @@ and pp_arg ppf arg = Pp.fp ppf "(%a)" (Pp.opt pp) arg
 and pp_args ppf args = Pp.fp ppf "%a" (Pp.(list ~sep:(s "@,→") ) @@ pp_arg ) args;
     if List.length args > 0 then Pp.fp ppf "→"
 
+let rec persistent ppf {name;args;signature;_} =
+  Pp.fp ppf "@[<hov>(%s%a@,%a)@]"
+    name
+    pers_args args sig_persistent signature
+and sig_persistent ppf {modules; module_types} =
+  let card = Name.Map.cardinal in
+  if card modules > 0 || card module_types > 0 then
+    Pp.fp ppf "%a%a" (pers_mdict "modules") modules (pers_mdict "module types") module_types
+  else
+    ()
+and pers_mdict kind ppf dict =
+  if Name.Map.cardinal dict = 0 then ()
+  else
+    Pp.fp ppf "(%s %a)" kind (Pp.(list ~sep:(s " @,")) pers_pair) (Name.Map.bindings dict)
+and pers_pair ppf (_,md) = persistent ppf md
+and pers_arg ppf arg = Pp.fp ppf "%a" (Pp.opt persistent) arg
+and pers_args ppf args =
+  if args = [] then
+    ()
+  else
+  Pp.fp ppf "(args %a)" (Pp.(list ~sep:(s "@,") ) @@ pers_arg ) args
+
 
 
 let empty = Name.Map.empty
@@ -162,6 +184,7 @@ module Sig = struct
     let card = Name.Map.cardinal in
     card s.modules + card s.module_types
 
+  let persistent = sig_persistent
 
   let (|+>) m x = Name.Map.add x.name x m
 

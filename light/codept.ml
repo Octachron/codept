@@ -229,6 +229,12 @@ let export param task =
              %a\
              @]@." Module.reflect_signature s
 
+let sign param task =
+  let {Unit.mli; _} = analyze param task in
+  let show {Unit.signature;_} =
+    Pp.fp std "@[%a@]@." Module.Sig.persistent signature in
+  List.iter show mli
+
 let make_abs abs p =
   let open Paths.Pkg in
   if abs && p.source = Local then
@@ -615,8 +621,9 @@ let args = Cmd.[
     "-makefile", Unit (set makefile), ": print makefile depend file(default)";
     "-approx-m2l", Unit (set_iter approx_file), ": print approximated m2l ast:";
     "-m2l", Unit (set_iter m2l), ": print m2l ast:";
-    "-one-pass", Unit (set_iter one_pass), ": print m2l ast after one pass\
-                                            \n\n Module suboptions:\n";
+    "-one-pass", Unit (set_iter one_pass), ": print m2l ast after one pass";
+    "-sig", Unit (set sign), ": print inferred signature \
+                              \n\n Module suboptions:\n";
 
     "-extern-modules", Unit (set @@ modules ~filter:lib_filter),
     ": print raw extern dependencies";

@@ -76,6 +76,7 @@ val create :
 
 val pp : Format.formatter -> t -> unit
 val reflect : Format.formatter -> t -> unit
+val persistent: Format.formatter -> t -> unit
 
 val pp_signature : Format.formatter -> signature -> unit
 val reflect_signature : Format.formatter -> signature -> unit
@@ -93,6 +94,7 @@ val pp_args : Format.formatter -> t option list -> unit
 module Sig :
   sig
     val card : signature -> int
+    val persistent: Format.formatter -> signature -> unit
     val merge : signature -> signature -> signature
     val create : modul -> signature
     val create_type : t -> signature
