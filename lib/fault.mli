@@ -32,10 +32,14 @@ type log_info = {
   exit : Level.t (** level beyond which the logger should exit after logging *); }
 
 
-type 'a fault = { path : Paths.S.t (** hierarchical name for the fault *);
-                  log : log_info -> 'a (** logging function*); }
+
+type explanation = string
 
 (** Fault definition *)
+type 'a fault = { path : Paths.S.t (** hierarchical name for the fault *);
+                  expl: explanation (** fault documentation *);
+                  log : log_info -> 'a (** logging function*); }
+
 type 'a t = 'a fault (**type synonym *)
 
 (** Basic logging function *)
@@ -83,13 +87,17 @@ module Polycy :
 sig
 
   (** {2 Type definition} *)
-  type map = Level of Level.t | Map of Level.t * map Name.map
+  type map =
+    | Level of {expl: explanation; lvl: Level.t option}
+    | Map of {expl:explanation; lvl:Level.t option; map: map Name.map}
+
   type t = { silent : Level.t; exit : Level.t; map : map; }
   type polycy = t
+  val pp: Format.formatter -> t -> unit
 
   (** {2 Utility functions} *)
   val find : t -> Paths.S.t -> Level.t
-  val set : Paths.S.t * Level.t -> t -> t
+  val set : Paths.S.t * explanation option * Level.t -> t -> t
   val set_err : 'a fault * Level.t -> t -> t
 
   (** {2 predefined polycy } *)
@@ -101,5 +109,5 @@ sig
 end
 
 (** {2 Fault handling with polycy} *)
-val set : 'a t * int -> Polycy.t -> Polycy.t
+val set : 'a t * Level.t -> Polycy.t -> Polycy.t
 val handle : Polycy.t -> 'a t -> 'a

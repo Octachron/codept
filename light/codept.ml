@@ -553,7 +553,7 @@ let fault s =
     let path= List.map String.trim @@ String.split_on_char '.' a in
     let level = Fault.Level.of_string b in
     let polycy = (!param).polycy in
-    param := { !param with polycy = Fault.Polycy.set (path,level) polycy }
+    param := { !param with polycy = Fault.Polycy.set (path,None,level) polycy }
 
 let silent_level s =
   let polycy = (!param).polycy in
@@ -563,6 +563,8 @@ let exit_level s =
   let polycy = (!param).polycy in
   param := { !param with polycy = { polycy with exit = Fault.Level.of_string s} }
 
+let print_polycy ()=
+  Fault.Polycy.pp Pp.std (!param).polycy
 
 let usage_msg =
   "Codept is an alternative dependency solver for OCaml.\n\
@@ -631,6 +633,7 @@ let args = Cmd.[
     ": ignore and silent all recoverable errors and keep going";
     "-fault", String fault, "<fault.path=level>: update fault polycy for the given\
                              fault.";
+    "-faults-doc", Unit print_polycy, "Show fault polycy documentation";
     "-silent-fault-level", String silent_level,
     "<level>: only print fault beyond level <level>";
     "-exit-fault-level", String exit_level,

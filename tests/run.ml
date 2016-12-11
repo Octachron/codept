@@ -322,7 +322,7 @@ let result =
           "m2l.mli", (["Module";"Name";"Definition";"Paths" ],["Format"],[]);
           "m2l.ml", (["Module";"Name";"Option";"Definition";"Paths"; "Pp" ],
                      ["List"],[]);
-          "fault.ml", (["Module"; "Name";"Paths"; "Pp"],
+          "fault.ml", (["Module"; "Option"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"; "Location";"Syntaxerr"],[]);
           "fault.ml", (["Module"; "Paths";],
                           ["Location"; "Syntaxerr"],[]);

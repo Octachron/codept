@@ -114,6 +114,8 @@ Some new options explore codept possibilities and intermediary representations
     module have for signature `sig end` (this approximation can only
     lead to an over-approximation of dependencies).
 
+  * `-k` keep-going after most recoverable errors, supersede `-allow-approx`
+
 For a more exhaustive list of options, see `codept -help`.
 
 # Installation

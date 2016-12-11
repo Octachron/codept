@@ -22,6 +22,15 @@ let of_string =
   | "error" | "3" -> error
   | "critical" | "4" -> critical
   | _ -> whisper
+
+let to_string =
+  function
+  | 0 -> "whisper"
+  | 1 -> "notification"
+  | 2 -> "warning"
+  | 3 -> "error"
+  | 4 -> "critical"
+  | _ -> "whisper"
 end
 
 module Log = struct
@@ -85,24 +94,31 @@ let log i fmt =
 
 let llog fmt = fun level -> log level fmt
 
-type 'a fault = { path: Paths.S.t; log: log_info -> 'a }
+
+type explanation = string
+type 'a fault = { path: Paths.S.t; expl: explanation; log: log_info -> 'a }
 type 'a t = 'a fault
 
 
 (** Warnings *)
 let extension =
-{ path = ["extension"; "ignored"];
+  { path = ["extension"; "ignored"];
+    expl = "The payload of an extension node was ignored";
   log = (fun lvl (name, _)  ->
       log lvl "extension node %s ignored." name.Location.txt)
 }
 
 let generic_first_class=
-{ path = ["first_class";"gen"];
-  log = llog "first-class modules are very partially handled for now."
+  { path = ["first_class";"gen"];
+    expl = "Placeholder fault for first-class modules woes.";
+    log = llog "First-class modules are very partially handled for now."
 }
 
 let opened_first_class =
-{ path = ["first_class"; "open"];
+  { path = ["first_class"; "open"];
+    expl= "A first-class module was opened while its signature was deemed \
+           unresolved. Consequently, all inferred dependendency after this \
+           point may be an over-approximation.";
     log = (fun lvl ->
       log lvl "First-class module %s was opened while its signature was unknown."
       )
@@ -110,11 +126,16 @@ let opened_first_class =
 
 let included_first_class =
   { path = ["first_class"; "included"];
+    expl = "A first-class module was included while its signature was deemed \
+           unresolved. Consequently, all inferred dependendency after this \
+           point may be an over-approximation.";
     log =  llog "First-class module was included while its signature was unknown."
   }
 
 let applied_structure =
   { path = ["typing"; "apply"; "structure"];
+    expl = "Signature fault: a module that was inferred as not a functor \
+            was applied like a functor.";
     log = (fun lvl -> log lvl "Only functor can be applied, got:%a"
                Module.Partial.pp)
   }
@@ -122,19 +143,26 @@ let applied_structure =
 let structure_expected =
   { path = ["typing"; "structure_expected"];
     log = (fun lvl -> log lvl "A structure, i.e. not a functor was expected; got:%a"
-               Module.Partial.pp)
+              Module.Partial.pp);
+    expl = "Signature fault: a functor was not expected in this situation."
   }
 
 
 let applied_unknown =
   { path = ["typing"; "apply"; "unknown"];
-    log = (fun lvl -> log lvl "Only functor can be applied, got:%a"
-               Module.Partial.pp)
+    log = (fun lvl -> log lvl "Only functor can be applied, hopefully the unknown \
+                               module (%a) is a functor"
+              Module.Partial.pp);
+    expl = "Signature fault: an unknown module was applied like a functor.";
   }
 
 
 let concordant_approximation =
   { path = ["parsing"; "approximation"; "concordant"];
+    expl = "Parsing fault: The signature and dependency of an unit were obtained \
+            using the heuristic approximative parser. However, the lower and upper \
+            bounds for dependencies yield the same set. Inferred dependencies \
+            might be exact.";
     log = (fun lvl path -> log lvl
              "Approximate parsing of %a.\n\
               However, lower and upper bound agreed upon dependencies."
@@ -144,6 +172,11 @@ let concordant_approximation =
 
 let discordant_approximation =
   { path = ["parsing"; "approximation"; "discordant"];
+    expl = "Parsing fault: The signature and dependencies of an unit were obtained \
+            using the heuristic approximative parser. Moreover, the lower and upper \
+            bounds for dependencies yield different sets. Codept shall use \
+            the dependencies upper bound as a safe over-approximation but \
+            dependency problems might arise.";
     log = (fun lvl path lower diff -> log lvl
                "Approximate parsing of %a.\n\
                 Computed dependencies: at least {%a}, maybe: {%a}"
@@ -168,6 +201,7 @@ let print_loc ppf loc =
 
 let syntaxerr =
   { path = ["parsing"; "syntax"];
+    expl = "Parsing fault: not syntactically valide input file.";
     log = (fun lvl error ->
         log lvl "Syntax error\n %a" print_loc
           (Syntaxerr.location_of_error error)
@@ -175,54 +209,71 @@ let syntaxerr =
   }
 
 module Polycy = struct
-  type map = Level of Level.t | Map of Level.t * map Name.Map.t
+
+  type map =
+    | Level of {expl: explanation; lvl: Level.t option}
+    | Map of {expl:explanation; lvl:Level.t option; map: map Name.map}
+
   type t = { silent: Level.t; exit:Level.t; map:map}
   type polycy = t
 
-  let rec find pol l  =
+  let rec find default pol l  =
+    let with_default = Option.default default in
     match pol, l with
-    | Level h, _ -> h
-    | Map (h,m), a :: q  ->
+    | Level h, _ -> with_default h.lvl
+    | Map m, a :: q  ->
       begin
-        try find (Name.Map.find a m) q with
+        let h = with_default m.lvl in
+        try find h (Name.Map.find a m.map) q with
           Not_found -> h
       end
-    | Map (h,_), [] -> h
+    | Map m, [] -> with_default m.lvl
 
-  let find {map; _ } = find map
+  let find {map; exit; _ } = find exit map
 
-  let rec set (path,lvl) env = match path, env with
-    | [], Level _ -> Level lvl
-    | [], Map (_,m) -> Map(lvl,m)
-    | a :: q, Level h ->
-      Map(h, Name.Map.singleton a @@ set (q,lvl) @@ Level h)
-    | a :: q, Map(h, m) ->
+  let rec set (path,expl,lvl) env = match path, env with
+    | [], Level l -> Level {expl = Option.default l.expl expl;lvl }
+    | [], Map m -> Map { m with lvl; expl = Option.default m.expl expl }
+    | a :: q, Level l ->
+      Map{ lvl = None; expl = "";
+           map=Name.Map.singleton a @@ set (q,expl,lvl) @@ Level l
+         }
+    | a :: q, Map m ->
       let env' = try
-          Name.Map.find a m with
-      | Not_found -> Level h in
-      let elt = set (q,lvl) env' in
-      let m = Name.Map.add a elt m in
-      Map(h, m)
+          Name.Map.find a m.map with
+      | Not_found -> Level {lvl=m.lvl; expl = m.expl} in
+      let elt = set (q,expl,lvl) env' in
+      let map = Name.Map.add a elt m.map in
+      Map{m with map}
 
-  let set x p = { p with map = set x p.map }
+  let register (p,expl) pol = { pol with map = set (p,expl,None) pol.map }
+  let set (p,expl,lvl) pol = { pol with map = set (p,expl, Some lvl) pol.map }
 
-  let set_err (error,lvl) polycy = set (error.path,lvl) polycy
-
-  let strict = Level.{ silent = whisper; exit = notification ; map= Level critical }
+  let set_err (error,lvl) polycy = set (error.path,Some error.expl, lvl) polycy
+  let register_err error polycy = register (error.path,Some error.expl) polycy
 
   let default =
     let open Level in
-    { strict with exit = error }
+    { silent = whisper; exit = error;
+      map = Level { expl = ""; lvl = Some critical } }
     |> set_err (applied_unknown, warning )
-    |> set (["first_class"], warning )
-    |> set (["extension"], warning)
-    |> set (["parsing"], error)
+    |> set (["first_class"], Some "First-class module faults", warning )
+    |> set_err (opened_first_class, warning)
+    |> set_err (included_first_class, warning)
+    |> set (["extension"],  Some "Extension node faults", warning)
+    |> register_err extension
+    |> set (["parsing"], Some "Parsing faults",  error)
+    |> register_err syntaxerr
     |> set_err (discordant_approximation, warning)
     |> set_err (concordant_approximation, notification)
-    |> set (["typing"], Level.error)
+    |> set (["typing"], Some "Typing faults", error)
+    |> set_err (applied_structure, error)
+    |> set_err (structure_expected, error)
+    |> set_err (applied_unknown, notification)
 
 
 
+  let strict = { default with exit = Level.notification }
   let parsing_approx =
     default |> set_err (syntaxerr, Level.warning)
 
@@ -231,6 +282,28 @@ module Polycy = struct
     { parsing_approx with exit = Level.critical }
 
   let quiet = { lax with silent = Level.error }
+
+
+
+  let pp_lvl ppf = function
+    | None -> ()
+    | Some lvl -> Pp.fp ppf "[%s]" @@ Level.to_string lvl
+
+  let rec pp_map ppf = function
+    | name, Level {expl; lvl} ->
+      Pp.fp ppf "@;−%s%a:@;@[<hov>%a@]"
+        name
+        pp_lvl lvl
+        Format.pp_print_text expl
+    | name, Map { lvl; expl; map } ->
+      Pp.fp ppf "@;−%s%a:%s@; @[<v2> %a @]"
+        name
+        pp_lvl lvl
+        expl
+        Pp.( list ~sep:(s "@;") @@ pp_map) (Name.Map.bindings map)
+
+
+  let pp ppf pol = Pp.fp ppf "%a@." pp_map ("Polycy",pol.map)
 
   end
 
