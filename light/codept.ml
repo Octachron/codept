@@ -545,32 +545,23 @@ let add_include dir =
 let no_implicits () =
   param := { !param with implicits = false }
 
-let level_of_string =
-  let open Fault.Level in
-  function
-  | "whisper" | "0" -> whisper
-  | "notification" | "1" -> notification
-  | "warning" | "2" -> warning
-  | "error" | "3" -> error
-  | "critical" | "4" -> critical
-  | _ -> whisper
 
 let fault s =
   match String.split_on_char '=' s with
   | [] | [_]| _ :: _ :: _ :: _ -> ()
   | [a;b] ->
     let path= List.map String.trim @@ String.split_on_char '.' a in
-    let level = level_of_string b in
+    let level = Fault.Level.of_string b in
     let polycy = (!param).polycy in
     param := { !param with polycy = Fault.Polycy.set (path,level) polycy }
 
 let silent_level s =
   let polycy = (!param).polycy in
-  param := { !param with polycy = { polycy with silent = level_of_string s} }
+  param := { !param with polycy = { polycy with silent = Fault.Level.of_string s} }
 
 let exit_level s =
   let polycy = (!param).polycy in
-  param := { !param with polycy = { polycy with exit = level_of_string s} }
+  param := { !param with polycy = { polycy with exit = Fault.Level.of_string s} }
 
 
 let usage_msg =

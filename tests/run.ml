@@ -324,6 +324,9 @@ let result =
                      ["List"],[]);
           "fault.ml", (["Module"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"; "Location";"Syntaxerr"],[]);
+          "fault.ml", (["Module"; "Paths";],
+                          ["Location"; "Syntaxerr"],[]);
+
           "module.mli", ( ["Paths";"Name"], ["Format"], [] );
           "module.ml", ( ["Paths";"Name"; "Pp" ], ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );

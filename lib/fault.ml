@@ -6,6 +6,22 @@ let notification = 1
 let warning = 2
 let error = 3
 let critical = 4
+
+let of_int n = if n < whisper then
+    whisper
+  else if n > critical then
+    critical
+  else
+    n
+
+let of_string =
+  function
+  | "whisper" | "0" -> whisper
+  | "notification" | "1" -> notification
+  | "warning" | "2" -> warning
+  | "error" | "3" -> error
+  | "critical" | "4" -> critical
+  | _ -> whisper
 end
 
 module Log = struct
@@ -41,56 +57,57 @@ let log {silent;level;exit} fmt =
 let llog fmt = fun level -> log level fmt
 let with_lvl f = fun lvl -> f lvl
 
-type 'a t = { path: Paths.S.t; send: log_info -> 'a }
+type 'a fault = { path: Paths.S.t; log: log_info -> 'a }
+type 'a t = 'a fault
 
 
 (** Warnings *)
 let extension =
 { path = ["extension"; "ignored"];
-  send = (fun lvl (name, _)  ->
+  log = (fun lvl (name, _)  ->
       log lvl "extension node %s ignored." name.Location.txt)
 }
 
 let  generic_first_class=
 { path = ["first_class";"gen"];
-  send = llog "first-class modules are very partially handled for now."
+  log = llog "first-class modules are very partially handled for now."
 }
 
 let opened_first_class =
 { path = ["first_class"; "open"];
-    send = (fun lvl ->
+    log = (fun lvl ->
       log lvl "First-class module %s was opened while its signature was unknown."
       )
   }
 
 let included_first_class =
   { path = ["first_class"; "included"];
-    send =  llog "First-class module was included while its signature was unknown."
+    log =  llog "First-class module was included while its signature was unknown."
   }
 
 let applied_structure =
   { path = ["typing"; "apply"; "structure"];
-    send = (fun lvl -> log lvl "Only functor can be applied, got:%a"
+    log = (fun lvl -> log lvl "Only functor can be applied, got:%a"
                Module.Partial.pp)
   }
 
 let signature_expected =
   { path = ["typing"; "signature_expected"];
-    send = (fun lvl -> log lvl "A signature, i.e. not a functor was expected; got:%a"
+    log = (fun lvl -> log lvl "A signature, i.e. not a functor was expected; got:%a"
                Module.Partial.pp)
   }
 
 
 let applied_unknown =
   { path = ["typing"; "apply"; "unknown"];
-    send = (fun lvl -> log lvl "Only functor can be applied, got:%a"
+    log = (fun lvl -> log lvl "Only functor can be applied, got:%a"
                Module.Partial.pp)
   }
 
 
 let concordant_approximation =
   { path = ["parsing"; "approximation"; "concordant"];
-    send = (fun lvl path -> log lvl
+    log = (fun lvl path -> log lvl
              "Approximate parsing of %a.\n\
               However, lower and upper bound agreed upon dependencies."
         Paths.P.pp path
@@ -99,7 +116,7 @@ let concordant_approximation =
 
 let discordant_approximation =
   { path = ["parsing"; "approximation"; "discordant"];
-    send = (fun lvl path lower diff -> log lvl
+    log = (fun lvl path lower diff -> log lvl
                "Approximate parsing of %a.\n\
                 Computed dependencies: at least {%a}, maybe: {%a}"
         Paths.P.pp path
@@ -123,7 +140,7 @@ let print_loc ppf loc =
 
 let syntaxerr =
   { path = ["parsing"; "syntax"];
-    send = (fun lvl error ->
+    log = (fun lvl error ->
         log lvl "Syntax error\n %a" print_loc
           (Syntaxerr.location_of_error error)
       )
@@ -132,6 +149,7 @@ let syntaxerr =
 module Polycy = struct
   type map = Level of Level.t | Map of Level.t * map Name.Map.t
   type t = { silent: Level.t; exit:Level.t; map:map}
+  type polycy = t
 
   let rec find pol l  =
     match pol, l with
@@ -185,7 +203,7 @@ module Polycy = struct
 
 let set = Polycy.set_err
 let handle (polycy:Polycy.t) error =
-  error.send {
+  error.log {
     level =
       Polycy.find polycy error.path;
     silent = polycy.silent;
