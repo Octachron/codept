@@ -32,6 +32,7 @@ type param =
 type task =
   {
     files: string list Unit.pair;
+    signatures: Module.t list;
     invisibles: Pth.set;
     libs: string list;
     opens: Pth.t list
@@ -77,6 +78,8 @@ let rec last = function
 
 exception Unknown_file_type of string
 
+type kind = Interface | Implementation | Signature
+
 let extension name =
   let n = String.length name in
   let r = try String.rindex name '.' with Not_found -> n-1 in
@@ -85,18 +88,25 @@ let extension name =
 let classify synonyms f =
   let ext = extension f in
   if Name.Set.mem ext synonyms.Unit.mli then
-    M2l.Signature
+    Interface
   else if Name.Set.mem ext synonyms.ml then
-    M2l.Structure
+    Implementation
+  else if ext = "sig" then
+    Signature
   else
     raise @@ Unknown_file_type ext
+
+let classic = function
+  | Interface -> M2l.Signature
+  | Implementation -> M2l.Structure
+  | Signature -> raise (Unknown_file_type "signature")
 
 let to_m2l conv synonyms f =
   if extension f = "cmi" then
     Cmi.m2l f
   else
     let kind = classify synonyms f in
-    match Read.file conv kind f with
+    match Read.file conv (classic kind) f with
     | _name, Ok x -> x
     | _, Error msg -> Fault.(handle Polycy.strict syntaxerr msg ); exit 1
 
@@ -139,7 +149,7 @@ let topos_compare order x y =
 
 let local = Pkg.local
 
-let open_in opens unit =
+let open_within opens unit =
   List.fold_right (fun m (unit:Unit.s) ->
       match m with
       | [root] when unit.name = root -> unit
@@ -154,22 +164,25 @@ let organize polycy opens files =
     Unit.unimap (List.map % Unit.read_file polycy )
       { ml=M2l.Structure; mli=M2l.Signature}
     ) files in
-  let units = Unit.unimap (List.map @@ open_in opens) units in
+  let units = Unit.unimap (List.map @@ open_within opens) units in
   let units = Unit.Groups.Unit.(split % group) units in
   units, m
 
-let base_env no_stdlib =
-  if no_stdlib then
-    Envts.Base.empty
-  else
-    Stdlib.signature
+let base_env signatures no_stdlib =
+  let start =
+    if no_stdlib then
+      Envts.Base.empty
+    else
+      Stdlib.signature in
+  List.fold_left Envts.Base.add_module start signatures
 
 type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
-let start_env param  includes fileset filemap
+let start_env param signatures includes fileset filemap
   =
-  let layered = Envts.Layered.create includes fileset @@ base_env param.no_stdlib in
+  let base = base_env signatures param.no_stdlib in
+  let layered = Envts.Layered.create includes fileset base in
   let traced = Envts.Trl.extend layered in
   if not param.closed_world then
     E ((module Envts.Tr: Interpreter.envt_with_deps with type t = Envts.Tr.t ) ,
@@ -185,12 +198,12 @@ let remove_units invisibles =
       not @@ Pth.Set.mem file invisibles
     | _ -> false
 
-let analyze param {opens;libs;invisibles;files;_} =
+let analyze param {opens;libs;invisibles; signatures; files;_} =
   let units, filemap = organize param.polycy opens files in
   let files_set = units.mli
                   |> List.map (fun (u:Unit.s) -> u.name)
                   |> Name.Set.of_list in
-  let E((module Envt),core) = start_env param libs files_set filemap in
+  let E((module Envt),core) = start_env param signatures libs files_set filemap in
   let module S = Solver.Make(Envt)((val lift param)) in
   let {Unit.ml; mli} =
     try
@@ -231,8 +244,8 @@ let export param task =
 
 let sign param task =
   let {Unit.mli; _} = analyze param task in
-  let show {Unit.signature;_} =
-    Pp.fp std "@[%a@]@." Module.Sig.persistent signature in
+  let show {Unit.signature; name; _ } =
+    Pp.fp std "(%s@[%a@])@." name  Module.Sig.persistent signature in
   List.iter show mli
 
 let make_abs abs p =
@@ -402,9 +415,10 @@ let makefile param task =
 
 let task = ref {
     files = { Unit.ml = []; Unit.mli = [] };
+    signatures = [];
     invisibles = Pth.Set.empty;
     libs = [];
-    opens = []
+    opens = [];
   }
 
 let add_invi name =
@@ -420,12 +434,27 @@ let add_intf name =
   let {Unit.ml;mli} = !(task).files in
   task := {!task with files = { mli = name :: mli; ml } }
 
+let read_sigfile filename =
+  let chan = open_in filename in
+  let lexbuf = Lexing.from_channel chan in
+  let sigs = Sig_parse.top_modules Sig_lex.main lexbuf in
+  close_in chan;
+  sigs
+
+let add_sig more =
+  let sigs = !(task).signatures in
+  task := {!task with signatures = more @ sigs  }
+
+let read_sig ssig =
+  add_sig @@ Sig_parse.top_modules Sig_lex.main @@ Lexing.from_string ssig
+
 let add_file name =
   if Sys.file_exists name then
     match classify !param.synonyms name with
-    | M2l.Structure ->
+    | Implementation ->
       add_impl name
-    | Signature -> add_intf name
+    | Interface -> add_intf name
+    | Signature -> add_sig @@ read_sigfile name
 
 let add_invisible_file name =
   if Sys.file_exists name then
@@ -657,6 +686,8 @@ let args = Cmd.[
     ": do not use precomputed stdlib environment";
     "-pkg", Cmd.String pkg, "<pkg_name>: use the ocamlfind package <pkg_name> \
                              during the analysis";
+    "-read-sig", Cmd.String read_sig, "<signature>: add signature to the base \
+                                       environment";
     "-see", Cmd.String add_invisible_file, "<file>: use <file> in dependencies \
                                             computation but do not display it.";
     "-transparent-extension-node", Cmd.Bool transparent_extension,

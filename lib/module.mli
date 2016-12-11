@@ -69,7 +69,7 @@ val is_functor : t -> bool
 val empty : 'a Name.map
 val create :
   ?args:t option list -> ?precision:Precision.t ->
-  ?origin:origin -> string -> signature -> t
+  ?origin:origin -> Name.t -> signature -> t
 
 
 (** {2 Printers} *)

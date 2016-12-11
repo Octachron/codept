@@ -3,5 +3,6 @@ S src
 S light
 S precomputed
 S tests
+S src/sig
 PKG compiler-libs.common
 FLG -w A-44-42-45-4-41-48-6-40-30@8

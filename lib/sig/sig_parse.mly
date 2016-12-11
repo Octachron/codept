@@ -8,13 +8,16 @@
 
 %{
 open Module
+let relocate m = {m with origin =
+  Unit {source= Special "Persistent signature"; file = [m.name] }
+  }
 %}
 
 %%
 
 top_modules:
   | EOF {[]}
-  | module_ top_modules {$1 :: $2}
+  | module_ top_modules {List.map relocate ($1 :: $2)}
 
 top_signature:
   | signature EOF {$1}
