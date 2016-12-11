@@ -25,37 +25,65 @@ let of_string =
 end
 
 module Log = struct
-let critical fmt =
-  Format.kfprintf
-  (fun _ppf -> exit 1) Format.err_formatter
-    ("@[[\x1b[91mCritical error\x1b[39m]: @[<hov>"^^fmt^^"@]@]@.")
 
-let error fmt =
-  Format.eprintf @@
-  "@[[\x1b[31mError\x1b[39m]: @[<hov>"^^fmt^^"@]@]@."
+  type 'k status =
+    | Ok: ('a -> unit) status
+    | Fail: ('a -> 'b) status
 
-let warning fmt = Format.eprintf @@
-  "@[<hov2>[\x1b[35mWarning\x1b[39m]:@,@ @[" ^^ fmt ^^ "@]@]@."
+  let kont (type k): k status -> k = function
+    | Ok -> ignore
+    | Fail -> (fun _x -> exit 1)
 
-let notification fmt = Format.eprintf @@
-  "@[<hov2>[\x1b[36mNotification\x1b[39m]:@,@ @[" ^^ fmt ^^ "@]@]@."
+  let kf st = Format.kfprintf (kont st) Format.err_formatter
 
-let whisper fmt = Format.eprintf @@
-  "@[<hov2>[Misc]:@,@ @[" ^^ fmt ^^ "@]@]@."
+  let kcritical k fmt =
+    kf k @@
+      ("@[[\x1b[91mCritical error\x1b[39m]: @[<hov>"^^fmt^^"@]@]@.")
+
+  let kerror k fmt =
+    kf k
+    ("@[[\x1b[31m%s\x1b[39m]: @[<hov>"^^fmt^^"@]@]@.")
+    (if k = Ok then "Error" else "Fatal error")
+
+  let kwarning k fmt = kf k
+    ("@[<hov2>[\x1b[35m%s\x1b[39m]:@,@ @[" ^^ fmt ^^ "@]@]@.")
+    (if k = Ok then "Warning" else "Fatal warning")
+
+  let knotification k fmt = kf k
+    ("@[<hov2>[\x1b[36m%s\x1b[39m]:@,@ @[" ^^ fmt ^^ "@]@]@.")
+      (if k = Ok then "Notification" else "Fatal notification")
+
+
+  let kwhisper k fmt = kf k
+    ("@[<hov2>[%s]:@,@ @[" ^^ fmt ^^ "@]@]@.")
+    (if k = Ok then "Miscellaneous" else "Fatal accident")
+
+  let critical fmt = kcritical Fail fmt
+  let error fmt = kerror Ok fmt
+  let warning fmt = kwarning Ok fmt
+  let notification fmt = kwarning Ok fmt
+  let whisper fmt = kwhisper Ok fmt
+
 end
 
 type log_info = { silent:Level.t; level:Level.t; exit:Level.t}
-let log {silent;level;exit} fmt =
-  let fns = Log.[| whisper; notification; warning; error; critical |] in
-  if level <= silent then Format.ifprintf Format.err_formatter fmt
-  else if level >= min Level.critical exit then
+let log i fmt =
+  let fns = Log.[| kwhisper; knotification; kwarning; kerror; kcritical |] in
+  if i.level <= i.silent then
+    Format.ifprintf Format.err_formatter fmt
+  else if i.level >= Level.critical then
     Log.critical fmt
   else
-    fns.(level) fmt
+    begin
+      let k = if i.level >= i.exit then
+          Log.Fail
+        else
+          Log.Ok  in
+      fns.(i.level) k fmt
+    end
 
 
 let llog fmt = fun level -> log level fmt
-let with_lvl f = fun lvl -> f lvl
 
 type 'a fault = { path: Paths.S.t; log: log_info -> 'a }
 type 'a t = 'a fault
@@ -180,22 +208,27 @@ module Polycy = struct
 
   let set_err (error,lvl) polycy = set (error.path,lvl) polycy
 
-  let strict = Level.{ silent = whisper; exit = critical ; map= Level critical }
+  let strict = Level.{ silent = whisper; exit = notification ; map= Level critical }
 
   let default =
-    strict
-    |> set_err (applied_unknown, Level.warning )
-    |> set (["first_class"], Level.warning )
-    |> set (["extension"], Level.warning)
+    let open Level in
+    { strict with exit = error }
+    |> set_err (applied_unknown, warning )
+    |> set (["first_class"], warning )
+    |> set (["extension"], warning)
+    |> set (["parsing"], error)
+    |> set_err (discordant_approximation, warning)
+    |> set_err (concordant_approximation, notification)
+    |> set (["typing"], Level.error)
+
+
 
   let parsing_approx =
-    default
-    |> set (["parsing"], Level.warning)
-    |> set_err (concordant_approximation, Level.notification)
+    default |> set_err (syntaxerr, Level.warning)
+
 
   let lax =
-    parsing_approx
-    |> set (["typing"], Level.error)
+    { default with exit = Level.critical }
 
   let quiet = { lax with silent = Level.error }
 
