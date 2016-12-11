@@ -34,6 +34,7 @@ type log_info = {
 
 type 'a fault = { path : Paths.S.t (** hierarchical name for the fault *);
                   log : log_info -> 'a (** logging function*); }
+
 (** Fault definition *)
 type 'a t = 'a fault (**type synonym *)
 
@@ -41,8 +42,8 @@ type 'a t = 'a fault (**type synonym *)
 val log : log_info -> ('a, Format.formatter, unit) format -> 'a
 
 
+ (** Fixed level logging functions *)
 module Log :
-  (** Fixed level logging functions *)
 sig
   val critical : ('a, Format.formatter, unit, unit, unit, 'b) format6 -> 'a
   val error : ('a, Format.formatter, unit, unit, unit, unit) format6 -> 'a
@@ -77,9 +78,8 @@ val discordant_approximation :
 val syntaxerr : (Syntaxerr.error -> unit) t
 
 
+(** Fault handling polycy *)
 module Polycy :
-  (** Fault handling polycy *)
-
 sig
 
   (** {2 Type definition} *)
