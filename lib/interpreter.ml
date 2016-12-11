@@ -57,7 +57,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   let of_partial p =
     match D.of_partial p with
-    | Error def -> fault Fault.signature_expected p;
+    | Error def -> fault Fault.structure_expected p;
       def
     | Ok def -> def
 

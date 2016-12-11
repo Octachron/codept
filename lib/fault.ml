@@ -96,7 +96,7 @@ let extension =
       log lvl "extension node %s ignored." name.Location.txt)
 }
 
-let  generic_first_class=
+let generic_first_class=
 { path = ["first_class";"gen"];
   log = llog "first-class modules are very partially handled for now."
 }
@@ -119,9 +119,9 @@ let applied_structure =
                Module.Partial.pp)
   }
 
-let signature_expected =
-  { path = ["typing"; "signature_expected"];
-    log = (fun lvl -> log lvl "A signature, i.e. not a functor was expected; got:%a"
+let structure_expected =
+  { path = ["typing"; "structure_expected"];
+    log = (fun lvl -> log lvl "A structure, i.e. not a functor was expected; got:%a"
                Module.Partial.pp)
   }
 

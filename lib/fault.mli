@@ -67,7 +67,7 @@ val included_first_class : unit t
 
 (** {3 Typing fault} *)
 val applied_structure : (Module.Partial.t -> unit) t
-val signature_expected : (Module.Partial.t -> unit) t
+val structure_expected : (Module.Partial.t -> unit) t
 val applied_unknown : (Module.Partial.t -> unit) t
 
 
