@@ -1,24 +1,31 @@
 %token <string> ATOM
-%token L, R, EOF EOF
+%token L, R, EOF
 
-%type <Sexp.t> sexp
-%start atom, list
+%type <Sexp.any> sexp
+%type <Sexp.many Sexp.t> many
+%type <Sexp.atomic Sexp.t> atom
+%start sexp, many, atom
 
 %{
-open List
+open Sexp
 %}
 
 %%
 
 sexp:
-  | ATOM EOF { Atom ($1) }
-  | list EOF { $1 }
+  | ATOM EOF { Any(Atom ($1)) }
+  | L list R EOF { Any(List($2)) }
 
+many:
+| L list R EOF { List $2 }
+
+atom:
+| ATOM EOF { Atom $1 }
 
 list:
-  | { List [] }
-  | sexp' list { List ($1 :: $2) }
+  | { [] }
+  | sexp0 list { $1 :: $2 }
 
-sexp':
-  | ATOM { Atom $1 }
-  | L list R { List $2 }
+sexp0:
+  | ATOM { Any(Atom $1) }
+  | L list R { Any(List $2) }

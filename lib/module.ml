@@ -50,6 +50,29 @@ module Origin = struct
     | Arg -> Pp.fp ppf "§"
     | Alias n -> Pp.fp ppf "(≡%a)" pp n
 
+  module Sexp = struct
+    open Sexp
+    let unit = C { name = "Unit";
+                   proj = (function Unit s -> Some s | _ -> None);
+                   inj = (fun x -> Unit x);
+                   impl = Pkg.sexp
+                 }
+
+    let alias sexp = C { name = "Alias";
+                         proj = (function Alias a -> Some a | _ -> None);
+                         inj= (fun x -> Alias x);
+                         impl = fix sexp
+                       }
+    let submodule = simple_constr "Submodule" Submodule
+    let first_class = simple_constr "First_class" First_class
+    let arg = simple_constr "Arg" Arg
+
+
+    let rec sexp () = Sexp.sum [unit;alias sexp;submodule;first_class]
+    let sexp = sexp
+
+  end
+
     let rec reflect ppf = function
     | Unit pkg  -> Pp.fp ppf "Unit %a" Pkg.reflect pkg
     | Submodule -> Pp.fp ppf "Submodule"
@@ -219,30 +242,6 @@ module Sig = struct
   type t = signature
 end
 
-
-module Sexp = struct
-  open Sexp
-
-  let to_list m = List.map snd @@ Name.Map.bindings m
-
-  let rec module_ () =
-    pair' { f = (fun (name, (args, signature)) -> create ~args name signature);
-            fr = fun m -> m.name, (m.args, m.signature)
-          }
-      string @@ pair (fix Many args) (fix Many signature)
-  and args () = keyed_list "args" @@ opt @@ fix Many module_
-  and signature () =
-    pair' { f = (fun (m,mt) -> Sig.( merge (of_list m) (of_list_type mt)) );
-            fr = (fun s -> to_list s.modules, to_list s.module_types) }
-      (keyed_list "module" @@  fix Many module_)
-      (keyed_list "module_types" @@ fix Many module_)
-
-  let module_ = module_ ()
-
-end
-let sexp = Sexp.module_
-
-
 module Partial = struct
   type nonrec t =
     { precision: Precision.t;
@@ -293,3 +292,62 @@ module Partial = struct
       Ok fdefs.result
 
 end
+
+
+module Sexp = struct
+  open Sexp
+  module R = Sexp.Record
+  let to_list m = List.map snd @@ Name.Map.bindings m
+
+  let args_f = U.(key Many "args" [])
+  let modules = U.(key Many "modules" [])
+  let module_types = U.(key Many "module_types" [])
+  let name_f = U.(key Atomic "name" "")
+
+  let rec module_ () =
+    let fr {name; args; signature; _ } =
+      R.(create [field name_f name;
+                 field args_f args;
+                 field modules (to_list signature.modules);
+                 field module_types (to_list signature.module_types)
+                ]) in
+    let f x =
+      let get f = R.get f x in
+      create ~args:(get args_f) (get name_f)
+        Sig.(merge (of_list @@ get modules) (of_list_type @@ get module_types)) in
+    let record =
+    record [ field name_f string;
+             field args_f @@ fix args;
+             field modules @@ list @@ fix module_;
+             field module_types @@ list @@ fix module_
+           ]
+    in
+    conv {f;fr} record
+  and args () = list @@ opt @@ fix module_
+
+  let modul_ = module_ ()
+
+  let signature =
+    let r = record [ field modules @@ list @@ fix module_;
+                     field module_types @@ list @@ fix module_
+                   ] in
+    let f x =
+      Sig.(merge (of_list @@ R.get modules x) (of_list_type @@ R.get module_types x))
+    in
+    let fr s =
+      R.(create [field modules @@ to_list s.modules;
+                 field module_types @@ to_list s.module_types] ) in
+    conv {f;fr} r
+
+
+  let ksign = U.(key Many "signature" Sig.empty)
+  let partial =
+    let r = record [ field ksign signature; field args_f @@ args () ] in
+    let f x = {Partial.args = R.get args_f x; result = R.get ksign x;
+               precision=Precision.Exact; origin = Submodule
+              } in
+    let fr r = R.(create Partial.[field ksign r.result; field args_f r.args] ) in
+    conv {f;fr} r
+
+end
+let sexp = Sexp.module_ ()

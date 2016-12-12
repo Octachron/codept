@@ -8,6 +8,8 @@ struct
     let pp = Pp.(list ~sep:(s".") ) Name.pp
   end
   include Core
+  let sexp = Sexp.( list string )
+
   module Set = struct
     include Set.Make(Core)
     let pp ppf s = Pp.(clist Core.pp) ppf (elements s)
@@ -60,6 +62,32 @@ module Expr = struct
     | A of Name.t
     | S of t * Name.t
     | F of {f:t; x:t}
+
+
+  module Sexp = struct
+    open Sexp
+    let t = simple_constr "T" T
+    let a = C {name="A";
+               proj = (function A x -> Some x | _ -> None);
+               inj = (fun x -> A x);
+               impl = string
+              }
+    let s r = C {name="S";
+               proj = (function S (x,y) -> Some (x,y) | _ -> None);
+               inj = (fun (x,y) -> S (x,y) );
+               impl = pair (fix r) string
+                }
+
+    let f r = C {name="F";
+                 proj = (function F {f;x} -> Some (f, x) | _ -> None);
+                 inj = (fun (f,x) -> F {f;x} );
+                 impl = pair (fix r) (fix r)
+                }
+
+    let rec all () = sum [ t; a; s all; f all]
+    let all = all ()
+  end
+  let sexp = Sexp.all
 
   exception Functor_not_expected
   let concrete p: Simple.t =
@@ -120,6 +148,28 @@ module Pkg = struct
 
   type t = { source: source ; file: Simple.t }
   type path = t
+
+  module Sexp = struct
+    open Sexp
+    let local = simple_constr "Local" Local
+    let unknown = simple_constr "Unknwon" Unknown
+    let pkg = C {name="Pkg";
+                 proj= (function Pkg p -> Some p | _ -> None );
+                 inj = (fun x -> Pkg x);
+                 impl = Simple.sexp }
+    let special = C {name="Special";
+                 proj= (function Special s -> Some s | _ -> None );
+                 inj = (fun x -> Special x);
+                     impl = string }
+    let source = sum [local;unknown;pkg;special]
+
+    let all =
+      pair source Simple.sexp |>
+      conv { f = (fun (source,file) -> {source;file});
+             fr = (fun r -> (r.source,r.file)) }
+
+  end
+  let sexp = Sexp.all
 
   let filename ?(sep=sep) p =
     begin match p.source with

@@ -244,9 +244,13 @@ let export param task =
 
 let sign param task =
   let {Unit.mli; _} = analyze param task in
-  let show {Unit.signature; name; _ } =
-    Pp.fp std "(%s@[%a@])@." name  Module.Sig.persistent signature in
-  List.iter show mli
+  let md {Unit.signature; name; _ } =
+    Module.create ~args:[]
+      ~origin:(Unit Paths.P.{ source = Special "command line"; file = [name]})
+      name signature in
+  let mds = List.map md mli in
+  let sexp = Sexp.( (list Module.sexp).embed ) mds in
+  Pp.(fp std) "@[%a@]@." Sexp.pp sexp
 
 let make_abs abs p =
   let open Paths.Pkg in
@@ -437,16 +441,21 @@ let add_intf name =
 let read_sigfile filename =
   let chan = open_in filename in
   let lexbuf = Lexing.from_channel chan in
-  let sigs = Sig_parse.top_modules Sig_lex.main lexbuf in
+  let sigs = Sexp.( (list Module.sexp).parse ) @@
+    Sexp_parse.many Sexp_lex.main lexbuf in
   close_in chan;
   sigs
 
 let add_sig more =
   let sigs = !(task).signatures in
-  task := {!task with signatures = more @ sigs  }
+  Option.iter (fun more ->
+      task := {!task with signatures = more @ sigs  })
+    more
 
 let read_sig ssig =
-  add_sig @@ Sig_parse.top_modules Sig_lex.main @@ Lexing.from_string ssig
+  add_sig
+  @@ Sexp.( (list Module.sexp).parse )
+  @@ Sexp_parse.many Sexp_lex.main @@ Lexing.from_string ssig
 
 let add_file name =
   if Sys.file_exists name then

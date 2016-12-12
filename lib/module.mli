@@ -109,10 +109,6 @@ module Sig :
     type t = signature
   end
 
-(** Sexp *)
-  val sexp: (modul, Sexp.many) Sexp.impl
-
-
 (** Anonymous module and other partial definitions *)
 module Partial :
   sig
@@ -133,3 +129,11 @@ module Partial :
     val is_functor : t -> bool
     val to_sign : t -> (signature,signature) result
   end
+
+(** Sexp *)
+val sexp: (modul, Sexp.many) Sexp.impl
+module Sexp: sig
+  val modul_ : (modul, Sexp.many) Sexp.impl
+  val signature: (signature, Sexp.many) Sexp.impl
+  val partial: (Partial.t, Sexp.many) Sexp.impl
+end

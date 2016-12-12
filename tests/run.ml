@@ -320,21 +320,21 @@ let result =
              "Result"; "Fault"]
           ,["List"],[]);
           "m2l.mli", (["Module";"Name";"Definition";"Paths" ],["Format"],[]);
-          "m2l.ml", (["Module";"Name";"Option";"Definition";"Paths"; "Pp" ],
+          "m2l.ml", (["Module";"Name";"Option";"Definition";"Paths"; "Pp"; "Sexp" ],
                      ["List"],[]);
           "fault.ml", (["Module"; "Option"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"; "Location";"Syntaxerr"],[]);
           "fault.ml", (["Module"; "Paths";],
                           ["Location"; "Syntaxerr"],[]);
 
-          "module.mli", ( ["Paths";"Name"], ["Format"], [] );
-          "module.ml", ( ["Paths";"Name"; "Pp" ], ["List"], [] );
+          "module.mli", ( ["Paths";"Name"; "Sexp"], ["Format"], [] );
+          "module.ml", ( ["Paths";"Name"; "Pp"; "Sexp" ], ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map"], [] );
           "option.mli", ([],[],[]);
           "option.ml", ([],[],[]);
-          "paths.mli", (["Name"], ["Map";"Set";"Format"],[]);
-          "paths.ml", (["Name"; "Pp" ],
+          "paths.mli", (["Name"; "Sexp"], ["Map";"Set";"Format"],[]);
+          "paths.ml", (["Name"; "Pp"; "Sexp" ],
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
@@ -344,6 +344,7 @@ let result =
                        "String"; "Syntaxerr"],[]);
           "result.mli", ([],[],[]);
           "result.ml", ([],["List"],[]);
+          "sexp.ml", (["Name"; "Option"; "Pp"], ["Format";"List";"Map"], [] );
           "solver.mli", (["Unit";"M2l";"Name";"Interpreter";"Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (

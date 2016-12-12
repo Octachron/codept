@@ -90,6 +90,181 @@ and 'a fn = { arg: module_type Arg.t option; body:'a }
 
 type t = m2l
 
+(** S-expression serialization *)
+module Sexp = struct
+  open Sexp
+  module R = Sexp.Record
+
+  let fix r impl = { parse = (fun x -> (impl r).parse x);
+                     embed = (fun x -> (impl r).embed x);
+                     witness = Many
+                   }
+  type break =
+    {
+      expr: break -> (expression,many) Sexp.impl;
+      me: break -> (module_expr,many) Sexp.impl;
+      mt: break -> (module_type,many) Sexp.impl;
+      minor: break -> (annotation,many) Sexp.impl;
+      ext: break -> (extension,many) Sexp.impl
+    }
+
+  (** Expression *)
+  let defs = C {
+    name= "Defs";
+    proj = (function Defs d -> Some d | _ -> None);
+    inj = (fun x -> Defs x);
+    impl = conv Definition.{
+        f = (fun (a,b) -> {visible=b;defined=a});
+        fr = (fun d -> d.defined, d.visible )
+      }
+      @@ pair Module.Sexp.signature Module.Sexp.signature
+  }
+
+  let op_n = C {
+      name = "Open";
+      proj = (function Open p -> Some p | _ -> None);
+      inj = (fun x -> Open x);
+      impl = list string
+    }
+
+  let includ_ r = C {
+      name = "Include";
+      proj = (function Include i -> Some i | _ -> None);
+      inj = (fun x -> Include x);
+      impl = fix r r.me
+    }
+
+  let sig_include r = C {
+      name = "SigInclude";
+      proj = (function SigInclude i -> Some i | _ -> None);
+      inj = (fun x -> SigInclude x);
+      impl = fix r r.mt
+    }
+
+  let bind_c r core = conv
+      { f = (fun (name,expr) -> {name;expr});
+        fr = (fun x -> x.name, x.expr)
+      } @@
+    pair string (fix r core)
+
+  let bind r = C {
+      name = "Bind";
+      proj = (function Bind b -> Some b | _ -> None );
+      inj = (fun x -> Bind x);
+      impl = bind_c r r.me
+    }
+
+  let bind_sig r = C {
+      name = "Bind_sig";
+      proj = (function Bind_sig b -> Some b | _ -> None );
+      inj = (fun x -> Bind_sig x);
+      impl = bind_c r r.mt
+    }
+
+  let bind_rec r =
+    C {
+      name = "Bind_rec";
+      proj = (function Bind_rec b -> Some b | _ -> None );
+      inj = (fun x -> Bind_rec x);
+      impl = list @@ bind_c r r.me
+    }
+
+    let minor r =
+    C {
+      name = "Minor";
+      proj = (function Minor mn -> Some mn | _ -> None );
+      inj = (fun x -> Minor x);
+      impl = fix r r.minor
+    }
+
+  let extension_node r =
+    C {
+      name = "Extension_node";
+      proj = (function Extension_node ext -> Some ext | _ -> None );
+      inj = (fun x -> Extension_node x);
+      impl = fix r r.ext
+    }
+
+  let expr r =
+    sum [ defs; op_n; includ_ r; sig_include r; bind r; bind_sig r;
+          bind_rec r; minor r; extension_node r ]
+
+  (** Annotation *)
+  let access = U.( key Many "access" Name.Set.empty )
+  let values = U.( key Many "values" [] )
+  let packed = U.( key Many "packed" [] )
+
+  let nameset = conv { fr = Name.Set.elements; f=Name.Set.of_list } (list string)
+
+  let annotation r =
+    let r = record [field access nameset;
+             field values (list @@ list @@ fix r r.expr);
+             field packed (list @@ fix r r.me)
+            ] in
+    let f x = { access = R.get access x; values = R.get values x;
+                packed = R.get packed x
+              } in
+    let fr r = R.(create [field access r.access; field values r.values;
+                          field packed r.packed ]
+                 ) in
+    conv {f;fr} r
+
+  (** Module expr *)
+
+(*
+
+and module_expr =
+  | Resolved of P.t
+  (** Already resolved module expression, generally
+      used in subexpression when waiting for other parts
+      of module expression to be resolved
+  *)
+  | Ident of Paths.Simple.t (** [A.B…] **)
+  | Apply of {f: module_expr; x:module_expr} (** [F(X)] *)
+  | Fun of module_expr fn (** [functor (X:S) -> M] *)
+  | Constraint of module_expr * module_type (** [M:S] *)
+  | Str of m2l (** [struct … end] *)
+  | Val of annotation (** [val … ] *)
+  | Extension_node of extension (** [[%ext …]] *)
+  | Abstract
+  (** empty module expression, used as a placeholder.
+      In particular, it is useful for constraining first class module unpacking
+      as [Constraint(Abstract, signature)]. *)
+  | Unpacked (** [(module M)] *)
+  | Open_me of { resolved: Definition.t; opens:Paths.Simple.t list; expr:module_expr}
+  (** M.(…N.( module_expr)…)
+      Note: This construction does not exist (yet?) in OCaml proper.
+      It is used here to simplify the interaction between
+      pattern open and first class module.*)
+and module_type =
+  | Resolved of P.t (** same as in the module type *)
+  | Alias of Paths.Simple.t (** [module m = A…]  *)
+  | Ident of Paths.Expr.t
+  (** module M : F(X).s
+      Note: Paths.Expr is used due to [F.(X).s] expressions
+      that do not have an equivalent on the module level
+ *)
+  | Sig of m2l (** [sig … end] *)
+  | Fun of module_type fn (** [functor (X:S) → M] *)
+  | With of {
+      body: module_type;
+      deletions: Name.set
+      (* ; equalities: (Npath.t * Epath.t) list *)
+    }
+  (** [S with module N := …]
+      we are only tracking module level modification
+  *)
+  | Of of module_expr (** [module type of …] *)
+  | Extension_node of extension (** [%%… ] *)
+  | Abstract (** placeholder *)
+and extension = {name:string; extension:extension_core}
+and extension_core =
+  | Module of m2l
+  | Val of annotation
+*)
+
+ end
+
 (** The Block module computes the first dependencies needed to be resolved
     before any interpreter can make progress evaluating a given code block *)
 module Block = struct
