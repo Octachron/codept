@@ -132,6 +132,15 @@ let m2l param f =
   |> snd
   |> Pp.fp std  "%a@." M2l.pp
 
+let m2l_sexp param f =
+  let ast = Ast_converter.with_polycy param.polycy in
+  let start = to_m2l ast param.synonyms f in
+  start
+  |> Normalize.all
+  |> snd
+  |> M2l.sexp.embed
+  |> Pp.fp std  "%a@." Sexp.pp
+
 
 let order units =
   let open Unit in
@@ -657,8 +666,10 @@ let args = Cmd.[
 
     "-dot", Unit (set dot), ": print dependencies in dot format";
     "-makefile", Unit (set makefile), ": print makefile depend file(default)";
-    "-approx-m2l", Unit (set_iter approx_file), ": print approximated m2l ast:";
-    "-m2l", Unit (set_iter m2l), ": print m2l ast:";
+    "-approx-m2l", Unit (set_iter approx_file), ": print approximated m2l ast";
+    "-m2l", Unit (set_iter m2l), ": print m2l ast";
+    "-m2l-sexp", Unit (set_iter m2l_sexp), ": print m2l ast in s-expression format";
+
     "-one-pass", Unit (set_iter one_pass), ": print m2l ast after one pass";
     "-sig", Unit (set sign), ": print inferred signature \
                               \n\n Module suboptions:\n";

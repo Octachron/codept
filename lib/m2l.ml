@@ -95,29 +95,30 @@ module Sexp = struct
   open Sexp
   module R = Sexp.Record
 
-  let fix r impl = { parse = (fun x -> (impl r).parse x);
-                     embed = (fun x -> (impl r).embed x);
-                     witness = Many
-                   }
-  type break =
+  let fix r impl = fix (impl r)
+  type recursive_sexp =
     {
-      expr: break -> (expression,many) Sexp.impl;
-      me: break -> (module_expr,many) Sexp.impl;
-      mt: break -> (module_type,many) Sexp.impl;
-      minor: break -> (annotation,many) Sexp.impl;
-      ext: break -> (extension,many) Sexp.impl
+      expr: recursive_sexp -> unit -> (expression,many) Sexp.impl;
+      me: recursive_sexp -> unit -> (module_expr,many) Sexp.impl;
+      mt: recursive_sexp -> unit -> (module_type,many) Sexp.impl;
+      annot: recursive_sexp -> unit -> (annotation,many) Sexp.impl;
+      ext: recursive_sexp -> unit -> (extension,many) Sexp.impl
     }
 
   (** Expression *)
+
+  let definition =
+    let open Definition in
+    convr
+      (pair Module.Sig.sexp Module.Sig.sexp)
+      (fun (a,b) -> {visible=b;defined=a})
+      (fun d -> d.defined, d.visible )
+
   let defs = C {
     name= "Defs";
     proj = (function Defs d -> Some d | _ -> None);
     inj = (fun x -> Defs x);
-    impl = conv Definition.{
-        f = (fun (a,b) -> {visible=b;defined=a});
-        fr = (fun d -> d.defined, d.visible )
-      }
-      @@ pair Module.Sig.sexp Module.Sig.sexp
+    impl = definition
   }
 
   let op_n = C {
@@ -174,7 +175,7 @@ module Sexp = struct
       name = "Minor";
       proj = (function Minor mn -> Some mn | _ -> None );
       inj = (fun x -> Minor x);
-      impl = fix r r.minor
+      impl = fix r r.annot
     }
 
   let extension_node r =
@@ -185,7 +186,7 @@ module Sexp = struct
       impl = fix r r.ext
     }
 
-  let expr r =
+  let expr r () =
     sum [ defs; op_n; includ_ r; sig_include r; bind r; bind_sig r;
           bind_rec r; minor r; extension_node r ]
 
@@ -194,9 +195,9 @@ module Sexp = struct
   let values = U.( key Many "values" [] )
   let packed = U.( key Many "packed" [] )
 
-  let nameset = conv { fr = Name.Set.elements; f=Name.Set.of_list } (list string)
+  let nameset = convr (list string) Name.Set.of_list Name.Set.elements
 
-  let annotation r =
+  let annot r () =
     let r = record [field access nameset;
              field values (list @@ list @@ fix r r.expr);
              field packed (list @@ fix r r.me)
@@ -211,59 +212,131 @@ module Sexp = struct
 
   (** Module expr *)
 
-(*
+  let resolved =
+    C { name="Resolved"; proj =(function Resolved p -> Some p | _ -> None);
+        inj = (fun p -> Resolved p); impl = Module.Partial.sexp }
 
-and module_expr =
-  | Resolved of P.t
-  (** Already resolved module expression, generally
-      used in subexpression when waiting for other parts
-      of module expression to be resolved
-  *)
-  | Ident of Paths.Simple.t (** [A.B…] **)
-  | Apply of {f: module_expr; x:module_expr} (** [F(X)] *)
-  | Fun of module_expr fn (** [functor (X:S) -> M] *)
-  | Constraint of module_expr * module_type (** [M:S] *)
-  | Str of m2l (** [struct … end] *)
-  | Val of annotation (** [val … ] *)
-  | Extension_node of extension (** [[%ext …]] *)
-  | Abstract
-  (** empty module expression, used as a placeholder.
-      In particular, it is useful for constraining first class module unpacking
-      as [Constraint(Abstract, signature)]. *)
-  | Unpacked (** [(module M)] *)
-  | Open_me of { resolved: Definition.t; opens:Paths.Simple.t list; expr:module_expr}
-  (** M.(…N.( module_expr)…)
-      Note: This construction does not exist (yet?) in OCaml proper.
-      It is used here to simplify the interaction between
-      pattern open and first class module.*)
-and module_type =
-  | Resolved of P.t (** same as in the module type *)
-  | Alias of Paths.Simple.t (** [module m = A…]  *)
-  | Ident of Paths.Expr.t
-  (** module M : F(X).s
-      Note: Paths.Expr is used due to [F.(X).s] expressions
-      that do not have an equivalent on the module level
- *)
-  | Sig of m2l (** [sig … end] *)
-  | Fun of module_type fn (** [functor (X:S) → M] *)
-  | With of {
-      body: module_type;
-      deletions: Name.set
-      (* ; equalities: (Npath.t * Epath.t) list *)
-    }
-  (** [S with module N := …]
-      we are only tracking module level modification
-  *)
-  | Of of module_expr (** [module type of …] *)
-  | Extension_node of extension (** [%%… ] *)
-  | Abstract (** placeholder *)
-and extension = {name:string; extension:extension_core}
-and extension_core =
-  | Module of m2l
-  | Val of annotation
-*)
+  let ident =
+    C { name="Ident"; proj=(function Ident p->Some p|_->None);
+       inj=(fun p ->Ident p); impl = Paths.Simple.sexp }
 
- end
+  let apply r =
+    C { name="Apply"; proj=( function Apply {f;x} -> Some (f,x) | _ -> None );
+        inj = (fun (f,x) -> Apply {f;x}); impl = pair (fix r r.me) (fix r r.me)
+      }
+
+  let fn r inner =
+    convr (pair (opt @@ Module.Arg.sexp @@ fix r r.mt) inner)
+      (fun (arg,body) -> {arg; body})
+      (fun r -> r.arg, r.body)
+
+  let func r =
+    C { name = "Fun"; proj = (function Fun f -> Some f | _ -> None);
+        inj = (fun f -> Fun f); impl = fn r (fix r r.me) }
+
+  let constraint_ r =
+    let proj = (function Constraint(a,b) -> Some (a, b)| _ -> None) in
+    C { name = "Constraint"; proj;
+        inj = (fun (a,b) -> Constraint(a,b));
+        impl = pair (fix r r.me) (fix r r.mt)
+      }
+
+  let str r =
+    C { name = "Str"; proj = (function Str l -> Some l| _ -> None);
+        inj = (fun l -> Str l); impl = list (fix r r.expr) }
+
+  let val_ r =
+    C { name = "Val"; proj = (function Val a -> Some a| _ -> None);
+        inj = (fun a -> Val a); impl = fix r r.annot }
+
+  let extension_node r =
+    C { name = "Extension_node";
+        proj = (function (Extension_node a:module_expr) -> Some a | _ -> None);
+        inj = (fun a -> Extension_node a); impl = fix r r.ext }
+
+  let abstract = simple_constr "Abstract" Abstract
+  let unpacked = simple_constr "Unpacked" Unpacked
+
+  let open_me r =
+    C{ name="Open_me";
+       proj = (function
+           | Open_me {resolved; opens; expr} -> Some( resolved,(opens,expr))
+           | _ -> None );
+       inj= (fun (a, (b,c)) -> Open_me {resolved=a; opens = b ; expr = c} );
+       impl = pair definition (pair (list Paths.Simple.sexp) (fix r r.me) )
+     }
+
+
+  let me r () = sum [resolved;ident;apply r; func r; constraint_ r;
+                  str r; val_ r; extension_node r; abstract; unpacked;
+                  open_me r]
+
+  let resolved_t =
+    C { name="Resolved";
+        proj =(function (Resolved p:module_type) -> Some p | _ -> None);
+        inj = (fun p -> Resolved p); impl = Module.Partial.sexp }
+
+  let alias =
+    C { name="Alias";
+        proj =(function Alias p -> Some p | _ -> None);
+        inj = (fun p -> Alias p); impl = Paths.Simple.sexp }
+
+  let ident_t =
+    C { name="Ident";
+        proj =(function (Ident p:module_type) -> Some p | _ -> None);
+        inj = (fun p -> Ident p); impl = Paths.Expr.sexp }
+
+  let sig_ r =
+    C { name="Sig";
+        proj =(function Sig s -> Some s | _ -> None);
+        inj = (fun s -> Sig s); impl = list (fix r r.expr) }
+
+  let fun_t r =
+    C { name="Fun";
+        proj =(function (Fun f:module_type) -> Some f | _ -> None);
+        inj = (fun f -> Fun f); impl = fn r (fix r r.mt) }
+
+  let with_ r =
+    C { name="With";
+        proj =(function With {body;deletions} -> Some (body,deletions) | _ -> None);
+        inj = (fun (a,b) -> With {body=a;deletions=b} );
+        impl = pair (fix r r.mt) (nameset) }
+
+    let of_ r =
+    C { name="Fun";
+        proj =(function Of me -> Some me | _ -> None);
+        inj = (fun me -> Of me); impl = (fix r r.me) }
+
+    let extension_node_t r =
+      C { name = "Extension_node";
+          proj = (function (Extension_node a:module_type) -> Some a | _ -> None);
+          inj = (fun a -> Extension_node a); impl = fix r r.ext }
+
+    let abstract_t = simple_constr "Abstract" (Abstract:module_type)
+
+    let mt r () = sum [ resolved_t; alias; ident_t; sig_ r; fun_t r; with_ r;
+                     of_ r; extension_node_t r; abstract_t ]
+
+    let ext_mod r =
+      C {name = "Module"; proj = (function Module m2l -> Some m2l | _ -> None );
+         inj = (fun m2l -> Module m2l); impl = list (fix r r.expr) }
+
+    let ext_val r =
+      C {name = "Val";
+         proj = (function (Val mn: extension_core) -> Some mn | _ -> None );
+         inj = (fun mn -> Val mn); impl = (fix r r.annot) }
+
+    let ext_core r = sum [ ext_mod r; ext_val r ]
+
+    let  ext r () = convr (pair string @@ ext_core r)
+        (fun (a,b) -> {name=a;extension=b} )
+        (fun r -> r.name, r.extension)
+
+    let recursive = { expr; me; mt; ext; annot }
+    let m2l = list @@ expr recursive ()
+end
+
+let sexp = Sexp.m2l
 
 (** The Block module computes the first dependencies needed to be resolved
     before any interpreter can make progress evaluating a given code block *)

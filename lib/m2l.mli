@@ -130,6 +130,7 @@ and extension_core =
   | Val of annotation
 
 type t = m2l
+val sexp: (m2l,Sexp.many) Sexp.impl
 
 module Annot : sig
   type t = annotation
