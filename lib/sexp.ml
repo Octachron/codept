@@ -273,6 +273,8 @@ let conv bij impl =
     s |> bij.fr |> impl.embed in
   {parse; embed; witness = impl.witness }
 
+let convr impl f fr = conv {f;fr} impl
+
 let opt: 'a 'b. ('a,'b) impl -> ('a option, many) impl =
   fun impl ->
   let parse = function

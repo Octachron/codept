@@ -14,6 +14,7 @@ module Arg :
       (Format.formatter -> 'a -> unit) ->
       Format.formatter -> 'a arg option -> unit
 
+    val sexp: ('a, 'b) Sexp.impl -> ('a t,Sexp.many) Sexp.impl
 
     val pp_s :
       (Format.formatter -> 'a -> unit) ->
@@ -90,22 +91,32 @@ val pp_pair : Format.formatter -> string * t -> unit
 val pp_arg : Format.formatter -> t option -> unit
 val pp_args : Format.formatter -> t option list -> unit
 
+(** {2 Sexp} *)
+val sexp: (modul,Sexp.many) Sexp.impl
+
 (** Helper functions for signature *)
 module Sig :
   sig
     val card : signature -> int
-    val persistent: Format.formatter -> signature -> unit
     val merge : signature -> signature -> signature
+
     val create : modul -> signature
     val create_type : t -> signature
     val gen_create : level -> t -> signature
+
+    val of_lists: t list -> t list -> signature
     val of_list : t list -> signature
     val of_list_type : t list -> signature
+
     val add : signature -> t -> signature
     val add_type : signature -> t -> signature
     val add_gen : level -> signature -> t -> signature
     val empty : signature
+
     val pp : Format.formatter -> signature -> unit
+    val sexp: (signature,Sexp.many) Sexp.impl
+    val persistent: Format.formatter -> signature -> unit
+
     type t = signature
   end
 
@@ -119,21 +130,20 @@ module Partial :
       result : signature;
     }
     val empty : t
+
     val simple : signature -> t
+
     val pp : Format.formatter -> t -> unit
+    val sexp: (t,Sexp.many) Sexp.impl
+
+
     val no_arg : signature -> t
     val drop_arg : t -> t option
+
     val to_module : ?origin:origin -> string -> t -> modul
     val to_arg : string -> t -> modul
     val of_module : modul -> t
     val is_functor : t -> bool
     val to_sign : t -> (signature,signature) result
-  end
 
-(** Sexp *)
-val sexp: (modul, Sexp.many) Sexp.impl
-module Sexp: sig
-  val modul_ : (modul, Sexp.many) Sexp.impl
-  val signature: (signature, Sexp.many) Sexp.impl
-  val partial: (Partial.t, Sexp.many) Sexp.impl
-end
+  end

@@ -117,7 +117,7 @@ module Sexp = struct
         f = (fun (a,b) -> {visible=b;defined=a});
         fr = (fun d -> d.defined, d.visible )
       }
-      @@ pair Module.Sexp.signature Module.Sexp.signature
+      @@ pair Module.Sig.sexp Module.Sig.sexp
   }
 
   let op_n = C {
