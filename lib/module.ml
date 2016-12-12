@@ -168,7 +168,6 @@ and pers_args ppf args =
   Pp.fp ppf "(args %a)" (Pp.(list ~sep:(s "@,") ) @@ pers_arg ) args
 
 
-
 let empty = Name.Map.empty
 
 let create
@@ -219,6 +218,30 @@ module Sig = struct
 
   type t = signature
 end
+
+
+module Sexp = struct
+  open Sexp
+
+  let to_list m = List.map snd @@ Name.Map.bindings m
+
+  let rec module_ () =
+    pair' { f = (fun (name, (args, signature)) -> create ~args name signature);
+            fr = fun m -> m.name, (m.args, m.signature)
+          }
+      string @@ pair (fix Many args) (fix Many signature)
+  and args () = keyed_list "args" @@ opt @@ fix Many module_
+  and signature () =
+    pair' { f = (fun (m,mt) -> Sig.( merge (of_list m) (of_list_type mt)) );
+            fr = (fun s -> to_list s.modules, to_list s.module_types) }
+      (keyed_list "module" @@  fix Many module_)
+      (keyed_list "module_types" @@ fix Many module_)
+
+  let module_ = module_ ()
+
+end
+let sexp = Sexp.module_
+
 
 module Partial = struct
   type nonrec t =

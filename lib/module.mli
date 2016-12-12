@@ -109,6 +109,10 @@ module Sig :
     type t = signature
   end
 
+(** Sexp *)
+  val sexp: (modul, Sexp.many) Sexp.impl
+
+
 (** Anonymous module and other partial definitions *)
 module Partial :
   sig
