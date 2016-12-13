@@ -118,28 +118,32 @@ module Sexp = struct
     name= "Defs";
     proj = (function Defs d -> Some d | _ -> None);
     inj = (fun x -> Defs x);
-    impl = definition
+    impl = definition;
+    default = Some Definition.empty
   }
 
   let op_n = C {
       name = "Open";
       proj = (function Open p -> Some p | _ -> None);
       inj = (fun x -> Open x);
-      impl = list string
+      impl = list string;
+      default = None
     }
 
   let includ_ r = C {
       name = "Include";
       proj = (function Include i -> Some i | _ -> None);
       inj = (fun x -> Include x);
-      impl = fix r r.me
+      impl = fix r r.me;
+      default = None
     }
 
   let sig_include r = C {
       name = "SigInclude";
       proj = (function SigInclude i -> Some i | _ -> None);
       inj = (fun x -> SigInclude x);
-      impl = fix r r.mt
+      impl = fix r r.mt;
+      default = None
     }
 
   let bind_c r core = conv
@@ -152,14 +156,16 @@ module Sexp = struct
       name = "Bind";
       proj = (function Bind b -> Some b | _ -> None );
       inj = (fun x -> Bind x);
-      impl = bind_c r r.me
+      impl = bind_c r r.me;
+      default = None
     }
 
   let bind_sig r = C {
       name = "Bind_sig";
       proj = (function Bind_sig b -> Some b | _ -> None );
       inj = (fun x -> Bind_sig x);
-      impl = bind_c r r.mt
+      impl = bind_c r r.mt;
+      default = None
     }
 
   let bind_rec r =
@@ -167,7 +173,8 @@ module Sexp = struct
       name = "Bind_rec";
       proj = (function Bind_rec b -> Some b | _ -> None );
       inj = (fun x -> Bind_rec x);
-      impl = list @@ bind_c r r.me
+      impl = list @@ bind_c r r.me;
+      default = None;
     }
 
     let minor r =
@@ -175,7 +182,8 @@ module Sexp = struct
       name = "Minor";
       proj = (function Minor mn -> Some mn | _ -> None );
       inj = (fun x -> Minor x);
-      impl = fix r r.annot
+      impl = fix r r.annot;
+      default = None;
     }
 
   let extension_node r =
@@ -183,7 +191,8 @@ module Sexp = struct
       name = "Extension_node";
       proj = (function Extension_node ext -> Some ext | _ -> None );
       inj = (fun x -> Extension_node x);
-      impl = fix r r.ext
+      impl = fix r r.ext;
+      default = None;
     }
 
   let expr r () =
@@ -214,15 +223,20 @@ module Sexp = struct
 
   let resolved =
     C { name="Resolved"; proj =(function Resolved p -> Some p | _ -> None);
-        inj = (fun p -> Resolved p); impl = Module.Partial.sexp }
+        inj = (fun p -> Resolved p); impl = Module.Partial.sexp;
+        default = None
+      }
 
   let ident =
     C { name="Ident"; proj=(function Ident p->Some p|_->None);
-       inj=(fun p ->Ident p); impl = Paths.Simple.sexp }
+        inj=(fun p ->Ident p); impl = Paths.Simple.sexp;
+        default = None;
+      }
 
   let apply r =
     C { name="Apply"; proj=( function Apply {f;x} -> Some (f,x) | _ -> None );
-        inj = (fun (f,x) -> Apply {f;x}); impl = pair (fix r r.me) (fix r r.me)
+        inj = (fun (f,x) -> Apply {f;x}); impl = pair (fix r r.me) (fix r r.me);
+        default = None
       }
 
   let fn r inner =
@@ -232,27 +246,36 @@ module Sexp = struct
 
   let func r =
     C { name = "Fun"; proj = (function Fun f -> Some f | _ -> None);
-        inj = (fun f -> Fun f); impl = fn r (fix r r.me) }
+        inj = (fun f -> Fun f); impl = fn r (fix r r.me);
+        default = None
+      }
 
   let constraint_ r =
     let proj = (function Constraint(a,b) -> Some (a, b)| _ -> None) in
     C { name = "Constraint"; proj;
         inj = (fun (a,b) -> Constraint(a,b));
-        impl = pair (fix r r.me) (fix r r.mt)
+        impl = pair (fix r r.me) (fix r r.mt);
+        default = Some (Abstract, Sig [] ) (* module M [: sig end]*)
       }
 
   let str r =
     C { name = "Str"; proj = (function Str l -> Some l| _ -> None);
-        inj = (fun l -> Str l); impl = list (fix r r.expr) }
+        inj = (fun l -> Str l); impl = list (fix r r.expr);
+        default = Some []
+      }
 
   let val_ r =
     C { name = "Val"; proj = (function Val a -> Some a| _ -> None);
-        inj = (fun a -> Val a); impl = fix r r.annot }
+        inj = (fun a -> Val a); impl = fix r r.annot;
+        default = None
+      }
 
   let extension_node r =
     C { name = "Extension_node";
         proj = (function (Extension_node a:module_expr) -> Some a | _ -> None);
-        inj = (fun a -> Extension_node a); impl = fix r r.ext }
+        inj = (fun a -> Extension_node a); impl = fix r r.ext;
+        default = None
+      }
 
   let abstract = simple_constr "Abstract" Abstract
   let unpacked = simple_constr "Unpacked" Unpacked
@@ -263,7 +286,8 @@ module Sexp = struct
            | Open_me {resolved; opens; expr} -> Some( resolved,(opens,expr))
            | _ -> None );
        inj= (fun (a, (b,c)) -> Open_me {resolved=a; opens = b ; expr = c} );
-       impl = pair definition (pair (list Paths.Simple.sexp) (fix r r.me) )
+       impl = pair definition (pair (list Paths.Simple.sexp) (fix r r.me) );
+       default = None;
      }
 
 
@@ -274,43 +298,59 @@ module Sexp = struct
   let resolved_t =
     C { name="Resolved";
         proj =(function (Resolved p:module_type) -> Some p | _ -> None);
-        inj = (fun p -> Resolved p); impl = Module.Partial.sexp }
+        inj = (fun p -> Resolved p); impl = Module.Partial.sexp;
+        default = None;
+      }
 
   let alias =
     C { name="Alias";
         proj =(function Alias p -> Some p | _ -> None);
-        inj = (fun p -> Alias p); impl = Paths.Simple.sexp }
+        inj = (fun p -> Alias p); impl = Paths.Simple.sexp;
+        default = None
+      }
 
   let ident_t =
     C { name="Ident";
         proj =(function (Ident p:module_type) -> Some p | _ -> None);
-        inj = (fun p -> Ident p); impl = Paths.Expr.sexp }
+        inj = (fun p -> Ident p); impl = Paths.Expr.sexp;
+        default = None
+      }
 
   let sig_ r =
     C { name="Sig";
         proj =(function Sig s -> Some s | _ -> None);
-        inj = (fun s -> Sig s); impl = list (fix r r.expr) }
+        inj = (fun s -> Sig s); impl = list (fix r r.expr);
+        default = Some [];
+      }
 
   let fun_t r =
     C { name="Fun";
         proj =(function (Fun f:module_type) -> Some f | _ -> None);
-        inj = (fun f -> Fun f); impl = fn r (fix r r.mt) }
+        inj = (fun f -> Fun f); impl = fn r (fix r r.mt);
+        default = None
+      }
 
   let with_ r =
     C { name="With";
         proj =(function With {body;deletions} -> Some (body,deletions) | _ -> None);
         inj = (fun (a,b) -> With {body=a;deletions=b} );
-        impl = pair (fix r r.mt) (nameset) }
+        impl = pair (fix r r.mt) (nameset);
+        default = None
+      }
 
     let of_ r =
     C { name="Fun";
         proj =(function Of me -> Some me | _ -> None);
-        inj = (fun me -> Of me); impl = (fix r r.me) }
+        inj = (fun me -> Of me); impl = (fix r r.me);
+        default = None;
+      }
 
     let extension_node_t r =
       C { name = "Extension_node";
           proj = (function (Extension_node a:module_type) -> Some a | _ -> None);
-          inj = (fun a -> Extension_node a); impl = fix r r.ext }
+          inj = (fun a -> Extension_node a); impl = fix r r.ext;
+          default = None
+        }
 
     let abstract_t = simple_constr "Abstract" (Abstract:module_type)
 
@@ -319,12 +359,16 @@ module Sexp = struct
 
     let ext_mod r =
       C {name = "Module"; proj = (function Module m2l -> Some m2l | _ -> None );
-         inj = (fun m2l -> Module m2l); impl = list (fix r r.expr) }
+         inj = (fun m2l -> Module m2l); impl = list (fix r r.expr);
+         default = Some []
+        }
 
     let ext_val r =
       C {name = "Val";
          proj = (function (Val mn: extension_core) -> Some mn | _ -> None );
-         inj = (fun mn -> Val mn); impl = (fix r r.annot) }
+         inj = (fun mn -> Val mn); impl = (fix r r.annot);
+         default = None
+        }
 
     let ext_core r = sum [ ext_mod r; ext_val r ]
 

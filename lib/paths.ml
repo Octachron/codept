@@ -70,18 +70,22 @@ module Expr = struct
     let a = C {name="A";
                proj = (function A x -> Some x | _ -> None);
                inj = (fun x -> A x);
-               impl = string
+               impl = string;
+               default = None
               }
-    let s r = C {name="S";
-               proj = (function S (x,y) -> Some (x,y) | _ -> None);
-               inj = (fun (x,y) -> S (x,y) );
-               impl = pair (fix r) string
-                }
+    let s r =
+      C {name="S";
+         proj = (function S (x,y) -> Some (x,y) | _ -> None);
+         inj = (fun (x,y) -> S (x,y) );
+         impl = pair (fix r) string;
+         default = None
+        }
 
     let f r = C {name="F";
                  proj = (function F {f;x} -> Some (f, x) | _ -> None);
                  inj = (fun (f,x) -> F {f;x} );
-                 impl = pair (fix r) (fix r)
+                 impl = pair (fix r) (fix r);
+                 default = None;
                 }
 
     let rec all () = sum [ t; a; s all; f all]
@@ -156,11 +160,16 @@ module Pkg = struct
     let pkg = C {name="Pkg";
                  proj= (function Pkg p -> Some p | _ -> None );
                  inj = (fun x -> Pkg x);
-                 impl = Simple.sexp }
-    let special = C {name="Special";
-                 proj= (function Special s -> Some s | _ -> None );
-                 inj = (fun x -> Special x);
-                     impl = string }
+                 impl = Simple.sexp;
+                 default = Some [];
+                }
+    let special =
+      C {name="Special";
+         proj= (function Special s -> Some s | _ -> None );
+         inj = (fun x -> Special x);
+         impl = string;
+         default = Some "stdlib"
+        }
     let source = sum [local;unknown;pkg;special]
 
     let ksource = U.(key Many "source" Local)

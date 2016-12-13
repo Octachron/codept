@@ -63,13 +63,15 @@ module Origin = struct
     let unit = C { name = "Unit";
                    proj = (function Unit s -> Some s | _ -> None);
                    inj = (fun x -> Unit x);
-                   impl = Pkg.sexp
+                   impl = Pkg.sexp;
+                   default = None;
                  }
 
     let alias sexp = C { name = "Alias";
                          proj = (function Alias a -> Some a | _ -> None);
                          inj= (fun x -> Alias x);
-                         impl = fix sexp
+                         impl = fix sexp;
+                         default = Some Submodule
                        }
     let submodule = simple_constr "Submodule" Submodule
     let first_class = simple_constr "First_class" First_class

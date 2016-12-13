@@ -245,7 +245,8 @@ type 'a constr =
       name:Name.t;
       proj:'a -> 'b option;
       inj: 'b -> 'a;
-      impl: ('b, 'kind) impl
+      impl: ('b, 'kind) impl;
+      default: 'b option
     } -> 'a constr
   | Cs : { name:Name.t; value:'a} -> 'a constr
 
@@ -270,6 +271,7 @@ let sum l =
     | List [ Any (Atom n) ] ->
        match Name.Map.find n m with
         | exception Not_found -> None
+        | C ({ default = Some value;_ } as c) -> Some (c.inj value)
         | C _ -> None
         | Cs c -> Some c.value
   in
@@ -283,6 +285,10 @@ let sum l =
       match cnstr.proj x with
       | None -> raise (Invalid_argument "Sexp.sum")
       | Some inner ->
+        match cnstr.default with
+        | Some y when inner = y ->
+          List[ Any (Atom cnstr.name) ]
+        | _ ->
         List[ Any (Atom cnstr.name); any (cnstr.impl.embed inner)] in
   {parse;embed;witness=Many}
 
