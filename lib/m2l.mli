@@ -199,6 +199,12 @@ module Normalize: sig
   val value: annotation -> m2l -> annotation
 end
 
+(** {2 Signature filter} *)
+module Sig_only: sig
+  val filter: m2l -> m2l
+end
+
+
 (** {2 Printers } *)
 
 val pp: Format.formatter -> m2l -> unit

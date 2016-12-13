@@ -549,3 +549,63 @@ module Normalize = struct
     | l -> { mn with values = l :: mn.values }
 
 end
+
+
+module Sig_only = struct
+
+  let (|||) (b,x) (b',y) = b || b', (x,y)
+  let (@::) a (b,l) = (b, a :: l)
+  let (@:::) (b,a) (b',l) = (b || b', a :: l)
+
+  let map f (b, x) = (b, f x)
+
+
+  let sig_arg inner = function
+    | None as a -> false, a
+    | Some r ->
+      map (fun s -> Some { r with Arg.signature = s }) (inner r.signature )
+
+  let rec rev keep_opens = function
+    | Defs _ :: l -> rev keep_opens l
+    | Minor _ :: l -> rev keep_opens l
+    | Open _  as o :: q ->
+      if keep_opens then  o @:: rev keep_opens q
+      else rev keep_opens q
+    | Extension_node _ as a :: q  -> a @:: rev true q
+    | (SigInclude _| Include _) as a :: q -> a @:: rev true q
+    | Bind {name;expr} :: q ->
+      let k, expr = mex expr in
+      Bind{name;expr} @:: rev (k||keep_opens) q
+    | (Bind_sig  _ as a) :: q
+    | (Bind_rec _ as a) :: q -> a @:: rev true q
+    | [] -> false, []
+  and main l = map List.rev (rev false @@ List.rev l)
+  and mex = function
+    | (Resolved _ | Val _ | Abstract | Unpacked )  as a-> false, a
+    | (Ident _ | Apply _ | Extension_node _ ) as a -> true, a
+    | Fun {arg;body} ->
+      let b, arg = sig_arg mty arg in
+      let b', body = mex body in
+      b || b', Fun {arg;body}
+    | Constraint (me,mt) ->
+      map (fun (x,y) -> Constraint (x,y)) (mex me ||| mty mt)
+    | Str s ->
+      map (fun x -> Str x) (main s)
+    | Open_me ({ expr; _ } as r) ->
+      let b, expr = mex expr in
+      b , Open_me { r with expr}
+  and mty = function
+    | (Resolved _ | Abstract as a ) -> false, a
+    | (Alias _ | Ident _ | Extension_node _ as a ) -> true, a
+    | Sig code -> map (fun x -> Sig x) (main code)
+    | Fun {arg;body} ->
+      let k, arg = sig_arg mty arg in
+      let k', body = mty body in
+      k || k', Fun {arg;body}
+    | With ({ body; _ } as r) ->
+      map (fun x -> With { r with body=x}) (mty body)
+    | Of e -> map (fun x -> Of x) (mex e)
+
+  let filter m2l = snd @@ main m2l
+
+end
