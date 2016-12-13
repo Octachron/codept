@@ -25,6 +25,7 @@ type param =
     implicits: bool;
     closed_world: bool;
     may_approx:bool;
+    sig_only:bool;
     polycy: Fault.Polycy.t;
   }
 
@@ -64,6 +65,7 @@ let param = ref {
   synonyms = {Unit.ml = Name.Set.singleton "ml" ; mli = Name.Set.singleton "mli" };
   closed_world = false;
   may_approx = false;
+  sig_only = false;
   polycy
 }
 
@@ -101,13 +103,14 @@ let classic = function
   | Implementation -> M2l.Structure
   | Signature -> raise (Unknown_file_type "signature")
 
-let to_m2l synonyms f =
+let to_m2l sig_only synonyms f =
   if extension f = "cmi" then
     Cmi.m2l f
   else
     let kind = classify synonyms f in
     match Read.file (classic kind) f with
-    | _name, Ok x -> x
+    | _name, Ok x ->
+      if sig_only then M2l.Sig_only.filter x else x
     | _, Error msg -> Fault.(handle Polycy.strict syntaxerr msg ); exit 1
 
 let approx_file _param f =
@@ -118,20 +121,20 @@ let approx_file _param f =
 let one_pass param f =
   let module Param = (val lift param) in
   let module Sg = Envts.Interpreters.Sg(Param) in
-  let start = to_m2l param.synonyms f in
+  let start = to_m2l param.sig_only param.synonyms f in
   match start |> Sg.m2l S.empty with
   | Ok (_state,d) -> Pp.fp std "Computation finished:\n %a@." S.pp d
   | Error h -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
 
 let m2l param f =
-  let start = to_m2l param.synonyms f in
+  let start = to_m2l param.sig_only param.synonyms f in
   start
   |> Normalize.all
   |> snd
   |> Pp.fp std  "%a@." M2l.pp
 
 let m2l_sexp param f =
-  let start = to_m2l param.synonyms f in
+  let start = to_m2l param.sig_only param.synonyms f in
   start
   |> Normalize.all
   |> snd
@@ -162,15 +165,19 @@ let open_within opens unit =
       | m -> { unit with code = M2l.Open m :: unit.code }
     ) opens unit
 
-let organize polycy opens files =
+let organize polycy sig_only opens files =
   let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
+  let filter_m2l (u: Unit.s) = if sig_only then
+      { u with Unit.code = M2l.Sig_only.filter u.code }
+    else
+      u in
   let units = Unit.map (
     Unit.unimap (List.map % Unit.read_file polycy )
       { ml=M2l.Structure; mli=M2l.Signature}
     ) files in
-  let units = Unit.unimap (List.map @@ open_within opens) units in
+  let units = Unit.unimap (List.map @@ filter_m2l % open_within opens) units in
   let units = Unit.Groups.Unit.(split % group) units in
   units, m
 
@@ -205,7 +212,7 @@ let remove_units invisibles =
     | _ -> false
 
 let analyze param {opens;libs;invisibles; signatures; files;_} =
-  let units, filemap = organize param.polycy opens files in
+  let units, filemap = organize param.polycy param.sig_only opens files in
   let files_set = units.mli
                   |> List.map (fun (u:Unit.s) -> u.name)
                   |> Name.Set.of_list in
@@ -257,6 +264,9 @@ let sign param task =
   let mds = List.map md mli in
   let sexp = Sexp.( (list Module.sexp).embed ) mds in
   Pp.(fp std) "@[%a@]@." Sexp.pp sexp
+
+let sig_only () =
+  param := { !param with sig_only = true }
 
 let make_abs abs p =
   let open Paths.Pkg in
@@ -673,8 +683,11 @@ let args = Cmd.[
     "-m2l-sexp", Unit (set_iter m2l_sexp), ": print m2l ast in s-expression format";
 
     "-one-pass", Unit (set_iter one_pass), ": print m2l ast after one pass";
-    "-sig", Unit (set sign), ": print inferred signature \
-                              \n\n Module suboptions:\n";
+    "-sig", Unit (set sign), ": print inferred signature";
+    "-sig-only", Unit sig_only,
+    ": filter produced m2l to keep only signature-level elements.\
+     \n\n Module suboptions:\n";
+
 
     "-extern-modules", Unit (set @@ modules ~filter:lib_filter),
     ": print raw extern dependencies";
