@@ -255,7 +255,7 @@ let sign param task =
   let {Unit.mli; _} = analyze param task in
   let md {Unit.signature; name; _ } =
     Module.create ~args:[]
-      ~origin:(Unit Paths.P.{ source = Special "command line"; file = [name]})
+      ~origin:(Unit Paths.P.{ source = Special "command_line"; file = [name]})
       name signature in
   let mds = List.map md mli in
   let sexp = Sexp.( (list Module.sexp).embed ) mds in
@@ -447,11 +447,24 @@ let add_intf name =
   let {Unit.ml;mli} = !(task).files in
   task := {!task with files = { mli = name :: mli; ml } }
 
+
+
+let relocate_sig m =
+  { m with
+    Module.origin = Unit
+        Pkg.{ source = Special "command-line"; file=[m.Module.name] }
+  }
+
+let parse_sig lexbuf=
+  Option.fmap (List.map relocate_sig)
+  @@ Sexp.( (list Module.sexp).parse )
+  @@ Sexp_parse.many Sexp_lex.main
+  @@ lexbuf
+
 let read_sigfile filename =
   let chan = open_in filename in
   let lexbuf = Lexing.from_channel chan in
-  let sigs = Sexp.( (list Module.sexp).parse ) @@
-    Sexp_parse.many Sexp_lex.main lexbuf in
+  let sigs = parse_sig lexbuf in
   close_in chan;
   sigs
 
@@ -463,8 +476,8 @@ let add_sig more =
 
 let read_sig ssig =
   add_sig
-  @@ Sexp.( (list Module.sexp).parse )
-  @@ Sexp_parse.many Sexp_lex.main @@ Lexing.from_string ssig
+  @@ parse_sig
+  @@ Lexing.from_string ssig
 
 let add_file name =
   if Sys.file_exists name then

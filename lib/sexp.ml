@@ -10,7 +10,9 @@ type 'kind t =
   | List: any list -> many t
 and any = Any: 'any t -> any
 
-let any sexp = Any sexp
+let rec any: type a. a t -> any = function
+  | List [Any (Atom _ as sexp)] -> any sexp
+  | sexp ->  Any sexp
 
 let rec pp: type any. Format.formatter -> any t -> unit =
   fun ppf -> function
@@ -146,6 +148,7 @@ let any_parse: type i. ('a,i) impl -> (any -> 'a option) =
   match impl.witness, sexp with
   | Atomic, Any (Atom _ as sexp) -> impl.parse sexp
   | Many, Any (List _ as sexp) -> impl.parse sexp
+  | Many, ( Any(Atom _ ) as sexp) -> impl.parse (List [sexp])
   | _, _ -> None
 
 open Option
@@ -198,7 +201,7 @@ let map (impl_map: U.M.m) =
       let (List l) = impl.embed x in
       List( Any (Atom name) :: l )
     | Atomic ->
-      List [ Any(Atom name); Any (impl.embed x) ]
+      List [ Any(Atom name); any (impl.embed x) ]
   in
   let embed_key univ sexp (_name, U.M {key; value} ) =
     match U.M.find_opt key univ with
@@ -255,7 +258,7 @@ let sum l =
     match cnstr.proj x with
     | None -> raise (Invalid_argument "Sexp.sum")
     | Some inner ->
-      List[ Any (Atom cnstr.name); Any(cnstr.impl.embed inner)] in
+      List[ Any (Atom cnstr.name); any (cnstr.impl.embed inner)] in
   {parse;embed;witness=Many}
 
 
@@ -263,7 +266,7 @@ let pair l r =
   let parse = function
     | List ([]| [_] |  _ :: _  :: _ :: _ ) -> None
     | List [a; b] -> any_parse l a && any_parse r b in
-  let embed (a,b) = list' [Any (l.embed a); Any (r.embed b)] in
+  let embed (a,b) = list' [any (l.embed a); any (r.embed b)] in
   {parse;embed; witness = Many }
 
 let conv bij impl =
@@ -284,7 +287,7 @@ let opt: 'a 'b. ('a,'b) impl -> ('a option, many) impl =
   in
   let embed = function
     | None -> List []
-    | Some x -> List [ Any (impl.embed x) ] in
+    | Some x -> List [ any (impl.embed x) ] in
   {parse;embed; witness = Many }
 
 
@@ -300,7 +303,19 @@ let cons l r =
     | a :: b ->
     let a' = l.embed a in
     match r.embed b with
-    | List l -> List( Any a' :: l ) in
+    | List l -> List( any a' :: l ) in
+  {parse;embed; witness = Many}
+
+let pair' atom r =
+  let parse = function
+    | List [] -> None
+    | List (a :: b) ->
+      (any_parse atom a && r.parse (List b))
+  in
+  let embed (a,b)  =
+    let a = atom.embed a in
+    match r.embed b with
+    | List l -> List( any a :: l ) in
   {parse;embed; witness = Many}
 
 let empty =
@@ -320,7 +335,7 @@ let singleton impl =
     | [] | _ :: _ :: _ ->
       raise (Invalid_argument "Sexp.singleton: wrong number of elements")
     | [a] ->
-    List [Any (impl.embed a)] in
+    List [any (impl.embed a)] in
   {parse; embed; witness = Many}
 
 let fix impl =

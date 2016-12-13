@@ -223,32 +223,31 @@ module Sexp_core = struct
   let args_f = U.(key Many "args" [])
   let modules = U.(key Many "modules" [])
   let module_types = U.(key Many "module_types" [])
-  let name_f = U.(key Atomic "name" "")
   let origin = U.(key Many "origin" Origin.Submodule)
   let precision = U.(key Many "precision" Precision.Exact)
 
   let rec module_ () =
     let fr r =
-      R.(create [field name_f r.name;
+      r.name, R.(create [
                  field precision r.precision;
                  field origin r.origin;
                  field args_f r.args;
                  field modules (to_list r.signature.modules);
                  field module_types (to_list r.signature.module_types)
                 ]) in
-    let f x =
+    let f (name,x) =
       let get f = R.get f x in
       create ~origin:(get origin) ~precision:(get precision) ~args:(get args_f)
-        (get name_f)
+        name
       @@ signature_of_lists (get modules) (get module_types) in
     let record =
-    record [ field name_f string;
+    record [
              field args_f @@ fix args;
              field modules @@ list @@ fix module_;
              field module_types @@ list @@ fix module_
            ]
     in
-    conv {f;fr} record
+    conv {f;fr} (pair' string record)
   and args () = list @@ opt @@ fix module_
 
   let modul_ = module_ ()

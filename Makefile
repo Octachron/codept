@@ -5,10 +5,11 @@ codept: lib/*.ml lib/*.mli light/*.ml
 clean:
 	ocamlbuild -clean
 
-test: tests/**/*.ml codept
-	ocamlbuild -use-ocamlfind run.native \
-	&& ocamlbuild -use-ocamlfind sig_reader.native \
-	&& ./run.native && ./sig_reader.native
+test: tests/**/*.ml run.native serialization.native codept
+	./run.native && ./serialization.native
+
+%.native: tests/%.ml codept
+	ocamlbuild -use-ocamlfind $@
 
 doc: codept
 	ocamlbuild -use-ocamlfind -docflags -charset,utf-8 codept.docdir/index.html
