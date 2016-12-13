@@ -62,7 +62,8 @@ end
 (** {2 Predefined faults} *)
 
 (** {3 Extension node fault} *)
-val extension : (string Location.loc * 'a -> unit) t
+val extension_ignored : (string -> unit) t
+val extension_traversed : (string -> unit) t
 
 (** {3 First-class module faults} *)
 val generic_first_class : unit t

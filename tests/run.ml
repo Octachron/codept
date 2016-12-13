@@ -295,9 +295,9 @@ let result =
     ( Sys.chdir "../../lib";
       gen_deps_test (ocamlfind "compiler-libs") precise_deps_test
         [
-          "ast_converter.mli", ( ["M2l"; "Fault"], ["Parsetree"], [] );
+          "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
           "ast_converter.ml", ( ["M2l"; "Name"; "Option"; "Module";
-                                 "Paths"; "Fault"],
+                                 "Paths"],
                                 ["List";"Longident"; "Location"; "Parsetree"], [] );
           "approx_parser.mli", (["M2l"], [],[]);
           "approx_parser.ml", (["Read";"M2l";"Name"],
@@ -338,7 +338,7 @@ let result =
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
-          "read.mli", (["M2l"; "Ast_converter"; "Name"],["Syntaxerr"],[]);
+          "read.mli", (["M2l"; "Name"],["Syntaxerr"],[]);
           "read.ml", (["Ast_converter"; "M2l"],
                       ["Filename"; "Format"; "Location"; "Parse"; "Pparse";
                        "String"; "Syntaxerr"],[]);
@@ -353,7 +353,7 @@ let result =
             ["List"; "Map"; "Set"],[]);
           "unit.mli", (["Paths"; "M2l"; "Module";"Fault"],["Format";"Set"],[]);
           "unit.ml", (
-            ["Approx_parser"; "Ast_converter"; "M2l"; "Module"; "Fault";
+            ["Approx_parser"; "M2l"; "Module"; "Fault";
              "Option"; "Paths"; "Pp"; "Read"],
             [ "List"; "Set"],
             []);

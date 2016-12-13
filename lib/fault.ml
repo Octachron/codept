@@ -101,12 +101,21 @@ type 'a t = 'a fault
 
 
 (** Warnings *)
-let extension =
+let extension_ignored =
   { path = ["extension"; "ignored"];
     expl = "The payload of an extension node was ignored";
-  log = (fun lvl (name, _)  ->
-      log lvl "extension node %s ignored." name.Location.txt)
+  log = (fun lvl name  ->
+      log lvl "extension node %s ignored." name)
 }
+
+let extension_traversed =
+  { path = ["extension"; "traversed"];
+    expl = "The payload of an extension node was handled has a standard \
+           OCaml code.";
+  log = (fun lvl name  ->
+      log lvl "extension node %s traversed." name)
+}
+
 
 let generic_first_class=
   { path = ["first_class";"gen"];
@@ -261,19 +270,27 @@ module Polycy = struct
     |> set_err (opened_first_class, warning)
     |> set_err (included_first_class, warning)
     |> set (["extension"],  Some "Extension node faults", warning)
-    |> register_err extension
+    |> set_err (extension_ignored, warning)
+    |> set_err (extension_traversed, notification)
     |> set (["parsing"], Some "Parsing faults",  error)
     |> register_err syntaxerr
     |> set_err (discordant_approximation, warning)
     |> set_err (concordant_approximation, notification)
-    |> set (["typing"], Some "Typing faults", error)
-    |> set_err (applied_structure, error)
-    |> set_err (structure_expected, error)
+    |> set (["typing"], Some "Typing faults", warning)
+    |> set_err (applied_structure, warning)
+    |> set_err (structure_expected,warning)
     |> set_err (applied_unknown, notification)
 
 
 
-  let strict = { default with exit = Level.notification }
+  let strict =
+    let open Level in
+    { default with exit = Level.notification }
+    |> set (["typing"], Some "Typing faults", error)
+    |> set_err (applied_structure, error)
+    |> set_err (structure_expected,error)
+
+
   let parsing_approx =
     default |> set_err (syntaxerr, Level.warning)
 

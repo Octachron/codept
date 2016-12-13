@@ -3,5 +3,5 @@
 val name: string -> Name.t
 (** [name filename] gives the module name corresponding to filename *)
 
-val file: Ast_converter.t -> M2l.kind -> string ->
+val file: M2l.kind -> string ->
   Name.t * (M2l.t,Syntaxerr.error) result

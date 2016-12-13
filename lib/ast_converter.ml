@@ -127,9 +127,6 @@ let minor x =
 
 (** {2 From OCaml ast to m2l } *)
 open Parsetree
-let with_polycy pol =
-  let msg m = Fault.handle pol m in
-  let msg_extension = msg Fault.extension in
 
 let rec structure str =
   mmap structure_item str
@@ -174,7 +171,7 @@ and structure_item item =
   | Pstr_attribute _attribute (* [@@@id] *)
     -> []
   | Pstr_extension ( ext, _attributes) (* [%%id] *) ->
-    msg_extension ext ; [extension ext]
+    [extension ext]
 and expr exp =
   match exp.pexp_desc with
   | Pexp_ident name (* x, M.x *) ->
@@ -304,7 +301,7 @@ and expr exp =
   | Pexp_constant _ | Pexp_unreachable (* . *)
     -> Annot.empty
   | Pexp_extension ext (* [%ext] *) ->
-    (msg_extension ext; Annot.value [[extension ext]] )
+   Annot.value [[extension ext]]
 and pattern pat =
   match pat.ppat_desc with
   | Ppat_constant _ (* 1, 'a', "true", 1.0, 1l, 1L, 1n *)
@@ -313,7 +310,7 @@ and pattern pat =
 
   | Ppat_var _ (* x *) -> Pattern.empty
 
-  | Ppat_extension ext -> msg_extension ext;
+  | Ppat_extension ext ->
     Pattern.value [[extension ext]]
 
   | Ppat_exception pat (* exception P *)
@@ -380,7 +377,7 @@ and type_extension tyext: M2l.annotation =
   access tyext.ptyext_path
   ++ Annot.union_map  extension_constructor tyext.ptyext_constructors
 and core_type ct : M2l.annotation = match ct.ptyp_desc with
-  | Ptyp_extension ext (* [%id] *) -> msg_extension ext;
+  | Ptyp_extension ext (* [%id] *) ->
     Annot.value [[ extension ext ]]
   | Ptyp_any  (*  _ *)
   | Ptyp_var _ (* 'a *) -> Annot.empty
@@ -428,7 +425,7 @@ and class_type ct = match ct.pcty_desc with
   | Pcty_signature cs (* object ... end *) -> class_signature cs
   | Pcty_arrow (_arg_label, ct, clt) (* ^T -> CT *) ->
     Annot.( class_type clt ++ core_type ct)
-  | Pcty_extension ext (* [%ext] *) -> msg_extension ext;
+  | Pcty_extension ext (* [%ext] *) ->
     Annot.value [[ extension ext ]]
 and class_signature cs = Annot.union_map class_type_field cs.pcsig_fields
 and class_type_field ctf = match ctf.pctf_desc with
@@ -439,7 +436,7 @@ and class_type_field ctf = match ctf.pctf_desc with
   | Pctf_constraint  (t1, t2) (* constraint T1 = T2 *) ->
     Annot.( core_type t2 ++ core_type t1 )
   | Pctf_attribute _ -> Annot.empty
-  | Pctf_extension ext -> msg_extension ext;
+  | Pctf_extension ext ->
     Annot.value [[ extension ext ]]
 and class_structure ct =
   Annot.union_map class_field ct.pcstr_fields
@@ -453,7 +450,7 @@ and class_field  field = match field.pcf_desc with
     core_type ct
   | Pcf_initializer e (* initializer E *) -> expr e
   | Pcf_attribute _ -> Annot.empty
-  | Pcf_extension ext -> msg_extension ext; Annot.value [[extension ext]]
+  | Pcf_extension ext -> Annot.value [[extension ext]]
 and class_expr ce = match ce.pcl_desc with
   | Pcl_constr (name, cts)  (* ['a1, ..., 'an] c *) ->
     access name ++ Annot.union_map core_type cts
@@ -479,7 +476,7 @@ and class_expr ce = match ce.pcl_desc with
     value_bindings vbs (class_expr ce)
   | Pcl_constraint (ce, ct) ->
     class_type ct ++ class_expr ce
-  | Pcl_extension ext -> msg_extension ext ;
+  | Pcl_extension ext ->
     Annot.value [[ extension ext ]]
 and class_field_kind = function
   | Cfk_virtual ct -> core_type ct
@@ -507,7 +504,6 @@ and module_expr mexpr : M2l.module_expr =
   | Pmod_unpack e  (* (val E) *) ->
     Val(expr e)
   | Pmod_extension ext ->
-    msg_extension ext;
     Extension_node(extension_core ext)
 (* [%id] *)
 and value_binding vb : Pattern.t =
@@ -539,7 +535,6 @@ and module_type (mt:Parsetree.module_type) =
   | Pmty_typeof me (* module type of ME *) ->
     Of (module_expr me)
   | Pmty_extension ext (* [%id] *) ->
-    msg_extension ext;
     Extension_node (extension_core ext)
   | Pmty_alias lid -> Alias (npath lid)
   | Pmty_ident lid (* S *) -> Ident (epath lid)
@@ -578,7 +573,7 @@ and signature_item item =  match item.psig_desc with
   | Psig_class_type ctds ->
     minor @@ Annot.union_map class_type_declaration ctds
   | Psig_attribute _ -> []
-  | Psig_extension (ext,_) -> msg_extension ext; [extension ext]
+  | Psig_extension (ext,_) -> [extension ext]
 and class_description x =  class_type_declaration x
 and recmodules mbs =
   [Bind_rec (List.map module_binding_raw mbs)]
@@ -647,5 +642,3 @@ and matched_patt_expr x y =
         | None, Some e -> acc_p , acc_e ++ expr e
       ) m (Pattern.empty, Annot.opt expr eo)
   | _, _ -> pattern x, expr y
-  in
-  {structure; signature}

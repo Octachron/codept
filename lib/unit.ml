@@ -33,9 +33,8 @@ let proj {name;path;kind;precision;code; _ }: s=
 
 
 let read_file polycy =
-  let astc = Ast_converter.with_polycy polycy in
   fun kind filename: s ->
-  let name, code = Read.file astc kind filename in
+  let name, code = Read.file kind filename in
   let precision, code = match code with
     | Ok c -> Exact, c
     | Error msg ->

@@ -353,14 +353,18 @@ module Make(Envt:envt)(Param:param) = struct
         | Error h -> Error (Extension_node h)
       end
   and extension state e =
-    if not transparent_extension_nodes then Ok ()
+    if not transparent_extension_nodes then
+      ( fault Fault.extension_ignored e.name; Ok () )
     else
-      begin let open M2l in
-        match e.extension with
-        | Module m -> fmap (fun x -> { e with extension= Module x} ) ignore @@
-          m2l state m
-        | Val x -> fmap (fun x -> { e with extension=Val x}) ignore @@
-          minor module_expr m2l state x
+      begin
+        fault Fault.extension_traversed e.name;
+        begin let open M2l in
+          match e.extension with
+          | Module m -> fmap (fun x -> { e with extension= Module x} ) ignore @@
+            m2l state m
+          | Val x -> fmap (fun x -> { e with extension=Val x}) ignore @@
+            minor module_expr m2l state x
+        end
       end
 
 end

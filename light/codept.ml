@@ -101,12 +101,12 @@ let classic = function
   | Implementation -> M2l.Structure
   | Signature -> raise (Unknown_file_type "signature")
 
-let to_m2l conv synonyms f =
+let to_m2l synonyms f =
   if extension f = "cmi" then
     Cmi.m2l f
   else
     let kind = classify synonyms f in
-    match Read.file conv (classic kind) f with
+    match Read.file (classic kind) f with
     | _name, Ok x -> x
     | _, Error msg -> Fault.(handle Polycy.strict syntaxerr msg ); exit 1
 
@@ -117,24 +117,21 @@ let approx_file _param f =
 
 let one_pass param f =
   let module Param = (val lift param) in
-  let ast = Ast_converter.with_polycy param.polycy in
   let module Sg = Envts.Interpreters.Sg(Param) in
-  let start = to_m2l ast param.synonyms f in
+  let start = to_m2l param.synonyms f in
   match start |> Sg.m2l S.empty with
   | Ok (_state,d) -> Pp.fp std "Computation finished:\n %a@." S.pp d
   | Error h -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
 
 let m2l param f =
-  let ast = Ast_converter.with_polycy param.polycy in
-  let start = to_m2l ast param.synonyms f in
+  let start = to_m2l param.synonyms f in
   start
   |> Normalize.all
   |> snd
   |> Pp.fp std  "%a@." M2l.pp
 
 let m2l_sexp param f =
-  let ast = Ast_converter.with_polycy param.polycy in
-  let start = to_m2l ast param.synonyms f in
+  let start = to_m2l param.synonyms f in
   start
   |> Normalize.all
   |> snd

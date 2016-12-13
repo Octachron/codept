@@ -4,18 +4,18 @@ let name filename = String.capitalize_ascii @@
 
 let ok x = Ok x
 
-let file (converter:Ast_converter.t) kind filename =
+let file kind filename =
   let name = name filename in
   Location.input_name := filename;
   let input_file = Pparse.preprocess filename in
   let code =  try ok @@
       match kind with
       | M2l.Structure ->
-        converter.structure @@
+        Ast_converter.structure @@
         Pparse.file Format.err_formatter ~tool_name:"codept" input_file
           Parse.implementation Pparse.Structure
       | M2l.Signature ->
-        converter.signature @@
+        Ast_converter.signature @@
         Pparse.file Format.err_formatter ~tool_name:"codept" input_file
           Parse.interface Pparse.Signature
     with Syntaxerr.Error msg ->
