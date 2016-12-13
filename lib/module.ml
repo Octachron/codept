@@ -76,7 +76,7 @@ module Origin = struct
     let arg = simple_constr "Arg" Arg
 
 
-    let rec sexp () = Sexp.sum [unit;alias sexp;submodule;first_class]
+    let rec sexp () = Sexp.sum [unit;alias sexp; arg; submodule;first_class]
   end
   let sexp = Sexp.sexp ()
 
@@ -241,11 +241,13 @@ module Sexp_core = struct
         name
       @@ signature_of_lists (get modules) (get module_types) in
     let record =
-    record [
-             field args_f @@ fix args;
-             field modules @@ list @@ fix module_;
-             field module_types @@ list @@ fix module_
-           ]
+      record [
+        field precision Precision.sexp;
+        field origin Origin.sexp;
+        field args_f @@ fix args;
+        field modules @@ list @@ fix module_;
+        field module_types @@ list @@ fix module_
+      ]
     in
     conv {f;fr} (pair' string record)
   and args () = list @@ opt @@ fix module_

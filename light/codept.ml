@@ -253,9 +253,9 @@ let export param task =
 
 let sign param task =
   let {Unit.mli; _} = analyze param task in
-  let md {Unit.signature; name; _ } =
+  let md {Unit.signature; name; path; _  } =
     Module.create ~args:[]
-      ~origin:(Unit Paths.P.{ source = Special "command_line"; file = [name]})
+      ~origin:(Unit path)
       name signature in
   let mds = List.map md mli in
   let sexp = Sexp.( (list Module.sexp).embed ) mds in
@@ -448,16 +448,8 @@ let add_intf name =
   task := {!task with files = { mli = name :: mli; ml } }
 
 
-
-let relocate_sig m =
-  { m with
-    Module.origin = Unit
-        Pkg.{ source = Special "command-line"; file=[m.Module.name] }
-  }
-
 let parse_sig lexbuf=
-  Option.fmap (List.map relocate_sig)
-  @@ Sexp.( (list Module.sexp).parse )
+  Sexp.( (list Module.sexp).parse )
   @@ Sexp_parse.many Sexp_lex.main
   @@ lexbuf
 

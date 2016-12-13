@@ -17,7 +17,7 @@ let rec any: type a. a t -> any = function
 let rec pp: type any. Format.formatter -> any t -> unit =
   fun ppf -> function
   | Atom s -> Pp.string ppf s
-  | List l -> Pp.(list ~pre:(s"(") ~post:(s")") ~sep:(s " ") @@ pp_any ) ppf l
+  | List l -> Pp.( decorate "(" ")" @@ list ~sep:(s " ") @@ pp_any ) ppf l
 and pp_any ppf (Any s) = pp ppf s
 
 let parse_atom: type any. any t -> string option =
@@ -37,6 +37,11 @@ let extract_list (List l) = l
 
 let some x = Some x
 let list' l = List l
+
+let list'' = function
+  | [Any(List _ as l)] -> l
+  | sexp -> List sexp
+
 
 type ('a,'b) impl = {
   embed: 'a -> 'b t;
@@ -172,7 +177,7 @@ let list impl =
 let map (impl_map: U.M.m) =
   let rec parse: many t -> U.M.t option = function
     | List [] -> Some U.M.empty
-    | List ( Any (Atom _) :: _ ) -> None
+    | List ( Any (Atom _) :: _ as l) -> parse @@ List [ Any (List l) ]
     | List( Any (List l) :: q ) ->
       l |> parse_elt >>= fun (name,e) ->
       List q |> parse >>= fun map ->
@@ -213,7 +218,7 @@ let map (impl_map: U.M.m) =
         sexp
   in
   let embed univ =
-    list' @@
+    list'' @@ List.rev @@
     List.fold_left (embed_key univ) [] (U.M.I.bindings impl_map)
   in
   {parse;embed;witness = Many }
@@ -235,30 +240,50 @@ type ('a,'b) bij = { f: 'a -> 'b; fr:'b -> 'a }
 let id = { f = (fun x -> x); fr = (fun x -> x) }
 
 
-type 'a constr = C: {
-  name:Name.t;
-  proj:'a -> 'b option;
-  inj: 'b -> 'a;
-  impl: ('b, 'kind) impl
-} -> 'a constr
+type 'a constr =
+  | C: {
+      name:Name.t;
+      proj:'a -> 'b option;
+      inj: 'b -> 'a;
+      impl: ('b, 'kind) impl
+    } -> 'a constr
+  | Cs : { name:Name.t; value:'a} -> 'a constr
+
+let cname = function
+  | C c -> c.name
+  | Cs c -> c.name
 
 let sum l =
-  let m = List.fold_left (fun acc (C cnstr) ->
-      Name.Map.add cnstr.name (C cnstr) acc) Name.Map.empty l in
+  let fold acc c=  Name.Map.add (cname c) c  acc in
+  let m = List.fold_left fold Name.Map.empty l
+       in
   let parse = function
-    | List ([] | [_] |  _ :: _ :: _ :: _ ) -> None
-    | List [ Any(List _); _ ] -> None
+    | List ([] |  _ :: _ :: _ :: _ ) -> None
+    | List (Any(List _) :: _ ) -> None
     | List [Any(Atom n) ; b] ->
-      match Name.Map.find n m with
-      | exception Not_found -> None
-      | C cnstr -> (any_parse cnstr.impl b) >>| cnstr.inj
+      begin
+        match Name.Map.find n m with
+        | exception Not_found -> None
+        | C cnstr -> (any_parse cnstr.impl b) >>| cnstr.inj
+        | Cs _ -> None
+      end
+    | List [ Any (Atom n) ] ->
+       match Name.Map.find n m with
+        | exception Not_found -> None
+        | C _ -> None
+        | Cs c -> Some c.value
   in
   let embed x =
-    let C cnstr = List.find (fun (C cnstr) -> cnstr.proj x <> None ) l in
-    match cnstr.proj x with
-    | None -> raise (Invalid_argument "Sexp.sum")
-    | Some inner ->
-      List[ Any (Atom cnstr.name); any (cnstr.impl.embed inner)] in
+    let find c = match c with
+      | C c -> c.proj x <> None
+      | Cs c -> c.value = x in
+    match List.find find l with
+    | Cs c -> List [ Any (Atom c.name) ]
+    | C cnstr ->
+      match cnstr.proj x with
+      | None -> raise (Invalid_argument "Sexp.sum")
+      | Some inner ->
+        List[ Any (Atom cnstr.name); any (cnstr.impl.embed inner)] in
   {parse;embed;witness=Many}
 
 
@@ -358,8 +383,5 @@ let unit = {
   witness = Many
 }
 
-let simple_constr name a =
-  C { name; proj = (fun x -> if x = a then Some () else None)
-    ; inj = (fun () -> a)
-    ; impl = unit
-    }
+let simple_constr name value =
+  Cs { name; value }

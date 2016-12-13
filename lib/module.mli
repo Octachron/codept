@@ -25,6 +25,7 @@ module Precision:sig
   type t =
     | Exact
     | Unknown
+ val sexp: (t,Sexp.many) Sexp.impl
 end
 
 
@@ -45,6 +46,7 @@ module Origin: sig
 
   val pp : Format.formatter -> t -> unit
   val reflect : Format.formatter -> t -> unit
+  val sexp: (t,Sexp.many) Sexp.impl
 end
 type origin = Origin.t
 
