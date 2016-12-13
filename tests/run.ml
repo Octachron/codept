@@ -162,7 +162,7 @@ let cycle_test expected l =
 
 
 let result =
-  Sys.chdir "tests";
+  Sys.chdir "tests/cases";
   List.for_all deps_test [
     ["abstract_module_type.ml", []];
     ["alias_map.ml", ["Aliased__B"; "Aliased__C"] ];
@@ -204,7 +204,7 @@ let result =
     ["broken2.ml", ["A"; "Ext"; "Ext2" ]];
       ["broken3.ml", []];
   ]
-  &&( Sys.chdir "mixed";
+  &&( Sys.chdir "../mixed";
       deps_test ["a.ml", ["D"];
                  "a.mli", ["D";"B"];
                  "b.ml", ["C"];
@@ -269,12 +269,12 @@ let result =
               ]
 )
     && (
-      Sys.chdir "..";
+      Sys.chdir "../cases";
       cycle_test [["Self_cycle"]] ["self_cycle.ml"]
     )
     &&
     (
-      Sys.chdir "ω-cycle";
+      Sys.chdir "../ω-cycle";
       cycle_test [["C1";"C2";"C3";"C4";"C5"]] [ "a.ml"
                     ; "b.ml"
                     ; "c1.ml"
