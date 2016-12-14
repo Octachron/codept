@@ -349,6 +349,23 @@ let pair' atom r =
     | List l -> List( any a :: l ) in
   {parse;embed; witness = Many}
 
+let major_minor major default minor =
+  let parse = function
+    | List [] -> None
+    | List [a] -> any_parse major a && Some default
+    | List [a; b] ->
+      (any_parse major a && any_parse minor b)
+    | List _ -> None
+  in
+  let embed (a,b)  =
+    let a = major.embed a in
+    if b = default then
+      List [ any a ]
+    else
+      List [ any a; any @@ minor.embed b ] in
+  {parse; embed; witness = Many }
+
+
 let empty =
   let parse = function
     | List [] -> Some []

@@ -90,6 +90,8 @@ and 'a fn = { arg: module_type Arg.t option; body:'a }
 
 type t = m2l
 
+let annot_empty = { access=Name.Set.empty; values = []; packed = [] }
+
 (** S-expression serialization *)
 module Sexp = struct
   open Sexp
@@ -183,7 +185,7 @@ module Sexp = struct
       proj = (function Minor mn -> Some mn | _ -> None );
       inj = (fun x -> Minor x);
       impl = fix r r.annot;
-      default = None;
+      default = Some annot_empty;
     }
 
   let extension_node r =
@@ -267,7 +269,7 @@ module Sexp = struct
   let val_ r =
     C { name = "Val"; proj = (function Val a -> Some a| _ -> None);
         inj = (fun a -> Val a); impl = fix r r.annot;
-        default = None
+        default = Some annot_empty
       }
 
   let extension_node r =
@@ -334,7 +336,7 @@ module Sexp = struct
     C { name="With";
         proj =(function With {body;deletions} -> Some (body,deletions) | _ -> None);
         inj = (fun (a,b) -> With {body=a;deletions=b} );
-        impl = pair (fix r r.mt) (nameset);
+        impl = major_minor (fix r r.mt) Name.Set.empty nameset;
         default = None
       }
 
@@ -429,7 +431,7 @@ end
 
 module Annot = struct
   type t = annotation
-  let empty = { access=Name.Set.empty; values = []; packed = [] }
+  let empty = annot_empty
   let is_empty  = (=) empty
   let merge a1 a2 =
     { access= Name.Set.union a1.access a2.access;

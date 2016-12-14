@@ -39,6 +39,9 @@ let () =
    && List.for_all (test Module.Origin.sexp)
      ["(Unit (file dir a))"; "(Arg)"]
    && test(Sexp.list Module.sexp) sg
+   && List.for_all (test M2l.sexp) [
+     "((Bind_sig (A (With ((Ident (A S)))))))"
+   ]
 
   in
   if r then
