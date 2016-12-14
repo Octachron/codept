@@ -30,7 +30,7 @@ module S = Simple
 module Expr :
   sig
     type t = T | A of string | S of t * string | F of { f : t; x : t; }
-    val sexp: (t,Sexp.many) Sexp.impl
+    val sexp: (t,Sexp.one_and_many) Sexp.impl
     exception Functor_not_expected
     val concrete : t -> Simple.t
     val concrete_with_f : t -> Simple.t

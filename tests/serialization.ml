@@ -5,18 +5,21 @@ let sg = "((Solver (modules (Failure modules Map Set) (Make args Envt Param)) (o
 
 let (%) f g x = f (g x)
 
-let parse_to_sexp = Sexp_parse.many Sexp_lex.main % lex
+let many = Sexp_parse.many
+let keyed = Sexp_parse.keyed
+
+let parse_to_sexp kind = kind Sexp_lex.main % lex
 
 let round_trip_sexp (impl: _ Sexp.impl) =
   Option.fmap impl.embed % impl.parse
 
-let show = Format.asprintf "%a" Sexp.pp
+let show x = Format.asprintf "%a" Sexp.pp x
 
-let full_round_trip sexp =
-  Option.fmap show % round_trip_sexp sexp % parse_to_sexp
+let full_round_trip kind sexp =
+  Option.fmap show % round_trip_sexp sexp % parse_to_sexp kind
 
-let test sexp s =
-  match full_round_trip sexp s with
+let test kind sexp s =
+  match full_round_trip kind sexp s with
   | None -> Format.printf "Invalid sexp %s \n" s; false
   | Some s' ->
     let r = s = s' in
@@ -27,19 +30,19 @@ let test sexp s =
 
 let () =
   let r =
-    List.for_all (test Sexp.(list @@ list int) )
+    List.for_all (test many Sexp.(list @@ list int) )
       [ "((1 2 3) (4 5))"; "(1 2 3)"; "(1)" ]
    &&
-    List.for_all (test (Sexp.list Module.sexp)) [
+    List.for_all (test many (Sexp.list Module.sexp)) [
       "(Name)";
       "(First Second)";
       "((M modules K L))";
       "((M (args X) (modules K)))";
     ]
-   && List.for_all (test Module.Origin.sexp)
+   && List.for_all (test keyed Module.Origin.sexp)
      ["(Unit (file dir a))"; "(Arg)"]
-   && test(Sexp.list Module.sexp) sg
-   && List.for_all (test M2l.sexp) [
+   && test many (Sexp.list Module.sexp) sg
+   && List.for_all (test many M2l.sexp) [
      "((Bind_sig (A (With ((Ident (A S)))))))"
    ]
 

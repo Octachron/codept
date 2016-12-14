@@ -1,16 +1,24 @@
-type atomic = private Atomic
-type many = private Many
+type one = private Atomic
+type n = private N
+type z = private Z
+
+type atomic = z * one
+type many = z * n
+type one_and_many = one * n
 
 type 'kind kind =
   | Atomic: atomic kind
   | Many: many kind
+  | One_and_many: one_and_many kind
 
 type 'kind t =
   | Atom: string -> atomic t
   | List: any list -> many t
+  | Keyed_list: string * any list -> one_and_many t
 and any = Any: 'any t -> any
 
 let rec any: type a. a t -> any = function
+  | List (Any (Atom s) :: ( _ :: _ as l) ) -> any @@ Keyed_list(s,l)
   | List [Any (Atom _ as sexp)] -> any sexp
   | sexp ->  Any sexp
 
@@ -18,27 +26,48 @@ let rec pp: type any. Format.formatter -> any t -> unit =
   fun ppf -> function
   | Atom s -> Pp.string ppf s
   | List l -> Pp.( decorate "(" ")" @@ list ~sep:(s " ") @@ pp_any ) ppf l
+  | Keyed_list (a,l) ->
+    Pp.( decorate "(" ")" @@ list ~sep:(s " ") @@ pp_any ) ppf (Any (Atom a) :: l)
 and pp_any ppf (Any s) = pp ppf s
 
 let parse_atom: type any. any t -> string option =
   function
   | List _ -> None
+  | Keyed_list _ -> None
   | Atom s -> Some s
 
 let extract_atom (Atom s) = s
 let atom s = Atom s
 
 let parse_list: type some. some t -> any list option = function
+  | Keyed_list (a,l) -> Some ( Any(Atom a) :: l )
   | List l -> Some l
   | Atom _ -> None
 
 
-let extract_list (List l) = l
+let extract_list: type k. (k * n) t -> any list =
+  function
+  | List l -> l
+  | Keyed_list (s, l ) -> Any(Atom s) :: l
+
+
+let forget_key (Keyed_list (s,q)) =
+  List (Any( Atom s) :: q )
+
+let extract_kl: type k. k t -> (string * any list) option =
+  function
+  | Keyed_list (s,q) -> Some (s,q)
+  | List (Any(Atom s) :: q) -> Some (s,q)
+  | Atom n -> Some(n,[])
+  | List( Any (List _) :: _ ) -> None
+  | List( Any (Keyed_list _) :: _ ) -> None
+  | List [] -> None
 
 let some x = Some x
 let list' l = List l
 
 let list'' = function
+  | [Any(Keyed_list _ as k)] -> forget_key k
   | [Any(List _ as l)] -> l
   | sexp -> List sexp
 
@@ -148,17 +177,26 @@ module Record = struct
   let get key r = U.M.find key r
 end
 
-let any_parse: type i. ('a,i) impl -> (any -> 'a option) =
-  fun impl sexp ->
-  match impl.witness, sexp with
-  | Atomic, Any (Atom _ as sexp) -> impl.parse sexp
-  | Many, Any (List _ as sexp) -> impl.parse sexp
-  | Many, ( Any(Atom _ ) as sexp) -> impl.parse (List [sexp])
-  | _, _ -> None
 
 open Option
 let (%) f g x = f (g x)
 let (%>) f g x = g (f x)
+
+
+let reforge_kl m =
+  m |> extract_kl >>| fun(s,n) -> Keyed_list(s,n)
+
+let any_parse: type i. ('a,i) impl -> (any -> 'a option) =
+  fun impl sexp ->
+  match impl.witness, sexp with
+  | Atomic, Any (Atom _ as sexp) -> impl.parse sexp
+  | Atomic, Any (List _ ) -> None
+  | Atomic, Any (Keyed_list _) -> None
+  | Many, Any (List _ as sexp) -> impl.parse sexp
+  | Many, ( Any(Atom _ ) as sexp) -> impl.parse (List [sexp])
+  | Many, Any (Keyed_list _ as k) -> impl.parse (forget_key k)
+  | One_and_many, Any m -> m |> reforge_kl >>= impl.parse
+
 
 let atomic show parse =
   { parse = (fun s -> s |> extract_atom |> parse );
@@ -174,18 +212,18 @@ let list impl =
     witness = Many;
   }
 
+
 let map (impl_map: U.M.m) =
-  let rec parse: many t -> U.M.t option = function
+  let rec parse: type k. ( k * n ) t -> U.M.t option = function
     | List [] -> Some U.M.empty
-    | List ( Any (Atom _) :: _ as l) -> parse @@ List [ Any (List l) ]
-    | List( Any (List l) :: q ) ->
-      l |> parse_elt >>= fun (name,e) ->
+    | List ( Any(Atom s) :: q ) -> parse @@ Keyed_list(s,q)
+    | Keyed_list _ as kl -> parse @@ List [Any kl]
+    | List( Any h :: q ) ->
+      h |> extract_kl >>= fun (name,l) ->
+      parse_elt name l >>= fun e ->
       List q |> parse >>= fun map ->
       some @@ U.M.I.add name e map
-  and parse_elt: any list -> (string * U.elt) option = function
-    | [] -> None
-    | Any (List _) :: _ -> None
-    | Any (Atom a) :: q ->
+  and parse_elt: string -> any list -> U.elt option = fun a q ->
       match U.M.I.find a impl_map with
       | exception Not_found -> None
       | U.M {key;value} ->
@@ -193,20 +231,31 @@ let map (impl_map: U.M.m) =
         match K.kind, q with
         | Atomic, [Any(Atom s)] ->
           Atom s |> value.parse >>| fun value ->
-          (a, U.E { key = U.witness key; value})
+          U.E { key = U.witness key; value}
         | Many, q ->
           List q |> value.parse >>| fun value ->
-          (a, U.E { key = U.witness key; value})
+          U.E { key = U.witness key; value}
+        | One_and_many, Any(Atom s) :: q ->
+          Keyed_list (s,q) |> value.parse >>| fun value ->
+          U.E { key = U.witness key; value}
+        | One_and_many, [] -> None
+        | One_and_many, Any(List _) :: _ -> None
+        | One_and_many, Any(Keyed_list _) :: _ -> None
         | Atomic, ([] | _ ::_ :: _)  -> None
-        | Atomic, [Any(List _) ] -> None in
-  let embed_elt: type a k. string -> (a,k) impl -> a -> many t =
+        | Atomic, [Any(List _) ] -> None
+        | Atomic, [Any(Keyed_list _) ] -> None
+  in
+  let embed_elt: type a k. string -> (a,k) impl -> a -> one_and_many t =
     fun name impl x ->
     match impl.witness with
     | Many ->
       let (List l) = impl.embed x in
-      List( Any (Atom name) :: l )
+      Keyed_list(name, l)
     | Atomic ->
-      List [ Any(Atom name); any (impl.embed x) ]
+      Keyed_list (name, [Any (impl.embed x) ])
+    | One_and_many ->
+      let (Keyed_list(s,l)) = impl.embed x in
+      Keyed_list(name, Any (Atom s) :: l )
   in
   let embed_key univ sexp (_name, U.M {key; value} ) =
     match U.M.find_opt key univ with
@@ -259,16 +308,15 @@ let sum l =
   let m = List.fold_left fold Name.Map.empty l
        in
   let parse = function
-    | List ([] |  _ :: _ :: _ :: _ ) -> None
-    | List (Any(List _) :: _ ) -> None
-    | List [Any(Atom n) ; b] ->
+    | Keyed_list (_, _ :: _ :: _ )-> None
+    | Keyed_list (n, [b]) ->
       begin
         match Name.Map.find n m with
         | exception Not_found -> None
         | C cnstr -> (any_parse cnstr.impl b) >>| cnstr.inj
         | Cs _ -> None
       end
-    | List [ Any (Atom n) ] ->
+    | Keyed_list (n, []) ->
        match Name.Map.find n m with
         | exception Not_found -> None
         | C ({ default = Some value;_ } as c) -> Some (c.inj value)
@@ -280,17 +328,17 @@ let sum l =
       | C c -> c.proj x <> None
       | Cs c -> c.value = x in
     match List.find find l with
-    | Cs c -> List [ Any (Atom c.name) ]
+    | Cs c -> Keyed_list(c.name, [])
     | C cnstr ->
       match cnstr.proj x with
       | None -> raise (Invalid_argument "Sexp.sum")
       | Some inner ->
         match cnstr.default with
         | Some y when inner = y ->
-          List[ Any (Atom cnstr.name) ]
+          Keyed_list(cnstr.name,[])
         | _ ->
-        List[ Any (Atom cnstr.name); any (cnstr.impl.embed inner)] in
-  {parse;embed;witness=Many}
+          Keyed_list (cnstr.name, [any (cnstr.impl.embed inner)]) in
+  {parse;embed;witness=One_and_many}
 
 
 let pair l r =
@@ -386,10 +434,15 @@ let singleton impl =
     List [any (impl.embed a)] in
   {parse; embed; witness = Many}
 
-let fix impl =
+let fix0 witness impl =
   let parse s = (impl()).parse s  in
   let embed o = (impl()).embed o in
-  {witness = Many;parse;embed}
+  {witness;parse;embed}
+
+let fix x = fix0 Many x
+let fix' x = fix0 One_and_many x
+
+
 
 let int0 s =
   try Some ( int_of_string s ) with

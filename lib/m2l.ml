@@ -98,11 +98,12 @@ module Sexp = struct
   module R = Sexp.Record
 
   let fix r impl = fix (impl r)
+  let fix' r impl = fix' (impl r)
   type recursive_sexp =
     {
-      expr: recursive_sexp -> unit -> (expression,many) Sexp.impl;
-      me: recursive_sexp -> unit -> (module_expr,many) Sexp.impl;
-      mt: recursive_sexp -> unit -> (module_type,many) Sexp.impl;
+      expr: recursive_sexp -> unit -> (expression, one_and_many) Sexp.impl;
+      me: recursive_sexp -> unit -> (module_expr, one_and_many) Sexp.impl;
+      mt: recursive_sexp -> unit -> (module_type, one_and_many) Sexp.impl;
       annot: recursive_sexp -> unit -> (annotation,many) Sexp.impl;
       ext: recursive_sexp -> unit -> (extension,many) Sexp.impl
     }
@@ -136,7 +137,7 @@ module Sexp = struct
       name = "Include";
       proj = (function Include i -> Some i | _ -> None);
       inj = (fun x -> Include x);
-      impl = fix r r.me;
+      impl = fix' r r.me;
       default = None
     }
 
@@ -144,7 +145,7 @@ module Sexp = struct
       name = "SigInclude";
       proj = (function SigInclude i -> Some i | _ -> None);
       inj = (fun x -> SigInclude x);
-      impl = fix r r.mt;
+      impl = fix' r r.mt;
       default = None
     }
 
@@ -152,7 +153,7 @@ module Sexp = struct
       { f = (fun (name,expr) -> {name;expr});
         fr = (fun x -> x.name, x.expr)
       } @@
-    pair string (fix r core)
+    pair string (fix' r core)
 
   let bind r = C {
       name = "Bind";
@@ -210,8 +211,8 @@ module Sexp = struct
 
   let annot r () =
     let r = record [field access nameset;
-             field values (list @@ list @@ fix r r.expr);
-             field packed (list @@ fix r r.me)
+             field values (list @@ list @@ fix' r r.expr);
+             field packed (list @@ fix' r r.me)
             ] in
     let f x = { access = R.get access x; values = R.get values x;
                 packed = R.get packed x
@@ -237,18 +238,18 @@ module Sexp = struct
 
   let apply r =
     C { name="Apply"; proj=( function Apply {f;x} -> Some (f,x) | _ -> None );
-        inj = (fun (f,x) -> Apply {f;x}); impl = pair (fix r r.me) (fix r r.me);
+        inj = (fun (f,x) -> Apply {f;x}); impl = pair (fix' r r.me) (fix' r r.me);
         default = None
       }
 
   let fn r inner =
-    convr (pair (opt @@ Module.Arg.sexp @@ fix r r.mt) inner)
+    convr (pair (opt @@ Module.Arg.sexp @@ fix' r r.mt) inner)
       (fun (arg,body) -> {arg; body})
       (fun r -> r.arg, r.body)
 
   let func r =
     C { name = "Fun"; proj = (function Fun f -> Some f | _ -> None);
-        inj = (fun f -> Fun f); impl = fn r (fix r r.me);
+        inj = (fun f -> Fun f); impl = fn r (fix' r r.me);
         default = None
       }
 
@@ -256,13 +257,13 @@ module Sexp = struct
     let proj = (function Constraint(a,b) -> Some (a, b)| _ -> None) in
     C { name = "Constraint"; proj;
         inj = (fun (a,b) -> Constraint(a,b));
-        impl = pair (fix r r.me) (fix r r.mt);
+        impl = pair (fix' r r.me) (fix' r r.mt);
         default = Some (Abstract, Sig [] ) (* module M [: sig end]*)
       }
 
   let str r =
     C { name = "Str"; proj = (function Str l -> Some l| _ -> None);
-        inj = (fun l -> Str l); impl = list (fix r r.expr);
+        inj = (fun l -> Str l); impl = list (fix' r r.expr);
         default = Some []
       }
 
@@ -288,7 +289,7 @@ module Sexp = struct
            | Open_me {resolved; opens; expr} -> Some( resolved,(opens,expr))
            | _ -> None );
        inj= (fun (a, (b,c)) -> Open_me {resolved=a; opens = b ; expr = c} );
-       impl = pair definition (pair (list Paths.Simple.sexp) (fix r r.me) );
+       impl = pair definition (pair (list Paths.Simple.sexp) (fix' r r.me) );
        default = None;
      }
 
@@ -321,14 +322,14 @@ module Sexp = struct
   let sig_ r =
     C { name="Sig";
         proj =(function Sig s -> Some s | _ -> None);
-        inj = (fun s -> Sig s); impl = list (fix r r.expr);
+        inj = (fun s -> Sig s); impl = list (fix' r r.expr);
         default = Some [];
       }
 
   let fun_t r =
     C { name="Fun";
         proj =(function (Fun f:module_type) -> Some f | _ -> None);
-        inj = (fun f -> Fun f); impl = fn r (fix r r.mt);
+        inj = (fun f -> Fun f); impl = fn r (fix' r r.mt);
         default = None
       }
 
@@ -336,14 +337,14 @@ module Sexp = struct
     C { name="With";
         proj =(function With {body;deletions} -> Some (body,deletions) | _ -> None);
         inj = (fun (a,b) -> With {body=a;deletions=b} );
-        impl = major_minor (fix r r.mt) Name.Set.empty nameset;
+        impl = major_minor (fix' r r.mt) Name.Set.empty nameset;
         default = None
       }
 
     let of_ r =
     C { name="Fun";
         proj =(function Of me -> Some me | _ -> None);
-        inj = (fun me -> Of me); impl = (fix r r.me);
+        inj = (fun me -> Of me); impl = (fix' r r.me);
         default = None;
       }
 
@@ -361,7 +362,7 @@ module Sexp = struct
 
     let ext_mod r =
       C {name = "Module"; proj = (function Module m2l -> Some m2l | _ -> None );
-         inj = (fun m2l -> Module m2l); impl = list (fix r r.expr);
+         inj = (fun m2l -> Module m2l); impl = list (fix' r r.expr);
          default = Some []
         }
 

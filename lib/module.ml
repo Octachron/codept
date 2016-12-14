@@ -70,7 +70,7 @@ module Origin = struct
     let alias sexp = C { name = "Alias";
                          proj = (function Alias a -> Some a | _ -> None);
                          inj= (fun x -> Alias x);
-                         impl = fix sexp;
+                         impl = fix' sexp;
                          default = Some Submodule
                        }
     let submodule = simple_constr "Submodule" Submodule
@@ -225,8 +225,8 @@ module Sexp_core = struct
   let args_f = U.(key Many "args" [])
   let modules = U.(key Many "modules" [])
   let module_types = U.(key Many "module_types" [])
-  let origin = U.(key Many "origin" Origin.Submodule)
-  let precision = U.(key Many "precision" Precision.Exact)
+  let origin = U.(key One_and_many "origin" Origin.Submodule)
+  let precision = U.(key One_and_many "precision" Precision.Exact)
 
   let rec module_ () =
     let fr r =

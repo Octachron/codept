@@ -77,14 +77,14 @@ module Expr = struct
       C {name="S";
          proj = (function S (x,y) -> Some (x,y) | _ -> None);
          inj = (fun (x,y) -> S (x,y) );
-         impl = pair (fix r) string;
+         impl = pair (fix' r) string;
          default = None
         }
 
     let f r = C {name="F";
                  proj = (function F {f;x} -> Some (f, x) | _ -> None);
                  inj = (fun (f,x) -> F {f;x} );
-                 impl = pair (fix r) (fix r);
+                 impl = pair (fix' r) (fix' r);
                  default = None;
                 }
 
@@ -172,7 +172,7 @@ module Pkg = struct
         }
     let source = sum [local;unknown;pkg;special]
 
-    let ksource = U.(key Many "source" Local)
+    let ksource = U.(key One_and_many "source" Local)
     let file = U.(key Many "file" [])
 
     let all =
