@@ -1,4 +1,4 @@
-codept: lib/*.ml lib/*.mli light/*.ml
+codept: lib/*.ml lib/*.mli full/*.ml
 	ocamlbuild -use-ocamlfind codept.native\
 		&& mv codept.native codept
 

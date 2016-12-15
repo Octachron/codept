@@ -1,6 +1,6 @@
 B _build/**
 S lib
-S light
+S full
 S precomputed
 S tests
 S lib/sexp
