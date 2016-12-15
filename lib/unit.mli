@@ -8,7 +8,7 @@ type precision =
   | Approx
 
 type s = {
-  name: string;
+  name: Name.t;
   path: Pkg.t;
   kind: M2l.kind;
   precision: precision;
@@ -16,7 +16,7 @@ type s = {
 }
 
 type r = {
-  name: string;
+  name: Name.t;
   path: Pkg.t;
   kind: M2l.kind;
   precision: precision;
@@ -29,7 +29,7 @@ type u = r
 val lift: Module.signature -> Pkg.set -> s -> r
 val proj: r -> s
 
-val read_file : Fault.Polycy.t -> M2l.kind -> string -> s
+val read_file : Fault.Polycy.t -> Read.kind -> string -> s
 (** [read_file polycy kind filename] reads the file [filename],
     extracting the corresponding m2l ast. If the file is not synctatically
     valid Ocaml and syntax errors are not set to critical level in [polycy],

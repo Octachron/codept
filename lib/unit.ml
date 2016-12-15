@@ -32,17 +32,17 @@ let proj {name;path;kind;precision;code; _ }: s=
   {name;path;kind;precision;code}
 
 
-let read_file polycy =
-  fun kind filename: s ->
+let read_file polycy kind filename : s =
   let name, code = Read.file kind filename in
   let precision, code = match code with
     | Ok c -> Exact, c
-    | Error msg ->
+    | Error M2l -> assert false
+    | Error (Ocaml msg) ->
       Fault.(handle polycy syntaxerr msg);
       Approx, Approx_parser.lower_bound filename
   in
       { name;
-        kind;
+        kind = kind.kind;
         precision;
         path = Pkg.local filename;
         code

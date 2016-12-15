@@ -5,21 +5,19 @@ let local = Pth.local
 let (%) f g x = f (g x)
 
 let classify filename =  match Filename.extension filename with
-  | ".ml" -> M2l.Structure
-  | ".mli" -> M2l.Signature
+  | ".ml" -> { Read.format= Src; kind  = M2l.Structure }
+  | ".mli" -> { Read.format = Src; kind = M2l.Signature }
   | _ -> raise (Invalid_argument "unknown extension")
 
 
 let polycy = Fault.Polycy.quiet
 
 let organize polycy files =
-   let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
+   let add_name m (_,n)  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
-  let units = Unit.map (
-    Unit.unimap (List.map % Unit.read_file polycy )
-      { ml=M2l.Structure; mli=M2l.Signature}
-    ) files in
+  let units =
+    Unit.unimap (List.map @@ fun (info,f) -> Unit.read_file polycy info f) files in
   let units = Unit.Groups.Unit.(split % group) units in
    units, m
 
@@ -95,22 +93,27 @@ let precise_deps_test name (inner,lib,unkw) set =
   && test "lib" lib lib'
   && test "unknwon" unkw unkw'
 
-let add_info {Unit.ml; mli} info = match classify @@ fst info with
-  | M2l.Structure -> { Unit.ml = info :: ml; mli }
-  | M2l.Signature -> { Unit.mli = info :: mli; ml }
+let add_info {Unit.ml; mli} (f, info) =
+  let k = classify f in
+  match k.kind with
+  | M2l.Structure -> { Unit.ml = (k,f,info) :: ml; mli }
+  | M2l.Signature -> { Unit.mli = (k,f,info) :: mli; ml }
 
-let add_file {Unit.ml; mli} info = match classify info with
-  | M2l.Structure -> { Unit.ml = info :: ml; mli }
-  | M2l.Signature -> { Unit.mli = info :: mli; ml }
+let add_file {Unit.ml; mli} file =
+ let k = classify file in
+  match k.kind with
+  | M2l.Structure -> { Unit.ml = (k,file) :: ml; mli }
+  | M2l.Signature -> { Unit.mli = (k,file) :: mli; ml }
 
 let gen_deps_test libs inner_test l =
   let {Unit.ml;mli} = List.fold_left add_info {Unit.ml=[]; mli=[]} l in
   let module M = Paths.S.Map in
-  let build exp = List.fold_left (fun m (x,l) ->
+  let build exp = List.fold_left (fun m (_,x,l) ->
       M.add (Paths.S.parse_filename x) l m)
       M.empty exp in
   let exp = M.union' (build ml) (build mli) in
-  let files = { Unit.ml = List.map fst ml; mli =  List.map fst mli} in
+  let sel (k,f,_) = k, f in
+  let files = Unit.unimap (List.map sel) {ml;mli} in
   let {Unit.ml; mli} = analyze libs files in
   let (=?) expect files = List.for_all (fun u ->
       let path = u.Unit.path.Pth.file in
@@ -339,9 +342,10 @@ let result =
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
           "read.mli", (["M2l"; "Name"],["Syntaxerr"],[]);
-          "read.ml", (["Ast_converter"; "M2l"],
-                      ["Filename"; "Format"; "Location"; "Parse"; "Pparse";
-                       "String"; "Syntaxerr"],[]);
+          "read.ml", (["Ast_converter"; "Cmi"; "M2l"],
+                      ["Filename"; "Format"; "Lexing"; "Location"; "Parse";
+                       "Parsing"; "Pparse"; "String"; "Syntaxerr"],
+                      ["Sexp_parse"; "Sexp_lex"]);
           "result.mli", ([],[],[]);
           "result.ml", ([],["List"],[]);
           "sexp.ml", (["Name"; "Option"; "Pp"], ["Format";"List";"Map"], [] );
@@ -351,7 +355,8 @@ let result =
             ["Approx_parser"; "Interpreter"; "M2l"; "Module"; "Name";
              "Option"; "Pp"; "Paths"; "Unit"; "Fault"],
             ["List"; "Map"; "Set"],[]);
-          "unit.mli", (["Paths"; "M2l"; "Module";"Fault"],["Format";"Set"],[]);
+          "unit.mli", (["Paths"; "M2l"; "Module"; "Name"; "Fault"; "Read"],
+                       ["Format";"Set"],[]);
           "unit.ml", (
             ["Approx_parser"; "M2l"; "Module"; "Fault";
              "Option"; "Paths"; "Pp"; "Read"],

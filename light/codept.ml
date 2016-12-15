@@ -9,6 +9,49 @@ let (%) f g x = f (g x)
 module S = Module.Sig
 let std = Format.std_formatter
 
+
+module Self_polycy = struct
+  open Fault
+  let polycy = Fault.Polycy.default
+  let unknown_extension =
+    { path = ["codept"; "io"; "unknwon extension"];
+      expl = "Codept fault: attempting to read a file with an unknwon extension";
+      log = (fun lvl -> log lvl "Attempting to read %s, aborting due to \
+                                 an unknown extension.")
+    }
+
+
+    let m2l_syntaxerr =
+    { path = ["codept"; "parsing"; "m2l"];
+      expl = "Parsing fault: syntax error when parsing a m2l serialized file.";
+      log = (fun lvl -> log lvl
+                "Parsing fault: syntax error when parsing the m2l serialized \
+                 file %s."
+            )
+    }
+
+  let polycy =
+    let open Polycy in
+    polycy
+    |> set_err (unknown_extension, Level.warning)
+    |> set_err (m2l_syntaxerr, Level.warning)
+end
+
+module Resource = struct
+  type kind = Interface | Implementation | Signature
+  type info = { format: Read.format; kind : kind }
+
+let classic {format;kind}: Read.kind option = match kind with
+  | Interface -> Some { format; kind = M2l.Signature }
+  | Implementation -> Some { format; kind = M2l.Structure }
+  | Signature -> None
+
+let ml = { format=Src; kind = Implementation }
+let mli = { format=Src; kind = Interface }
+
+
+end
+
 type param =
   {
     all: bool;
@@ -20,7 +63,7 @@ type param =
     transparent_aliases: bool;
     transparent_extension_nodes: bool;
     includes: Pkg.path Name.map;
-    synonyms: Name.set Unit.pair;
+    synonyms: Resource.info Name.Map.t;
     no_stdlib:bool;
     implicits: bool;
     closed_world: bool;
@@ -32,7 +75,7 @@ type param =
 
 type task =
   {
-    files: string list Unit.pair;
+    files: (Read.kind * string) list Unit.pair;
     signatures: Module.t list;
     invisibles: Pth.set;
     libs: string list;
@@ -48,7 +91,18 @@ let lift { polycy; transparent_extension_nodes; transparent_aliases; _ } =
   end
   : Interpreter.param )
 
-let polycy = Fault.Polycy.default
+let synonyms =
+  let open Resource in
+  let add = Name.Map.add in
+  Name.Map.empty
+  |> add "ml" {kind=Implementation; format = Src}
+  |> add "mli" {kind=Interface; format = Src}
+  |> add "cmi" {kind=Interface; format = Cmi}
+  |> add "m2l" {kind=Implementation; format = M2l}
+  |> add "m2li" {kind=Interface; format = M2l}
+  |> add "sig" {kind = Signature; format = Src }
+
+
 
 let param = ref {
   all = false;
@@ -62,11 +116,11 @@ let param = ref {
   includes = Name.Map.empty;
   implicits = true;
   no_stdlib = false;
-  synonyms = {Unit.ml = Name.Set.singleton "ml" ; mli = Name.Set.singleton "mli" };
+  synonyms;
   closed_world = false;
   may_approx = false;
   sig_only = false;
-  polycy
+  polycy = Self_polycy.polycy
 }
 
 
@@ -80,40 +134,31 @@ let rec last = function
 
 exception Unknown_file_type of string
 
-type kind = Interface | Implementation | Signature
-
 let extension name =
   let n = String.length name in
   let r = try String.rindex name '.' with Not_found -> n-1 in
   String.sub name (r+1) (n-r-1)
 
-let classify synonyms f =
+
+
+let classify polycy synonyms f =
   let ext = extension f in
-  if Name.Set.mem ext synonyms.Unit.mli then
-    Interface
-  else if Name.Set.mem ext synonyms.ml then
-    Implementation
-  else if ext = "sig" then
-    Signature
-  else
-    raise @@ Unknown_file_type ext
+  match Name.Map.find ext synonyms with
+  | x -> Some x
+  | exception Not_found ->
+    Fault.handle polycy Self_polycy.unknown_extension ext; None
 
-let classic = function
-  | Interface -> M2l.Signature
-  | Implementation -> M2l.Structure
-  | Signature -> raise (Unknown_file_type "signature")
 
-let to_m2l sig_only synonyms f =
-  if extension f = "cmi" then
-    Cmi.m2l f
-  else
-    let kind = classify synonyms f in
-    match Read.file (classic kind) f with
+
+let to_m2l polycy sig_only (k,f) =
+    match Read.file k f with
     | _name, Ok x ->
-      if sig_only then M2l.Sig_only.filter x else x
-    | _, Error msg -> Fault.(handle Polycy.strict syntaxerr msg ); exit 1
+      if sig_only then Some (M2l.Sig_only.filter x) else Some x
+    | _, Error (Ocaml msg) -> Fault.handle polycy Fault.syntaxerr msg; None
+    | _, Error M2l -> Fault.handle polycy Self_polycy.m2l_syntaxerr f; None
 
-let approx_file _param f =
+
+let approx_file _param (_,f) =
   let _name, lower, upper = Approx_parser.file f in
   Pp.fp std  "lower bound:%a@. upper bound:%a@."
     M2l.pp lower M2l.pp upper
@@ -121,26 +166,30 @@ let approx_file _param f =
 let one_pass param f =
   let module Param = (val lift param) in
   let module Sg = Envts.Interpreters.Sg(Param) in
-  let start = to_m2l param.sig_only param.synonyms f in
-  match start |> Sg.m2l S.empty with
-  | Ok (_state,d) -> Pp.fp std "Computation finished:\n %a@." S.pp d
-  | Error h -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
+  let start = to_m2l param.polycy param.sig_only f in
+  match Option.( start >>| Sg.m2l S.empty ) with
+  | None -> ()
+  | Some (Ok (_state,d)) -> Pp.fp std "Computation finished:\n %a@." S.pp d
+  | Some (Error h) -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
 
 let m2l param f =
-  let start = to_m2l param.sig_only param.synonyms f in
+  let start = to_m2l param.polycy param.sig_only f in
+  let open Option in
   start
-  |> Normalize.all
-  |> snd
-  |> Pp.fp std  "%a@." M2l.pp
+  >>| Normalize.all
+  >>| snd
+  >>| Pp.fp std  "%a@." M2l.pp
+  >< ()
 
 let m2l_sexp param f =
-  let start = to_m2l param.sig_only param.synonyms f in
+  let start = to_m2l param.polycy param.sig_only f in
+  let open Option in
   start
-  |> Normalize.all
-  |> snd
-  |> M2l.sexp.embed
-  |> Pp.fp std  "%a@." Sexp.pp
-
+  >>| Normalize.all
+  >>| snd
+  >>| M2l.sexp.embed
+  >>| Pp.fp std  "%a@." Sexp.pp
+  >< ()
 
 let order units =
   let open Unit in
@@ -166,17 +215,16 @@ let open_within opens unit =
     ) opens unit
 
 let organize polycy sig_only opens files =
-  let add_name m n  =  Name.Map.add (Read.name n) (local n) m in
+  let add_name m (_,n)  =  Name.Map.add (Read.name n) (local n) m in
   let m = List.fold_left add_name
       Name.Map.empty (files.Unit.ml @ files.mli) in
   let filter_m2l (u: Unit.s) = if sig_only then
       { u with Unit.code = M2l.Sig_only.filter u.code }
     else
       u in
-  let units = Unit.map (
-    Unit.unimap (List.map % Unit.read_file polycy )
-      { ml=M2l.Structure; mli=M2l.Signature}
-    ) files in
+  let units =
+    Unit.unimap (List.map @@ fun (info,f) -> Unit.read_file polycy info f )
+      files in
   let units = Unit.unimap (List.map @@ filter_m2l % open_within opens) units in
   let units = Unit.Groups.Unit.(split % group) units in
   units, m
@@ -357,12 +405,15 @@ let replace_deps includes unit =
 
 let implicit_mli synonyms name =
     (* implicitely looks for interface files *)
-      Name.Set.fold (fun ext found ->
-          found ||
-          Sys.file_exists @@ Filename.remove_extension
-            (Pkg.filename name) ^ "." ^ ext
-        )
-        synonyms.Unit.mli false
+  Name.Map.fold (fun ext (info:Resource.info) found ->
+      if info.kind = Interface then
+        found ||
+        Sys.file_exists @@ Filename.remove_extension
+          (Pkg.filename name) ^ "." ^ ext
+      else
+        found
+    )
+        synonyms false
 
 let print_deps param order input dep ppf (unit,imore,dmore) =
   let unit = replace_deps param.includes unit in
@@ -446,13 +497,15 @@ let add_invi name =
             invisibles = Pth.Set.add (Paths.S.parse_filename name) (!task).invisibles
           }
 
-let add_impl name =
+let add_impl format name =
+  let k = { Read.kind = Structure; format } in
   let {Unit.ml;mli} = (!task).files in
-  task := { !task with files = { ml = name :: ml; mli } }
+  task := { !task with files = { ml = (k,name) :: ml; mli } }
 
-let add_intf name =
+let add_intf format name =
+  let k = { Read.kind = Signature; format } in
   let {Unit.ml;mli} = !(task).files in
-  task := {!task with files = { mli = name :: mli; ml } }
+  task := {!task with files = { mli = (k,name) :: mli; ml } }
 
 
 let parse_sig lexbuf=
@@ -480,11 +533,12 @@ let read_sig ssig =
 
 let add_file name =
   if Sys.file_exists name then
-    match classify !param.synonyms name with
-    | Implementation ->
-      add_impl name
-    | Interface -> add_intf name
-    | Signature -> add_sig @@ read_sigfile name
+    match classify !param.polycy !param.synonyms name with
+    | None -> ()
+    | Some { kind = Implementation; format } ->
+      add_impl format name
+    | Some { kind = Interface; format } -> add_intf format name
+    | Some { kind = Signature; _ } -> add_sig @@ read_sigfile name
 
 let add_invisible_file name =
   if Sys.file_exists name then
@@ -502,15 +556,16 @@ let add_ppx ppx =
 
 let ml_synonym s =
   let synonyms = !param.synonyms in
-  let synonyms =  { synonyms with ml = Name.Set.add s synonyms.ml } in
+  let info = { Resource.format = Src; kind = Implementation } in
+  let synonyms =   Name.Map.add s info synonyms in
   param := { !param with synonyms }
 
 
 let mli_synonym s =
   let synonyms = !param.synonyms in
-  let synonyms = { synonyms with mli = Name.Set.add s synonyms.mli } in
+  let info = { Resource.format = Src; kind = Interface } in
+  let synonyms =   Name.Map.add s info synonyms in
   param := { !param with synonyms }
-
 
 let lib f =
   task := { !task with libs = f :: (!task).libs }
@@ -596,9 +651,13 @@ let add_include dir =
   let dir = if dir = "." then [] else Paths.S.parse_filename dir in
   let includes =
     Array.fold_left (fun m x ->
-        match classify !param.synonyms x with
-        | exception Unknown_file_type _ -> m
-        | _ ->
+        let polycy =
+          let open Fault in
+          Polycy.set_err (Self_polycy.unknown_extension, Level.whisper)
+            !param.polycy in
+        match classify polycy !param.synonyms x with
+        | None | Some { kind = Signature; _ } -> m
+        | Some { kind = Interface | Implementation ; _ } ->
           Name.Map.add (Read.name x)
             Pkg.( dir / local x) m
       )
@@ -646,8 +705,8 @@ let args = Cmd.[
                                    \"-no-alias-deps <file>\"";
     "-I", String add_include,"<dir>: do not filter files in <dir> when printing \
                           dependencies";
-    "-impl", String add_impl, "<f>: read <f> as a ml file";
-    "-intf", String add_intf, "<f>: read <f> as a mli file";
+    "-impl", String (add_impl Src), "<f>: read <f> as a ml file";
+    "-intf", String (add_intf Src), "<f>: read <f> as a mli file";
     "-map", Cmd.String map, "<file>: same as \"-no-alias-deps \
                             -see <file>\"";
     "-ml-synonym", String ml_synonym, "<s>: use <s> extension as a synonym \
