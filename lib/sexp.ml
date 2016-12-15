@@ -304,6 +304,8 @@ let cname = function
   | Cs c -> c.name
 
 let sum l =
+  let const_table = Hashtbl.create 7 in
+  let block_table = Hashtbl.create 7 in
   let fold acc c=  Name.Map.add (cname c) c  acc in
   let m = List.fold_left fold Name.Map.empty l
        in
@@ -324,20 +326,52 @@ let sum l =
         | Cs c -> Some c.value
   in
   let embed x =
-    let find c = match c with
-      | C c -> c.proj x <> None
-      | Cs c -> c.value = x in
-    match List.find find l with
-    | Cs c -> Keyed_list(c.name, [])
-    | C cnstr ->
-      match cnstr.proj x with
-      | None -> raise (Invalid_argument "Sexp.sum")
-      | Some inner ->
-        match cnstr.default with
-        | Some y when inner = y ->
-          Keyed_list(cnstr.name,[])
-        | _ ->
-          Keyed_list (cnstr.name, [any (cnstr.impl.embed inner)]) in
+    let fast x =
+      let o = Obj.repr x in
+      if Obj.is_int o then
+        let n: int = Obj.magic o in
+        if Hashtbl.mem const_table n then
+          Some (Hashtbl.find const_table n)
+        else
+          None
+      else
+        let n = Obj.tag o in
+        if Hashtbl.mem const_table n then
+          Some (Hashtbl.find block_table n @@ x)
+        else
+          None
+     in
+     match fast x with
+     | Some kl -> kl
+     | None ->
+       let find c = match c with
+         | C c -> c.proj x <> None
+         | Cs c -> c.value = x in
+       match List.find find l with
+       | Cs c ->
+         begin
+           let r =Keyed_list(c.name, []) in
+           let o = Obj.repr x in
+           if Obj.is_int o then
+             Hashtbl.add const_table (Obj.magic o: int) r;
+           r
+         end
+       | C cnstr ->
+         let make x =
+           match cnstr.proj x with
+           | None -> raise (Invalid_argument "Sexp.sum")
+           | Some inner ->
+             match cnstr.default with
+             | Some y when inner = y ->
+             Keyed_list(cnstr.name,[])
+             | _ ->
+               Keyed_list (cnstr.name, [any (cnstr.impl.embed inner)])
+         in
+         let o = Obj.repr x in
+        if not (Obj.is_int o) then
+          Hashtbl.add block_table (Obj.tag o) make;
+         make x
+  in
   {parse;embed;witness=One_and_many}
 
 

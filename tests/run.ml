@@ -348,7 +348,8 @@ let result =
                       ["Sexp_parse"; "Sexp_lex"]);
           "result.mli", ([],[],[]);
           "result.ml", ([],["List"],[]);
-          "sexp.ml", (["Name"; "Option"; "Pp"], ["Format";"List";"Map"], [] );
+          "sexp.ml", (["Name"; "Option"; "Pp"],
+                      [ "Obj"; "Format";"List";"Map"; "Hashtbl"], [] );
           "solver.mli", (["Unit";"M2l";"Name";"Interpreter";"Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
