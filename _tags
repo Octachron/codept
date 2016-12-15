@@ -5,6 +5,6 @@ true: strict_sequence
 true: safe_string
 true: short_paths
 true: strict_formats
-<lib> or <light> or <precomputed> or <tests> or <lib/sig> :  include
+<lib> or <light> or <precomputed> or <tests> or <lib/sexp> :  include
 <**/*.ml> or <**/*.mli>: package(compiler-libs.common)
 "light/codept.native" or "tests/run.native": package(compiler-libs.common), use_unix

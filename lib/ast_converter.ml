@@ -6,10 +6,6 @@ module M = Module
 module Annot = M2l.Annot
 module Arg = M.Arg
 
-type t= { structure: Parsetree.structure -> M2l.t;
-          signature: Parsetree.signature -> M2l.t
-        }
-
 let rec from_lid  =
   let open Paths.Expr in
   function
