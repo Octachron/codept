@@ -43,12 +43,11 @@ module Origin = struct
 
   type t =
     | Unit of source (** aka toplevel module *)
-    | Alias of t (** M = A… *)
     | Submodule
     | First_class (** Not resolved first-class module *)
     | Arg (** functor argument *)
 
-  let rec pp ppf = function
+  let pp ppf = function
     | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
     | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
     | Unit { Pkg.source = Unknown; _} -> Pp.fp ppf "#!"
@@ -56,7 +55,6 @@ module Origin = struct
     | Submodule -> Pp.fp ppf "."
     | First_class -> Pp.fp ppf "'"
     | Arg -> Pp.fp ppf "§"
-    | Alias n -> Pp.fp ppf "(≡%a)" pp n
 
   module Sexp = struct
     open Sexp
@@ -67,34 +65,26 @@ module Origin = struct
                    default = None;
                  }
 
-    let alias sexp = C { name = "Alias";
-                         proj = (function Alias a -> Some a | _ -> None);
-                         inj= (fun x -> Alias x);
-                         impl = fix' sexp;
-                         default = Some Submodule
-                       }
     let submodule = simple_constr "Submodule" Submodule
     let first_class = simple_constr "First_class" First_class
     let arg = simple_constr "Arg" Arg
 
 
-    let rec sexp () = Sexp.sum [unit;alias sexp; arg; submodule;first_class]
+    let  sexp = Sexp.sum [unit; arg; submodule;first_class]
   end
-  let sexp = Sexp.sexp ()
+  let sexp = Sexp.sexp
 
 
-    let rec reflect ppf = function
+    let reflect ppf = function
     | Unit pkg  -> Pp.fp ppf "Unit %a" Pkg.reflect pkg
     | Submodule -> Pp.fp ppf "Submodule"
     | First_class -> Pp.fp ppf "First_class"
     | Arg -> Pp.fp ppf "Arg"
-    | Alias n -> Pp.fp ppf {|Alias (%a)|} reflect n
 
   let at_most max v = match max, v with
-    | (First_class|Arg| Alias _ ) , _ -> max
+    | (First_class|Arg ) , _ -> max
     | Unit _ , v -> v
     | Submodule, Unit _ -> Submodule
-    | Submodule, Alias _ -> Submodule
     | Submodule, v -> v
 end
 type origin = Origin.t
@@ -141,7 +131,8 @@ let reflect_level ppf = function
 
 let rec reflect ppf = function
   | M m ->  Pp.fp ppf "M %a" reflect_m m
-  | Alias {name;path} -> Pp.fp ppf "Alias {name=%s;path=%a}" name Paths.S.pp path
+  | Alias {name;path} -> Pp.fp ppf "Alias {name=%a;path=[%a]}" Pp.estring name
+                           Pp.(list ~sep:(s ";@  ") @@ estring ) path
 and reflect_m ppf {name;args;precision;origin;signature} =
   Pp.fp ppf {|@[<hov>{name="%s"; precision=%a; origin=%a; args=%a; signature=%a}@]|}
     name

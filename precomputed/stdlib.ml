@@ -122,10 +122,10 @@ of_list [M {name="Arg"; precision=Exact; origin=Unit {source=Special "exported";
           M {name="Snapshot"; precision=Exact; origin=Submodule; args=[]; signature=empty}]}; 
         M {name="Stack"; precision=Exact; origin=Unit {source=Special "exported"; file=["Stack"]}; args=[]; signature=empty}; 
         M {name="StdLabels"; precision=Exact; origin=Unit {source=Special "exported"; file=["StdLabels"]}; args=[]; signature=of_list 
-          [M {name="Array"; precision=Exact; origin=Alias (Unit {source=Local; file=[""; "home"; "reflet"; "Forks"; "ocaml"; "stdlib"; "arrayLabels.mli"]}); args=[]; signature=empty}; 
-          M {name="Bytes"; precision=Exact; origin=Alias (Unit {source=Local; file=[""; "home"; "reflet"; "Forks"; "ocaml"; "stdlib"; "bytesLabels.mli"]}); args=[]; signature=empty}; 
-          M {name="List"; precision=Exact; origin=Alias (Unit {source=Local; file=[""; "home"; "reflet"; "Forks"; "ocaml"; "stdlib"; "listLabels.mli"]}); args=[]; signature=empty}; 
-          M {name="String"; precision=Exact; origin=Alias (Unit {source=Local; file=[""; "home"; "reflet"; "Forks"; "ocaml"; "stdlib"; "stringLabels.mli"]}); args=[]; signature=empty}]}; 
+          [Alias {name="Array";path=["ArrayLabels"]}; 
+          Alias {name="Bytes";path=["BytesLabels"]}; 
+          Alias {name="List";path=["ListLabels"]}; 
+          Alias {name="String";path=["StringLabels"]}]}; 
         M {name="Stream"; precision=Exact; origin=Unit {source=Special "exported"; file=["Stream"]}; args=[]; signature=empty}; 
         M {name="String"; precision=Exact; origin=Unit {source=Special "exported"; file=["String"]}; args=[]; signature=empty}; 
         M {name="StringLabels"; precision=Exact; origin=Unit {source=Special "exported"; file=["StringLabels"]}; args=[]; signature=empty}; 

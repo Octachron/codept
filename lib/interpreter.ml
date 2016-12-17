@@ -12,8 +12,7 @@ module S = Module.Sig
 module type envt = sig
   type t
   val is_exterior: Paths.Simple.t -> t -> bool
-  val find: transparent:bool -> ?alias:bool ->
-    Module.level -> Paths.Simple.t -> t -> Module.m
+  val find: Module.level -> Paths.Simple.t -> t -> Module.m
   val (>>) : t -> D.t -> t
   val add_module: t -> Module.t -> t
 end
@@ -46,7 +45,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   include Param
   let fault x = Fault.handle polycy x
-  let find = Envt.find ~transparent:transparent_aliases
+  let find = Envt.find
 
   let drop_arg (p:Module.Partial.t) =  match  p.args with
       | _ :: args -> { p with args }
@@ -107,7 +106,6 @@ module Make(Envt:envt)(Param:param) = struct
         match x.origin with
         | First_class -> fault Fault.opened_first_class x.name
         | Unit _ | Submodule | Arg -> ()
-        | Alias _ -> ()
 
   let open_ state path =
     match find Module path state with
@@ -128,15 +126,11 @@ module Make(Envt:envt)(Param:param) = struct
   let sig_include state module_type = gen_include
       (module_type state) (fun i -> SigInclude i)
 
-  let aliased d = match d.P.origin with
-    | Alias _ -> None
-    | _ -> Some Module.Origin.Submodule
-
   let bind state module_expr {name;expr} =
-    match module_expr ?bind:(Some true) state expr with
+    match module_expr state expr with
     | Error h -> Error ( Bind {name; expr = h} )
     | Ok d ->
-      let m = M.M( P.to_module ?origin:(aliased d) name d ) in
+      let m = M.M( P.to_module ~origin:Submodule name d ) in
       Ok (Some(Def.md m))
 
   let bind state module_expr (b: M2l.module_expr bind) =
@@ -154,7 +148,7 @@ module Make(Envt:envt)(Param:param) = struct
     match module_type state expr with
     | Error h -> Error ( Bind_sig {name; expr = h} )
     | Ok d ->
-      let m = P.to_module ?origin:(aliased d) name d in
+      let m = P.to_module ~origin:Submodule name d in
       Ok (Some(Def.sg (M.M m)))
 
 
@@ -199,7 +193,7 @@ module Make(Envt:envt)(Param:param) = struct
         let defs =
           List.fold_left
             ( fun defs {name;expr} ->
-                D.bind (M.M (P.to_module ?origin:(aliased expr) name expr)) defs )
+                D.bind (M.M (P.to_module ~origin:Submodule name expr)) defs )
             D.empty defs in
         Ok ( Some defs )
 
@@ -231,7 +225,7 @@ module Make(Envt:envt)(Param:param) = struct
         Error (fn @@ List.fold_left demote {arg;body=me} args)
 
 
-  let rec module_expr ?(bind=false) state (me:module_expr) = match me with
+  let rec module_expr state (me:module_expr) = match me with
     | Abstract -> Ok P.empty
     | Unpacked -> Ok P.{ empty with origin = First_class }
     | Val m -> begin
@@ -240,13 +234,8 @@ module Make(Envt:envt)(Param:param) = struct
         | Error h -> Error (Val h)
       end  (* todo : check warning *)
     | Ident i ->
-      begin match find ~alias:bind Module i state with
-        | x ->
-          let p = P.of_module x in
-          let p = if P.is_functor p || not bind then p
-            else
-              { p with origin = Alias p.origin } in
-          Ok p
+      begin match find Module i state with
+        | x -> Ok (P.of_module x)
         | exception Not_found -> Error (Ident i: module_expr)
       end
     | Apply {f;x} ->
@@ -257,7 +246,7 @@ module Make(Envt:envt)(Param:param) = struct
         | Ok f, Error x -> Error (Apply {f = Resolved f ;x} )
       end
     | Fun {arg;body} ->
-      functor_expr module_type (module_expr ~bind:false, Build.fn, Build.demote_str)
+      functor_expr module_type (module_expr, Build.fn, Build.demote_str)
         state [] arg body
     | Str [] -> Ok P.empty
     | Str[Defs d] -> Ok (P.no_arg d.defined)
@@ -304,9 +293,7 @@ module Make(Envt:envt)(Param:param) = struct
       end
     | Alias i ->
       begin match find Module i state with
-        | x ->
-          let m = P.of_module x in
-          Ok { m with origin = Alias m.origin }
+        | x -> Ok (P.of_module x)
         | exception Not_found -> Error (Alias i)
       end
     | With w ->

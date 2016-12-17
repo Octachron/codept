@@ -33,7 +33,6 @@ end
 module Origin: sig
   type t =
     | Unit of Paths.Pkg.t (** toplevel module mapped from a unit file *)
-    | Alias of t (** [Alias t]: alias to [t] *)
     | Submodule (** non top-level module *)
     | First_class (** unpacked first-class module *)
     | Arg (** module created for functor application *)

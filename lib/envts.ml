@@ -17,6 +17,9 @@ sig
   include Interpreter.with_deps with type t := t
 end
 
+(* compute if the level of the root of the path is
+   at level module
+ *)
 let record_level level = function
   | _ :: _ :: _ -> true
   | [_] -> level = M.Module
@@ -81,7 +84,7 @@ module Base = struct
         if require_root then raise Not_found else
           find0 start_env false level q m.signature
 
-  let find ~transparent:_ ?alias:_ level path env=
+  let find level path env=
     find0 env false level path env
 
   let deps _env = Paths.P.Set.empty
@@ -132,9 +135,9 @@ module Open_world(Envt:extended_with_deps) = struct
       else
         Module.M ( approx [name] )
 
- let find ~transparent ?(alias=false) level path env =
+ let find level path env =
    (*   Format.printf "Open world looking for %a\n" Paths.S.pp path; *)
-    try Envt.find ~transparent ~alias level path env.core with
+    try Envt.find level path env.core with
     | Not_found ->
       let aliased, root = match resolve_alias path env with
         | Some root -> true, root
@@ -142,7 +145,7 @@ module Open_world(Envt:extended_with_deps) = struct
       (* Format.printf "aliased:%b, true name:%s\n" aliased root; *)
       let undefined =
         aliased ||
-        match Envt.find ~transparent:true ~alias:true level [root] env.core with
+        match Envt.find level [root] env.core with
         | exception Not_found -> true
         | _ -> false in
       if Name.Map.mem root env.world
@@ -151,7 +154,7 @@ module Open_world(Envt:extended_with_deps) = struct
                            the unit root? *)
       then
         raise Not_found
-      else if not (alias && transparent) && undefined then
+      else if undefined then
         (
           if record_level level path then
             begin
@@ -273,9 +276,9 @@ module Layered = struct
       | M.M m ->
         find0 start_env level q (restrict env m.signature)
 
-  let find ~transparent ?alias level path env =
+  let find level path env =
     if Name.Set.mem (List.hd path (* paths are not empty *)) env.local_units then
-      Base.find ~transparent ?alias level path env.local
+      Base.find level path env.local
     else
       find0 env level path env
 
@@ -317,7 +320,7 @@ module Tracing(Envt:extended) = struct
     |{ M.origin = Origin.Unit _ ; _ } -> true
     | _ -> false
 
-  let rec find0 ~transparent start_env ~top ~require_root level path env =
+  let rec find0 start_env ~top ~require_root level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | [a] ->
@@ -328,7 +331,7 @@ module Tracing(Envt:extended) = struct
           raise Not_found
         else
         (*Format.printf "Alias found %s≡%a\n" name Paths.S.pp path;*)
-          find0 ~transparent start_env ~top:true ~require_root:true
+          find0 start_env ~top:true ~require_root:true
             level path start_env
       | M.M m ->
         if require_root && not (is_unit m) then
@@ -342,22 +345,21 @@ module Tracing(Envt:extended) = struct
         if require_root then
           raise Not_found
         else
-          find0 ~transparent start_env ~top:true ~require_root:true
+          find0 start_env ~top:true ~require_root:true
           level (path @ q ) start_env
       | M.M m ->
         if require_root && not (is_unit m) then
           raise Not_found
         else if top && record_level level path then
            record env m;
-          find0 ~transparent start_env ~top:false ~require_root:false level q
+          find0 start_env ~top:false ~require_root:false level q
             { env with env = Envt.restrict env.env m.signature}
 
-  let find ~transparent ?(alias=false) level path env =
-    find0 ~transparent:(transparent && alias) env ~top:true ~require_root:false
-      level path env
+  let find level path env =
+    find0 env ~top:true ~require_root:false level path env
 
   let find_name root level name env =
-    M.M (find0 ~transparent:true env ~top:root ~require_root:false level [name] env)
+    M.M (find0 env ~top:root ~require_root:false level [name] env)
 
 
   let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
