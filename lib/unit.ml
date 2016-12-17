@@ -68,6 +68,7 @@ sig
   module Map :
   sig
     type t = group Pth.map
+    val find: Pth.t -> t -> group
     val add : (M2l.kind , elt -> t -> t) arrow
     val of_list : (M2l.kind, elt list -> t) arrow
   end
@@ -117,6 +118,8 @@ module Groups = struct
 
     module Map = struct
       type t = group Paths.Simple.Map.t
+
+      let find path m = Paths.Simple.Map.find (Paths.S.chop_extension path) m
 
       let raw_add extr unit m =
         let key = key unit in

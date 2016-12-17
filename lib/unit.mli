@@ -60,6 +60,7 @@ sig
   module Map :
   sig
     type t = group Pth.map
+    val find: Pth.t -> t -> group
     val add : (M2l.kind , elt -> t -> t) arrow
     val of_list : (M2l.kind, elt list -> t) arrow
   end
