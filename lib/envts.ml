@@ -48,8 +48,8 @@ module Base = struct
     | [] -> false (* should not happen *)
     | a :: _ ->
       match find_name () Module a envt with
-      | M { origin = Unit _; _ }
-      | Alias _ -> true
+      | M { origin = Unit _; _ } -> true
+      | Alias _ -> false
       | exception Not_found -> true
       | _ -> false
 
@@ -61,14 +61,20 @@ module Base = struct
       begin match find_name false level a env with
         | M.Alias {path; _ } ->
           (*          Format.printf "Found alias to %a\n" Paths.Simple.pp path; *)
-          find0 start_env true level path start_env
+          if require_root then
+            raise Not_found
+          else
+            find0 start_env true level path start_env
         | M.M ({ M.origin = Origin.Unit _; _  } as m) when require_root -> m
         | M.M m ->
           if require_root then raise Not_found else m
       end
     | a :: q ->
       match find_name false M.Module a env with
-      | Alias {path; _ } -> find0 start_env true level (path @ q) start_env
+      | Alias {path; _ } ->
+        if require_root then raise Not_found
+        else
+          find0 start_env true level (path @ q) start_env
       | M.M ({ M.origin = Origin.Unit _; _  } as m) when require_root ->
         find0 start_env false level q m.signature
       | M.M m ->
@@ -317,10 +323,13 @@ module Tracing(Envt:extended) = struct
     | [a] ->
       begin
       match Envt.find_name top level a env.env with
-      | Alias {path; name } ->
+      | Alias {path; _ } ->
+        if require_root then
+          raise Not_found
+        else
         (*Format.printf "Alias found %s≡%a\n" name Paths.S.pp path;*)
-        find0 ~transparent start_env ~top:true ~require_root:true
-          level path start_env
+          find0 ~transparent start_env ~top:true ~require_root:true
+            level path start_env
       | M.M m ->
         if require_root && not (is_unit m) then
           raise Not_found
@@ -330,7 +339,10 @@ module Tracing(Envt:extended) = struct
     | a :: q ->
       match Envt.find_name top M.Module a env.env with
       | Alias {path; _ } ->
-        find0 ~transparent start_env ~top:true ~require_root:true
+        if require_root then
+          raise Not_found
+        else
+          find0 ~transparent start_env ~top:true ~require_root:true
           level (path @ q ) start_env
       | M.M m ->
         if require_root && not (is_unit m) then
