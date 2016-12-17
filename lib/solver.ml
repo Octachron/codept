@@ -14,7 +14,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
         | Exact -> (postponed,env, start u :: direct)
         | Approx ->
           let fictious =
-            { Module.name = u.name;
+            Module.M { Module.name = u.name;
               origin = Unit u.path;
               precision = Module.Precision.Unknown;
               args = [];
@@ -38,8 +38,8 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       let core =
         if learn then begin
           let input = unit.input in
-          let md = Module.(create ~origin:(Unit input.path)) input.name sg in
-          Envt.add_module core md
+          let md = Module.( create ~origin:(Unit input.path)) input.name sg in
+          Envt.add_module core (Module.M md)
         end
         else
           core

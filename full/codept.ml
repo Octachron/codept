@@ -286,7 +286,7 @@ let export param task =
   let {Unit.mli; _} = analyze param task in
   let sign (u:Unit.r)= u.signature in
   let md (unit:Unit.r) =
-    {Module.
+    Module.M {Module.
       name = unit.name
     ; origin = Unit { source=Pkg.Special "exported"; file = [unit.name] }
     ; args = []
@@ -306,9 +306,11 @@ let export param task =
 let sign param task =
   let {Unit.mli; _} = analyze param task in
   let md {Unit.signature; name; path; _  } =
-    Module.create ~args:[]
+    Module.M ( Module.create ~args:[]
       ~origin:(Unit path)
-      name signature in
+      name signature
+             )
+  in
   let mds = List.map md mli in
   let sexp = Sexp.( (list Module.sexp).embed ) mds in
   Pp.(fp std) "@[%a@]@." Sexp.pp sexp

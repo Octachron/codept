@@ -3,8 +3,9 @@
 (** Input type *)
 module type envt = sig
   type t
+  val is_exterior: Paths.Simple.t -> t -> bool
   val find: transparent:bool -> ?alias:bool ->
-    Module.level -> Paths.Simple.t -> t -> Module.t
+    Module.level -> Paths.Simple.t -> t -> Module.m
   val (>>) : t -> Definition.t -> t
   val add_module: t -> Module.t -> t
 end

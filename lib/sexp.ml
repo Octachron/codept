@@ -19,6 +19,7 @@ and any = Any: 'any t -> any
 
 let rec any: type a. a t -> any = function
   | List (Any (Atom s) :: ( _ :: _ as l) ) -> any @@ Keyed_list(s,l)
+  | Keyed_list(s,[]) -> Any (Atom s)
   | List [Any (Atom _ as sexp)] -> any sexp
   | sexp ->  Any sexp
 
@@ -288,7 +289,6 @@ type ('a,'b) bij = { f: 'a -> 'b; fr:'b -> 'a }
 
 let id = { f = (fun x -> x); fr = (fun x -> x) }
 
-
 type 'a constr =
   | C: {
       name:Name.t;
@@ -308,14 +308,14 @@ let sum l =
   let block_table = Hashtbl.create 7 in
   let fold acc c=  Name.Map.add (cname c) c  acc in
   let m = List.fold_left fold Name.Map.empty l
-       in
+  in
   let parse = function
-    | Keyed_list (_, _ :: _ :: _ )-> None
-    | Keyed_list (n, [b]) ->
+    | Keyed_list (_, _ :: _ :: _ ) -> None
+    | Keyed_list (n, [l]) ->
       begin
         match Name.Map.find n m with
         | exception Not_found -> None
-        | C cnstr -> (any_parse cnstr.impl b) >>| cnstr.inj
+        | C cnstr -> (any_parse cnstr.impl l ) >>| cnstr.inj
         | Cs _ -> None
       end
     | Keyed_list (n, []) ->
@@ -365,7 +365,7 @@ let sum l =
              | Some y when inner = y ->
              Keyed_list(cnstr.name,[])
              | _ ->
-               Keyed_list (cnstr.name, [any (cnstr.impl.embed inner)])
+                 Keyed_list (cnstr.name, [any (cnstr.impl.embed inner)])
          in
          let o = Obj.repr x in
         if not (Obj.is_int o) then
@@ -373,6 +373,56 @@ let sum l =
          make x
   in
   {parse;embed;witness=One_and_many}
+
+module C2 = struct
+  type 'a constr =
+    | C: {
+        name:Name.t;
+        proj:'a -> 'b option;
+        inj: 'b -> 'a;
+        impl: ('b, one_and_many) impl;
+      } -> 'a constr
+
+let mark name = "+" ^ name
+let is_cnstr s = s.[0] = '+'
+
+let cname = function
+  | C c -> mark c.name
+
+let parse (C c) sexp = sexp |> c.impl.parse >>| c.inj
+let embed (C c) x =
+  c.proj x >>| c.impl.embed
+
+let sum default l =
+  let fold acc c=  Name.Map.add (cname c) c  acc in
+  let m = List.fold_left fold Name.Map.empty l
+       in
+  let parse = function
+    | Keyed_list (n, l ) when is_cnstr n ->
+      begin
+        match Name.Map.find n m with
+        | exception Not_found -> None
+        | C cnstr ->
+          (any_parse cnstr.impl (any @@ List l) ) >>| cnstr.inj
+      end
+    | Keyed_list (_,_) as kl ->
+      parse default kl
+  in
+  let embed x =
+    match embed default x with
+    | Some sexp -> sexp
+    | None ->
+      let find (C c) = c.proj x <> None in
+      match List.find find l with
+      | C cnstr ->
+        match cnstr.proj x with
+        | None -> raise (Invalid_argument "Sexp.sum")
+        | Some inner ->
+          let Keyed_list(s,l) = cnstr.impl.embed inner in
+          Keyed_list (mark cnstr.name, Any(Atom s) :: l )
+  in
+  {parse;embed;witness=One_and_many}
+end
 
 
 let pair l r =
@@ -430,6 +480,16 @@ let pair' atom r =
     match r.embed b with
     | List l -> List( any a :: l ) in
   {parse;embed; witness = Many}
+
+let key_list atom lst =
+  let parse = function
+    | Keyed_list (a,l) ->
+      atom.parse (Atom a) && lst.parse (List l)
+  in
+  let embed (a,b)  =
+    match atom.embed a, lst.embed b with
+    | Atom s, List l -> Keyed_list( s, l ) in
+  {parse;embed; witness = One_and_many}
 
 let major_minor major default minor =
   let parse = function

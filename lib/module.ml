@@ -99,13 +99,16 @@ module Origin = struct
 end
 type origin = Origin.t
 
-type t = {
-  name:Name.t;
-  precision: Precision.t;
-  origin: Origin.t;
-  args: t option list;
-  signature:signature;
+type m = {
+      name:Name.t;
+      precision: Precision.t;
+      origin: Origin.t;
+      args: m option list;
+      signature:signature;
 }
+and t =
+  | M of m
+  | Alias of { name:Name.t; path: Paths.S.t }
 and signature = { modules: mdict; module_types: mdict }
 and mdict = t Name.Map.t
 
@@ -116,8 +119,12 @@ let of_arg ?(precision=Precision.Exact) ({name;signature}:arg) =
   { name; precision; origin = Arg ; args=[]; signature }
 
 let is_functor = function
-  | { args = []; _ } -> false
+  | Alias _ |  M { args = []; _ } -> false
   |  _ -> true
+
+let name = function
+  | Alias {name; _ } -> name
+  | M {name; _ } -> name
 
 type level = Module | Module_type
 
@@ -132,7 +139,10 @@ let reflect_level ppf = function
     | Module -> Pp.string ppf "Module"
     | Module_type -> Pp.string ppf "Module type"
 
-let rec reflect ppf {name;args;precision;origin;signature} =
+let rec reflect ppf = function
+  | M m ->  Pp.fp ppf "M %a" reflect_m m
+  | Alias {name;path} -> Pp.fp ppf "Alias {name=%s;path=%a}" name Paths.S.pp path
+and reflect_m ppf {name;args;precision;origin;signature} =
   Pp.fp ppf {|@[<hov>{name="%s"; precision=%a; origin=%a; args=%a; signature=%a}@]|}
     name
     Precision.reflect precision
@@ -157,12 +167,14 @@ and reflect_pair ppf (_,md) = reflect ppf md
 and reflect_opt reflect ppf = function
   | None -> Pp.string ppf "None"
   | Some x -> Pp.fp ppf "Some %a" reflect x
-and reflect_arg ppf arg = Pp.fp ppf "%a" (reflect_opt reflect) arg
+and reflect_arg ppf arg = Pp.fp ppf "%a" (reflect_opt reflect_m) arg
 and reflect_args ppf args =
   Pp.fp ppf "[%a]" (Pp.(list ~sep:(s "; @,") ) @@ reflect_arg ) args
 
-
-let rec pp ppf {name;args;origin;signature;_} =
+let rec pp ppf = function
+  | Alias {name;path} -> Pp.fp ppf "%s≡%a" name Paths.S.pp path
+  | M m -> pp_m ppf m
+and pp_m ppf {name;args;origin;signature;_} =
   Pp.fp ppf "%s%a:%a@[<hv>[@,%a@,]@]"
     name Origin.pp origin pp_args args pp_signature signature
 and pp_signature ppf {modules; module_types} =
@@ -174,31 +186,11 @@ and pp_signature ppf {modules; module_types} =
 and pp_mdict ppf dict =
   Pp.fp ppf "%a" (Pp.(list ~sep:(s " @,")) pp_pair) (Name.Map.bindings dict)
 and pp_pair ppf (_,md) = pp ppf md
-and pp_arg ppf arg = Pp.fp ppf "(%a)" (Pp.opt pp) arg
-and pp_args ppf args = Pp.fp ppf "%a" (Pp.(list ~sep:(s "@,→") ) @@ pp_arg ) args;
+and pp_arg ppf arg = Pp.fp ppf "(%a)" (Pp.opt pp_m) arg
+and pp_args ppf args = Pp.fp ppf "%a" (Pp.(list ~sep:(s "@,→") ) @@ pp_arg )
+    args;
     if List.length args > 0 then Pp.fp ppf "→"
 
-let rec persistent ppf {name;args;signature;_} =
-  Pp.fp ppf "@[<hov>(%s%a@,%a)@]"
-    name
-    pers_args args sig_persistent signature
-and sig_persistent ppf {modules; module_types} =
-  let card = Name.Map.cardinal in
-  if card modules > 0 || card module_types > 0 then
-    Pp.fp ppf "%a%a" (pers_mdict "modules") modules (pers_mdict "module types") module_types
-  else
-    ()
-and pers_mdict kind ppf dict =
-  if Name.Map.cardinal dict = 0 then ()
-  else
-    Pp.fp ppf "(%s %a)" kind (Pp.(list ~sep:(s " @,")) pers_pair) (Name.Map.bindings dict)
-and pers_pair ppf (_,md) = persistent ppf md
-and pers_arg ppf arg = Pp.fp ppf "%a" (Pp.opt persistent) arg
-and pers_args ppf args =
-  if args = [] then
-    ()
-  else
-  Pp.fp ppf "(args %a)" (Pp.(list ~sep:(s "@,") ) @@ pers_arg ) args
 
 
 let empty = Name.Map.empty
@@ -212,7 +204,7 @@ let create
 
 let signature_of_lists ms mts =
   let e = Name.Map.empty in
-  let add map m= Name.Map.add m.name m map in
+  let add map m= Name.Map.add (name m) m map in
   { modules = List.fold_left add e ms;
     module_types = List.fold_left add e mts
   }
@@ -228,7 +220,7 @@ module Sexp_core = struct
   let origin = U.(key One_and_many "origin" Origin.Submodule)
   let precision = U.(key One_and_many "precision" Precision.Exact)
 
-  let rec module_ () =
+  let rec m () =
     let fr r =
       r.name, R.(create [
                  field precision r.precision;
@@ -247,12 +239,26 @@ module Sexp_core = struct
         field precision Precision.sexp;
         field origin Origin.sexp;
         field args_f @@ fix args;
-        field modules @@ list @@ fix module_;
-        field module_types @@ list @@ fix module_
+        field modules @@ list @@ fix' module_;
+        field module_types @@ list @@ fix' module_
       ]
     in
-    conv {f;fr} (pair' string record)
-  and args () = list @@ opt @@ fix module_
+    conv {f;fr} (key_list string record)
+  and args () = list @@ opt @@ fix' m
+  and module_ () =
+    let alias = C2.C { name = "Alias";
+                    proj = (function Alias a -> Some(a.name, a.path) | _ -> None);
+                    inj = (fun (name,path) -> Alias {name;path} );
+                    impl = key_list string Paths.S.sexp;
+                     } in
+    let mc =
+      C2.C {name = "M";
+         proj = (function M m -> Some m | _ -> None );
+         inj = (fun m -> M m);
+         impl = fix' m;
+        } in
+    C2.sum mc [alias; mc ]
+
 
   let modul_ = module_ ()
 end
@@ -264,9 +270,7 @@ module Sig = struct
     let card = Name.Map.cardinal in
     card s.modules + card s.module_types
 
-  let persistent = sig_persistent
-
-  let (|+>) m x = Name.Map.add x.name x m
+  let (|+>) m x = Name.Map.add (name x) x m
 
   let merge s1 s2 =
   { modules = Name.Map.union' s1.modules s2.modules
@@ -303,8 +307,8 @@ module Sig = struct
   let sexp =
     let open Sexp in
     let open Sexp_core in
-    let r = record [ field modules @@ list @@ fix module_;
-                     field module_types @@ list @@ fix module_
+    let r = record [ field modules @@ list @@ fix' module_;
+                     field module_types @@ list @@ fix' module_
                    ] in
     let f x =
       of_lists (R.get modules x) (R.get module_types x)
@@ -320,7 +324,7 @@ module Partial = struct
   type nonrec t =
     { precision: Precision.t;
       origin: Origin.t;
-      args: t option list;
+      args: m option list;
       result: signature }
   let empty = { origin = Submodule; precision=Exact; args = []; result= Sig.empty }
   let simple defs = { empty with result = defs }

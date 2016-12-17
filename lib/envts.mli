@@ -6,6 +6,8 @@ sig
   open Interpreter
   include envt
 
+  val resolve_alias: Paths.Simple.t -> t -> Name.t option
+
   val find_name : bool -> Module.level -> string -> t -> Module.t
 (** [find_name is_root level name env] find if there is a module [name]
     at [level] in the environment [env]. The first argument indicates

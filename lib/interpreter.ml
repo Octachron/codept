@@ -11,8 +11,9 @@ module S = Module.Sig
 
 module type envt = sig
   type t
+  val is_exterior: Paths.Simple.t -> t -> bool
   val find: transparent:bool -> ?alias:bool ->
-    Module.level -> Paths.Simple.t -> t -> Module.t
+    Module.level -> Paths.Simple.t -> t -> Module.m
   val (>>) : t -> D.t -> t
   val add_module: t -> Module.t -> t
 end
@@ -135,15 +136,26 @@ module Make(Envt:envt)(Param:param) = struct
     match module_expr ?bind:(Some true) state expr with
     | Error h -> Error ( Bind {name; expr = h} )
     | Ok d ->
-      let m = P.to_module ?origin:(aliased d) name d in
+      let m = M.M( P.to_module ?origin:(aliased d) name d ) in
       Ok (Some(Def.md m))
+
+  let bind state module_expr (b: M2l.module_expr bind) =
+    if not transparent_aliases then
+      bind state module_expr b
+    else
+      match b.expr with
+      | (Ident p:M2l.module_expr)
+      | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
+        let m = Module.Alias { name = b.name; path = p } in
+        Ok ( Some (Def.md m) )
+      | _ -> bind state module_expr b
 
   let bind_sig state module_type {name;expr} =
     match module_type state expr with
     | Error h -> Error ( Bind_sig {name; expr = h} )
     | Ok d ->
       let m = P.to_module ?origin:(aliased d) name d in
-      Ok (Some(Def.sg m))
+      Ok (Some(Def.sg (M.M m)))
 
 
   let bind_rec state module_expr module_type bs =
@@ -152,7 +164,7 @@ module Make(Envt:envt)(Param:param) = struct
     (* first we try to compute the signature of each argument using
        approximative signature *)
     let mockup ({name;_}:_ M2l.bind) =
-      {M.name;
+      M.M {M.name;
        origin = Submodule;
        precision = Unknown;
        args = [];
@@ -175,7 +187,7 @@ module Make(Envt:envt)(Param:param) = struct
       (* if we did obtain the argument signature, we go on
          and try to resolve the whole recursive binding *)
       let add_arg defs (name, _me, arg) = Envt.add_module defs @@
-        P.to_module ~origin:Arg name arg in
+        M.M (P.to_module ~origin:Arg name arg) in
       let state' = List.fold_left add_arg state defs in
       let mapper {name;expr} =
         expr |> module_expr state' |> fmap (pair name) (pair name) in
@@ -187,7 +199,7 @@ module Make(Envt:envt)(Param:param) = struct
         let defs =
           List.fold_left
             ( fun defs {name;expr} ->
-                D.bind (P.to_module ?origin:(aliased expr) name expr) defs )
+                D.bind (M.M (P.to_module ?origin:(aliased expr) name expr)) defs )
             D.empty defs in
         Ok ( Some defs )
 
@@ -206,7 +218,7 @@ module Make(Envt:envt)(Param:param) = struct
     match ex_arg with
     | Error me -> Error (fn @@ List.fold_left demote {arg=me;body} args )
     | Ok arg ->
-      let sg = Option.( arg >>| Def.md >< D.empty ) in
+      let sg = Option.( arg >>| (fun m -> Def.md (M.M m) ) >< D.empty ) in
       let state =  Envt.( state >> sg ) in
       match body_type state body with
       | Ok p  -> Ok { p with P.args = arg :: p.P.args }

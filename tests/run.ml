@@ -55,8 +55,8 @@ let normalize set =
 let simple_dep_test name list set =
   let r = normalize set = List.sort compare list in
   if not r then
-    Pp.p "Failure %a: expected:[%a], got:@[[%a]@]\n"
-      Pth.pp name
+    Pp.p "Failure %a(%s): expected:[%a], got:@[[%a]@]\n"
+      Pth.pp name (Sys.getcwd ())
       Pp.(list estring) (List.sort compare list)
       Pp.(list estring) (normalize set);
   r
@@ -314,7 +314,7 @@ let result =
           "envts.mli", (["M2l";"Module";"Name"; "Interpreter"; "Paths"], [], []);
           "envts.ml", (
             ["Cmi"; "Definition"; "Interpreter"; "M2l"; "Fault"; "Module"; "Name";
-             "Option"; "Paths"],
+             "Paths"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
           "interpreter.mli", (["Fault";"Module";"Paths";"M2l";"Definition"],[],[]);
@@ -349,7 +349,7 @@ let result =
           "result.mli", ([],[],[]);
           "result.ml", ([],["List"],[]);
           "sexp.ml", (["Name"; "Option"; "Pp"],
-                      [ "Obj"; "Format";"List";"Map"; "Hashtbl"], [] );
+                      [ "Obj"; "Format";"List";"Map"; "Hashtbl"; "String"], [] );
           "solver.mli", (["Unit";"M2l";"Name";"Interpreter";"Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (

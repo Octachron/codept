@@ -51,13 +51,18 @@ end
 type origin = Origin.t
 
 (** Main module type *)
-type t = {
+type m = {
   name : string;
   precision: Precision.t;
   origin : Origin.t;
-  args : t option list;
+  args : m option list;
   signature : signature;
 }
+
+(** Core module or alias *)
+and t =
+  | M of m
+  | Alias of { name:Name.t; path: Paths.S.t }
 
 and signature = { modules : mdict; module_types : mdict; }
 and mdict = t Name.map
@@ -67,19 +72,20 @@ type level = Module | Module_type
 type modul = t
 
 (** {2 Helper function} *)
-val of_arg : ?precision:Precision.t -> arg -> t
+val of_arg : ?precision:Precision.t -> arg -> m
 val is_functor : t -> bool
+val name: t -> Name.t
+
 val empty : 'a Name.map
 val create :
-  ?args:t option list -> ?precision:Precision.t ->
-  ?origin:origin -> Name.t -> signature -> t
+  ?args:m option list -> ?precision:Precision.t ->
+  ?origin:origin -> Name.t -> signature -> m
 
 
 (** {2 Printers} *)
 
 val pp : Format.formatter -> t -> unit
 val reflect : Format.formatter -> t -> unit
-val persistent: Format.formatter -> t -> unit
 
 val pp_signature : Format.formatter -> signature -> unit
 val reflect_signature : Format.formatter -> signature -> unit
@@ -90,11 +96,11 @@ val pp_alias : Format.formatter -> Paths.Expr.t option -> unit
 val pp_level : Format.formatter -> level -> unit
 val pp_mdict : Format.formatter -> mdict -> unit
 val pp_pair : Format.formatter -> string * t -> unit
-val pp_arg : Format.formatter -> t option -> unit
-val pp_args : Format.formatter -> t option list -> unit
+val pp_arg : Format.formatter -> m option -> unit
+val pp_args : Format.formatter -> m option list -> unit
 
 (** {2 Sexp} *)
-val sexp: (modul,Sexp.many) Sexp.impl
+val sexp: (modul,Sexp.one_and_many) Sexp.impl
 
 (** Helper functions for signature *)
 module Sig :
@@ -117,7 +123,6 @@ module Sig :
 
     val pp : Format.formatter -> signature -> unit
     val sexp: (signature,Sexp.many) Sexp.impl
-    val persistent: Format.formatter -> signature -> unit
 
     type t = signature
   end
@@ -128,7 +133,7 @@ module Partial :
     type nonrec t = {
       precision: Precision.t;
       origin : origin;
-      args : t option list;
+      args : m option list;
       result : signature;
     }
     val empty : t
@@ -142,9 +147,9 @@ module Partial :
     val no_arg : signature -> t
     val drop_arg : t -> t option
 
-    val to_module : ?origin:origin -> string -> t -> modul
-    val to_arg : string -> t -> modul
-    val of_module : modul -> t
+    val to_module : ?origin:origin -> string -> t -> m
+    val to_arg : string -> t -> m
+    val of_module : m -> t
     val is_functor : t -> bool
     val to_sign : t -> (signature,signature) result
 
