@@ -244,6 +244,14 @@ let result =
   ( Sys.chdir "../pair";
   deps_test ["a.ml", ["B"];  "b.ml", ["Extern"] ]
   )
+  &&
+  ( Sys.chdir "../namespaced";
+    deps_test [ "NAME__a.ml", ["Main"; "NAME__b"];
+                "NAME__b.ml", ["Main"; "NAME__c"];
+                "NAME__c.ml", ["Main"];
+                "main.ml", []
+              ]
+  )
   && (
     let n = 100 in
     let dep = [ Printf.sprintf "M%d" n ] in
