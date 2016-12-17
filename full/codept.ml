@@ -405,17 +405,22 @@ let replace_deps includes unit =
                 @@ List.map replace
                 @@ Pkg.Set.elements unit.Unit.dependencies }
 
-let implicit_mli synonyms name =
-    (* implicitely looks for interface files *)
-  Name.Map.fold (fun ext (info:Resource.info) found ->
-      if info.kind = Interface then
-        found ||
-        Sys.file_exists @@ Filename.remove_extension
-          (Pkg.filename name) ^ "." ^ ext
-      else
-        found
+let implicit_dep synonyms path =
+  (* implicitely looks for interface/implementation files.
+     TODO: allow separated pair of .ml/.mli
+  *)
+  let exists ext =  Sys.file_exists @@ Filename.remove_extension
+      (Pkg.filename path) ^ "." ^ ext in
+  Name.Map.fold (fun ext (info:Resource.info) (found:bool Unit.pair) ->
+      match info.kind with
+      | Interface ->
+        { found with mli = found.mli || exists ext }
+      | Implementation ->
+        { found with ml = found.ml || exists ext }
+      | _ -> found
     )
-        synonyms false
+        synonyms {ml=false;mli=false}
+
 
 let print_deps param order input dep ppf (unit,imore,dmore) =
   let unit = replace_deps param.includes unit in
@@ -437,6 +442,8 @@ let print_deps param order input dep ppf (unit,imore,dmore) =
     ppl dmore
 
 
+
+
 let makefile param task =
   let all = param.all in
   let if_all l = if all then l else [] in
@@ -446,35 +453,46 @@ let makefile param task =
   let units = analyze param task in
   let order = order units.Unit.mli in
   let m =regroup units in
+  let cmi_or or_ path =
+    let open Unit in
+    match implicit_dep param.synonyms path with
+    | exception Not_found -> or_ path
+    | { ml = true; mli = true } | { ml = false; mli=false } ->
+        or_ path
+    | { mli = false; ml = true } ->
+      or_ path
+    | { mli = true; ml = false } ->
+      Pkg.cmi path in
   Pth.Map.iter (fun _k g ->
       let open Unit in
       match g with
       | { ml= Some impl ; mli = Some intf } ->
         let cmi = Pkg.cmi impl.path in
         if not param.native then
-          print_deps order (Pkg.cmo) (Pkg.mk_dep all param.native) ppf
+          print_deps order (Pkg.cmo) (cmi_or Pkg.cmo) ppf
             (impl, [], [cmi] @ if_all [impl.path] );
         if not param.bytecode then
-          print_deps order (Pkg.cmx) (Pkg.mk_dep all param.native) ppf
+          print_deps order (Pkg.cmx) (cmi_or Pkg.cmx) ppf
             (impl, if_all [Pkg.o impl.path], [cmi] @ if_all [impl.path] );
         print_deps order Pkg.cmi (Pkg.mk_dep all param.native)  ppf
           (intf,[], [] )
       | { ml = Some impl; mli = None } ->
         begin
+          let implicit = implicit_dep param.synonyms impl.path in
           let cmi = Pkg.cmi impl.path in
           let imli =  param.implicits
-                      && implicit_mli param.synonyms impl.path in
+                      && implicit.mli in
           let cmi_dep, cmi_adep =
             ( if imli then
                 [cmi], []
               else [], [cmi] ) in
           if not param.native then
             begin
-              print_deps order Pkg.cmo (Pkg.mk_dep all param.native) ppf
+              print_deps order Pkg.cmo (cmi_or Pkg.cmo) ppf
                 (impl, if_all cmi_adep, if_all [impl.path] @ cmi_dep)
             end;
           if not param.bytecode then
-            print_deps order Pkg.cmx (Pkg.mk_dep all param.native) ppf
+            print_deps order Pkg.cmx (cmi_or Pkg.cmx) ppf
               (impl,
                if_all ([Pkg.o impl.path] @ cmi_adep),
                if_all [impl.path] @ cmi_dep )
