@@ -331,7 +331,7 @@ module Tracing(Envt:extended) = struct
       match Envt.find_name top M.Module a env.env with
       | Alias {path; _ } ->
         find0 ~transparent start_env ~top:true ~require_root:true
-          level path start_env
+          level (path @ q ) start_env
       | M.M m ->
         if require_root && not (is_unit m) then
           raise Not_found
