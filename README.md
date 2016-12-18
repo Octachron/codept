@@ -122,6 +122,17 @@ For a more exhaustive list of options, see `codept -help`.
 
 `opam pin add codept https://github.com/Octachron/codept.git`
 
+# Using codept
+
+Like `ocamldep`, codept can be used to generate `.depends` file for integration
+with a makefile based infrastructure.
+
+Combining `codept` with `ocamlbuild` currently requires more efforts. An example
+of `myocamlbuild.ml` providing accurate dependendencies using codept and ocamlbuild
+is available in `ocamlbuild/myocamlbuild.ml`.
+
+Better integration with existing tools is still a work in progress.
+
 
 #Comparison between ocamldep and codept
 

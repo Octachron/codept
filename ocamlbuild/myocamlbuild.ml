@@ -17,9 +17,6 @@ let codept mode arg out env _build =
   let tags = tags_of_pathname arg in
   Cmd(S[codept' mode tags; P arg; Sh ">"; Px out])
 
-let const s ppf () = Format.fprintf ppf "%s" s
-let slist =  Format.(pp_print_list ~pp_sep:(const " ") pp_print_text)
-
 
 let codept_dep mode arg deps out env build =
   let arg = env arg and out = env out and deps = env deps in
@@ -34,8 +31,6 @@ let codept_dep mode arg deps out env build =
     @@ outsigs in
   Cmd( S[ codept' mode tags; P arg; Command.atomize_paths sigs;
           Sh ">"; Px out])
-
-
 
 module R() = struct
 
