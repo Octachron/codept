@@ -318,7 +318,7 @@ let result =
           "cmi.ml", (["M2l";"Module"; "Option"; "Paths"],
                      ["Cmi_format";"Path";"Types"], []);
           "definition.mli", (["Module"], ["Format"], []);
-          "definition.ml", (["Module"; "Name"; "Pp"; "Result"], ["List"], []);
+          "definition.ml", (["Module"; "Name"; "Pp"; "Mresult"], ["List"], []);
           "envts.mli", (["M2l";"Module";"Name"; "Interpreter"; "Paths"], [], []);
           "envts.ml", (
             ["Cmi"; "Definition"; "Interpreter"; "M2l"; "Fault"; "Module"; "Name";
@@ -328,7 +328,7 @@ let result =
           "interpreter.mli", (["Fault";"Module";"Paths";"M2l";"Definition"],[],[]);
           "interpreter.ml", (
             ["Definition"; "M2l"; "Module"; "Name"; "Option"; "Paths";
-             "Result"; "Fault"]
+             "Mresult"; "Fault"]
           ,["List"],[]);
           "m2l.mli", (["Module";"Name";"Definition";"Paths";"Sexp" ],["Format"],[]);
           "m2l.ml", (["Module";"Name";"Option";"Definition";"Paths"; "Pp"; "Sexp" ],
@@ -354,8 +354,8 @@ let result =
                       ["Filename"; "Format"; "Lexing"; "Location"; "Parse";
                        "Parsing"; "Pparse"; "String"; "Syntaxerr"],
                       ["Sexp_parse"; "Sexp_lex"]);
-          "result.mli", ([],[],[]);
-          "result.ml", ([],["List"],[]);
+          "mresult.mli", ([],[],[]);
+          "mresult.ml", ([],["List"],[]);
           "sexp.ml", (["Name"; "Option"; "Pp"],
                       [ "Obj"; "Format";"List";"Map"; "Hashtbl"; "String"], [] );
           "solver.mli", (["Unit";"M2l";"Name";"Interpreter";"Paths"],

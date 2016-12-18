@@ -78,4 +78,4 @@ let bind_gen level = match level with
 let binds l =
   List.fold_left (fun defs (level,md) -> bind_gen level md defs) empty l
 
-let of_partial fdefs = Result.fmap sg_bind sg_bind @@ M.Partial.to_sign fdefs
+let of_partial fdefs = Mresult.fmap sg_bind sg_bind @@ M.Partial.to_sign fdefs

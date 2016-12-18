@@ -93,7 +93,7 @@ type t = m2l
 let annot_empty = { access=Name.Set.empty; values = []; packed = [] }
 
 (** S-expression serialization *)
-module Sexp = struct
+module More_sexp = struct
   open Sexp
   module R = Sexp.Record
 
@@ -327,8 +327,7 @@ module Sexp = struct
       }
 
   let fun_t r =
-    C { name="Fun";
-        proj =(function (Fun f:module_type) -> Some f | _ -> None);
+    C { name = "Fun"; proj = (function (Fun f: module_type) -> Some f | _ -> None);
         inj = (fun f -> Fun f); impl = fn r (fix' r r.mt);
         default = None
       }
@@ -342,7 +341,7 @@ module Sexp = struct
       }
 
     let of_ r =
-    C { name="Fun";
+    C { name="Of";
         proj =(function Of me -> Some me | _ -> None);
         inj = (fun me -> Of me); impl = (fix' r r.me);
         default = None;
@@ -381,9 +380,14 @@ module Sexp = struct
 
     let recursive = { expr; me; mt; ext; annot }
     let m2l = list @@ expr recursive ()
+    let expr = expr recursive ()
+    let me = me recursive ()
+    let mt = mt recursive ()
+    let annot = annot recursive ()
+
 end
 
-let sexp = Sexp.m2l
+let sexp = More_sexp.m2l
 
 (** The Block module computes the first dependencies needed to be resolved
     before any interpreter can make progress evaluating a given code block *)

@@ -823,6 +823,7 @@ let args = Cmd.[
     ": do not use precomputed stdlib environment";
     "-pkg", Cmd.String pkg, "<pkg_name>: use the ocamlfind package <pkg_name> \
                              during the analysis";
+    "-package", Cmd.String pkg, "<pkg_name>: same as pkg";
     "-read-sig", Cmd.String read_sig, "<signature>: add signature to the base \
                                        environment";
     "-see", Cmd.String add_invisible_file, "<file>: use <file> in dependencies \

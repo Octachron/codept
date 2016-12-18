@@ -1,5 +1,5 @@
 open M2l
-open Result
+open Mresult
 
 module D = Definition
 module Def = D.Def
@@ -251,7 +251,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Str [] -> Ok P.empty
     | Str[Defs d] -> Ok (P.no_arg d.defined)
     | Resolved d -> Ok d
-    | Str str -> Result.fmap (fun s -> Str s) P.no_arg @@
+    | Str str -> Mresult.fmap (fun s -> Str s) P.no_arg @@
       drop_state @@ m2l state str
     | Constraint(me,mt) ->
       constraint_ state me mt
@@ -283,7 +283,7 @@ module Make(Envt:envt)(Param:param) = struct
   and module_type state = function
     | Sig [] -> Ok P.empty
     | Sig [Defs d] -> Ok (P.no_arg d.defined)
-    | Sig s -> Result.fmap (fun s -> Sig s) P.no_arg @@
+    | Sig s -> Mresult.fmap (fun s -> Sig s) P.no_arg @@
       drop_state @@ signature state s
     | Resolved d -> Ok d
     | Ident id ->
@@ -344,7 +344,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Bind b -> bind state module_expr b
     | Bind_sig b -> bind_sig state module_type b
     | Bind_rec bs -> bind_rec state module_expr module_type bs
-    | Minor m -> Result.fmap_error (fun m -> Minor m) @@
+    | Minor m -> Mresult.fmap_error (fun m -> Minor m) @@
       minor module_expr m2l state m
     | Extension_node n -> begin
         match extension state n with

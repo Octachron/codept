@@ -13,3 +13,9 @@ test: tests/**/*.ml run.native serialization.native codept
 
 doc: codept
 	ocamlbuild -use-ocamlfind -docflags -charset,utf-8 codept.docdir/index.html
+
+self_test:
+	ocamlbuild -clean; \
+	ln -s ocamlbuild/myocamlbuild.ml myocamlbuild.ml; \
+	ocamlbuild -use-ocamlfind codept.native; \
+	rm myocamlbuild.ml
