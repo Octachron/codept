@@ -368,6 +368,27 @@ let modules ?filter param task =
       (sort_u units) in
   print ml; print mli
 
+
+let pp_only_deps sort ?filter ppf u =
+  let open Unit in
+  let elts = Pkg.Set.elements u.dependencies in
+  let elts = sort elts in
+  let elts = match filter with
+    | Some f -> List.filter f elts
+    | None -> elts in
+  Pp.fp ppf "%a"
+    Pp.( list ~sep:(s"\n") Name.pp )
+    ( List.map Pkg.module_name elts)
+
+let line_modules ?filter param task =
+  let {Unit.ml; mli} = analyze param task in
+  let sort_p = sort id param mli in
+  let sort_u = sort upath param mli in
+  let print units = Pp.fp std "%a"
+      Pp.(list ~sep:(s"") @@ pp_only_deps sort_p ?filter)
+      (sort_u units) in
+  print ml; print mli
+
 let local_dependencies sort unit =
   sort
   @@ List.filter
@@ -774,6 +795,8 @@ let args = Cmd.[
     ": print raw inner dependencies";
     "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
     ": print raw unresolved dependencies\n\n Fault polycy:\n";
+    "-nl-modules", Unit (set @@ line_modules),
+    ": print new-line separated raw dependencies";
 
     "-closed-world", Unit close_world,
     ": require that all dependencies are provided";
