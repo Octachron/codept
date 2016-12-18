@@ -8,22 +8,6 @@ let sig_only = A "-sig-only"
 let gen_sig = S [ A "-sig"; sig_only ]
 let m2l_gen = A "-m2l-sexp"
 
-(*
-let of_tags matched_tags =
-  S begin
-    let open Tags.Operators in
-    List.fold_left begin fun acc { tags; flags; _ } ->
-      if Tags.does_match matched_tags tags then flags :: acc
-      else acc
-    end [] !all_decls
-  end
-
-let ocaml_ppflags tags =
-  let flags = of_tags (tags++"ocaml"++"pp") in
-  let reduced = Command.reduce flags in
-  if reduced = N then N else S[A"-pp"; Quote reduced]
-*)
-
 let codept' mode tags =
   let tags' = tags++"ocaml"++"ocamldep" in
     S [ A "codept"; T tags'; mode]

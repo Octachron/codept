@@ -17,5 +17,5 @@ doc: codept
 self_test:
 	ocamlbuild -clean; \
 	ln -s ocamlbuild/myocamlbuild.ml myocamlbuild.ml; \
-	ocamlbuild -use-ocamlfind codept.native; \
+	ocamlbuild -use-ocamlfind -classic-display codept.native; \
 	rm myocamlbuild.ml
