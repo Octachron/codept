@@ -221,8 +221,8 @@ module Layered = struct
         begin match M2l.Block.m2l code with
           | None -> assert false
           | Some name' ->
-            let path' = Name.Map.find name source.cmis in
-            let code' = Cmi.m2l @@ P.filename path in
+            let path' = Name.Map.find name' source.cmis in
+            let code' = Cmi.m2l @@ P.filename path' in
             track source ( (name', path', code') :: (name, path, code) :: q )
         end
       | Ok (_, sg) ->
