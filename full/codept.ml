@@ -687,7 +687,7 @@ module Findlib = struct
       predicates: string list;
       syntaxes: Name.t list;
       ppxopts: string list Name.map;
-      ppopt: string option
+      ppopt: string list
     }
 
 let run cmd =
@@ -717,30 +717,22 @@ let find_pred info =
   if p = "" then [] else
     ["-predicates"; p ]
 
+let camlp4 = "camlp4"
+let filter predicates syntax pkg =
+  archive @@ (pkg :: predicates) @ ["-pp"; "-predicates"; syntax] <> []
 
-let ancestor s = List.hd @@ String.split_on_char '.' s
-
-let group pkgs =
-  let add_m k x m =
-    let x' = x :: ( Option.default [] @@ Name.Map.find_opt k m ) in
-    Name.Map.add k x' m in
-  pkgs
-  |> List.fold_left (fun m x -> add_m (ancestor x) x m) Name.Map.empty
-  |> Name.Map.bindings
-
-let filter predicates syntax (a,_)=
-  archive @@ (a :: predicates) @ ["-pp"; "-predicates"; syntax] <> []
-
-let find_pp info syntax =
+let find_pp info syntax pkgs =
   let predicates = find_pred info in
-  let groups = group info.pkgs in
-  let g = List.find (filter predicates syntax) groups in
-  let i = Option.fmap (fun a -> ["-I"; a]) (query [fst g]) in
-  let i = Option.default [] i in
-  let s = fst g :: i @
-    archive @@ (fst g) :: predicates @ ["-pp"; "-predicates"; syntax]
-               @ (snd g) in
-  Option.( info.ppopt >>| (fun opt -> s @ [opt]) >< s )
+  let g, r = List.partition (filter predicates syntax) pkgs in
+  let main_pp = camlp4 in
+  let includes l i =
+    Option.( query (i::predicates) >>| (fun a -> ["-I"; a]) >< [] ) @ l  in
+  let i = List.fold_left includes [] g in
+  main_pp :: i
+  @ archive ( main_pp :: predicates @ ["-pp"; "-predicates"; syntax]
+              @ g )
+  @ List.rev info.ppopt
+, r
 
 let process_pkg info name =
   let predicates = find_pred info in
@@ -748,9 +740,10 @@ let process_pkg info name =
   let ppxopt = Option.default [] @@ Name.Map.find_opt name info.ppxopts in
   let ppx = Option.fmap (fun s -> String.concat " " @@ s :: ppxopt) @@
     printppx @@ predicates @ [name] in
-  Option.iter lib dir;
-  Option.iter add_ppx ppx
-
+  match ppx, dir with
+  | Some ppx, _  -> add_ppx ppx
+  | None, Some d -> lib d
+  | None, None -> ()
 
 
 let pkg info pkg = { info with pkgs = pkg :: info.pkgs }
@@ -765,7 +758,7 @@ let ppxopt info opt =
     let m = Name.Map.add a q m in
     { info with ppxopts = m }
 
-let ppopt info opt = { info with ppopt = Some opt }
+let ppopt info opt = { info with ppopt = opt :: info.ppopt }
 
 let predicates info s =
   let l = List.map String.trim @@ String.split_on_char ',' s in
@@ -775,26 +768,25 @@ let info = ref
     {
       pkgs = [];
       syntaxes =[];
-      ppopt = None;
+      ppopt = [];
       ppxopts = Name.Map.empty;
       predicates = []
     }
 
 let update f s = info := f !info s
 
-let process_pp info name =
+let process_pp info name pkgs =
   try
-    let s = find_pp info name in
+    let s, r = find_pp info name pkgs in
     let s = String.concat " " s in
-    Format.eprintf "pp: %s\n" s;
-    Clflags.preprocessor := Some s
-  with Not_found -> ()
+    Clflags.preprocessor := Some s; r
+  with Not_found -> pkgs
 
 let process () =
   let info = !info in
-  List.iter (process_pkg info) info.pkgs
-  ; List.iter (process_pp info) info.syntaxes
-
+  let syntaxes = Name.Set.of_list (info.syntaxes) in
+  Name.Set.fold (process_pp info) syntaxes info.pkgs
+  |> List.iter (process_pkg info)
 
 end
 
