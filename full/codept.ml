@@ -680,14 +680,123 @@ let quiet () =
 let strict () =
   param := { !param with polycy = Fault.Polycy.strict }
 
-let pkg name =
-  let cmd = "ocamlfind query " ^ name in
+module Findlib = struct
+
+  type info =
+    { pkgs: Name.t list;
+      predicates: string list;
+      syntaxes: Name.t list;
+      ppxopts: string list Name.map;
+      ppopt: string option
+    }
+
+let run cmd =
   let cin = Unix.open_process_in cmd in
+  let rec read l =
   try
-    let result = input_line cin in
-    lib result
+    match input_line cin with
+    | "" -> read l
+    | s -> read (s::l)
   with
-  End_of_file -> ()
+    End_of_file -> List.rev l in
+  read []
+
+let run_word cmd = match run cmd with
+  | [a] -> Some a
+  | _ -> None
+
+let query q = run_word @@ String.concat " " ("ocamlfind query " :: q)
+let printppx q =
+  let s = run_word @@ String.concat " " ("ocamlfind printppx " :: q) in
+  Option.fmap (fun s -> String.sub s 4 @@ String.length s - 4) s
+
+let archive q = run @@ String.concat " " ("ocamlfind query -format %a":: q)
+
+let find_pred info =
+  let p = String.concat "," info.predicates in
+  if p = "" then [] else
+    ["-predicates"; p ]
+
+
+let ancestor s = List.hd @@ String.split_on_char '.' s
+
+let group pkgs =
+  let add_m k x m =
+    let x' = x :: ( Option.default [] @@ Name.Map.find_opt k m ) in
+    Name.Map.add k x' m in
+  pkgs
+  |> List.fold_left (fun m x -> add_m (ancestor x) x m) Name.Map.empty
+  |> Name.Map.bindings
+
+let filter predicates syntax (a,_)=
+  archive @@ (a :: predicates) @ ["-pp"; "-predicates"; syntax] <> []
+
+let find_pp info syntax =
+  let predicates = find_pred info in
+  let groups = group info.pkgs in
+  let g = List.find (filter predicates syntax) groups in
+  let i = Option.fmap (fun a -> ["-I"; a]) (query [fst g]) in
+  let i = Option.default [] i in
+  let s = fst g :: i @
+    archive @@ (fst g) :: predicates @ ["-pp"; "-predicates"; syntax]
+               @ (snd g) in
+  Option.( info.ppopt >>| (fun opt -> s @ [opt]) >< s )
+
+let process_pkg info name =
+  let predicates = find_pred info in
+  let dir = query @@  predicates @ [name] in
+  let ppxopt = Option.default [] @@ Name.Map.find_opt name info.ppxopts in
+  let ppx = Option.fmap (fun s -> String.concat " " @@ s :: ppxopt) @@
+    printppx @@ predicates @ [name] in
+  Option.iter lib dir;
+  Option.iter add_ppx ppx
+
+
+
+let pkg info pkg = { info with pkgs = pkg :: info.pkgs }
+let syntax info syntax = { info with syntaxes = syntax :: info.syntaxes }
+let ppxopt info opt =
+  match String.split_on_char ',' opt with
+  | [] | [_] -> info
+  | a :: q ->
+    let q = String.concat "," q in
+    let m = info.ppxopts in
+    let q = Option.( Name.Map.find_opt a m >>| (List.cons q) >< [q] ) in
+    let m = Name.Map.add a q m in
+    { info with ppxopts = m }
+
+let ppopt info opt = { info with ppopt = Some opt }
+
+let predicates info s =
+  let l = List.map String.trim @@ String.split_on_char ',' s in
+  { info with predicates = l @ info.predicates }
+
+let info = ref
+    {
+      pkgs = [];
+      syntaxes =[];
+      ppopt = None;
+      ppxopts = Name.Map.empty;
+      predicates = []
+    }
+
+let update f s = info := f !info s
+
+let process_pp info name =
+  try
+    let s = find_pp info name in
+    let s = String.concat " " s in
+    Format.eprintf "pp: %s\n" s;
+    Clflags.preprocessor := Some s
+  with Not_found -> ()
+
+let process () =
+  let info = !info in
+  List.iter (process_pkg info) info.pkgs
+  ; List.iter (process_pp info) info.syntaxes
+
+
+end
 
 let add_include dir =
   let files = Sys.readdir dir in
@@ -794,15 +903,31 @@ let args = Cmd.[
     ": filter produced m2l to keep only signature-level elements.\
      \n\n Module suboptions:\n";
 
-
+    "-nl-modules", Unit (set @@ line_modules),
+    ": print new-line separated raw dependencies";
     "-extern-modules", Unit (set @@ modules ~filter:lib_filter),
     ": print raw extern dependencies";
     "-inner-modules", Unit (set @@ modules ~filter:inner_filter),
     ": print raw inner dependencies";
     "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
-    ": print raw unresolved dependencies\n\n Fault polycy:\n";
-    "-nl-modules", Unit (set @@ line_modules),
-    ": print new-line separated raw dependencies";
+    ": print raw unresolved dependencies\n Findlib options: \n";
+
+    "-pkg", Cmd.String Findlib.(update pkg),
+    "<pkg_name>: use the ocamlfind package <pkg_name> during the analysis";
+    "-package", Cmd.String Findlib.(update pkg), "<pkg_name>: same as pkg";
+    "-predicates", Cmd.String Findlib.(update predicates),
+    "<comma-separated list of string>: add predicates to ocamlfind processing";
+    "-ppxopt", Cmd.String Findlib.(update ppxopt),
+    "<ppx,opt>: add <opt> as an option of <ppx>";
+    "-ppopt", Cmd.String Findlib.(update ppopt),
+    "<ppopt>: add <opt> to the active pp preprocessor";
+    "-syntax", Cmd.String Findlib.(update syntax),
+    "<syntax name>: use the <syntax> preprocessor provided \
+     by one of the availabe findlib package.\n Fault polycy:\n";
+    "-native-filter", Cmd.Unit native,
+    ": generate native compilation only dependencies";
+    "-bytecode-filter", Cmd.Unit bytecode,
+    ": generate bytecode only dependencies";
 
     "-closed-world", Unit close_world,
     ": require that all dependencies are provided";
@@ -828,13 +953,10 @@ let args = Cmd.[
     "-no-include", Cmd.Unit no_include, ": do not include base directory by default";
     "-no-stdlib", Cmd.Unit no_stdlib,
     ": do not use precomputed stdlib environment";
-    "-pkg", Cmd.String pkg, "<pkg_name>: use the ocamlfind package <pkg_name> \
-                             during the analysis";
-    "-package", Cmd.String pkg, "<pkg_name>: same as pkg";
-    "-read-sig", Cmd.String read_sig, "<signature>: add signature to the base \
-                                       environment";
-    "-see", Cmd.String add_invisible_file, "<file>: use <file> in dependencies \
-                                            computation but do not display it.";
+    "-read-sig", Cmd.String read_sig,
+    "<signature>: add signature to the base environment";
+    "-see", Cmd.String add_invisible_file,
+    "<file>: use <file> in dependencies computation but do not display it.";
     "-transparent-extension-node", Cmd.Bool transparent_extension,
     "<bool>: inspect unknown extension nodes"
   ]
@@ -843,5 +965,6 @@ let () =
   Compenv.readenv stderr Before_args
   ; if not !param.no_include then add_include "."
   ; Cmd.parse args add_file usage_msg
+  ; Findlib.process ()
   ; Compenv.readenv stderr Before_link
   ; !action ()
