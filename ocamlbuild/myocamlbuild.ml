@@ -4,8 +4,8 @@ open Ocamlbuild_plugin
 
 let mdeps = A "-nl-modules"
 let fdeps = A "-modules"
-let sig_only = A "-sig-only"
-let gen_sig = S [ A "-sig"; sig_only ]
+let sig_only =A "-sig-only"
+let gen_sig = S[ A "-sig"; sig_only ]
 let m2l_gen = A "-m2l-sexp"
 
 let codept' mode tags =
@@ -22,7 +22,8 @@ let codept_dep mode arg deps out env build =
   let arg = env arg and out = env out and deps = env deps in
   let tags = tags_of_pathname arg in
   let approx_deps = string_list_of_file deps in
-  let sigs = List.map (fun m -> expand_module !Options.include_dirs m ["sig"])
+  let include_dirs = Pathname.(include_dirs_of @@ dirname arg ) in
+  let sigs = List.map (fun m -> expand_module include_dirs m ["sig"])
       approx_deps in
   let outsigs = build sigs in
   let sigs =
