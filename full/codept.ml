@@ -64,6 +64,7 @@ type param =
     transparent_extension_nodes: bool;
     includes: Pkg.path Name.map;
     synonyms: Resource.info Name.Map.t;
+    no_include:bool;
     no_stdlib:bool;
     implicits: bool;
     closed_world: bool;
@@ -116,6 +117,7 @@ let param = ref {
   includes = Name.Map.empty;
   implicits = true;
   no_stdlib = false;
+  no_include = false;
   synonyms;
   closed_world = false;
   may_approx = false;
@@ -710,6 +712,10 @@ let add_include dir =
 let no_implicits () =
   param := { !param with implicits = false }
 
+let no_include () =
+  param := { !param with no_include = true }
+
+
 
 let fault s =
   match String.split_on_char '=' s with
@@ -813,12 +819,13 @@ let args = Cmd.[
     "<level>: exit for fault at level <level> and beyond.\n Misc options:";
 
     "-L", String lib, "<dir>: use all cmi files in <dir> \
-                               in the analysis";
+                       in the analysis";
     "-no-alias-deps", Cmd.Unit (fun () -> transparent_aliases true),
     ": Delay aliases dependencies";
     "-no-implicits", Cmd.Unit no_implicits,
     ": do not implicitly search for a mli \
      file when given a ml file input";
+    "-no-include", Cmd.Unit no_include, ": do not include base directory by default";
     "-no-stdlib", Cmd.Unit no_stdlib,
     ": do not use precomputed stdlib environment";
     "-pkg", Cmd.String pkg, "<pkg_name>: use the ocamlfind package <pkg_name> \
@@ -834,7 +841,7 @@ let args = Cmd.[
 
 let () =
   Compenv.readenv stderr Before_args
-  ; add_include "."
+  ; if not !param.no_include then add_include "."
   ; Cmd.parse args add_file usage_msg
   ; Compenv.readenv stderr Before_link
   ; !action ()
