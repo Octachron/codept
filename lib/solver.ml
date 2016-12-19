@@ -111,7 +111,7 @@ module Failure = struct
     | Internal_error
 
 
-  let analysis (sources: i list) =
+  let track_status (sources: i list) =
     let m = List.fold_left (fun m u -> Name.Map.add u.input.name (u, ref None) m )
         Name.Map.empty sources in
     let s = Name.Set.of_list @@ List.map (fun (x:i) -> x.input.name) @@ sources
@@ -194,6 +194,11 @@ module Failure = struct
             map
       ) map Map.empty
 
+  let analyze sources =
+    let map = track_status sources in
+    map, categorize map |> normalize map
+
+
   let rec pp_circular map start first ppf name =
     Pp.string ppf name;
     if name <> start || first then
@@ -231,9 +236,7 @@ module Failure = struct
       Pp.(list ~sep:(s"@;") @@ pp_cat map ) (Map.bindings m)
 
   let pp_cycle ppf sources =
-    let map = analysis sources in
-    let cmap = categorize map in
-    let cmap = normalize map cmap in
+    let map, cmap = analyze sources in
     pp map ppf cmap
 
 end

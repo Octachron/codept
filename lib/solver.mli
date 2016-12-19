@@ -38,7 +38,6 @@ module Failure :
       | Extern of string
       | Depend_on of string
       | Internal_error
-    val analysis : i list -> (i * status option ref) Name.map
 
     module Set: Set.S with type elt = i
 
@@ -47,14 +46,8 @@ module Failure :
       val find: key -> Set.t t -> Set.t
     end
 
-    val categorize :
-      (i * status option ref) Name.map -> Set.t Map.t
-
-    val kernel :
-      (i * _) Name.map -> Set.t -> i -> Set.t
-
-    val normalize :
-      (i * _) Name.map -> Set.t Map.t -> Set.t Map.t
+    val analyze:
+      i list -> (i * status option ref) Name.map * Set.t Map.t
 
     val pp_circular :
       (i * 'a) Name.map ->
