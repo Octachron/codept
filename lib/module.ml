@@ -116,6 +116,17 @@ let name = function
   | Alias {name; _ } -> name
   | M {name; _ } -> name
 
+let rec aliases0 l = function
+  | Alias {path = a :: _ ; _ } -> a :: l
+  | Alias _ -> l
+  | M { signature; _ } ->
+    let add _k x l = aliases0 l x in
+    Name.Map.fold add signature.modules
+    @@ Name.Map.fold add signature.module_types
+    @@ []
+
+let aliases = aliases0 []
+
 type level = Module | Module_type
 
 let pp_alias = Pp.opt Paths.Expr.pp

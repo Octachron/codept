@@ -80,6 +80,7 @@ val create :
   ?args:m option list -> ?precision:Precision.t ->
   ?origin:origin -> Name.t -> signature -> m
 
+val aliases: t -> Name.t list
 
 (** {2 Printers} *)
 

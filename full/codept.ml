@@ -317,6 +317,13 @@ let sign param task =
   let sexp = Sexp.( (list Module.sexp).embed ) mds in
   Pp.(fp std) "@[%a@]@." Sexp.pp sexp
 
+let aliases param task =
+  let {Unit.mli; _} = analyze param task in
+  let add l x = Module.(aliases @@ M (create "" x.Unit.signature) ) :: l in
+  let aliases = List.fold_left add [] mli in
+  let open Pp in
+  fp std "%a\n" (list @@ list ~sep:(s "\n") string) aliases
+
 let sig_only () =
   param := { !param with sig_only = true }
 
@@ -723,7 +730,7 @@ let filter predicates syntax pkg =
 
 let find_pp info syntax pkgs =
   let predicates = find_pred info in
-  let g, r = List.partition (filter predicates syntax) pkgs in
+  let g = List.filter (filter predicates syntax) pkgs in
   let main_pp = camlp4 in
   let includes l i =
     Option.( query (i::predicates) >>| (fun a -> ["-I"; a]) >< [] ) @ l  in
@@ -732,7 +739,6 @@ let find_pp info syntax pkgs =
   @ archive ( main_pp :: predicates @ ["-pp"; "-predicates"; syntax]
               @ g )
   @ List.rev info.ppopt
-, r
 
 let process_pkg info name =
   let predicates = find_pred info in
@@ -741,7 +747,8 @@ let process_pkg info name =
   let ppx = Option.fmap (fun s -> String.concat " " @@ s :: ppxopt) @@
     printppx @@ predicates @ [name] in
   match ppx, dir with
-  | Some ppx, _  -> add_ppx ppx
+  | Some ppx, None  -> add_ppx ppx
+  | Some ppx, Some d -> lib d; add_ppx ppx
   | None, Some d -> lib d
   | None, None -> ()
 
@@ -775,18 +782,18 @@ let info = ref
 
 let update f s = info := f !info s
 
-let process_pp info name pkgs =
+let process_pp info name =
   try
-    let s, r = find_pp info name pkgs in
+    let s = find_pp info name info.pkgs in
     let s = String.concat " " s in
-    Clflags.preprocessor := Some s; r
-  with Not_found -> pkgs
+    Clflags.preprocessor := Some s
+  with Not_found -> ()
 
 let process () =
   let info = !info in
   let syntaxes = Name.Set.of_list (info.syntaxes) in
-  Name.Set.fold (process_pp info) syntaxes info.pkgs
-  |> List.iter (process_pkg info)
+  Name.Set.iter (process_pp info) syntaxes;
+  List.iter (process_pkg info) info.pkgs
 
 end
 
@@ -880,6 +887,7 @@ let args = Cmd.[
     "-vnum", Cmd.Unit print_vnum, ": print version number\n\n Codept only modes:\n";
 
 
+    "-aliases", Unit (set aliases), ": print aliases";
     "-deps", Unit (set deps), ": print detailed dependencies";
     "-export", Unit (set export), ": export resolved modules signature";
 
