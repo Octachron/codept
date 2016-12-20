@@ -142,9 +142,7 @@ let cycle_test expected l =
     try ignore @@ analyze [] files; false with
       S.Cycle (_,units) ->
       let open Solver.Failure in
-      let map = analysis units in
-      let cmap = categorize map in
-      let cmap = normalize map cmap in
+      let _, cmap = analyze units in
       let errs = Map.bindings cmap in
       let name unit = Solver.(unit.input.name) in
       let cycles = errs
