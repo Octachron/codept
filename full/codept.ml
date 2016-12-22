@@ -367,6 +367,11 @@ let inner_filter = function
   | { Pkg.source = Local; _ } -> true
   |  _ -> false
 
+let dep_filter = function
+  | { Pkg.source = (Unknown|Local); _ } -> true
+  |  _ -> false
+
+
 let extern_filter = function
   | { Pkg.source = Unknown; _ } -> true
   | _ -> false
@@ -888,7 +893,8 @@ let args = Cmd.[
                                        for ml";
     "-mli-synonym", String ml_synonym, "<s>: use <s> extension as a synonym \
                                         for mli";
-    "-modules", Unit (set modules), ": print raw module dependencies";
+    "-modules", Unit (set @@ modules ~filter:inner_filter),
+    ": print raw module dependencies";
     "-native", Cmd.Unit native, ": generate native compilation only dependencies";
     "-bytecode", Cmd.Unit bytecode, ": generate bytecode only dependencies";
 
@@ -923,7 +929,7 @@ let args = Cmd.[
     ": filter produced m2l to keep only signature-level elements.\
      \n\n Module suboptions:\n";
 
-    "-nl-modules", Unit (set @@ line_modules),
+    "-nl-modules", Unit (set @@ line_modules ~filter:dep_filter),
     ": print new-line separated raw dependencies";
     "-extern-modules", Unit (set @@ modules ~filter:lib_filter),
     ": print raw extern dependencies";
