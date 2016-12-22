@@ -221,9 +221,9 @@ module Pkg = struct
   let cmx = change_extension ".cmx"
 
   let mk_dep all native = update_extension @@ function
-    | "mli" -> ".cmi"
-    | "ml" when all -> ".cmi"
-    | "ml" ->
+    | "mli" | "m2li" -> ".cmi"
+    | "ml" | "m2l" when all -> ".cmi"
+    | "ml" | "m2l" ->
       if native then ".cmx" else ".cmo"
     | "cmi" -> ".cmi"
     | s -> raise @@Invalid_argument ("Unknown extension " ^ s)
