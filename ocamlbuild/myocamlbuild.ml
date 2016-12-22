@@ -8,9 +8,26 @@ let sig_only =A "-sig-only"
 let gen_sig = S[ A "-sig"; sig_only ]
 let m2l_gen = A "-m2l-sexp"
 
+let is_pflag_included root s =
+  let predicate t =
+    match String.split_on_char '(' t with
+    | a :: _ -> a = root
+    | _ -> false in
+  List.exists predicate @@ Tags.elements s
+
+
 let codept' mode tags =
-  let tags' = tags++"ocaml"++"ocamldep" in
-    S [ A "codept"; T tags'; mode]
+  let tags' = tags++"ocaml"++"ocamldep" ++ "codept" in
+  let tags' =
+    (* when computing dependencies for packed modules, cyclic alias
+       references within the packed modules becomes problematic when
+       packing. To avoid creating packed cmo/cmx with invalid elements,
+       we disallow the simultaneous use of no_alias_deps and for-pack(…). *)
+    if is_pflag_included "for-pack" tags' then
+      tags' -- "no_alias_deps"
+    else
+      tags' in
+  S [ A "codept"; T tags'; mode]
 
 let codept mode arg out env _build =
   let arg = env arg and out = env out in
@@ -34,33 +51,38 @@ let codept_dep mode arg deps out env build =
           Sh ">"; Px out])
 
 module R() = struct
+  let mdeps = A "-nl-modules" in
+  let fdeps = A "-modules" in
+  let sig_only = A "-sig-only" in
+  let gen_sig = S [ A "-sig"; sig_only ] in
+  let m2l_gen = A "-m2l-sexp" in
 
   rule "ml → m2l"
     ~insert:`top
     ~prod:"%.m2l"
     ~dep:"%.ml"
-    (codept m2l_gen "%.ml" "%.m2l");;
+    (codept m2l_gen "%.ml" "%.m2l");
 
 rule "mli → m2li"
   ~insert:`top
   ~prod:"%.m2li"
   ~dep:"%.mli"
   (codept m2l_gen "%.mli" "%.m2li")
-;;
+;
 
 rule "m2l → ml.r.depends"
   ~insert:`top
   ~prod:"%.ml.r.depends"
   ~dep:"%.m2l"
   ~doc:"Compute approximate dependencies using codept."
-  (codept mdeps "%.ml" "%.ml.r.depends");;
+  (codept mdeps "%.ml" "%.ml.r.depends");
 
 rule "m2li → mli.r.depends"
   ~insert:`top
   ~prod:"%.mli.r.depends"
   ~dep:"%.m2li"
   ~doc:"Compute approximate dependencies using codept."
-  (codept mdeps "%.mli" "%.mli.r.depends");;
+  (codept mdeps "%.mli" "%.mli.r.depends");
 
 rule "m2li → sig"
   ~insert:`top
@@ -68,7 +90,7 @@ rule "m2li → sig"
   ~deps:["%.m2li";"%.sig.depends"]
   ~doc:"Compute approximate dependencies using codept."
   (codept_dep gen_sig "%.m2li" "%.sig.depends"
-     "%.sig");;
+     "%.sig");
 
 rule "m2l → sig"
   ~insert:(`after "m2li → sig")
@@ -76,21 +98,21 @@ rule "m2l → sig"
   ~deps:["%.m2l";"%.sig.depends"]
   ~doc:"Compute approximate dependencies using codept."
   (codept_dep gen_sig
-     "%.m2l" "%.sig.depends" "%.sig");;
+     "%.m2l" "%.sig.depends" "%.sig");
 
 rule "m2li → r.sig.depends"
   ~insert:`top
   ~prod:"%.r.sig.depends"
   ~dep:"%.m2li"
   ~doc:"Compute approximate dependencies using codept."
-  (codept (S [ mdeps; sig_only]) "%.m2li" "%.r.sig.depends");;
+  (codept (S [ mdeps; sig_only]) "%.m2li" "%.r.sig.depends");
 
 rule "m2l → r.sig.depends"
   ~insert:(`after "m2li → r.sig.depends")
   ~prod:"%.r.sig.depends"
   ~dep:"%.m2l"
   ~doc:"Compute approximate dependencies using codept."
-  (codept (S [ mdeps; sig_only]) "%.m2l" "%.r.sig.depends");;
+  (codept (S [ mdeps; sig_only]) "%.m2l" "%.r.sig.depends");
 
 
 rule "m2li r.sig.depends → sig.depends"
@@ -100,7 +122,7 @@ rule "m2li r.sig.depends → sig.depends"
   ~doc:"Compute approximate dependencies using codept."
   (codept_dep (S [ mdeps; sig_only])
                  "%.m2li" "%.r.sig.depends" "%.sig.depends")
-;;
+;
 
 rule "m2l r.sig.depends → sig.depends"
   ~insert:(`after "m2li r.sig.depends → sig.depends")
@@ -109,7 +131,7 @@ rule "m2l r.sig.depends → sig.depends"
   ~doc:"Compute approximate dependencies using codept."
   (codept_dep (S [ mdeps; sig_only])
      "%.m2l" "%.r.sig.depends" "%.sig.depends")
-;;
+;
 
 
 rule "m2l → depends"
@@ -117,14 +139,16 @@ rule "m2l → depends"
   ~prod:"%.ml.depends"
   ~deps:["%.m2l";"%.ml.r.depends"]
   ~doc:"Compute approximate dependencies using codept."
-  (codept_dep fdeps "%.ml" "%.ml.r.depends" "%.ml.depends");;
+  (codept_dep fdeps "%.ml" "%.ml.r.depends" "%.ml.depends")
+;
 
 
 rule "m2li → depends"
   ~insert: `top
   ~prod:"%.mli.depends"
   ~deps:["%.m2li";"%.mli.r.depends"]
-  (codept_dep fdeps "%.mli" "%.m2li" "%.mli.depends");;
+  (codept_dep fdeps "%.mli" "%.mli.r.depends" "%.mli.depends")
+
 end
 
 let () =

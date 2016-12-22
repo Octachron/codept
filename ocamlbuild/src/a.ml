@@ -1,2 +1,5 @@
+module B = B
 open B
-open C
+module C = C
+open D
+module E = E

@@ -1,1 +1,1 @@
-open A
+module B = B

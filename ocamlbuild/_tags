@@ -1,1 +1,2 @@
 <src>: include
+true: no_alias_deps
