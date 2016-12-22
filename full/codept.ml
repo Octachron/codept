@@ -317,13 +317,6 @@ let sign param task =
   let sexp = Sexp.( (list Module.sexp).embed ) mds in
   Pp.(fp std) "@[%a@]@." Sexp.pp sexp
 
-let aliases param task =
-  let {Unit.mli; _} = analyze param task in
-  let add l x = Module.(aliases @@ M (create "" x.Unit.signature) ) :: l in
-  let aliases = List.fold_left add [] mli in
-  let open Pp in
-  fp std "%a\n" (list @@ list ~sep:(s "\n") string) aliases
-
 let sig_only () =
   param := { !param with sig_only = true }
 
@@ -334,17 +327,41 @@ let make_abs abs p =
   else
     p
 
-let pp_module sort {abs_path;slash; _ } ?filter ppf u =
+let dependencies ?filter sort (u:Unit.r) =
+  Pkg.Set.elements u.dependencies
+  |> sort
+  |> (match filter with
+      | Some f -> List.filter f
+      | None -> fun x -> x
+    )
+  |> List.map Pkg.module_name
+
+
+let aliases (x:Unit.r) = Module.(aliases @@ M (create "" x.signature) )
+
+
+let pp_module {abs_path;slash; _ } proj ppf (u:Unit.r) =
   let pp_pkg = Pkg.pp_gen slash in
-  let open Unit in
-  let elts = Pkg.Set.elements u.dependencies in
-  let elts = sort elts in
-  let elts = match filter with
-    | Some f -> List.filter f elts
-    | None -> elts in
+  let elts = proj u in
   Pp.fp ppf "%a: %a\n" pp_pkg (make_abs abs_path u.path)
     Pp.( list ~sep:(s" ") Name.pp )
-    ( List.map Pkg.module_name elts)
+    elts
+
+
+let pp_aliases param task =
+  let pp_pkg = Pkg.pp_gen param.slash in
+  let pp_m m =
+    let open Module in
+    match m with
+    | M { origin = Unit path; _ } as m ->
+      let path' = Pkg.update_extension
+          (function "m2l" -> ".ml" | "m2li" -> ".mli" | s -> s ) path in
+      let f = make_abs param.abs_path path' in
+      Pp.fp std "%a: %a\n" pp_pkg f
+        Pp.( list ~sep:(s" ") Name.pp ) (aliases m)
+    | _ -> () in
+      List.iter pp_m task.signatures
+
 
 let inner_filter = function
   | { Pkg.source = Local; _ } -> true
@@ -368,14 +385,17 @@ let sort proj param mli =
   else id
 
 
-let modules ?filter param task =
+let gen_modules proj param task =
   let {Unit.ml; mli} = analyze param task in
   let sort_p = sort id param mli in
   let sort_u = sort upath param mli in
   let print units = Pp.fp std "%a"
-      Pp.(list ~sep:(s"") @@ pp_module sort_p param ?filter)
+      Pp.(list ~sep:(s"") @@ pp_module param @@ proj sort_p)
       (sort_u units) in
   print ml; print mli
+
+let modules ?filter =
+  gen_modules (dependencies ?filter)
 
 
 let pp_only_deps sort ?filter ppf u =
@@ -887,7 +907,7 @@ let args = Cmd.[
     "-vnum", Cmd.Unit print_vnum, ": print version number\n\n Codept only modes:\n";
 
 
-    "-aliases", Unit (set aliases), ": print aliases";
+    "-aliases", Unit (set pp_aliases), ": print aliases";
     "-deps", Unit (set deps), ": print detailed dependencies";
     "-export", Unit (set export), ": export resolved modules signature";
 
