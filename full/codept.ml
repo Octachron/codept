@@ -733,7 +733,7 @@ let run_word cmd = match run cmd with
   | [a] -> Some a
   | _ -> None
 
-let query q = run_word @@ String.concat " " ("ocamlfind query " :: q)
+let query q = run@@ String.concat " " ("ocamlfind query -r " :: q)
 let printppx q =
   let s = run_word @@ String.concat " " ("ocamlfind printppx " :: q) in
   Option.fmap (fun s -> String.sub s 4 @@ String.length s - 4) s
@@ -754,7 +754,7 @@ let find_pp info syntax pkgs =
   let g = List.filter (filter predicates syntax) pkgs in
   let main_pp = camlp4 in
   let includes l i =
-    Option.( query (i::predicates) >>| (fun a -> ["-I"; a]) >< [] ) @ l  in
+    List.fold_left (fun acc x ->  "-I" :: x :: acc ) l @@ query (i::predicates) in
   let i = List.fold_left includes [] g in
   main_pp :: i
   @ archive ( main_pp :: predicates @ ["-pp"; "-predicates"; syntax]
@@ -763,16 +763,12 @@ let find_pp info syntax pkgs =
 
 let process_pkg info name =
   let predicates = find_pred info in
-  let dir = query @@  predicates @ [name] in
+  let dirs = query @@  predicates @ [name] in
   let ppxopt = Option.default [] @@ Name.Map.find_opt name info.ppxopts in
   let ppx = Option.fmap (fun s -> String.concat " " @@ s :: ppxopt) @@
     printppx @@ predicates @ [name] in
-  match ppx, dir with
-  | Some ppx, None  -> add_ppx ppx
-  | Some ppx, Some d -> lib d; add_ppx ppx
-  | None, Some d -> lib d
-  | None, None -> ()
-
+  List.iter lib dirs;
+  Option.iter add_ppx ppx
 
 let pkg info pkg = { info with pkgs = pkg :: info.pkgs }
 let syntax info syntax = { info with syntaxes = syntax :: info.syntaxes }
