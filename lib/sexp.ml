@@ -1,4 +1,4 @@
-type one = private Atomic
+type one = private One
 type n = private N
 type z = private Z
 
@@ -76,8 +76,11 @@ let list'' = function
 type ('a,'b) impl = {
   embed: 'a -> 'b t;
   parse: 'b t -> 'a option;
-  witness: 'b kind
+  kind: 'b kind
 }
+
+let parse impl x = impl.parse x
+let embed impl x = impl.embed x
 
 module U = struct
 
@@ -168,11 +171,13 @@ module U = struct
 
 end
 
+type field = U.M.m -> U.M.m
 let field key impl = U.M.add_mapper key impl
 let definition =
   List.fold_left (|>) U.M.I.empty
 
 module Record = struct
+  type field = U.M.t -> U.M.t
   let create = List.fold_left (|>) U.M.empty
   let field key value = U.M.add key value
   let get key r = U.M.find key r
@@ -189,7 +194,7 @@ let reforge_kl m =
 
 let any_parse: type i. ('a,i) impl -> (any -> 'a option) =
   fun impl sexp ->
-  match impl.witness, sexp with
+  match impl.kind, sexp with
   | Atomic, Any (Atom _ as sexp) -> impl.parse sexp
   | Atomic, Any (List _ ) -> None
   | Atomic, Any (Keyed_list _) -> None
@@ -202,7 +207,7 @@ let any_parse: type i. ('a,i) impl -> (any -> 'a option) =
 let atomic show parse =
   { parse = (fun s -> s |> extract_atom |> parse );
     embed = atom % show;
-    witness = Atomic
+    kind = Atomic
   }
 
 let list impl =
@@ -210,7 +215,7 @@ let list impl =
     sexp |> extract_list |> List.map (any_parse impl) |> list_join in
   { parse;
     embed = list' % List.map (any % impl.embed);
-    witness = Many;
+    kind = Many;
   }
 
 
@@ -248,7 +253,7 @@ let map (impl_map: U.M.m) =
   in
   let embed_elt: type a k. string -> (a,k) impl -> a -> one_and_many t =
     fun name impl x ->
-    match impl.witness with
+    match impl.kind with
     | Many ->
       let (List l) = impl.embed x in
       Keyed_list(name, l)
@@ -271,7 +276,7 @@ let map (impl_map: U.M.m) =
     list'' @@ List.rev @@
     List.fold_left (embed_key univ) [] (U.M.I.bindings impl_map)
   in
-  {parse;embed;witness = Many }
+  {parse;embed;kind = Many }
 
 let record l = map @@ definition l
 
@@ -283,7 +288,7 @@ let keyed_list key impl =
     | List (_ :: _) -> None
   in
   let embed s = list' @@ Any (Atom key) :: ( List.map (any % impl.embed) s ) in
-  {parse; embed; witness = Many}
+  {parse; embed; kind = Many}
 
 type ('a,'b) bij = { f: 'a -> 'b; fr:'b -> 'a }
 
@@ -372,7 +377,7 @@ let sum l =
           Hashtbl.add block_table (Obj.tag o) make;
          make x
   in
-  {parse;embed;witness=One_and_many}
+  {parse;embed;kind=One_and_many}
 
 module C2 = struct
   type 'a constr =
@@ -421,7 +426,7 @@ let sum default l =
           let Keyed_list(s,l) = cnstr.impl.embed inner in
           Keyed_list (mark cnstr.name, Any(Atom s) :: l )
   in
-  {parse;embed;witness=One_and_many}
+  {parse;embed;kind=One_and_many}
 end
 
 
@@ -430,14 +435,14 @@ let pair l r =
     | List ([]| [_] |  _ :: _  :: _ :: _ ) -> None
     | List [a; b] -> any_parse l a && any_parse r b in
   let embed (a,b) = list' [any (l.embed a); any (r.embed b)] in
-  {parse;embed; witness = Many }
+  {parse;embed; kind = Many }
 
 let conv bij impl =
   let parse x =
     x |> impl.parse >>| bij.f in
   let embed s =
     s |> bij.fr |> impl.embed in
-  {parse; embed; witness = impl.witness }
+  {parse; embed; kind = impl.kind }
 
 let convr impl f fr = conv {f;fr} impl
 
@@ -451,7 +456,7 @@ let opt: 'a 'b. ('a,'b) impl -> ('a option, many) impl =
   let embed = function
     | None -> List []
     | Some x -> List [ any (impl.embed x) ] in
-  {parse;embed; witness = Many }
+  {parse;embed; kind = Many }
 
 
 let cons l r =
@@ -467,7 +472,7 @@ let cons l r =
     let a' = l.embed a in
     match r.embed b with
     | List l -> List( any a' :: l ) in
-  {parse;embed; witness = Many}
+  {parse;embed; kind = Many}
 
 let pair' atom r =
   let parse = function
@@ -479,7 +484,7 @@ let pair' atom r =
     let a = atom.embed a in
     match r.embed b with
     | List l -> List( any a :: l ) in
-  {parse;embed; witness = Many}
+  {parse;embed; kind = Many}
 
 let key_list atom lst =
   let parse = function
@@ -489,7 +494,7 @@ let key_list atom lst =
   let embed (a,b)  =
     match atom.embed a, lst.embed b with
     | Atom s, List l -> Keyed_list( s, l ) in
-  {parse;embed; witness = One_and_many}
+  {parse;embed; kind = One_and_many}
 
 let major_minor major default minor =
   let parse = function
@@ -505,7 +510,7 @@ let major_minor major default minor =
       List [ any a ]
     else
       List [ any a; any @@ minor.embed b ] in
-  {parse; embed; witness = Many }
+  {parse; embed; kind = Many }
 
 
 let empty =
@@ -514,7 +519,7 @@ let empty =
     | List (_ :: _) -> None in
   let embed _ =
     List [] in
-  {parse; embed; witness = Many}
+  {parse; embed; kind = Many}
 
 let singleton impl =
   let parse = function
@@ -526,12 +531,12 @@ let singleton impl =
       raise (Invalid_argument "Sexp.singleton: wrong number of elements")
     | [a] ->
     List [any (impl.embed a)] in
-  {parse; embed; witness = Many}
+  {parse; embed; kind = Many}
 
-let fix0 witness impl =
+let fix0 kind impl =
   let parse s = (impl()).parse s  in
   let embed o = (impl()).embed o in
-  {witness;parse;embed}
+  {kind;parse;embed}
 
 let fix x = fix0 Many x
 let fix' x = fix0 One_and_many x
@@ -550,7 +555,7 @@ let string =
 let unit = {
   parse = (function List [] -> Some () | _ -> None);
   embed = (fun () -> List []);
-  witness = Many
+  kind = Many
 }
 
 let simple_constr name value =
