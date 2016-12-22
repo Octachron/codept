@@ -3,8 +3,11 @@ module U = Unit
 module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 
+(** Utility functions and module *)
 open M2l
 let (%) f g x = f (g x)
+let tool_name = "codept light"
+let stderr= Format.err_formatter
 
 module S = Module.Sig
 let std = Format.std_formatter
@@ -126,22 +129,12 @@ let param = ref {
 }
 
 
-let tool_name = "codept light"
-let stderr= Format.err_formatter
-
-let rec last = function
-  | [] -> raise @@ Invalid_argument ("Empty lists do not have a last element")
-  | [a] -> a
-  | _ :: q -> last q
-
 exception Unknown_file_type of string
 
 let extension name =
   let n = String.length name in
   let r = try String.rindex name '.' with Not_found -> n-1 in
   String.sub name (r+1) (n-r-1)
-
-
 
 let classify polycy synonyms f =
   let ext = extension f in
@@ -150,8 +143,7 @@ let classify polycy synonyms f =
   | exception Not_found ->
     Fault.handle polycy Self_polycy.unknown_extension ext; None
 
-
-
+(** Printing directly from source file *)
 let to_m2l polycy sig_only (k,f) =
     match Read.file k f with
     | _name, Ok x ->
@@ -193,6 +185,7 @@ let m2l_sexp param f =
   >>| Pp.fp std  "%a@." Sexp.pp
   >< ()
 
+(** Topological order functions *)
 let order units =
   let open Unit in
   let compute (i,m) u = i+1, Name.Map.add u.Unit.name i m in
@@ -207,6 +200,7 @@ let topos_compare order x y =
   | Some _, None -> 1
   | None, None -> compare x y
 
+(** Basic files reading *)
 let local = Pkg.local
 
 let open_within opens unit =
@@ -261,6 +255,7 @@ let remove_units invisibles =
       not @@ Pth.Set.mem file invisibles
     | _ -> false
 
+(** Analysis step *)
 let analyze param {opens;libs;invisibles; signatures; files;_} =
   let units, filemap = organize param.polycy param.sig_only opens files in
   let files_set = units.mli
@@ -279,7 +274,7 @@ let analyze param {opens;libs;invisibles; signatures; files;_} =
   let mli = remove_units invisibles mli in
   { Unit.ml; mli }
 
-let deps param task =
+let info param task =
   let {Unit.ml; mli} = analyze param task in
   let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) std in
   print ml; print mli
@@ -567,6 +562,7 @@ let task = ref {
     opens = [];
   }
 
+(** {2 Option implementations } *)
 let add_invi name =
   task := { !task with
             invisibles = Pth.Set.add (Paths.S.parse_filename name) (!task).invisibles
@@ -914,7 +910,7 @@ let args = Cmd.[
 
 
     "-aliases", Unit (set pp_aliases), ": print aliases";
-    "-deps", Unit (set deps), ": print detailed dependencies";
+    "-info", Unit (set info), ": print detailed information";
     "-export", Unit (set export), ": export resolved modules signature";
 
     "-dot", Unit (set dot), ": print dependencies in dot format";

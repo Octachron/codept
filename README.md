@@ -86,7 +86,7 @@ Some new options explore codept possibilities and intermediary representations
   * ` -m2l` prints the `m2l` intermediary representation of the source files
     rather than their dependencies
 
-  * `-deps` prints a textual representation of the result of codept analysis.
+  * `-info` prints a textual representation of the result of codept analysis.
 
   * `-dot` export the dependency graph in the graphviz format
 
