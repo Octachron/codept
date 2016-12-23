@@ -41,34 +41,28 @@ val embed: ('a,'b) impl -> 'a -> 'b t
 val any_parse: ('a,'b) impl -> any -> 'a option
 
 (** {2 Record combinators } *)
-module U: sig
+module Record: sig
   (** Universal map and keys  *)
   type ('a,'b) key
   val key: 'k kind -> string -> 'a -> ('a,'k) key
   val name: ('a,'b) key -> string
   val default: ('a,'b) key -> 'a
 
-  module M: sig
-    type t
-    type m
-    val empty: t
-    val find_opt: ('a,'b) key -> t -> 'a option
-    val find: ('a,'b) key -> t -> 'a
-    val add: ('a,'b) key -> 'a -> t -> t
-  end
+  type t
+  val find_opt: ('a,'b) key -> t -> 'a option
+  val get: ('a,'b) key -> t -> 'a
+  val add: ('a,'b) key -> 'a -> t -> t
+
+  type field_declaration
+  val field: ('a,'b) key -> ('a,'b) impl -> field_declaration
+  val define: field_declaration list -> (t, many) impl
+
+  type field_value
+  val create: field_value list -> t
+  val let_: ('a,'b) key -> 'a -> field_value
+  val (:=): ('a,'b) key -> 'a -> field_value
 end
-
-type field
-val field: ('a,'b) U.key -> ('a,'b) impl -> field
-
-module Record: sig
-  type field
-  val create: field list -> U.M.t
-  val field: ('a,'b) U.key -> 'a -> field
-  val get: ('a,'b) U.key -> U.M.t -> 'a
-end
-val record: field list -> (U.M.t, many) impl
-
+val record: Record.field_declaration list -> (Record.t, many) impl
 
 (** {2 Standard combinators } *)
 type ('a,'b) bij = { f: 'a -> 'b; fr:'b -> 'a }

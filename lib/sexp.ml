@@ -17,6 +17,8 @@ type 'kind t =
   | Keyed_list: string * any list -> one_and_many t
 and any = Any: 'any t -> any
 
+type 'a sexp = 'a t
+
 let rec any: type a. a t -> any = function
   | List (Any (Atom s) :: ( _ :: _ as l) ) -> any @@ Keyed_list(s,l)
   | Keyed_list(s,[]) -> Any (Atom s)
@@ -82,7 +84,42 @@ type ('a,'b) impl = {
 let parse impl x = impl.parse x
 let embed impl x = impl.embed x
 
-module U = struct
+
+open Option
+let (%) f g x = f (g x)
+let (%>) f g x = g (f x)
+
+
+let reforge_kl m =
+  m |> extract_kl >>| fun(s,n) -> Keyed_list(s,n)
+
+let any_parse: type i. ('a,i) impl -> (any -> 'a option) =
+  fun impl sexp ->
+  match impl.kind, sexp with
+  | Atomic, Any (Atom _ as sexp) -> impl.parse sexp
+  | Atomic, Any (List _ ) -> None
+  | Atomic, Any (Keyed_list _) -> None
+  | Many, Any (List _ as sexp) -> impl.parse sexp
+  | Many, ( Any(Atom _ ) as sexp) -> impl.parse (List [sexp])
+  | Many, Any (Keyed_list _ as k) -> impl.parse (forget_key k)
+  | One_and_many, Any m -> m |> reforge_kl >>= impl.parse
+
+
+let atomic show parse =
+  { parse = (fun s -> s |> extract_atom |> parse );
+    embed = atom % show;
+    kind = Atomic
+  }
+
+let list impl =
+  let parse sexp =
+    sexp |> extract_list |> List.map (any_parse impl) |> list_join in
+  { parse;
+    embed = list' % List.map (any % impl.embed);
+    kind = Many;
+  }
+
+module Record = struct
 
  type _ witness = ..
 
@@ -139,7 +176,6 @@ module U = struct
       | M.T ->  Some m.value
       | _ -> None
 
-  module M = struct
     module I =Map.Make(struct type t = string let compare = compare end)
     type t = elt I.t
     type m = mapper I.t
@@ -151,7 +187,7 @@ module U = struct
       | exception Not_found -> None
       | x -> extract_opt key x
 
-    let find key m =
+    let get key m =
       match I.find (name key) m with
       | exception Not_found -> default key
       | x -> extract key x
@@ -167,83 +203,44 @@ module U = struct
     let add_mapper key value m =
       I.add (name key) (M {key; value}) m
 
-  end
 
-end
+    type field_declaration = m -> m
+    let field key impl = add_mapper key impl
+    let definition =
+      List.fold_left (|>) I.empty
 
-type field = U.M.m -> U.M.m
-let field key impl = U.M.add_mapper key impl
-let definition =
-  List.fold_left (|>) U.M.I.empty
+    type field_value = t -> t
 
-module Record = struct
-  type field = U.M.t -> U.M.t
-  let create = List.fold_left (|>) U.M.empty
-  let field key value = U.M.add key value
-  let get key r = U.M.find key r
-end
+    let create = List.fold_left (|>) empty
+    let let_ key value = add key value
+    let (:=) = let_
 
 
-open Option
-let (%) f g x = f (g x)
-let (%>) f g x = g (f x)
-
-
-let reforge_kl m =
-  m |> extract_kl >>| fun(s,n) -> Keyed_list(s,n)
-
-let any_parse: type i. ('a,i) impl -> (any -> 'a option) =
-  fun impl sexp ->
-  match impl.kind, sexp with
-  | Atomic, Any (Atom _ as sexp) -> impl.parse sexp
-  | Atomic, Any (List _ ) -> None
-  | Atomic, Any (Keyed_list _) -> None
-  | Many, Any (List _ as sexp) -> impl.parse sexp
-  | Many, ( Any(Atom _ ) as sexp) -> impl.parse (List [sexp])
-  | Many, Any (Keyed_list _ as k) -> impl.parse (forget_key k)
-  | One_and_many, Any m -> m |> reforge_kl >>= impl.parse
-
-
-let atomic show parse =
-  { parse = (fun s -> s |> extract_atom |> parse );
-    embed = atom % show;
-    kind = Atomic
-  }
-
-let list impl =
-  let parse sexp =
-    sexp |> extract_list |> List.map (any_parse impl) |> list_join in
-  { parse;
-    embed = list' % List.map (any % impl.embed);
-    kind = Many;
-  }
-
-
-let map (impl_map: U.M.m) =
-  let rec parse: type k. ( k * n ) t -> U.M.t option = function
-    | List [] -> Some U.M.empty
+let map (impl_map: m) =
+  let rec parse: type k. ( k * n ) sexp -> t option = function
+    | List [] -> Some empty
     | List ( Any(Atom s) :: q ) -> parse @@ Keyed_list(s,q)
     | Keyed_list _ as kl -> parse @@ List [Any kl]
     | List( Any h :: q ) ->
       h |> extract_kl >>= fun (name,l) ->
       parse_elt name l >>= fun e ->
       List q |> parse >>= fun map ->
-      some @@ U.M.I.add name e map
-  and parse_elt: string -> any list -> U.elt option = fun a q ->
-      match U.M.I.find a impl_map with
+      some @@ I.add name e map
+  and parse_elt: string -> any list -> elt option = fun a q ->
+      match I.find a impl_map with
       | exception Not_found -> None
-      | U.M {key;value} ->
+      | M {key;value} ->
         let module K = (val key) in
         match K.kind, q with
         | Atomic, [Any(Atom s)] ->
           Atom s |> value.parse >>| fun value ->
-          U.E { key = U.witness key; value}
+          E { key = witness key; value}
         | Many, q ->
           List q |> value.parse >>| fun value ->
-          U.E { key = U.witness key; value}
+          E { key = witness key; value}
         | One_and_many, Any(Atom s) :: q ->
           Keyed_list (s,q) |> value.parse >>| fun value ->
-          U.E { key = U.witness key; value}
+          E { key = witness key; value}
         | One_and_many, [] -> None
         | One_and_many, Any(List _) :: _ -> None
         | One_and_many, Any(Keyed_list _) :: _ -> None
@@ -251,7 +248,7 @@ let map (impl_map: U.M.m) =
         | Atomic, [Any(List _) ] -> None
         | Atomic, [Any(Keyed_list _) ] -> None
   in
-  let embed_elt: type a k. string -> (a,k) impl -> a -> one_and_many t =
+  let embed_elt: type a k. string -> (a,k) impl -> a -> one_and_many sexp =
     fun name impl x ->
     match impl.kind with
     | Many ->
@@ -263,22 +260,26 @@ let map (impl_map: U.M.m) =
       let (Keyed_list(s,l)) = impl.embed x in
       Keyed_list(name, Any (Atom s) :: l )
   in
-  let embed_key univ sexp (_name, U.M {key; value} ) =
-    match U.M.find_opt key univ with
+  let embed_key univ sexp (_name, M {key; value} ) =
+    match find_opt key univ with
     | None -> sexp
     | Some x ->
-      if x <> U.default key then
-        (any @@ embed_elt (U.name key) value x) :: sexp
+      if x <> default key then
+        (any @@ embed_elt (name key) value x) :: sexp
       else
         sexp
   in
   let embed univ =
     list'' @@ List.rev @@
-    List.fold_left (embed_key univ) [] (U.M.I.bindings impl_map)
+    List.fold_left (embed_key univ) [] (I.bindings impl_map)
   in
   {parse;embed;kind = Many }
 
-let record l = map @@ definition l
+let define l = map @@ definition l
+
+
+end
+let record = Record.define
 
 let keyed_list key impl =
   let parse = function

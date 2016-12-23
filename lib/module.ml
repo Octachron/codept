@@ -216,20 +216,20 @@ module Sexp_core = struct
   module R = Sexp.Record
   let to_list m = List.map snd @@ Name.Map.bindings m
 
-  let args_f = U.(key Many "args" [])
-  let modules = U.(key Many "modules" [])
-  let module_types = U.(key Many "module_types" [])
-  let origin = U.(key One_and_many "origin" Origin.Submodule)
-  let precision = U.(key One_and_many "precision" Precision.Exact)
+  let args_f = R.(key Many "args" [])
+  let modules = R.(key Many "modules" [])
+  let module_types = R.(key Many "module_types" [])
+  let origin = R.(key One_and_many "origin" Origin.Submodule)
+  let precision = R.(key One_and_many "precision" Precision.Exact)
 
   let rec m () =
     let fr r =
       r.name, R.(create [
-                 field precision r.precision;
-                 field origin r.origin;
-                 field args_f r.args;
-                 field modules (to_list r.signature.modules);
-                 field module_types (to_list r.signature.module_types)
+                 precision := r.precision;
+                 origin := r.origin;
+                 args_f := r.args;
+                 modules := (to_list r.signature.modules);
+                 module_types := (to_list r.signature.module_types)
                 ]) in
     let f (name,x) =
       let get f = R.get f x in
@@ -237,7 +237,7 @@ module Sexp_core = struct
         name
       @@ signature_of_lists (get modules) (get module_types) in
     let record =
-      record [
+      record R.[
         field precision Precision.sexp;
         field origin Origin.sexp;
         field args_f @@ fix args;
@@ -309,15 +309,15 @@ module Sig = struct
   let sexp =
     let open Sexp in
     let open Sexp_core in
-    let r = record [ field modules @@ list @@ fix' module_;
+    let r = record R.[ field modules @@ list @@ fix' module_;
                      field module_types @@ list @@ fix' module_
                    ] in
     let f x =
       of_lists (R.get modules x) (R.get module_types x)
     in
     let fr s =
-      R.(create [field modules @@ to_list s.modules;
-                 field module_types @@ to_list s.module_types] ) in
+      R.(create [ modules := to_list s.modules;
+                  module_types := to_list s.module_types] ) in
     convr r f fr
 
 end
@@ -375,13 +375,13 @@ module Partial = struct
     open Sexp
     module C = Sexp_core
     module R = Sexp.Record
-    let ksign = U.(key Many "signature" Sig.empty)
+    let ksign = R.(key Many "signature" Sig.empty)
     let partial =
-      let r = record [ field ksign Sig.sexp; field C.args_f @@ C.args () ] in
+      let r = record R.[ field ksign Sig.sexp; field C.args_f @@ C.args () ] in
       let f x = {args = R.get C.args_f x; result = R.get ksign x;
                  precision=Precision.Exact; origin = Submodule
                 } in
-      let fr r = R.(create [field ksign r.result; field C.args_f r.args] ) in
+      let fr r = R.(create [ksign := r.result; C.args_f := r.args] ) in
       conv {f;fr} r
 
   end

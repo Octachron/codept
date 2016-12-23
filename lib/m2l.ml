@@ -203,22 +203,22 @@ module More_sexp = struct
           bind_rec r; minor r; extension_node r ]
 
   (** Annotation *)
-  let access = U.( key Many "access" Name.Set.empty )
-  let values = U.( key Many "values" [] )
-  let packed = U.( key Many "packed" [] )
+  let access = R.( key Many "access" Name.Set.empty )
+  let values = R.( key Many "values" [] )
+  let packed = R.( key Many "packed" [] )
 
   let nameset = convr (list string) Name.Set.of_list Name.Set.elements
 
   let annot r () =
-    let r = record [field access nameset;
+    let r = record R.[field access nameset;
              field values (list @@ list @@ fix' r r.expr);
              field packed (list @@ fix' r r.me)
             ] in
     let f x = { access = R.get access x; values = R.get values x;
                 packed = R.get packed x
               } in
-    let fr r = R.(create [field access r.access; field values r.values;
-                          field packed r.packed ]
+    let fr r = R.(create [ access := r.access; values := r.values;
+                           packed := r.packed ]
                  ) in
     conv {f;fr} r
 

@@ -172,15 +172,15 @@ module Pkg = struct
         }
     let source = sum [local;unknown;pkg;special]
 
-    let ksource = U.(key One_and_many "source" Local)
-    let file = U.(key Many "file" [])
+    let ksource = Record.(key One_and_many "source" Local)
+    let file = Record.(key Many "file" [])
 
     let all =
-      convr (record [field ksource source ; field file Simple.sexp ])
-        ( fun x -> let get f = U.M.find f x in
+      convr Record.(define [field ksource source ; field file Simple.sexp ])
+        ( fun x -> let get f = Record.get f x in
           { source = get ksource; file = get file }
         )
-        (fun r -> Record.(create [field ksource r.source; field file r.file]))
+        (fun r -> Record.(create [ksource := r.source; file := r.file]))
 
   end
   let sexp = Sexp.all
