@@ -30,27 +30,29 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
     Envt.reset_deps env;
     deps, result
 
-  exception Cycle of Envt.t * i list
+  type state = { resolved: Unit.r list;
+                 env: Envt.t;
+                 pending: i list }
 
-  let eval ?(learn=true) (finished, core, rest) unit =
-    match compute_more core unit with
+  let eval ?(learn=true) state unit =
+    match compute_more state.env unit with
     | deps, Ok (_,sg) ->
-      let core =
+      let env =
         if learn then begin
           let input = unit.input in
           let md = Module.( create ~origin:(Unit input.path)) input.name sg in
-          Envt.add_module core (Module.M md)
+          Envt.add_module state.env (Module.M md)
         end
         else
-          core
+          state.env
       in
       let deps = Pkg.Set.union unit.deps deps in
       let unit = Unit.lift sg deps unit.input in
-      (unit :: finished, core, rest )
+      { state with env; resolved = unit :: state.resolved }
     | deps, Error code ->
       let deps = Pkg.Set.union unit.deps deps in
       let unit = { unit with deps; code } in
-      finished, core, unit :: rest
+      { state with pending = unit :: state.pending }
 
   let eval_bounded core (unit:Unit.s) =
     let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
@@ -74,30 +76,37 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
     Unit.lift sign upper unit
 
 
-  let resolve_dependencies_main ?(learn=true) core units =
-    let rec resolve alert env solved units =
-      let solved, env, units' =
-        List.fold_left (eval ~learn) (solved,env,[]) units in
-      match List.length units' with
-      | 0 -> env, solved
+  let resolve_dependencies_main ?(learn=true) env units =
+    let rec resolve alert state =
+      let state =
+        List.fold_left (eval ~learn) { state with pending = []}  units in
+      match List.length state.pending with
+      | 0 -> Ok ( state.env, state.resolved )
       | n when n = List.length units ->
-        if alert then
-            raise @@ Cycle (env, units)
-        else resolve true env solved units'
+        if alert then Error state
+        else resolve true state
       | _ ->
-        resolve false env solved units' in
-    resolve false core [] units
+        resolve false state in
+    resolve false { env; resolved = []; pending = units }
 
   let resolve_dependencies ?(learn=true) core units =
     let postponed, core, units = prefilter core units in
-    let core, units = resolve_dependencies_main ~learn core units in
-    let units' = List.map (eval_bounded core) postponed in
-    core, units' @ units
+    match resolve_dependencies_main ~learn core units with
+    | Ok (env, res) ->
+      let units' = List.map (eval_bounded core) postponed in
+      Ok (env, units' @ res )
+    | Error state ->
+      Error ({ state with pending = state.pending }, postponed)
 
   let resolve_split_dependencies env {ml; mli} =
-    let env, mli = resolve_dependencies env mli in
-    let _, ml = resolve_dependencies ~learn:false env ml in
-    { ml; mli }
+    match resolve_dependencies env mli with
+    | Ok  (env, mli) ->
+      begin match resolve_dependencies ~learn:false env ml with
+        | Ok(_, ml) -> Ok { ml; mli }
+        | Error (state,l) -> Error( `Ml ( mli, state, l) )
+      end
+    | Error (state,l) -> Error (`Mli (state, l))
+
 end
 
 

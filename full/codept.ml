@@ -263,13 +263,11 @@ let analyze param {opens;libs;invisibles; signatures; files;_} =
                   |> Name.Set.of_list in
   let E((module Envt),core) = start_env param signatures libs files_set filemap in
   let module S = Solver.Make(Envt)((val lift param)) in
-  let {Unit.ml; mli} =
-    try
-      S.resolve_split_dependencies core units
-    with
-      S.Cycle (_env,units) ->
-      Fault.Log.critical "%a" Solver.Failure.pp_cycle units
-  in
+  match S.resolve_split_dependencies core units with
+  | Error (`Ml (_, state,_) | `Mli (state, _ ) )  ->
+      Fault.Log.critical "%a" Solver.Failure.pp_cycle state.S.pending
+
+  | Ok {Unit.ml; mli} ->
   let ml = remove_units invisibles ml in
   let mli = remove_units invisibles mli in
   { Unit.ml; mli }
