@@ -264,7 +264,7 @@ let analyze param {opens;libs;invisibles; signatures; files;_} =
   let E((module Envt),core) = start_env param signatures libs files_set filemap in
   let module S = Solver.Make(Envt)((val lift param)) in
   match S.resolve_split_dependencies core units with
-  | Error (`Ml (_, state,_) | `Mli (state, _ ) )  ->
+  | Error (`Ml (_, state) | `Mli state)  ->
       Fault.Log.critical "%a" Solver.Failure.pp_cycle state.S.pending
 
   | Ok {Unit.ml; mli} ->

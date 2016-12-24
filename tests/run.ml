@@ -43,7 +43,13 @@ let analyze pkgs files =
                 |> Name.Set.of_list in
   let module Envt = Envts.Tr in
   let core = start_env pkgs fileset filemap in
-    S.resolve_split_dependencies core units
+  S.resolve_split_dependencies core units
+
+
+let ok_only = function
+  | Ok l -> l
+  | Error (`Ml (_, state) | `Mli state)  ->
+      Fault.Log.critical "%a" Solver.Failure.pp_cycle state.S.pending
 
 let normalize set =
   set
@@ -114,7 +120,7 @@ let gen_deps_test libs inner_test l =
   let exp = M.union' (build ml) (build mli) in
   let sel (k,f,_) = k, f in
   let files = Unit.unimap (List.map sel) {ml;mli} in
-  let {Unit.ml; mli} = analyze libs files in
+  let {Unit.ml; mli} = ok_only @@ analyze libs files in
   let (=?) expect files = List.for_all (fun u ->
       let path = u.Unit.path.Pth.file in
       let expected =
@@ -125,9 +131,7 @@ let gen_deps_test libs inner_test l =
   exp =? ml && exp =? mli
 
 let deps_test l =
-  try gen_deps_test [] simple_dep_test l with
-  | S.Cycle (_,units) ->
-    Fault.Log.critical "%a" Solver.Failure.pp_cycle units
+  gen_deps_test [] simple_dep_test l
 
 let ocamlfind name =
   let cmd = "ocamlfind query " ^ name in
@@ -139,9 +143,11 @@ let ocamlfind name =
 
 let cycle_test expected l =
     let files = List.fold_left add_file {Unit.ml=[]; mli=[]} l in
-    try ignore @@ analyze [] files; false with
-      S.Cycle (_,units) ->
+    match analyze [] files with
+    | Ok _ -> false
+    | Error( `Mli state | `Ml (_, state) )->
       let open Solver.Failure in
+      let units = state.pending in
       let _, cmap = analyze units in
       let errs = Map.bindings cmap in
       let name unit = Solver.(unit.input.name) in
@@ -359,7 +365,7 @@ let result =
           "solver.mli", (["Unit";"M2l";"Name";"Interpreter";"Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
-            ["Approx_parser"; "Interpreter"; "M2l"; "Module"; "Name";
+            ["Approx_parser"; "Definition"; "Interpreter"; "M2l"; "Module"; "Name";
              "Option"; "Pp"; "Paths"; "Unit"; "Fault"],
             ["List"; "Map"; "Set"],[]);
           "unit.mli", (["Paths"; "M2l"; "Module"; "Name"; "Fault"; "Read"],

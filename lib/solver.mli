@@ -1,38 +1,8 @@
 (** Basic solver *)
 
 type i = { input: Unit.s; code: M2l.t; deps: Paths.P.set }
+(** In-processing state for unit files *)
 
-(** Create a solver using the environment module [Envt] for
-    name resolution and dependendy trackinf and
-    the parameter module [Param] *)
-module Make (Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
-  sig
-
-    type state = { resolved: Unit.r list;
-                   env: Envt.t;
-                   pending: i list }
-
-      val eval :
-        ?learn:bool -> state -> i -> state
-      (** [eval ~learn {resolved; envt; rest} unit]
-          try to compute the signature of unit, and if successful
-          add the unit to the resolved list. Otherwise, the unit
-          is added to the unresolved list.
-          The learn parameter determines, if the environment is
-          updated when the unit is fully resolved
-      *)
-
-      val resolve_dependencies :
-        ?learn:bool -> Envt.t -> Unit.s list ->
-        (Envt.t * Unit.r list, state * Unit.s list) result
-
-      val resolve_split_dependencies :
-        Envt.t -> Unit.s list Unit.pair ->
-        (Unit.r list Unit.pair,
-         [> `Mli of (state * Unit.s list)
-         | `Ml of (Unit.r list * state * Unit.s list)]
-        ) result
-    end
 
 (** Failure handling: detection of
     cycle, unresolvable dependencies and internal errors.
@@ -66,3 +36,44 @@ module Failure :
       Format.formatter -> Set.t Map.t -> unit
     val pp_cycle : Format.formatter -> i list -> unit
   end
+
+(** Create a solver using the environment module [Envt] for
+    name resolution and dependendy trackinf and
+    the parameter module [Param] *)
+module Make (Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
+  sig
+
+    type state = { resolved: Unit.r list;
+                   env: Envt.t;
+                   pending: i list;
+                   postponed: Unit.s list
+                 }
+
+    val start: Envt.t -> Unit.s list -> state
+
+      val eval :
+        ?learn:bool -> state -> i -> state
+      (** [eval ~learn {resolved; envt; rest} unit]
+          try to compute the signature of unit, and if successful
+          add the unit to the resolved list. Otherwise, the unit
+          is added to the unresolved list.
+          The learn parameter determines, if the environment is
+          updated when the unit is fully resolved
+      *)
+
+      val resolve_dependencies :
+        ?learn:bool -> state -> (Envt.t * Unit.r list, state) result
+
+      (** Resolve mli unit first, then use the new environment to resolve
+          ml units *)
+      val resolve_split_dependencies :
+        Envt.t -> Unit.s list Unit.pair ->
+        (Unit.r list Unit.pair,
+         [> `Mli of state
+         | `Ml of (Unit.r list * state)]
+        ) result
+
+      (** Add approximation to make cycle resolvable, possibly adding spurious
+          dependencies. Drop intermediary units that are deemed non-resolvable *)
+      val approx_and_try_harder: state -> state
+    end

@@ -1,115 +1,6 @@
 
 type i = { input: Unit.s; code: M2l.t; deps: Paths.P.set }
 
-module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
-  open Unit
-
-  module Eval = Interpreter.Make(Envt)(Param)
-
-  let start input = { input; code = input.code; deps = Paths.P.Set.empty }
-
-  let prefilter env (units:Unit.s list) =
-    List.fold_left (fun (postponed, env, direct) (u:Unit.s) ->
-        match u.precision with
-        | Exact -> (postponed,env, start u :: direct)
-        | Approx ->
-          let fictious =
-            Module.M { Module.name = u.name;
-              origin = Unit u.path;
-              precision = Module.Precision.Unknown;
-              args = [];
-              signature = Module.Sig.empty
-            } in
-          u::postponed, Envt.add_module env fictious, direct
-      )
-      ([],env,[]) units
-
-  let compute_more env (u:i) =
-    let result = Eval.m2l env u.code in
-    let deps = Envt.deps env in
-    Envt.reset_deps env;
-    deps, result
-
-  type state = { resolved: Unit.r list;
-                 env: Envt.t;
-                 pending: i list }
-
-  let eval ?(learn=true) state unit =
-    match compute_more state.env unit with
-    | deps, Ok (_,sg) ->
-      let env =
-        if learn then begin
-          let input = unit.input in
-          let md = Module.( create ~origin:(Unit input.path)) input.name sg in
-          Envt.add_module state.env (Module.M md)
-        end
-        else
-          state.env
-      in
-      let deps = Pkg.Set.union unit.deps deps in
-      let unit = Unit.lift sg deps unit.input in
-      { state with env; resolved = unit :: state.resolved }
-    | deps, Error code ->
-      let deps = Pkg.Set.union unit.deps deps in
-      let unit = { unit with deps; code } in
-      { state with pending = unit :: state.pending }
-
-  let eval_bounded core (unit:Unit.s) =
-    let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
-    let r, r' = compute_more core @@ start unit, compute_more core @@ start unit' in
-    let lower, upper = fst r, fst r' in
-    let sign = match snd r, snd r' with
-      | _ , Ok (_,sg)
-      | Ok(_,sg) , Error _  ->  sg
-      | Error _, Error _ -> Module.Sig.empty
-        (* something bad happened but we are already parsing problematic
-           input *) in
-    let elts = Paths.P.Set.elements in
-    if elts upper = elts lower then
-      Fault.(handle Param.polycy concordant_approximation unit.path)
-    else
-      Fault.(handle Param.polycy discordant_approximation
-        unit.path
-        (List.map Paths.P.module_name @@ elts lower)
-        ( List.map Paths.P.module_name @@ elts
-          @@ Paths.P.Set.diff upper lower) );
-    Unit.lift sign upper unit
-
-
-  let resolve_dependencies_main ?(learn=true) env units =
-    let rec resolve alert state =
-      let state =
-        List.fold_left (eval ~learn) { state with pending = []}  units in
-      match List.length state.pending with
-      | 0 -> Ok ( state.env, state.resolved )
-      | n when n = List.length units ->
-        if alert then Error state
-        else resolve true state
-      | _ ->
-        resolve false state in
-    resolve false { env; resolved = []; pending = units }
-
-  let resolve_dependencies ?(learn=true) core units =
-    let postponed, core, units = prefilter core units in
-    match resolve_dependencies_main ~learn core units with
-    | Ok (env, res) ->
-      let units' = List.map (eval_bounded core) postponed in
-      Ok (env, units' @ res )
-    | Error state ->
-      Error ({ state with pending = state.pending }, postponed)
-
-  let resolve_split_dependencies env {ml; mli} =
-    match resolve_dependencies env mli with
-    | Ok  (env, mli) ->
-      begin match resolve_dependencies ~learn:false env ml with
-        | Ok(_, ml) -> Ok { ml; mli }
-        | Error (state,l) -> Error( `Ml ( mli, state, l) )
-      end
-    | Error (state,l) -> Error (`Mli (state, l))
-
-end
-
-
 module Failure = struct
   module Set = Set.Make(struct type t = i let compare = compare end)
 
@@ -189,6 +80,12 @@ module Failure = struct
       let next = fst @@ Name.Map.find next_name map in
       kernel map (Set.add start cycle) next
 
+  let rec ancestor_status name cmap =
+    match !(snd @@ Name.Map.find name cmap) with
+    | Some (Depend_on name) -> ancestor_status name cmap
+    | Some status -> status
+    | None -> Internal_error
+
   let normalize name_map map =
     Map.fold (function
         | Internal_error | Extern _ | Depend_on _ as st -> Map.add_set st
@@ -247,5 +144,155 @@ module Failure = struct
   let pp_cycle ppf sources =
     let map, cmap = analyze sources in
     pp map ppf cmap
+
+end
+
+module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
+  open Unit
+
+  module Eval = Interpreter.Make(Envt)(Param)
+
+  let start_u input = { input; code = input.code; deps = Paths.P.Set.empty }
+
+  type state = { resolved: Unit.r list;
+                 env: Envt.t;
+                 pending: i list;
+                 postponed: Unit.s list
+               }
+
+  let start env (units:Unit.s list) =
+    List.fold_left (fun state (u:Unit.s) ->
+        match u.precision with
+        | Exact -> { state with pending = start_u u :: state.pending }
+        | Approx ->
+          let fictious =
+            Module.M { Module.name = u.name;
+              origin = Unit u.path;
+              precision = Module.Precision.Unknown;
+              args = [];
+              signature = Module.Sig.empty
+                     } in
+          { state with postponed = u:: state.postponed;
+                       env = Envt.add_module state.env fictious
+          }
+      )
+      { postponed = []; env; pending = []; resolved = [] } units
+
+  let compute_more env (u:i) =
+    let result = Eval.m2l env u.code in
+    let deps = Envt.deps env in
+    Envt.reset_deps env;
+    deps, result
+
+
+  let eval ?(learn=true) state unit =
+    match compute_more state.env unit with
+    | deps, Ok (_,sg) ->
+      let env =
+        if learn then begin
+          let input = unit.input in
+          let md = Module.( create ~origin:(Unit input.path)) input.name sg in
+          Envt.add_module state.env (Module.M md)
+        end
+        else
+          state.env
+      in
+      let deps = Pkg.Set.union unit.deps deps in
+      let unit = Unit.lift sg deps unit.input in
+      { state with env; resolved = unit :: state.resolved }
+    | deps, Error code ->
+      let deps = Pkg.Set.union unit.deps deps in
+      let unit = { unit with deps; code } in
+      { state with pending = unit :: state.pending }
+
+  let eval_bounded core (unit:Unit.s) =
+    let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
+    let r, r' = compute_more core @@ start_u unit,
+                compute_more core @@ start_u unit' in
+    let lower, upper = fst r, fst r' in
+    let sign = match snd r, snd r' with
+      | _ , Ok (_,sg)
+      | Ok(_,sg) , Error _  ->  sg
+      | Error _, Error _ -> Module.Sig.empty
+        (* something bad happened but we are already parsing problematic
+           input *) in
+    let elts = Paths.P.Set.elements in
+    if elts upper = elts lower then
+      Fault.(handle Param.polycy concordant_approximation unit.path)
+    else
+      Fault.(handle Param.polycy discordant_approximation
+        unit.path
+        (List.map Paths.P.module_name @@ elts lower)
+        ( List.map Paths.P.module_name @@ elts
+          @@ Paths.P.Set.diff upper lower) );
+    Unit.lift sign upper unit
+
+
+  let resolve_dependencies_main ?(learn=true) state =
+    let rec resolve alert state =
+      let n0 = List.length state.pending in
+      let state =
+        List.fold_left (eval ~learn) { state with pending = []}  state.pending in
+      match List.length state.pending with
+      | 0 -> Ok ( state.env, state.resolved )
+      | n when n = n0 ->
+        if alert then Error state
+        else resolve true state
+      | _ ->
+        resolve false state in
+    resolve false state
+
+  let resolve_dependencies ?(learn=true) state =
+    match resolve_dependencies_main ~learn state with
+    | Ok (env, res) ->
+      let units' = List.map (eval_bounded env) state.postponed in
+      Ok (env, units' @ res )
+    | Error _ as e -> e
+
+  let resolve_split_dependencies env {ml; mli} =
+    match resolve_dependencies ~learn:true @@ start env mli with
+    | Ok  (env, mli) ->
+      begin match resolve_dependencies ~learn:false @@ start env ml with
+        | Ok(_, ml) -> Ok { ml; mli }
+        | Error state -> Error( `Ml ( mli, state) )
+      end
+    | Error s -> Error (`Mli s)
+
+
+  let approx_cycle set (i:i) =
+    let mock name =
+            Module.create name
+              ~origin:(Unit {Paths.P.source=Special "cycle approximation";
+                             file=[name]})
+              ~precision:Unknown
+              Module.Sig.empty in
+    let add_set def =
+      Failure.Set.fold
+        (fun n acc -> Definition.see (Module.M(mock n.input.name)) acc) set def in
+    let code =
+      match i.code with
+      | M2l.Defs def :: q -> M2l.Defs (add_set def) :: q
+      | code -> M2l.Defs (add_set Definition.empty) :: code
+    in
+    { i with code }
+
+  let approx_and_try_harder state  =
+    let open Failure in
+    let cmap, map = analyze state.pending in
+    let undo key x acc = match key with
+      | Failure.Extern _ | Internal_error -> acc
+      | Depend_on f ->
+        begin
+          match Failure.ancestor_status f cmap with
+          | Cycle _ -> Set.union x acc
+          | _ -> acc
+        end
+      | Cycle _ ->
+        Set.elements x
+        |> List.map (approx_cycle x)
+        |> Set.of_list in
+    let pending = Set.elements @@ Failure.Map.fold undo map Set.empty in
+    { state with pending }
+
 
 end
