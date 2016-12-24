@@ -16,7 +16,7 @@ let is_pflag_included root s =
   List.exists predicate @@ Tags.elements s
 
 
-let codept' mode tags =
+let codept' ~approx mode tags =
   let tags' = tags++"ocaml"++"ocamldep" ++ "codept" in
   let tags' =
     (* when computing dependencies for packed modules, cyclic alias
@@ -27,34 +27,33 @@ let codept' mode tags =
       tags' -- "no_alias_deps"
     else
       tags' in
-  S [ A "codept"; T tags'; mode]
+  let k = if approx then S [ A"-k"] else S [] in
+  S [ A "codept"; T tags'; k; mode]
 
-let codept mode arg out env _build =
+let codept ?(approx=true) mode arg out env _build =
   let arg = env arg and out = env out in
   let tags = tags_of_pathname arg in
-  Cmd(S[codept' mode tags; P arg; Sh ">"; Px out])
+  (** use codept "-k" to not fail on apparent self-reference *)
+
+  Cmd(S[codept' ~approx mode tags; P arg; Sh ">"; Px out])
 
 
-let codept_dep ?(approx=true) mode arg deps out env build =
+let codept_dep ?(approx=false) mode arg deps out env build =
   let arg = env arg and out = env out and deps = env deps in
   let tags = tags_of_pathname arg in
   let approx_deps = string_list_of_file deps in
-  (** in approximate mode, eliminate self-dependency *)
-  let approx_deps = if approx then
-      List.filter (fun x -> x <> module_name_of_pathname arg) approx_deps
-    else
-      approx_deps in
+  (** eliminate self-dependency *)
+  let approx_deps =
+    List.filter (fun x -> x <> module_name_of_pathname arg) approx_deps in
   let include_dirs = Pathname.(include_dirs_of @@ dirname arg ) in
   let sigs = List.map (fun m -> expand_module include_dirs m ["sig"])
       approx_deps in
   let outsigs = build sigs in
-  (** use codept "-k" to not fail on apparent self-reference *)
-  let k = if approx then S [ A"-k"] else S [] in
   let sigs =
     List.map Outcome.good
     @@ List.filter Outcome.(function Good _ -> true | Bad _ -> false )
     @@ outsigs in
-  Cmd( S[ codept' mode tags; k; P arg; Command.atomize_paths sigs;
+  Cmd( S[ codept' ~approx mode tags; P arg; Command.atomize_paths sigs;
           Sh ">"; Px out])
 
 module R() = struct
