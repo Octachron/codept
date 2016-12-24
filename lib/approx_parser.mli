@@ -25,6 +25,6 @@ val lower_bound: string -> M2l.t
     by removing binding, and simplyfing open and includes. *)
 val to_upper_bound: M2l.t -> M2l.t
 
-(** [file filename] yields [module_name × loer bound × upper bound *)
+(** [file filename] yields [module_name × lower bound × upper bound] *)
 val file: string -> string * M2l.t * M2l.t
 

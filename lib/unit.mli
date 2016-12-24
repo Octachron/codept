@@ -44,7 +44,7 @@ type 'a pair = { ml : 'a; mli : 'a; }
 val map: ('a -> 'b) pair -> 'a pair -> 'b pair
 val unimap: ('a -> 'b) -> 'a pair -> 'b pair
 
-(** {!Group} handles pair of ml/mli files together *)
+(** {!group} handles pair of ml/mli files together *)
 module type group =
 sig
   type elt
