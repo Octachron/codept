@@ -35,19 +35,26 @@ let codept mode arg out env _build =
   Cmd(S[codept' mode tags; P arg; Sh ">"; Px out])
 
 
-let codept_dep mode arg deps out env build =
+let codept_dep ?(approx=true) mode arg deps out env build =
   let arg = env arg and out = env out and deps = env deps in
   let tags = tags_of_pathname arg in
   let approx_deps = string_list_of_file deps in
+  (** in approximate mode, eliminate self-dependency *)
+  let approx_deps = if approx then
+      List.filter (fun x -> x <> module_name_of_pathname arg) approx_deps
+    else
+      approx_deps in
   let include_dirs = Pathname.(include_dirs_of @@ dirname arg ) in
   let sigs = List.map (fun m -> expand_module include_dirs m ["sig"])
       approx_deps in
   let outsigs = build sigs in
+  (** use codept "-k" to not fail on apparent self-reference *)
+  let k = if approx then S [ A"-k"] else S [] in
   let sigs =
     List.map Outcome.good
     @@ List.filter Outcome.(function Good _ -> true | Bad _ -> false )
     @@ outsigs in
-  Cmd( S[ codept' mode tags; P arg; Command.atomize_paths sigs;
+  Cmd( S[ codept' mode tags; k; P arg; Command.atomize_paths sigs;
           Sh ">"; Px out])
 
 module R() = struct
@@ -89,7 +96,7 @@ rule "m2li → sig"
   ~prod:"%.sig"
   ~deps:["%.m2li";"%.sig.depends"]
   ~doc:"Compute approximate dependencies using codept."
-  (codept_dep gen_sig "%.m2li" "%.sig.depends"
+  (codept_dep ~approx:false gen_sig "%.m2li" "%.sig.depends"
      "%.sig");
 
 rule "m2l → sig"
@@ -97,7 +104,7 @@ rule "m2l → sig"
   ~prod:"%.sig"
   ~deps:["%.m2l";"%.sig.depends"]
   ~doc:"Compute approximate dependencies using codept."
-  (codept_dep gen_sig
+  (codept_dep ~approx:false gen_sig
      "%.m2l" "%.sig.depends" "%.sig");
 
 rule "m2li → r.sig.depends"
