@@ -49,13 +49,17 @@ Cycles and non-resolvable dependencies are detected when the solver does not mak
 
 Codept can be used as a drop-in replacement for ocamldep, on Linux at least.
 More tests are needed on other platforms. Unfortunately, most of OCaml build systems
-are built around ocamldep limitation and would not benefit directly from replacing ocamldep by codept. A possible exception is self-cycle detection: invoking ocamldep
+are built around ocamldep limitation and would not benefit directly from replacing ocamldep by codept.
+
+A possible exception is self-cycle detection: invoking ocamldep
 on the following "a.ml" file
 ```
 (* a.ml *)
 open A
 ```
 yields directly a circular dependency error.
+See the [integration](#integration) section for a better overview
+on how to use codept with ocaml build tools.
 
 
 ##Compatibility with ocamldep
@@ -116,13 +120,21 @@ Some new options explore codept possibilities and intermediary representations
 
   * `-k` keep-going after most recoverable errors, supersede `-allow-approx`
 
+  * `-sig` exports the inferred module signatures in a sexp format that can
+  be read directly by codept
+
+  * `-m2l-sexp` exports the m2l ast in sexp format (that can be parsed by codept)
+
+  * `-sig-only` deletes the information that are not necessary for computing
+  signatures
+
 For a more exhaustive list of options, see `codept -help`.
 
 # Installation
 
 `opam pin add codept https://github.com/Octachron/codept.git`
 
-# Using codept
+# Integration with build tools
 
 Like `ocamldep`, codept can be used to generate `.depends` file for integration
 with a makefile based infrastructure.
