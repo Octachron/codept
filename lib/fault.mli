@@ -82,7 +82,6 @@ val discordant_approximation :
   (Paths.Pkg.t -> string list -> string list -> unit) t
 val syntaxerr : (Syntaxerr.error -> unit) t
 
-
 (** Fault handling polycy *)
 module Polycy :
 sig

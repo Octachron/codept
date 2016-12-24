@@ -17,7 +17,7 @@ module Self_polycy = struct
   open Fault
   let polycy = Fault.Polycy.default
   let unknown_extension =
-    { path = ["codept"; "io"; "unknwon extension"];
+    { path = ["codept"; "io"; "unknown extension"];
       expl = "Codept fault: attempting to read a file with an unknwon extension";
       log = (fun lvl -> log lvl "Attempting to read %s, aborting due to \
                                  an unknown extension.")
@@ -33,11 +33,35 @@ module Self_polycy = struct
             )
     }
 
+    let solver_error =
+      { path = ["resolving"; "blocker" ];
+        expl = "Solver fault: major errors during analysis.";
+        log = (fun lvl -> log lvl
+                  "Solver failure\n %a" Solver.Failure.pp_cycle
+              )
+      }
+
+
   let polycy =
     let open Polycy in
     polycy
     |> set_err (unknown_extension, Level.warning)
     |> set_err (m2l_syntaxerr, Level.warning)
+    |> set_err (solver_error, Level.error)
+
+  let parsing_approx = let open Polycy in
+    polycy |> set_err (syntaxerr, Level.warning)
+
+  let lax = { parsing_approx with exit = Level.critical }
+
+  let quiet = { lax with silent = Level.error }
+
+  let strict = let open Polycy in
+      { polycy with exit = Level.notification }
+      |> set (["typing"], Some "Typing faults", Level.error)
+      |> set_err (applied_structure, Level.error)
+      |> set_err (structure_expected, Level.error)
+
 end
 
 module Resource = struct
@@ -255,22 +279,31 @@ let remove_units invisibles =
       not @@ Pth.Set.mem file invisibles
     | _ -> false
 
+
+(** Solver step *)
+let solve param (E((module Envt), core)) (units: _ Unit.pair) =
+  let module S = Solver.Make(Envt)((val lift param)) in
+  let rec solve_harder state =
+    match S.resolve_dependencies ~learn:true state with
+    | Ok (e,l) -> e, l
+    | Error state ->
+      Fault.handle param.polycy Self_polycy.solver_error state.pending;
+      solve_harder @@ S.approx_and_try_harder state in
+  let env, mli = solve_harder @@ S.start core units.mli in
+  let _, ml = solve_harder @@ S.start env units.ml in
+  {Unit.ml;mli}
+
 (** Analysis step *)
 let analyze param {opens;libs;invisibles; signatures; files;_} =
   let units, filemap = organize param.polycy param.sig_only opens files in
   let files_set = units.mli
                   |> List.map (fun (u:Unit.s) -> u.name)
                   |> Name.Set.of_list in
-  let E((module Envt),core) = start_env param signatures libs files_set filemap in
-  let module S = Solver.Make(Envt)((val lift param)) in
-  match S.resolve_split_dependencies core units with
-  | Error (`Ml (_, state) | `Mli state)  ->
-      Fault.Log.critical "%a" Solver.Failure.pp_cycle state.S.pending
-
-  | Ok {Unit.ml; mli} ->
+  let e = start_env param signatures libs files_set filemap in
+  let {Unit.ml; mli} = solve param e units in
   let ml = remove_units invisibles ml in
   let mli = remove_units invisibles mli in
-  { Unit.ml; mli }
+  {Unit.ml;mli}
 
 let info param task =
   let {Unit.ml; mli} = analyze param task in
@@ -697,14 +730,14 @@ let allow_approx () =
   param := { !param with polycy = Fault.Polycy.parsing_approx }
 
 let keep_going () =
-  param := { !param with polycy = Fault.Polycy.lax }
+  param := { !param with polycy = Self_polycy.lax }
 
 let quiet () =
-  param := { !param with polycy = Fault.Polycy.quiet }
+  param := { !param with polycy = Self_polycy.quiet }
 
 
 let strict () =
-  param := { !param with polycy = Fault.Polycy.strict }
+  param := { !param with polycy = Self_polycy.strict }
 
 module Findlib = struct
 

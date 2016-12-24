@@ -282,7 +282,6 @@ module Polycy = struct
     |> set_err (applied_unknown, notification)
 
 
-
   let strict =
     let open Level in
     { default with exit = Level.notification }
