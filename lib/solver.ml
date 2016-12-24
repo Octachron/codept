@@ -260,15 +260,14 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
 
 
   let approx_cycle set (i:i) =
-    let mock name =
-            Module.create name
-              ~origin:(Unit {Paths.P.source=Special "cycle approximation";
-                             file=[name]})
+    let mock (unit: Unit.s) =
+            Module.create unit.name
+              ~origin:(Unit unit.path)
               ~precision:Unknown
               Module.Sig.empty in
     let add_set def =
       Failure.Set.fold
-        (fun n acc -> Definition.see (Module.M(mock n.input.name)) acc) set def in
+        (fun n acc -> Definition.see (Module.M(mock n.input)) acc) set def in
     let code =
       match i.code with
       | M2l.Defs def :: q -> M2l.Defs (add_set def) :: q
