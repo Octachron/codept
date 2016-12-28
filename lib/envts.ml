@@ -25,6 +25,14 @@ let record_level level = function
   | [_] -> level = M.Module
   | [] -> false
 
+let adjust_level level = function
+  | [] -> level
+  | _ :: _ -> M.Module
+
+let is_unit = function
+  |{ M.origin = Origin.Unit _ ; _ } -> true
+  | _ -> false
+
 module Base = struct
   type t = M.signature
 
@@ -60,28 +68,19 @@ module Base = struct
   let rec find0 start_env require_root level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
-    | [a] ->
-      begin match find_name false level a env with
-        | M.Alias {path; _ } ->
-          (*          Format.printf "Found alias to %a\n" Paths.Simple.pp path; *)
-          if require_root then
-            raise Not_found
-          else
-            find0 start_env true level path start_env
-        | M.M ({ M.origin = Origin.Unit _; _  } as m) when require_root -> m
-        | M.M m ->
-          if require_root then raise Not_found else m
-      end
     | a :: q ->
-      match find_name false M.Module a env with
-      | Alias {path; _ } ->
-        if require_root then raise Not_found
+      match find_name false (adjust_level level q) a env with
+      | M.Alias {path; _ } ->
+        if require_root then
+          raise Not_found
         else
-          find0 start_env true level (path @ q) start_env
-      | M.M ({ M.origin = Origin.Unit _; _  } as m) when require_root ->
-        find0 start_env false level q m.signature
+          find0 start_env true level ( path @ q ) start_env
       | M.M m ->
-        if require_root then raise Not_found else
+        if require_root && not (is_unit m) then
+          raise Not_found
+        else if q = [] then
+          m
+        else
           find0 start_env false level q m.signature
 
   let find level path env=
@@ -265,16 +264,13 @@ module Layered = struct
   let rec find0 start_env level path env =
     match path with
     | [] -> raise (Invalid_argument "Layered.find cannot find empty path")
-    | [a] ->
-      begin match find_name false level a env with
-        | Alias {path; _ } -> find0 start_env level path start_env
-        | M.M m -> m
-      end
-    | a :: q ->
-      match find_name false M.Module a env with
-      | Alias {path; _ } -> find0 start_env level (path@q) start_env
+    | a :: q  ->
+      match find_name false (adjust_level level q) a env with
+      | Alias {path; _ } -> find0 start_env level (path @ q ) start_env
       | M.M m ->
-        find0 start_env level q (restrict env m.signature)
+        if q = [] then m
+        else
+          find0 start_env level q (restrict env m.signature)
 
   let find level path env =
     if Name.Set.mem (List.hd path (* paths are not empty *)) env.local_units then
@@ -316,44 +312,30 @@ module Tracing(Envt:extended) = struct
       path_record p env
     | _ -> ()
 
-  let is_unit = function
-    |{ M.origin = Origin.Unit _ ; _ } -> true
-    | _ -> false
-
   let rec find0 start_env ~top ~require_root level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
-    | [a] ->
-      begin
-      match Envt.find_name top level a env.env with
-      | Alias {path; _ } ->
-        if require_root then
-          raise Not_found
-        else
-        (*Format.printf "Alias found %s≡%a\n" name Paths.S.pp path;*)
-          find0 start_env ~top:true ~require_root:true
-            level path start_env
-      | M.M m ->
-        if require_root && not (is_unit m) then
-          raise Not_found
-        else
-          (record env m; m)
-      end
     | a :: q ->
-      match Envt.find_name top M.Module a env.env with
+      match Envt.find_name top (adjust_level level q) a env.env with
       | Alias {path; _ } ->
         if require_root then
+          (* we were looking for a compilation unit and got a submodule alias *)
           raise Not_found
         else
+          (* aliases link only to compilation units *)
           find0 start_env ~top:true ~require_root:true
-          level (path @ q ) start_env
+            level (path @ q) start_env
       | M.M m ->
         if require_root && not (is_unit m) then
           raise Not_found
-        else if top && record_level level path then
-           record env m;
-          find0 start_env ~top:false ~require_root:false level q
-            { env with env = Envt.restrict env.env m.signature}
+        else begin
+          record env m;
+          if q = [] then
+            m
+          else
+            find0 start_env ~top:false ~require_root:false level q
+              { env with env = Envt.restrict env.env m.signature }
+        end
 
   let find level path env =
     find0 env ~top:true ~require_root:false level path env
