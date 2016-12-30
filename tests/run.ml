@@ -227,6 +227,15 @@ let result =
                    "long__B.ml", []
                  ]
      )
+  && ( Sys.chdir "../aliases2";
+       deps_test [ "a.ml", ["B"; "D" ];
+                   "b.ml", [];
+                   "c.ml", [];
+                   "d.ml", [];
+                   "e.ml", []
+                 ]
+     )
+
   &&
   ( Sys.chdir "../broken_network";
     deps_test [
