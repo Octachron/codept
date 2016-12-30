@@ -14,7 +14,7 @@ module type envt = sig
   val is_exterior: Paths.Simple.t -> t -> bool
   val find: Module.level -> Paths.Simple.t -> t -> Module.m
   val (>>) : t -> D.t -> t
-  val add_module: t -> Module.t -> t
+  val add_unit: t -> Module.t -> t
 end
 
 module type with_deps = sig
@@ -163,7 +163,7 @@ module Make(Envt:envt)(Param:param) = struct
        precision = Unknown;
        args = [];
        signature = S.empty } in
-    let add_mockup defs arg = Envt.add_module defs @@ mockup arg in
+    let add_mockup defs arg = Envt.(>>) defs @@ Def.md @@ mockup arg in
     let state' = List.fold_left add_mockup state bs in
     let mapper {name;expr} =
       match expr with
@@ -180,7 +180,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok defs ->
       (* if we did obtain the argument signature, we go on
          and try to resolve the whole recursive binding *)
-      let add_arg defs (name, _me, arg) = Envt.add_module defs @@
+      let add_arg defs (name, _me, arg) = Envt.(>>) defs @@ Def.md @@
         M.M (P.to_module ~origin:Arg name arg) in
       let state' = List.fold_left add_arg state defs in
       let mapper {name;expr} =

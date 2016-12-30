@@ -6,7 +6,7 @@ module type envt = sig
   val is_exterior: Paths.Simple.t -> t -> bool
   val find: Module.level -> Paths.Simple.t -> t -> Module.m
   val (>>) : t -> Definition.t -> t
-  val add_module: t -> Module.t -> t
+  val add_unit: t -> Module.t -> t
 end
 
 module type with_deps = sig

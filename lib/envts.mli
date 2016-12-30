@@ -6,6 +6,9 @@ sig
   open Interpreter
   include envt
 
+  val top: t -> t
+  (** Return to toplevel definitions *)
+
   val resolve_alias: Paths.Simple.t -> t -> Name.t option
 
   val find_name : bool -> Module.level -> string -> t -> Module.t
@@ -32,8 +35,10 @@ end
 (** Basic environment *)
 module Base :
 sig
-  include extended_with_deps with type t = Module.signature
+  type t = { top: Module.signature; current: Module.signature }
+  include extended_with_deps with type t := t
   val empty: t
+  val start: Module.signature -> t
 end
 
 (** Extend environment with unknowable module handling *)
@@ -97,8 +102,9 @@ module Interpreters :
   sig
     module Sg :
       functor (Param : Interpreter.param) ->
-        sig val m2l : Base.t -> M2l.t -> (Base.t * Base.t, M2l.t) result end
+      sig val m2l : Base.t -> M2l.t ->
+        (Base.t * Module.signature, M2l.t) result end
     module Tr :
       functor (Param : Interpreter.param) ->
-        sig val m2l : Tr.t -> M2l.t -> (Tr.t * Base.t, M2l.t) result end
+        sig val m2l : Tr.t -> M2l.t -> (Tr.t * Module.signature, M2l.t) result end
   end

@@ -5,6 +5,7 @@ module Def = Definition.Def
 
 module type extended = sig
   include Interpreter.envt
+  val top: t -> t
   val resolve_alias: Paths.Simple.t -> t -> Name.t option
   val find_name: bool -> M.level -> Name.t -> t -> Module.t
   val restrict: t -> M.signature -> t
@@ -34,16 +35,20 @@ let is_unit = function
   | _ -> false
 
 module Base = struct
-  type t = M.signature
+  type t = { top: M.signature; current: M.signature }
 
-  let empty = S.empty
+  let empty = { top = S.empty; current = S.empty }
+  let start s = { top = s; current = s }
+  let top env = { env with current = env.top }
 
   let proj lvl env = match lvl with
-    | M.Module -> env.M.modules
-    | M.Module_type -> env.module_types
+    | M.Module -> env.current.M.modules
+    | M.Module_type -> env.current.module_types
 
   let find_name _root level name env =
     Name.Map.find name @@ proj level env
+
+  let restrict env sg = { env with current = sg }
 
   let rec resolve_alias path env =
     match path with
@@ -51,7 +56,7 @@ module Base = struct
     | a :: q ->
       match Name.Map.find a @@ proj Module env with
       | Alias {path; _ } -> Some (List.hd path)
-      | M m -> resolve_alias q m.signature
+      | M m -> resolve_alias q @@ restrict env m.signature
     | exception Not_found -> None
 
   let is_exterior path envt =
@@ -65,7 +70,7 @@ module Base = struct
       | _ -> false
 
 
-  let rec find0 start_env require_root level path env =
+  let rec find0 require_root level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
@@ -74,24 +79,26 @@ module Base = struct
         if require_root then
           raise Not_found
         else
-          find0 start_env true level ( path @ q ) start_env
+          find0 true level ( path @ q ) (top env)
       | M.M m ->
         if require_root && not (is_unit m) then
           raise Not_found
         else if q = [] then
           m
         else
-          find0 start_env false level q m.signature
+          find0 false level q  @@ restrict env m.signature
 
   let find level path env=
-    find0 env false level path env
+    find0 false level path env
 
   let deps _env = Paths.P.Set.empty
   let reset_deps = ignore
 
-  let (>>) env def = Def.(env +@ def.Definition.visible)
-  let restrict _env sg = sg
-  let add_module = S.add
+  let (>>) env def = restrict env Def.(env.current +@ def.Definition.visible)
+
+  let add_unit env x =
+    let top = S.add env.top x in
+    { top; current = top }
 end
 
 module Open_world(Envt:extended_with_deps) = struct
@@ -99,6 +106,7 @@ module Open_world(Envt:extended_with_deps) = struct
   type t = { core: Envt.t; world: P.t Name.map; externs: P.set ref }
 
   let is_exterior path env = Envt.is_exterior path env.core
+  let top env = { env with core = Envt.top env.core }
 
   let resolve_alias name env =
     Envt.resolve_alias name env.core
@@ -166,7 +174,7 @@ module Open_world(Envt:extended_with_deps) = struct
         approx path
 
   let (>>) env sg = { env with core = Envt.( env.core >> sg ) }
-  let add_module env m = { env with core = Envt.add_module env.core m }
+  let add_unit env m = { env with core = Envt.add_unit env.core m }
   let restrict env m = { env with core = Envt.restrict env.core m }
 
 end
@@ -199,6 +207,8 @@ module Layered = struct
 
   let is_exterior path env = Base.is_exterior path env.local
   let resolve_alias name env = Base.resolve_alias name env.local
+  let top env = { env with local = Base.top env.local }
+
 
   let create includes units env =
     { local = env; local_units = units; pkgs = List.map read_dir includes }
@@ -228,7 +238,7 @@ module Layered = struct
 
         let md = M.create
             ~origin:(Origin.Unit path) name sg in
-        source.resolved <- Envt.add_module source.resolved (M.M md);
+        source.resolved <- Envt.add_unit source.resolved (M.M md);
         track source q
 
   let rec pkg_find name source =
@@ -280,7 +290,7 @@ module Layered = struct
 
 
   let (>>) e1 sg = { e1 with local = Base.( e1.local >> sg) }
-  let add_module e m = { e with local = Base.add_module e.local m }
+  let add_unit e m = { e with local = Base.add_unit e.local m }
 
 end
 
@@ -295,7 +305,8 @@ module Tracing(Envt:extended) = struct
 
   let is_exterior path env = Envt.is_exterior path env.env
   let resolve_alias name env = Envt.resolve_alias name env.env
-
+  let top env = { env with env = Envt.top env.env }
+  let restrict env m = { env with env = Envt.restrict env.env m }
 
   let path_record p env =
     env.deps := P.Set.add p !(env.deps)
@@ -312,42 +323,42 @@ module Tracing(Envt:extended) = struct
       path_record p env
     | _ -> ()
 
-  let rec find0 start_env ~top ~require_root level path env =
+  let rec find0 ~root ~require_top level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
-      match Envt.find_name top (adjust_level level q) a env.env with
+      match Envt.find_name root (adjust_level level q) a env.env with
       | Alias {path; _ } ->
-        if require_root then
+        if require_top then
           (* we were looking for a compilation unit and got a submodule alias *)
           raise Not_found
         else
           (* aliases link only to compilation units *)
-          find0 start_env ~top:true ~require_root:true
-            level (path @ q) start_env
+          find0 ~root:true ~require_top:true
+            level (path @ q) (top env)
       | M.M m ->
-        if require_root && not (is_unit m) then
+        if require_top && not (is_unit m) then
           raise Not_found
         else begin
           record env m;
           if q = [] then
             m
           else
-            find0 start_env ~top:false ~require_root:false level q
-              { env with env = Envt.restrict env.env m.signature }
+            find0 ~root:false ~require_top:false level q
+              @@ restrict env m.signature
         end
 
   let find level path env =
-    find0 env ~top:true ~require_root:false level path env
+    find0 ~root:true ~require_top:false level path env
 
   let find_name root level name env =
-    M.M (find0 env ~top:root ~require_root:false level [name] env)
+    M.M (find0 ~root ~require_top:false level [name] env)
 
 
   let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
 
-  let restrict env m = { env with env = Envt.restrict env.env m }
-  let add_module e m = { e with env = Envt.add_module e.env m }
+
+  let add_unit e m = { e with env = Envt.add_unit e.env m }
 
   let deps env = !(env.deps)
   let reset_deps env =  env.deps := Paths.P.Set.empty

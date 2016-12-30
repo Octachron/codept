@@ -24,7 +24,8 @@ let organize polycy files =
 module Envt = Envts.Tr
 
 let start_env includes fileset filemap =
-  let layered = Envts.Layered.create includes fileset @@ Stdlib.signature in
+  let base = Envts.Base.start Stdlib.signature in
+  let layered = Envts.Layered.create includes fileset base in
   let traced = Envts.Trl.extend layered in
   Envt.start traced filemap
 

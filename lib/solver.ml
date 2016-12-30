@@ -173,7 +173,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
               signature = Module.Sig.empty
                      } in
           { state with postponed = u:: state.postponed;
-                       env = Envt.add_module state.env fictious
+                       env = Envt.add_unit state.env fictious
           }
       )
       { postponed = []; env; pending = []; resolved = [] } units
@@ -192,7 +192,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
         if learn then begin
           let input = unit.input in
           let md = Module.( create ~origin:(Unit input.path)) input.name sg in
-          Envt.add_module state.env (Module.M md)
+          Envt.add_unit state.env (Module.M md)
         end
         else
           state.env

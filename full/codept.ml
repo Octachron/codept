@@ -187,7 +187,7 @@ let one_pass ppf param f =
   let module Param = (val lift param) in
   let module Sg = Envts.Interpreters.Sg(Param) in
   let start = to_m2l param.polycy param.sig_only f in
-  match Option.( start >>| Sg.m2l S.empty ) with
+  match Option.( start >>| Sg.m2l Envts.Base.empty ) with
   | None -> ()
   | Some (Ok (_state,d)) -> Pp.fp ppf "Computation finished:\n %a@." S.pp d
   | Some (Error h) -> Pp.fp ppf "Computation halted at:\n %a@." M2l.pp h
@@ -256,8 +256,8 @@ let base_env signatures no_stdlib =
     if no_stdlib then
       Envts.Base.empty
     else
-      Stdlib.signature in
-  List.fold_left Envts.Base.add_module start signatures
+      Envts.Base.start Stdlib.signature in
+  List.fold_left Envts.Base.add_unit start signatures
 
 type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
