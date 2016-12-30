@@ -98,6 +98,7 @@ type param =
     may_approx:bool;
     sig_only:bool;
     polycy: Fault.Polycy.t;
+    output: string;
   }
 
 
@@ -149,7 +150,8 @@ let param = ref {
   closed_world = false;
   may_approx = false;
   sig_only = false;
-  polycy = Self_polycy.polycy
+  polycy = Self_polycy.polycy;
+  output = "%"
 }
 
 
@@ -176,37 +178,37 @@ let to_m2l polycy sig_only (k,f) =
     | _, Error M2l -> Fault.handle polycy Self_polycy.m2l_syntaxerr f; None
 
 
-let approx_file _param (_,f) =
+let approx_file ppf  _param (_,f) =
   let _name, lower, upper = Approx_parser.file f in
-  Pp.fp std  "lower bound:%a@. upper bound:%a@."
+  Pp.fp ppf  "lower bound:%a@. upper bound:%a@."
     M2l.pp lower M2l.pp upper
 
-let one_pass param f =
+let one_pass ppf param f =
   let module Param = (val lift param) in
   let module Sg = Envts.Interpreters.Sg(Param) in
   let start = to_m2l param.polycy param.sig_only f in
   match Option.( start >>| Sg.m2l S.empty ) with
   | None -> ()
-  | Some (Ok (_state,d)) -> Pp.fp std "Computation finished:\n %a@." S.pp d
-  | Some (Error h) -> Pp.fp std "Computation halted at:\n %a@." M2l.pp h
+  | Some (Ok (_state,d)) -> Pp.fp ppf "Computation finished:\n %a@." S.pp d
+  | Some (Error h) -> Pp.fp ppf "Computation halted at:\n %a@." M2l.pp h
 
-let m2l param f =
+let m2l ppf param f =
   let start = to_m2l param.polycy param.sig_only f in
   let open Option in
   start
   >>| Normalize.all
   >>| snd
-  >>| Pp.fp std  "%a@." M2l.pp
+  >>| Pp.fp ppf  "%a@." M2l.pp
   >< ()
 
-let m2l_sexp param f =
+let m2l_sexp ppf param f =
   let start = to_m2l param.polycy param.sig_only f in
   let open Option in
   start
   >>| Normalize.all
   >>| snd
   >>| M2l.sexp.embed
-  >>| Pp.fp std  "%a@." Sexp.pp
+  >>| Pp.fp ppf  "%a@." Sexp.pp
   >< ()
 
 (** Topological order functions *)
@@ -305,12 +307,12 @@ let analyze param {opens;libs;invisibles; signatures; files;_} =
   let mli = remove_units invisibles mli in
   {Unit.ml;mli}
 
-let info param task =
+let info ppf param task =
   let {Unit.ml; mli} = analyze param task in
-  let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) std in
+  let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) ppf in
   print ml; print mli
 
-let export param task =
+let export ppf param task =
   let {Unit.mli; _} = analyze param task in
   let sign (u:Unit.r)= u.signature in
   let md (unit:Unit.r) =
@@ -325,13 +327,13 @@ let export param task =
     let open Module.Sig in
     List.fold_left (fun sg u -> merge sg @@ create @@ md u) empty mli
   in
-  Pp.fp std "@[<hov>let signature=@;\
+  Pp.fp ppf "@[<hov>let signature=@;\
              let open Module in @;\
              let open Sig in @;\
              %a\
              @]@." Module.reflect_signature s
 
-let sign param task =
+let sign ppf param task =
   let {Unit.mli; _} = analyze param task in
   let md {Unit.signature; name; path; _  } =
     Module.M ( Module.create ~args:[]
@@ -341,7 +343,7 @@ let sign param task =
   in
   let mds = List.map md mli in
   let sexp = Sexp.( (list Module.sexp).embed ) mds in
-  Pp.(fp std) "@[%a@]@." Sexp.pp sexp
+  Pp.fp ppf "@[%a@]@." Sexp.pp sexp
 
 let sig_only () =
   param := { !param with sig_only = true }
@@ -374,7 +376,7 @@ let pp_module {abs_path;slash; _ } proj ppf (u:Unit.r) =
     elts
 
 
-let pp_aliases param task =
+let pp_aliases ppf param task =
   let pp_pkg = Pkg.pp_gen param.slash in
   let pp_m m =
     let open Module in
@@ -383,7 +385,7 @@ let pp_aliases param task =
       let path' = Pkg.update_extension
           (function "m2l" -> ".ml" | "m2li" -> ".mli" | s -> s ) path in
       let f = make_abs param.abs_path path' in
-      Pp.fp std "%a: %a\n" pp_pkg f
+      Pp.fp ppf "%a: %a\n" pp_pkg f
         Pp.( list ~sep:(s" ") Name.pp ) (aliases m)
     | _ -> () in
       List.iter pp_m task.signatures
@@ -416,11 +418,11 @@ let sort proj param mli =
   else id
 
 
-let gen_modules proj param task =
+let gen_modules proj ppf param task =
   let {Unit.ml; mli} = analyze param task in
   let sort_p = sort id param mli in
   let sort_u = sort upath param mli in
-  let print units = Pp.fp std "%a"
+  let print units = Pp.fp ppf "%a"
       Pp.(list ~sep:(s"") @@ pp_module param @@ proj sort_p)
       (sort_u units) in
   print ml; print mli
@@ -440,11 +442,11 @@ let pp_only_deps sort ?filter ppf u =
     Pp.( list ~sep:(s"\n") Name.pp )
     ( List.map Pkg.module_name elts)
 
-let line_modules ?filter param task =
+let line_modules ?filter ppf param task =
   let {Unit.ml; mli} = analyze param task in
   let sort_p = sort id param mli in
   let sort_u = sort upath param mli in
-  let print units = Pp.fp std "%a"
+  let print units = Pp.fp ppf "%a"
       Pp.(list ~sep:(s"") @@ pp_only_deps sort_p ?filter)
       (sort_u units) in
   print ml; print mli
@@ -457,17 +459,17 @@ let local_dependencies sort unit =
   @@ Pkg.Set.elements unit.U.dependencies
 
 
-let dot param task =
+let dot ppf param task =
   let open Unit in
   let {mli; _ } = analyze param task in
   let sort = sort id param mli in
-  Pp.fp Pp.std "digraph G {\n";
+  Pp.fp ppf "digraph G {\n";
   List.iter (fun u ->
       List.iter (fun p ->
-          Pp.fp std "%s -> %s \n" u.name @@ Pkg.module_name p)
+          Pp.fp ppf "%s -> %s \n" u.name @@ Pkg.module_name p)
         (local_dependencies sort u)
     ) mli;
-  Pp.fp Pp.std "}\n"
+  Pp.fp ppf "}\n"
 
 let regroup {Unit.ml;mli} =
   let add l m = List.fold_left (fun x y -> Unit.Groups.R.Map.add y x) m l in
@@ -525,12 +527,11 @@ let print_deps param order input dep ppf (unit,imore,dmore) =
 
 
 
-let makefile param task =
+let makefile ppf param task =
   let all = param.all in
   let if_all l = if all then l else [] in
   (*  let make_abs = make_abs param.abs_path in *)
   let print_deps = print_deps param in
-  let ppf = Pp.std in
   let units = analyze param task in
   let order = order units.Unit.mli in
   let m =regroup units in
@@ -672,15 +673,30 @@ let mli_synonym s =
 let lib f =
   task := { !task with libs = f :: (!task).libs }
 
-let action = ref ignore
-let set command () = action:= (fun () -> command !param !task)
-let () = set makefile ()
+let action = ref []
 
-let set_iter command () = action := begin
-    fun () ->
-      let {Unit.ml;mli} = (!task).files  in
-      List.iter (command !param) (ml @ mli)
-  end
+let act (file,action) =
+  if file = "%" then
+    action Pp.std
+  else
+    let f= open_out file in
+    let f'= Format.formatter_of_out_channel f in
+    action f';
+    Format.pp_print_flush f' ();
+    close_out f
+
+
+let set command () =
+  action:= (!param.output, fun out -> command out !param !task) :: !action
+
+let set_iter command () = action :=
+    ( !param.output,
+      begin
+        fun out ->
+          let {Unit.ml;mli} = (!task).files  in
+          List.iter (command out !param) (ml @ mli)
+      end
+    ) :: !action
 
 let transparent_aliases value =
   param := { !param with transparent_aliases = value }
@@ -725,6 +741,8 @@ let sort () =
 let close_world () =
     param := { !param with closed_world = true }
 
+let o s =
+  param := { !param with output = s }
 
 let allow_approx () =
   param := { !param with polycy = Fault.Polycy.parsing_approx }
@@ -976,7 +994,7 @@ let args = Cmd.[
     "-native-filter", Cmd.Unit native,
     ": generate native compilation only dependencies";
     "-bytecode-filter", Cmd.Unit bytecode,
-    ": generate bytecode only dependencies";
+    ": generate bytecode only dependencies. Fault options";
 
     "-closed-world", Unit close_world,
     ": require that all dependencies are provided";
@@ -996,6 +1014,7 @@ let args = Cmd.[
                        in the analysis";
     "-no-alias-deps", Cmd.Unit (fun () -> transparent_aliases true),
     ": Delay aliases dependencies";
+    "-o", Cmd.String o, "<filename>: set current output file";
     "-no-implicits", Cmd.Unit no_implicits,
     ": do not implicitly search for a mli \
      file when given a ml file input";
@@ -1016,4 +1035,5 @@ let () =
   ; Cmd.parse args add_file usage_msg
   ; Findlib.process ()
   ; Compenv.readenv stderr Before_link
-  ; !action ()
+  ; if !action = [] then set makefile ()
+  ; List.iter act !action
