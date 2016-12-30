@@ -79,6 +79,7 @@ However, some of the ocamldep options are slightly reinterpreted:
 
   * `-allow-approx` use a new experimental heuristic for parsing syntactically
     invalid file that might be more precise − or brittle. More tests are needed.
+    See also the more generic `-k` option.
 
 Another possible difference between codept and ocamldep output is codept built-in detection of dependency cycles. Within codept, cycles triggers a fatal error message andstops the current analysis.
 
@@ -118,7 +119,7 @@ Some new options explore codept possibilities and intermediary representations
     module have for signature `sig end` (this approximation can only
     lead to an over-approximation of dependencies).
 
-  * `-k` keep-going after most recoverable errors, supersede `-allow-approx`
+  * `-k` keep-going after most recoverable errors, supersedes `-allow-approx`
 
   * `-sig` exports the inferred module signatures in a sexp format that can
   be read directly by codept
