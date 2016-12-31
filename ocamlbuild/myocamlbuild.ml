@@ -5,8 +5,9 @@ open Ocamlbuild_plugin
 let mdeps = A "-nl-modules"
 let fdeps = A "-modules"
 let sig_only =A "-sig-only"
-let gen_sig = S[ A "-sig"; sig_only ]
+let gen_sig = A "-sig"
 let m2l_gen = A "-m2l-sexp"
+let o = A "-o"
 
 let is_pflag_included root s =
   let predicate t =
@@ -30,16 +31,16 @@ let codept' ~approx mode tags =
   let k = if approx then S [ A"-k"] else S [] in
   S [ A "codept"; T tags'; k; mode]
 
+
 let codept ?(approx=true) mode arg out env _build =
   let arg = env arg and out = env out in
   let tags = tags_of_pathname arg in
   (** use codept "-k" to not fail on apparent self-reference *)
-
   Cmd(S[codept' ~approx mode tags; P arg; Sh ">"; Px out])
 
 
-let codept_dep ?(approx=false) mode arg deps out env build =
-  let arg = env arg and out = env out and deps = env deps in
+let codept_dep ?(approx=false) mode arg deps outs env build =
+  let arg = env arg  and deps = env deps in
   let tags = tags_of_pathname arg in
   let approx_deps = string_list_of_file deps in
   (** eliminate self-dependency *)
@@ -53,15 +54,46 @@ let codept_dep ?(approx=false) mode arg deps out env build =
     List.map Outcome.good
     @@ List.filter Outcome.(function Good _ -> true | Bad _ -> false )
     @@ outsigs in
-  Cmd( S[ codept' ~approx mode tags; P arg; Command.atomize_paths sigs;
+  let outs = List.map (fun (mode, name) -> S [o; Px (env name); mode ] ) outs in
+  Cmd( S[ codept' ~approx mode tags; P arg; Command.atomize_paths sigs;  S outs])
+
+
+let parse_maps file =
+  match string_list_of_file file with
+  |  [] | _ :: _ :: _ -> None
+  | [a] ->
+    let l = String.split_on_char ';' a in
+    let l = List.map (fun x -> List.hd @@ String.split_on_char '{' x ) l in
+    Some l
+
+(*
+let codept_maps  arg out env build =
+  let arg = env arg and out = env out in
+  let tags = tags_of_pathname arg in
+  match parse_map arg with
+  | None -> S [ touch; Px out]
+  | Some l ->
+  (** eliminate self-dependency *)
+  let include_dirs = Pathname.(include_dirs_of @@ dirname arg ) in
+  let cmi = List.map (fun m -> expand_module include_dirs m ["cmi"])
+      maps in
+  let outcmi = build cmi in
+  let sigs =
+    List.map Outcome.good
+    @@ List.filter Outcome.(function Good _ -> true | Bad _ -> false )
+    @@ outsigs in
+  Cmd( S[ codept' maps tags; P arg; Command.atomize_paths sigs;
           Sh ">"; Px out])
+*)
 
 module R() = struct
-  let mdeps = A "-nl-modules" in
-  let fdeps = A "-modules" in
-  let sig_only = A "-sig-only" in
-  let gen_sig = S [ A "-sig"; sig_only ] in
-  let m2l_gen = A "-m2l-sexp" in
+
+  (*rule "m2l ⇒ ml.maps.depends"
+    ~insert:top
+    ~deps:"%.m2l"
+    ~prod:"%.ml.maps.depends"
+    (codept_maps "%.ml" "%.ml.maps.depends");
+  *)
 
   rule "ml → m2l"
     ~insert:`top
@@ -90,21 +122,21 @@ rule "m2li → mli.r.depends"
   ~doc:"Compute approximate dependencies using codept."
   (codept mdeps "%.mli" "%.mli.r.depends");
 
-rule "m2li → sig"
+rule "m2li → sig depends"
   ~insert:`top
-  ~prod:"%.sig"
-  ~deps:["%.m2li";"%.sig.depends"]
+  ~prods:["%.sig";"%.sig.depends"]
+  ~deps:["%.m2li"; "%.r.sig.depends"]
   ~doc:"Compute approximate dependencies using codept."
-  (codept_dep ~approx:false gen_sig "%.m2li" "%.sig.depends"
-     "%.sig");
+  (codept_dep ~approx:false sig_only "%.m2li" "%.r.sig.depends"
+     [gen_sig, "%.sig"; fdeps, "%.sig.depends"]);
 
-rule "m2l → sig"
-  ~insert:(`after "m2li → sig")
-  ~prod:"%.sig"
-  ~deps:["%.m2l";"%.sig.depends"]
+rule "m2l → sig depends"
+  ~insert:(`after "m2li → sig depends")
+  ~prods:["%.sig"; "%.sig.depends"]
+  ~deps:["%.m2l"; "%.r.sig.depends"]
   ~doc:"Compute approximate dependencies using codept."
-  (codept_dep ~approx:false gen_sig
-     "%.m2l" "%.sig.depends" "%.sig");
+  (codept_dep ~approx:false sig_only
+     "%.m2l" "%.r.sig.depends" [gen_sig, "%.sig"; fdeps, "%.sig.depends"]);
 
 rule "m2li → r.sig.depends"
   ~insert:`top
@@ -121,39 +153,22 @@ rule "m2l → r.sig.depends"
   (codept (S [ mdeps; sig_only]) "%.m2l" "%.r.sig.depends");
 
 
-rule "m2li r.sig.depends → sig.depends"
+rule "m2l → ml.depends"
   ~insert:`top
-  ~prod:"%.sig.depends"
-  ~deps:["%.m2li"; "%.r.sig.depends"]
-  ~doc:"Compute approximate dependencies using codept."
-  (codept_dep (S [ mdeps; sig_only])
-                 "%.m2li" "%.r.sig.depends" "%.sig.depends")
-;
-
-rule "m2l r.sig.depends → sig.depends"
-  ~insert:(`after "m2li r.sig.depends → sig.depends")
-  ~prod:"%.sig.depends"
-  ~deps:["%.m2l"; "%.r.sig.depends"]
-  ~doc:"Compute approximate dependencies using codept."
-  (codept_dep (S [ mdeps; sig_only])
-     "%.m2l" "%.r.sig.depends" "%.sig.depends")
-;
-
-
-rule "m2l → depends"
-  ~insert:`top
-  ~prod:"%.ml.depends"
+  ~prods:["%.ml.depends";"%.ml.maps.depends"]
   ~deps:["%.m2l";"%.ml.r.depends"]
   ~doc:"Compute approximate dependencies using codept."
-  (codept_dep fdeps "%.ml" "%.ml.r.depends" "%.ml.depends")
+  (codept_dep N "%.ml" "%.ml.r.depends"
+     [fdeps, "%.ml.depends"] )
 ;
 
 
-rule "m2li → depends"
+rule "m2li → mli.depends"
   ~insert: `top
-  ~prod:"%.mli.depends"
+  ~prods:["%.mli.depends";"%.mli.maps.depends"]
   ~deps:["%.m2li";"%.mli.r.depends"]
-  (codept_dep fdeps "%.mli" "%.mli.r.depends" "%.mli.depends")
+  (codept_dep N "%.mli" "%.mli.r.depends"
+     [fdeps, "%.mli.depends"] )
 
 end
 
