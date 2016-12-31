@@ -377,11 +377,22 @@ module Partial = struct
     module R = Sexp.Record
     let ksign = R.(key Many "signature" Sig.empty)
     let partial =
-      let r = record R.[ field ksign Sig.sexp; field C.args_f @@ C.args () ] in
-      let f x = {args = R.get C.args_f x; result = R.get ksign x;
-                 precision=Precision.Exact; origin = Submodule
-                } in
-      let fr r = R.(create [ksign := r.result; C.args_f := r.args] ) in
+      let r = record R.[
+          field C.precision Precision.sexp;
+          field C.origin Origin.sexp;
+          field ksign Sig.sexp;
+          field C.args_f @@ C.args ();
+        ] in
+      let f x =
+        let get f = R.get f x in
+        {args = get C.args_f; result = get ksign;
+         precision = get C.precision; origin = get C.origin }
+        in
+let fr r = R.(create [ksign := r.result;
+                      C.args_f := r.args;
+                      C.origin := r.origin;
+                      C.precision := r.precision
+                     ] ) in
       conv {f;fr} r
 
   end
