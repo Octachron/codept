@@ -180,7 +180,7 @@ end
 let pp ppf unit =
   Pp.fp ppf "@[<hov2>[ name=%s; @, path=%a; @;\
              m2l = @[%a@]; @;\
-             signature=@[%a@] ];\
+             signature=[ @[%a@] ];\
              dependencies=@[%a@] @;\
              ] @] @."
     unit.name
