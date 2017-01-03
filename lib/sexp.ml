@@ -438,6 +438,32 @@ let pair l r =
   let embed (a,b) = list' [any (l.embed a); any (r.embed b)] in
   {parse;embed; kind = Many }
 
+let triple a b c =
+  let parse = function
+    | List [x;y;z] -> begin
+      match any_parse a x, any_parse b y, any_parse c y with
+      | Some x, Some y, Some z -> Some(x,y,z)
+      | _ -> None
+      end
+    | _ -> None in
+  let embed (x,y,z) = list'
+      [ any @@ embed a x; any @@ embed b y; any @@ embed c z] in
+  { parse; embed; kind = Many }
+
+let tetra a b c d =
+  let parse = function
+    | List [x;y;z;t] -> begin
+      match any_parse a x, any_parse b y, any_parse c y, any_parse d t with
+      | Some x, Some y, Some z, Some t -> Some(x,y,z,t)
+      | _ -> None
+      end
+    | _ -> None in
+  let embed (x,y,z,t) = list'
+      [ any @@ embed a x; any @@ embed b y;
+        any @@ embed c z; any @@ embed d t ] in
+  { parse; embed; kind = Many }
+
+
 let conv bij impl =
   let parse x =
     x |> impl.parse >>| bij.f in

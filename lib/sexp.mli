@@ -79,6 +79,12 @@ val singleton: ('a,'b) impl -> ('a list, many) impl
 val keyed_list: string -> ('a,'b) impl -> ('a list, many) impl
 
 val pair: ('a,'k) impl -> ('b,'k2) impl -> ('a * 'b, many) impl
+val triple: ('a,'k) impl -> ('b,'k2) impl -> ('c, 'k3) impl ->
+  ('a * 'b * 'c, many) impl
+val tetra: ('a,'k) impl -> ('b,'k2) impl -> ('c, 'k3) impl -> ('d,'k4) impl
+  -> ('a * 'b * 'c * ' d, many) impl
+
+
 val pair': ('a,'k) impl -> ('b,many) impl -> ('a * 'b, many) impl
 val key_list: ('a,atomic) impl -> ('b,many) impl -> ('a * 'b, one_and_many) impl
 
