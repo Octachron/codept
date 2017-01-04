@@ -11,6 +11,15 @@ type 'a bind = {name:Name.t; expr:'a}
 
 type kind = Structure | Signature
 
+(** A location within a file *)
+type location =
+  | Nowhere
+  | Simple of { line:int; start:int; stop:int }
+  | Multiline of { start: int * int; stop: int * int }
+
+(** A data structure to add location data *)
+type 'a with_location = { loc:location; data:'a }
+
 type expression =
   | Defs of Definition.t (** Resolved module actions M = … / include … / open … *)
   | Open of Paths.Simple.t (** [open A.B.C] ⇒ [Open [A;B;C]]  *)
@@ -85,17 +94,91 @@ and extension = {name:string; extension:extension_core}
 and extension_core =
   | Module of m2l
   | Val of annotation
-and m2l = expression list
+and m2l = expression with_location list
 and 'a fn = { arg: module_type Arg.t option; body:'a }
 
 type t = m2l
 
 let annot_empty = { access=Name.Set.empty; values = []; packed = [] }
 
+
+module Loc = struct
+
+  type t = location
+  let create loc data = {loc; data}
+  let nowhere data = { loc = Nowhere; data}
+
+  let expand = function
+    | Nowhere -> None
+    | Simple {line;start;stop} -> Some ( (line,start), (line,stop) )
+    | Multiline m -> Some(m.start, m.stop)
+
+  let compress = function
+    | Multiline {start; stop } when fst start = fst stop ->
+        Simple { line = fst start; start = snd start; stop = snd stop }
+    | (Simple _ | Nowhere | Multiline _) as m -> m
+
+
+  let merge x y = compress @@
+    match expand x, expand y with
+    | None, None -> Nowhere
+    | Some (start,stop) , None | None , Some(start,stop)
+    | Some(start,_), Some(_,stop) ->
+      Multiline {start;stop}
+
+  let list l =
+    List.fold_left (fun loc x -> merge loc x.loc) Nowhere l
+
+  let fmap f x = { x with data = f x.data }
+
+end
+
+
 (** S-expression serialization *)
 module More_sexp = struct
   open Sexp
   module R = Sexp.Record
+
+  module Location = struct
+    let simple = C2.C { name = "Simple";
+                        proj = (function Simple s -> Some(s.line, s.start, s.stop)
+                                       | _ -> None ) ;
+                        inj = (fun (line,start,stop) -> Simple {line;start;stop} );
+                        impl = triple' int int int;
+                      }
+    let multiline = C2.C
+        { name = "Multiline";
+          proj = (function Multiline {start;stop} ->
+              Some(fst start, snd start, fst stop, snd stop )
+                         | _ -> None );
+          inj = (fun (l,c,l2,c2) -> Multiline { start = l, c; stop = l2, c2 });
+          impl = tetra' int int int int
+        }
+
+    let empty_set =
+      let parse = function
+        | Keyed_list ("∅", []) -> Some ()
+        | _ -> None
+      and embed _ = Keyed_list ("∅", [] ) in
+      {parse;embed;kind= One_and_many }
+
+    let nowhere = C2.C
+        { name= "Nowhere";
+          proj = (function Nowhere -> Some () | _ -> None );
+          inj = (fun _ -> Nowhere);
+          impl = empty_set;
+        }
+
+
+  end
+  let loc =
+    let open Location in
+    C2.sum simple [simple;multiline]
+
+  let with_loc impl =
+    convr (pair impl loc)
+      (fun (data,loc) -> {data;loc})
+      (fun r -> r.data, r.loc)
 
   let fix r impl = fix (impl r)
   let fix' r impl = fix' (impl r)
@@ -209,9 +292,10 @@ module More_sexp = struct
 
   let nameset = convr (list string) Name.Set.of_list Name.Set.elements
 
+  let m2l r () = list @@ with_loc @@ fix' r expr
   let annot r () =
     let r = record R.[field access nameset;
-             field values (list @@ list @@ fix' r r.expr);
+             field values (list @@  fix r m2l);
              field packed (list @@ fix' r r.me)
             ] in
     let f x = { access = R.get access x; values = R.get values x;
@@ -263,7 +347,7 @@ module More_sexp = struct
 
   let str r =
     C { name = "Str"; proj = (function Str l -> Some l| _ -> None);
-        inj = (fun l -> Str l); impl = list (fix' r r.expr);
+        inj = (fun l -> Str l); impl = fix r m2l;
         default = Some []
       }
 
@@ -322,7 +406,7 @@ module More_sexp = struct
   let sig_ r =
     C { name="Sig";
         proj =(function Sig s -> Some s | _ -> None);
-        inj = (fun s -> Sig s); impl = list (fix' r r.expr);
+        inj = (fun s -> Sig s); impl = fix r m2l;
         default = Some [];
       }
 
@@ -361,7 +445,7 @@ module More_sexp = struct
 
     let ext_mod r =
       C {name = "Module"; proj = (function Module m2l -> Some m2l | _ -> None );
-         inj = (fun m2l -> Module m2l); impl = list (fix' r r.expr);
+         inj = (fun m2l -> Module m2l); impl = fix r m2l;
          default = Some []
         }
 
@@ -379,7 +463,7 @@ module More_sexp = struct
         (fun r -> r.name, r.extension)
 
     let recursive = { expr; me; mt; ext; annot }
-    let m2l = list @@ expr recursive ()
+    let m2l = m2l recursive ()
     let expr = expr recursive ()
     let me = me recursive ()
     let mt = mt recursive ()
@@ -395,6 +479,9 @@ module Block = struct
   let either x f y = if x = None then f y else x
   let first f l = List.fold_left (fun x y -> either x f y) None l
 
+  let data x = x.data
+
+
   let rec me = function
     | Resolved _ -> None
     | Ident n -> Some( List.hd n )
@@ -404,7 +491,7 @@ module Block = struct
         Option.(fn.arg >>= fun {Arg.signature;_} -> mt signature)
         me fn.body
     | Constraint (e,t) -> either (me e) mt t
-    | Str code -> m2l code
+    | Str code -> Option.fmap data @@ m2l code
     | Val _ | Extension_node _ | Abstract | Unpacked -> None
     | Open_me {opens = []; expr; _ } -> me expr
     | Open_me {opens = a::_ ; _ } -> Some (List.hd a)
@@ -412,7 +499,7 @@ module Block = struct
     | Resolved _ -> None
     | Alias n -> Some (List.hd n)
     | Ident e -> Some (Paths.Expr.prefix e)
-    | Sig code -> m2l code
+    | Sig code -> Option.fmap data @@ m2l code
     | Fun fn -> either
                   Option.(fn.arg >>= fun {Arg.signature;_} -> mt signature)
                   mt fn.body
@@ -420,9 +507,10 @@ module Block = struct
     | Of e -> me e
     | Extension_node _
     | Abstract -> None
-  and expr = function
+  and expr  =
+    function
     | Defs _ -> None
-    | Open p -> Some (List.hd p)
+    | Open p -> Some ( List.hd p)
     | Include e -> me e
     | SigInclude t -> mt t
     | Bind {expr;_} -> me expr
@@ -431,18 +519,24 @@ module Block = struct
       first (fun b -> me b.expr) l
     | Minor _ -> None
     | Extension_node _ -> None
-  and m2l code = first expr code
+  and expr_loc {loc;data} =
+      Option.fmap (fun data -> {loc;data}) @@ expr data
+  and m2l code = first expr_loc code
 end
 
 module Annot = struct
-  type t = annotation
-  let empty = annot_empty
-  let is_empty  = (=) empty
-  let merge a1 a2 =
+  type t = annotation with_location
+  let empty = { data = annot_empty; loc = Nowhere }
+  let is_empty x  = x.data = annot_empty
+  let merge x y =
+    let a1 = x.data and a2 = y.data in
+    let data =
     { access= Name.Set.union a1.access a2.access;
       values = a1.values @ a2.values;
       packed = a1.packed @ a2.packed
-    }
+    } in
+    {data; loc = Loc.merge x.loc y.loc}
+
 
   let (++) = merge
 
@@ -451,10 +545,16 @@ module Annot = struct
   let union_map f l =
     List.fold_left (fun res x -> res ++ f x ) empty l
 
-  let access name = { empty with
-                      access = Name.Set.singleton name }
-  let value v = { empty with values = v }
-  let pack o ={ empty with packed = o }
+  let access name =
+    Loc.create name.loc { annot_empty with
+                      access = Name.Set.singleton name.data }
+  let value v =
+    let loc =
+      let ext acc x = Loc.merge acc x.loc in
+      List.fold_left (List.fold_left ext) Nowhere v in
+    Loc.create loc { annot_empty with values = v }
+
+  let pack o = Loc.create o.loc { annot_empty with packed = o.data }
 
   let opt f x = Option.( x >>| f >< empty )
 
@@ -462,28 +562,34 @@ end
 
 (** Helper function *)
 module Build = struct
-  let access path = Minor (Annot.access @@ Paths.Expr.prefix path)
-  let open_ path = Open path
-  let value v = Minor ( Annot.value v)
-  let pack o = Minor (Annot.pack o)
+  let ghost data  = {data; loc= Nowhere }
+
+  let minor x = Minor x
+  let access path =
+    Loc.fmap minor @@ Annot.access @@ Loc.fmap Paths.Expr.prefix path
+
+  let open_ path = Loc.fmap (fun x -> Open x) path
+  let value v = Loc.fmap minor @@ Annot.value v
+  let pack o = Loc.fmap minor @@ Annot.pack o
 
   let open_me ml expr = match expr with
     | Open_me o -> Open_me { o with opens = ml @ o.opens }
     | expr ->  Open_me { resolved = D.empty; opens = ml; expr }
+
 
   let demote_str fn arg =
     let body = Fun fn in
     match arg with
     | None -> { arg=None; body }
     | Some ({name;signature}: _ Arg.t) ->
-      { arg = Some {name; signature=Sig [Defs signature]}; body }
+      { arg = Some {name; signature=Sig [Loc.nowhere @@ Defs signature]}; body }
 
   let demote_sig fn arg : module_type fn  =
     let body : module_type = Fun fn in
     match arg with
     | None -> { arg=None; body }
     | Some ({name;signature}: _ Arg.t) ->
-      { arg = Some {name; signature=Sig [Defs signature]}; body }
+      { arg = Some {name; signature=Sig [Loc.nowhere @@ Defs signature]}; body }
 
   let fn_sig arg : module_type = Fun arg
   let fn arg : module_expr  = Fun arg
@@ -565,7 +671,15 @@ and pp_extension ppf x = Pp.fp ppf "[%%%s @[<hv>%a@]]" x.name pp_extension_core
 and pp_extension_core ppf = function
   | Module m -> pp ppf m
   | Val m -> pp_annot ppf m
-and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" Pp.(list ~sep:(s " @,") pp_expression)
+and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]"
+    Pp.(list ~sep:(s " @,") pp_expression_with_loc)
+and pp_loc ppf = function
+  | Nowhere -> ()
+  | Simple {line;start;stop} -> Pp.fp ppf "l%d.%d−%d" line start stop
+  | Multiline {start=(l1,c1); stop = (l2,c2) } ->
+    Pp.fp ppf "l%d.%d−l%d.%d" l1 c1 l2 c2
+and pp_expression_with_loc ppf e = Pp.fp ppf "%a(%a)"
+    pp_expression e.data pp_loc e.loc
 
 
 (** {Normalize} computes the normal form of a given m2l code fragment *)
@@ -578,26 +692,30 @@ module Normalize = struct
   let (+:) x (more,l) =
     more, x :: l
 
+  let cminor x = Minor x
+
   let rec all : m2l -> bool * m2l  = function
-    | Defs d1 :: Defs d2 :: q ->
-      all @@ Defs Def.(  d1 +| d2) :: q
-    | Defs d :: q ->
-      let more, q = all q in more, Defs d :: q
-    | Minor m :: q -> Minor (minor m) +: all q
-    | (Open _ | Include _ | SigInclude _ | Bind_sig _ | Bind _ | Bind_rec _
-      | Extension_node _ )
+    | {data=Defs d1;_} :: {data=Defs d2; _ } :: q ->
+      all @@ (Loc.nowhere @@ Defs Def.(  d1 +| d2)) :: q
+    | {data = Defs _; _ } as e :: q ->
+      let more, q = all q in more, e :: q
+    | { data = Minor m; loc } :: q ->
+      Loc.fmap cminor (minor {data=m;loc})  +: all q
+    | { data = (Open _ | Include _ | SigInclude _ | Bind_sig _ | Bind _ | Bind_rec _
+      | Extension_node _ ); _ }
       :: _ as l ->
       halt l
     | [] -> halt []
   and minor v =
-    List.fold_left value { v with values = [] } v.values
+    List.fold_left value (Loc.fmap (fun data -> { data with values = [] }) v)
+      v.data.values
   and value mn p =
     match snd @@ all p with
     | [] -> mn
-    | Minor m :: q ->
-      let mn = Annot.merge mn m in
-          { mn with values = q :: mn.values }
-    | l -> { mn with values = l :: mn.values }
+    | { data = Minor m; loc } :: q ->
+      let mn = Annot.merge mn {data=m;loc} in
+         { mn with data = { mn.data with values = q :: mn.data.values } }
+    | l -> Loc.fmap (fun mn -> { mn with values = l :: mn.values }) mn
 
 end
 
@@ -617,18 +735,18 @@ module Sig_only = struct
       map (fun s -> Some { r with Arg.signature = s }) (inner r.signature )
 
   let rec rev keep_opens = function
-    | Defs _ :: l -> rev keep_opens l
-    | Minor _ :: l -> rev keep_opens l
-    | Open _  as o :: q ->
+    | { data = Defs _ ; _ } :: l -> rev keep_opens l
+    | { data = Minor _; _ } :: l -> rev keep_opens l
+    | { data= Open _; _ }  as o :: q ->
       if keep_opens then  o @:: rev keep_opens q
       else rev keep_opens q
-    | Extension_node _ as a :: q  -> a @:: rev true q
-    | (SigInclude _| Include _) as a :: q -> a @:: rev true q
-    | Bind {name;expr} :: q ->
+    | { data = Extension_node _; _ } as a :: q  -> a @:: rev true q
+    | { data = (SigInclude _| Include _); _ }  as a :: q -> a @:: rev true q
+    | { data = Bind {name;expr}; loc }  :: q ->
       let k, expr = mex expr in
-      Bind{name;expr} @:: rev (k||keep_opens) q
-    | (Bind_sig  _ as a) :: q
-    | (Bind_rec _ as a) :: q -> a @:: rev true q
+      { data = Bind{name;expr}; loc } @:: rev (k||keep_opens) q
+    | { data = (Bind_sig  _ | Bind_rec _); _ }  as a :: q
+      -> a @:: rev true q
     | [] -> false, []
   and main l = map List.rev (rev false @@ List.rev l)
   and mex = function

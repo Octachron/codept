@@ -19,14 +19,16 @@
 
 
 let (@%) opt_name l =
+  let minor x = M2l.Minor x in
   match opt_name with
   | None -> l
   | Some name ->
     let open M2l in
     match l with
-    | Minor m :: q ->
-      Minor { m with access = Name.Set.add name m.access} :: q
-    | l -> Minor (Annot.access name) :: l
+    | { data = Minor m; loc } :: q ->
+      let m = Annot.merge (Annot.access name) {data=m;loc} in
+      Loc.fmap minor m :: q
+    | l -> Loc.fmap minor (Annot.access name) :: l
 
 let stack = ref []
 
@@ -36,6 +38,12 @@ let token lexbuf =
   | a :: q -> stack := q; a
 
 let rewind a = stack := a :: !stack
+let locate lexbuf =
+  let open M2l in
+  let open Lexing in
+  let ext pos = pos.pos_lnum, pos.pos_cnum - pos.pos_bol in
+  Loc.compress @@
+  Multiline { start = ext lexbuf.lex_start_p; stop = ext lexbuf.lex_curr_p }
 
 let rec inf_start lexbuf =
   match token lexbuf with
@@ -51,17 +59,26 @@ let rec inf_start lexbuf =
 and inf_module lexbuf =
   match token lexbuf with
   | Parser.UIDENT name ->
+    let loc = locate lexbuf in
     begin match inf_bind lexbuf with
-    | None ->  M2l.(Bind { name; expr = Str []}) :: inf_start lexbuf
+      | None ->
+        M2l.(Loc.create loc @@ Bind { name; expr = Str []}) :: inf_start lexbuf
     | Some alias ->
-      M2l.(Bind { name; expr = Ident alias}) :: inf_start lexbuf
+      M2l.(
+        Loc.create (Loc.merge loc alias.loc) @@
+        Bind { name; expr = Ident alias.data}) :: inf_start lexbuf
     end
   | Parser.EOF -> []
   | _ -> inf_start lexbuf
-and inf_bind lexbuf = match token lexbuf with
+and inf_bind lexbuf =
+  let module L = M2l.Loc in
+  match token lexbuf with
   | Parser.EQUAL ->
     begin match token lexbuf with
-      | UIDENT name -> Some (name :: !inf_path_at_dot lexbuf)
+      | UIDENT name ->
+        let loc = locate lexbuf in
+        let rest: _ M2l.with_location = !inf_path_at_dot lexbuf in
+        Some { data= name :: rest.data; loc = M2l.Loc.merge loc rest.loc }
       | _ -> None
     end
   | _ -> None
@@ -69,32 +86,43 @@ and inf_bind lexbuf = match token lexbuf with
 and inf_open lexbuf =
   match token lexbuf with
   | Parser.UIDENT name ->
-    M2l.Open ( name :: !inf_path_at_dot lexbuf)  :: inf_start lexbuf
+    let loc = locate lexbuf in
+    let rest = !inf_path_at_dot lexbuf in
+    let loc = M2l.Loc.merge loc rest.loc in
+    M2l.{ data = Open ( name :: rest.data ); loc }  :: inf_start lexbuf
   | Parser.EOF -> []
   | _ -> inf_start lexbuf
 and inf_include lexbuf =
   match token lexbuf with
   | Parser.UIDENT name ->
-    M2l.(Include (Ident (name :: !inf_path_at_dot lexbuf)))  :: inf_start lexbuf
+    let loc = locate lexbuf in
+    let rest = !inf_path_at_dot lexbuf in
+    let loc = M2l.Loc.merge loc rest.loc in
+    let path = name :: rest.data in
+    M2l.{ data = Include (Ident path); loc }  :: inf_start lexbuf
   | Parser.EOF -> []
   | _ -> inf_start lexbuf
 and inf_uident name lexbuf =
   match token lexbuf with
   | Parser.DOT ->
+    let loc = locate lexbuf in
     let _ = !inf_path lexbuf in
-    Some name
+    Some { data = name; loc }
   | x -> rewind x; None
   | exception Lexer.Error _ -> None
 and inf_path lexbuf =
   match token lexbuf with
-  | Parser.UIDENT name -> name :: !inf_path_at_dot lexbuf
-  | _ -> []
+  | Parser.UIDENT name ->
+    let loc0 = locate lexbuf in
+    let {M2l.loc; data} = !inf_path_at_dot lexbuf in
+    { M2l.data = name :: data; loc = M2l.Loc.merge loc0 loc }
+  | _ -> M2l.Loc.nowhere []
 and inf_path_at_dot lexbuf =
   match token lexbuf with
   | Parser.DOT -> inf_path lexbuf
-  | a -> rewind a; []
+  | a -> rewind a;  M2l.Loc.nowhere []
 and (~~) f x = try f x with Lexer.Error _ -> inf_start x
-and (!) f x = try f x with Lexer.Error _ -> []
+and (!) f x = try f x with Lexer.Error _ ->  M2l.Loc.nowhere []
 
 
 let lower lex =
@@ -103,17 +131,22 @@ let lower lex =
   r
 
 let to_upper_bound m2l =
-  let add, union = Name.Set.(add,union) in
+  let lift (%) x y =
+    M2l.{data = x.data % y.data; loc = M2l.Loc.merge x.loc y.loc } in
+  let add, union = Name.Set.(lift add, lift union) in
+
   let open M2l in
   let access =
-    List.fold_left (fun s elt -> match elt with
-        | Minor { access; _ } -> union access s
-        | Open path -> add (List.hd path) s
+    List.fold_left (fun s elt ->
+        let locate x = Loc.create elt.loc x in
+        match elt.data with
+        | Minor { access; _ } -> union (locate access) s
+        | Open path -> add (locate @@ List.hd path) s
         | Bind {expr = Ident path; _}
-        | Include (Ident path) -> add (List.hd path) s
+        | Include (Ident path) -> add (locate @@ List.hd path) s
         | _ -> s
-      ) Name.Set.empty m2l in
-  [Minor { Annot.empty with access }]
+      ) (M2l.Loc.nowhere Name.Set.empty) m2l in
+  [M2l.Loc.fmap (fun access -> Minor { Annot.empty.data with access }) access]
 
 let lower_bound filename =
   let chan = open_in filename in

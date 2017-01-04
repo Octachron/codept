@@ -323,14 +323,15 @@ let result =
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
           "ast_converter.ml", ( ["M2l"; "Name"; "Option"; "Module";
                                  "Paths"],
-                                ["List";"Longident"; "Location"; "Parsetree"], [] );
+                                ["List";"Longident"; "Location"; "Lexing";
+                                 "Parsetree"], [] );
           "approx_parser.mli", (["M2l"], [],[]);
           "approx_parser.ml", (["Read";"M2l";"Name"],
                                ["Lexer"; "Parser"; "Lexing";"List"],[]);
           "cmi.mli", (["M2l"], [], []);
 
           "cmi.ml", (["M2l";"Module"; "Option"; "Paths"],
-                     ["Cmi_format";"Path";"Types"], []);
+                     ["Cmi_format"; "List"; "Path";"Types"], []);
           "definition.mli", (["Module"], ["Format"], []);
           "definition.ml", (["Module"; "Name"; "Pp"; "Mresult"], ["List"], []);
           "envts.mli", (["M2l";"Module";"Name"; "Interpreter"; "Paths"], [], []);

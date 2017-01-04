@@ -249,7 +249,7 @@ module Make(Envt:envt)(Param:param) = struct
       functor_expr module_type (module_expr, Build.fn, Build.demote_str)
         state [] arg body
     | Str [] -> Ok P.empty
-    | Str[Defs d] -> Ok (P.no_arg d.defined)
+    | Str[{data=Defs d;_ }] -> Ok (P.no_arg d.defined)
     | Resolved d -> Ok d
     | Str str -> Mresult.fmap (fun s -> Str s) P.no_arg @@
       drop_state @@ m2l state str
@@ -282,7 +282,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   and module_type state = function
     | Sig [] -> Ok P.empty
-    | Sig [Defs d] -> Ok (P.no_arg d.defined)
+    | Sig [{data=Defs d;_}] -> Ok (P.no_arg d.defined)
     | Sig s -> Mresult.fmap (fun s -> Sig s) P.no_arg @@
       drop_state @@ signature state s
     | Resolved d -> Ok d
@@ -328,28 +328,30 @@ module Make(Envt:envt)(Param:param) = struct
       | Ok (Some defs)  ->
         begin match m2l Envt.( state >> defs ) q with
           | Ok (state,sg) ->  Ok (state, S.merge defs.defined sg)
-          | Error q' -> Error ( snd @@ Normalize.all @@ Defs defs :: q')
+          | Error q' -> Error ( snd @@ Normalize.all @@
+                                Loc.nowhere (Defs defs) :: q')
         end
       | Ok None -> m2l state q
       | Error h -> Error ( snd @@ Normalize.all @@ h :: q)
 
   and signature state  = m2l state
 
-  and expr state =
-    function
+  and expr state e =
+    let reloc = Mresult.fmap_error (Loc.create e.loc) in
+    match e.data with
     | Defs d -> Ok (Some d)
-    | Open p -> open_ state p
-    | Include i -> include_ state module_expr i
-    | SigInclude i -> sig_include state module_type i
-    | Bind b -> bind state module_expr b
-    | Bind_sig b -> bind_sig state module_type b
-    | Bind_rec bs -> bind_rec state module_expr module_type bs
-    | Minor m -> Mresult.fmap_error (fun m -> Minor m) @@
+    | Open p -> reloc @@ open_ state p
+    | Include i -> reloc @@ include_ state module_expr i
+    | SigInclude i -> reloc @@ sig_include state module_type i
+    | Bind b -> reloc @@ bind state module_expr b
+    | Bind_sig b -> reloc @@ bind_sig state module_type b
+    | Bind_rec bs -> reloc @@ bind_rec state module_expr module_type bs
+    | Minor m -> reloc @@ Mresult.fmap_error (fun m -> Minor m) @@
       minor module_expr m2l state m
     | Extension_node n -> begin
         match extension state n with
         | Ok () -> Ok None
-        | Error h -> Error (Extension_node h)
+        | Error h -> Error (Loc.create e.loc @@ (Extension_node h: expression))
       end
   and extension state e =
     if not transparent_extension_nodes then

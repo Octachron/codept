@@ -233,7 +233,7 @@ let open_within opens unit =
   List.fold_right (fun m (unit:Unit.s) ->
       match m with
       | [root] when unit.name = root -> unit
-      | m -> { unit with code = M2l.Open m :: unit.code }
+      | m -> { unit with code = (M2l.Build.ghost @@ M2l.Open m) :: unit.code }
     ) opens unit
 
 let organize polycy sig_only opens files =

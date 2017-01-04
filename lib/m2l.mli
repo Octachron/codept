@@ -33,8 +33,17 @@ type 'a bind = { name: Name.t; expr:'a }
 type kind = Structure | Signature
 (** The nature (ml/mli) of an m2l ast *)
 
+(** A location within a file *)
+type location =
+  | Nowhere
+  | Simple of { line:int; start:int; stop:int }
+  | Multiline of { start: int * int; stop: int * int }
+
+(** A data structure to add location data *)
+type 'a with_location = { loc:location; data:'a }
+
 (** An m2l ast/code fragment is a list of module level expression *)
-type m2l = expression list
+type m2l = expression with_location list
 
 (** The [expression] type is the basic building block of the m2l AST *)
 and expression =
@@ -141,9 +150,20 @@ module More_sexp: sig
 
 end
 
+module Loc: sig
+  type t = location
+  val nowhere: 'a -> 'a with_location
+  val create: t -> 'a -> 'a with_location
+  val expand: t -> ((int*int) * (int*int)) option
+  val compress: t -> t
+  val merge: t -> t -> t
+  val fmap: ('a -> 'b) -> 'a with_location -> 'b with_location
+  val list: 'a with_location list -> t
+end
+
 
 module Annot : sig
-  type t = annotation
+  type t = annotation with_location
 
   val empty: t
   val is_empty: t -> bool
@@ -156,17 +176,18 @@ module Annot : sig
   val union: t list -> t
   val union_map: ('a -> t) -> 'a list -> t
 
-  val access: Name.t -> t
+  val access: Name.t with_location -> t
   val value: m2l list -> t
-  val pack: module_expr list -> t
+  val pack: module_expr list with_location -> t
   val opt: ('a -> t) -> 'a option -> t
 end
 
 module Build: sig
-  val access: Paths.Expr.t -> expression
-  val open_: Paths.Simple.t -> expression
-  val value: m2l list -> expression
-  val pack: module_expr list -> expression
+  val ghost: expression -> expression with_location
+  val access: Paths.Expr.t with_location -> expression with_location
+  val open_: Paths.Simple.t with_location -> expression with_location
+  val value: m2l list -> expression with_location
+  val pack: module_expr list with_location -> expression with_location
 
   val open_me: Paths.Simple.t list -> module_expr -> module_expr
 
@@ -190,7 +211,7 @@ end
    dependencies that need to be resolved before any interpreter can make
    progress evaluating a given code block *)
 module Block: sig
-  val m2l: m2l -> Name.t option
+  val m2l: m2l -> Name.t with_location option
   val expr: expression -> Name.t option
   val me: module_expr-> Name.t option
   val mt: module_type -> Name.t option
@@ -205,8 +226,8 @@ module Normalize: sig
   val all: m2l -> bool * m2l
   (** [all fragment ≡ (has_some_simplification_been_made, resulting_m2l) ] *)
 
-  val minor: annotation -> annotation
-  val value: annotation -> m2l -> annotation
+  val minor: Annot.t -> Annot.t
+  val value: Annot.t -> m2l -> Annot.t
 end
 
 (** {2 Signature filter} *)

@@ -21,7 +21,7 @@ module Failure = struct
       let update r = s, Name.Map.add u.input.name (u,r) map in
       match M2l.Block.m2l u.code with
       | None -> update (ref @@ Some Internal_error)
-      | Some name' ->
+      | Some { data = name'; _ } ->
         if not (Name.Map.mem name' map) then
          update (ref @@ Some (Extern name') )
         else
@@ -74,7 +74,7 @@ module Failure = struct
     if Set.mem start cycle then cycle
     else
       let next_name = match M2l.Block.m2l start.code with
-        | Some x -> x
+        | Some { data = x; _ } -> x
         | None -> assert false
       in
       let next = fst @@ Name.Map.find next_name map in
@@ -111,7 +111,7 @@ module Failure = struct
       let u = fst @@ Name.Map.find name map in
       match M2l.Block.m2l u.code with
       | None -> ()
-      | Some next -> begin
+      | Some { data = next; _ } -> begin
           Pp.fp ppf " ⇒ ";
           pp_circular map start false ppf next
         end
@@ -270,8 +270,9 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
         (fun n acc -> Definition.see (Module.M(mock n.input)) acc) set def in
     let code =
       match i.code with
-      | M2l.Defs def :: q -> M2l.Defs (add_set def) :: q
-      | code -> M2l.Defs (add_set Definition.empty) :: code
+      | { data = M2l.Defs def; loc } :: q ->
+        { M2l.data = M2l.Defs (add_set def); loc } :: q
+      | code -> (M2l.Loc.nowhere @@ M2l.Defs (add_set Definition.empty)) :: code
     in
     { i with code }
 
