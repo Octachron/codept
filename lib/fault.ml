@@ -31,6 +31,13 @@ let to_string =
   | 3 -> "error"
   | 4 -> "critical"
   | _ -> "whisper"
+
+let to_decorator = function
+  | 4 -> "\x1b[91m"
+  | 3 -> "\x1b[31m"
+  | 2 -> "\x1b[35m"
+  | 1 -> "\x1b[36m"
+  | _ -> ""
 end
 
 module Log = struct
@@ -303,7 +310,9 @@ module Polycy = struct
 
   let pp_lvl ppf = function
     | None -> ()
-    | Some lvl -> Pp.fp ppf "[%s]" @@ Level.to_string lvl
+    | Some lvl ->
+      Pp.fp ppf "[%s%s\x1b[39m]"
+        (Level.to_decorator lvl) (Level.to_string lvl)
 
   let rec pp_map ppf = function
     | name, Level {expl; lvl} ->
