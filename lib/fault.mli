@@ -62,18 +62,17 @@ end
 (** {2 Predefined faults} *)
 
 (** {3 Extension node fault} *)
-val extension_ignored : (string -> unit) t
-val extension_traversed : (string -> unit) t
+val extension_ignored : (M2l.Loc.t -> string -> unit) t
+val extension_traversed : (M2l.Loc.t -> string -> unit) t
 
 (** {3 First-class module faults} *)
-val generic_first_class : unit t
-val opened_first_class : (string -> unit) t
-val included_first_class : unit t
+val opened_first_class : (M2l.Loc.t -> string -> unit) t
+val included_first_class : (M2l.Loc.t -> unit) t
 
 (** {3 Typing fault} *)
-val applied_structure : (Module.Partial.t -> unit) t
-val structure_expected : (Module.Partial.t -> unit) t
-val applied_unknown : (Module.Partial.t -> unit) t
+val applied_structure : (M2l.Loc.t -> Module.Partial.t -> unit) t
+val structure_expected : (M2l.Loc.t -> Module.Partial.t -> unit) t
+val applied_unknown : (M2l.Loc.t -> Module.Partial.t -> unit) t
 
 
 (** {3 Parsing approximation faults} *)

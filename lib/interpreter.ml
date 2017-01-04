@@ -47,17 +47,17 @@ module Make(Envt:envt)(Param:param) = struct
   let fault x = Fault.handle polycy x
   let find = Envt.find
 
-  let drop_arg (p:Module.Partial.t) =  match  p.args with
+  let drop_arg loc (p:Module.Partial.t) =  match  p.args with
       | _ :: args -> { p with args }
       | [] ->
         match p.precision with
-        | Exact -> Fault.(handle polycy applied_structure) p; p
+        | Exact -> Fault.(handle polycy applied_structure) loc p; p
         | Unknown -> p (* we guessed the arg wrong *)
 
 
-  let of_partial p =
+  let of_partial loc p =
     match D.of_partial p with
-    | Error def -> fault Fault.structure_expected p;
+    | Error def -> fault Fault.structure_expected loc p;
       def
     | Ok def -> def
 
@@ -101,30 +101,30 @@ module Make(Envt:envt)(Param:param) = struct
       Ok x
     | _ -> Error path
 
-  let warn_open x = let open Module in
+  let warn_open loc x = let open Module in
       if x.signature = S.empty then
         match x.origin with
-        | First_class -> fault Fault.opened_first_class x.name
+        | First_class -> fault Fault.opened_first_class loc x.name
         | Unit _ | Submodule | Arg -> ()
 
-  let open_ state path =
+  let open_ loc state path =
     match find Module path state with
-    | x -> warn_open x;
+    | x -> warn_open loc x;
       Ok (Some( D.sg_see x.signature ))
     | exception Not_found -> Error (Open path)
 
-  let gen_include unbox box i = match unbox i with
+  let gen_include loc unbox box i = match unbox i with
     | Error h -> Error (box h)
     | Ok fdefs ->
       if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
-        fault Fault.included_first_class;
-      let defs = of_partial fdefs in
+        fault Fault.included_first_class loc;
+      let defs = of_partial loc fdefs in
       Ok (Some defs)
 
-  let include_ state module_expr =
-    gen_include (module_expr state) (fun i -> Include i)
-  let sig_include state module_type = gen_include
-      (module_type state) (fun i -> SigInclude i)
+  let include_ loc state module_expr =
+    gen_include loc (module_expr loc state) (fun i -> Include i)
+  let sig_include loc state module_type = gen_include loc
+      (module_type loc state) (fun i -> SigInclude i)
 
   let bind state module_expr {name;expr} =
     match module_expr state expr with
@@ -225,11 +225,11 @@ module Make(Envt:envt)(Param:param) = struct
         Error (fn @@ List.fold_left demote {arg;body=me} args)
 
 
-  let rec module_expr state (me:module_expr) = match me with
+  let rec module_expr loc state (me:module_expr) = match me with
     | Abstract -> Ok P.empty
     | Unpacked -> Ok P.{ empty with origin = First_class }
     | Val m -> begin
-        match minor module_expr m2l state m with
+        match minor (module_expr loc) m2l state m with
         | Ok _ -> Ok { P.empty with origin = First_class }
         | Error h -> Error (Val h)
       end  (* todo : check warning *)
@@ -239,14 +239,14 @@ module Make(Envt:envt)(Param:param) = struct
         | exception Not_found -> Error (Ident i: module_expr)
       end
     | Apply {f;x} ->
-      begin match module_expr state f, module_expr state x with
-        | Ok f, Ok _ -> Ok (drop_arg f)
+      begin match module_expr loc state f, module_expr loc state x with
+        | Ok f, Ok _ -> Ok (drop_arg loc f)
         | Error f, Error x -> Error (Apply {f;x} )
         | Error f, Ok d -> Error (Apply {f; x = Resolved d})
         | Ok f, Error x -> Error (Apply {f = Resolved f ;x} )
       end
     | Fun {arg;body} ->
-      functor_expr module_type (module_expr, Build.fn, Build.demote_str)
+      functor_expr (module_type loc) (module_expr loc, Build.fn, Build.demote_str)
         state [] arg body
     | Str [] -> Ok P.empty
     | Str[{data=Defs d;_ }] -> Ok (P.no_arg d.defined)
@@ -254,25 +254,25 @@ module Make(Envt:envt)(Param:param) = struct
     | Str str -> Mresult.fmap (fun s -> Str s) P.no_arg @@
       drop_state @@ m2l state str
     | Constraint(me,mt) ->
-      constraint_ state me mt
+      constraint_ loc state me mt
     | Open_me {opens=[]; resolved; expr } ->
       let state = Envt.( state >> resolved ) in
-      module_expr state expr
+      module_expr loc state expr
     | Open_me {opens=a :: q ; resolved; expr } as me ->
       begin match find Module a state with
         | exception Not_found -> Error me
-        | x -> warn_open x;
+        | x -> warn_open loc x;
           let resolved = Def.( resolved +| D.sg_see x.signature ) in
-          module_expr state @@ Open_me {opens = q; resolved; expr }
+          module_expr loc state @@ Open_me {opens = q; resolved; expr }
       end
     | Extension_node n ->
-      begin match extension state n with
+      begin match extension loc state n with
         | Ok () -> Ok P.empty
         | Error h -> Error (Extension_node h)
       end
 
-  and constraint_ state me mt =
-    match module_expr state me, module_type state mt with
+  and constraint_ loc state me mt =
+    match module_expr loc state me, module_type loc state mt with
     | Ok _, (Ok _ as r) -> r
     | Ok me, Error mt ->
       Error (Constraint(Resolved me, mt) )
@@ -280,7 +280,7 @@ module Make(Envt:envt)(Param:param) = struct
       Error (Constraint(me, Resolved mt) )
     | Error me, Error mt -> Error ( Constraint(me,mt) )
 
-  and module_type state = function
+  and module_type loc state = function
     | Sig [] -> Ok P.empty
     | Sig [{data=Defs d;_}] -> Ok (P.no_arg d.defined)
     | Sig s -> Mresult.fmap (fun s -> Sig s) P.no_arg @@
@@ -298,7 +298,7 @@ module Make(Envt:envt)(Param:param) = struct
       end
     | With w ->
       begin
-        match module_type state w.body with
+        match module_type loc state w.body with
         | Error mt -> Error ( With { w with body = mt } )
         | Ok d ->
           let modules =
@@ -307,12 +307,13 @@ module Make(Envt:envt)(Param:param) = struct
           Ok d
       end
     | Fun {arg;body} ->
-      functor_expr module_type (module_type, Build.fn_sig, Build.demote_sig)
+      functor_expr (module_type loc)
+        (module_type loc, Build.fn_sig, Build.demote_sig)
         state [] arg body
-    | Of me -> of_ (module_expr state me)
+    | Of me -> of_ (module_expr loc state me)
     | Abstract -> Ok (P.empty)
     | Extension_node n ->
-      begin match extension state n with
+      begin match extension loc state n with
       | Ok () -> Ok (P.empty)
       | Error n -> Error (Extension_node n)
       end
@@ -337,34 +338,35 @@ module Make(Envt:envt)(Param:param) = struct
   and signature state  = m2l state
 
   and expr state e =
-    let reloc = Mresult.fmap_error (Loc.create e.loc) in
+    let loc = e.loc in
+    let reloc = Mresult.fmap_error @@ Loc.create loc in
     match e.data with
     | Defs d -> Ok (Some d)
-    | Open p -> reloc @@ open_ state p
-    | Include i -> reloc @@ include_ state module_expr i
-    | SigInclude i -> reloc @@ sig_include state module_type i
-    | Bind b -> reloc @@ bind state module_expr b
-    | Bind_sig b -> reloc @@ bind_sig state module_type b
-    | Bind_rec bs -> reloc @@ bind_rec state module_expr module_type bs
+    | Open p -> reloc @@ open_ loc state p
+    | Include i -> reloc @@ include_ loc state module_expr i
+    | SigInclude i -> reloc @@ sig_include loc state module_type i
+    | Bind b -> reloc @@ bind state (module_expr loc) b
+    | Bind_sig b -> reloc @@ bind_sig state (module_type loc) b
+    | Bind_rec bs -> reloc @@ bind_rec state (module_expr loc) (module_type loc) bs
     | Minor m -> reloc @@ Mresult.fmap_error (fun m -> Minor m) @@
-      minor module_expr m2l state m
+      minor (module_expr loc) m2l state m
     | Extension_node n -> begin
-        match extension state n with
+        match extension loc state n with
         | Ok () -> Ok None
         | Error h -> Error (Loc.create e.loc @@ (Extension_node h: expression))
       end
-  and extension state e =
+  and extension loc state e =
     if not transparent_extension_nodes then
-      ( fault Fault.extension_ignored e.name; Ok () )
+      ( fault Fault.extension_ignored loc e.name; Ok () )
     else
       begin
-        fault Fault.extension_traversed e.name;
+        fault Fault.extension_traversed loc e.name;
         begin let open M2l in
           match e.extension with
           | Module m -> fmap (fun x -> { e with extension= Module x} ) ignore @@
             m2l state m
           | Val x -> fmap (fun x -> { e with extension=Val x}) ignore @@
-            minor module_expr m2l state x
+            minor (module_expr loc) m2l state x
         end
       end
 

@@ -107,28 +107,24 @@ type 'a fault = { path: Paths.S.t; expl: explanation; log: log_info -> 'a }
 type 'a t = 'a fault
 
 
+let loc = M2l.Loc.pp
 (** Warnings *)
 let extension_ignored =
   { path = ["extension"; "ignored"];
     expl = "The payload of an extension node was ignored";
-  log = (fun lvl name  ->
-      log lvl "extension node %s ignored." name)
+  log = (fun lvl ->
+      log lvl "%a, extension node %s ignored." loc)
 }
 
 let extension_traversed =
   { path = ["extension"; "traversed"];
-    expl = "The payload of an extension node was handled has a standard \
+    expl = "The payload of the extension node was handled has a standard \
            OCaml code.";
-  log = (fun lvl name  ->
-      log lvl "extension node %s traversed." name)
+  log = (fun lvl  ->
+      log lvl "%a, @ extension node %s traversed." loc)
 }
 
 
-let generic_first_class=
-  { path = ["first_class";"gen"];
-    expl = "Placeholder fault for first-class modules woes.";
-    log = llog "First-class modules are very partially handled for now."
-}
 
 let opened_first_class =
   { path = ["first_class"; "open"];
@@ -136,7 +132,8 @@ let opened_first_class =
            unresolved. Consequently, all inferred dependendency after this \
            point may be an over-approximation.";
     log = (fun lvl ->
-      log lvl "First-class module %s was opened while its signature was unknown."
+      log lvl "%a,@ first-class module %s was opened while its signature was\
+               unknown." loc
       )
   }
 
@@ -145,20 +142,26 @@ let included_first_class =
     expl = "A first-class module was included while its signature was deemed \
            unresolved. Consequently, all inferred dependendency after this \
            point may be an over-approximation.";
-    log =  llog "First-class module was included while its signature was unknown."
+    log = (fun lvl ->
+        log lvl
+          "%a, @ first-class module was included while its signature was unknown."
+          loc
+      )
   }
 
 let applied_structure =
   { path = ["typing"; "apply"; "structure"];
     expl = "Signature fault: a module that was inferred as not a functor \
             was applied like a functor.";
-    log = (fun lvl -> log lvl "Only functor can be applied, got:%a"
-               Module.Partial.pp)
+    log = (fun lvl l -> log lvl "%a, @ only functor can be applied, got:%a"
+               loc l Module.Partial.pp)
   }
 
 let structure_expected =
   { path = ["typing"; "structure_expected"];
-    log = (fun lvl -> log lvl "A structure, i.e. not a functor was expected; got:%a"
+    log = (fun lvl l -> log lvl "%a, @ a structure, i.e. not a functor was expected;\
+                                 got:%a"
+              loc l
               Module.Partial.pp);
     expl = "Signature fault: a functor was not expected in this situation."
   }
@@ -166,8 +169,9 @@ let structure_expected =
 
 let applied_unknown =
   { path = ["typing"; "apply"; "unknown"];
-    log = (fun lvl -> log lvl "Only functor can be applied, hopefully the unknown \
-                               module (%a) is a functor"
+    log = (fun lvl l -> log lvl "%a, @ only functor can be applied, hopefully the\
+                                 unknown module (%a) is a functor"
+              loc l
               Module.Partial.pp);
     expl = "Signature fault: an unknown module was applied like a functor.";
   }
