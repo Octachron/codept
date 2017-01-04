@@ -105,6 +105,13 @@ let annot_empty = { access=Name.Set.empty; values = []; packed = [] }
 module Loc = struct
 
   type t = location
+
+  let pp ppf = function
+    | Nowhere -> ()
+    | Simple {line;start;stop} -> Pp.fp ppf "l%d.%d−%d" line start stop
+    | Multiline {start=(l1,c1); stop = (l2,c2) } ->
+      Pp.fp ppf "l%d.%d−l%d.%d" l1 c1 l2 c2
+
   let create loc data = {loc; data}
   let nowhere data = { loc = Nowhere; data}
 
@@ -673,13 +680,8 @@ and pp_extension_core ppf = function
   | Val m -> pp_annot ppf m
 and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]"
     Pp.(list ~sep:(s " @,") pp_expression_with_loc)
-and pp_loc ppf = function
-  | Nowhere -> ()
-  | Simple {line;start;stop} -> Pp.fp ppf "l%d.%d−%d" line start stop
-  | Multiline {start=(l1,c1); stop = (l2,c2) } ->
-    Pp.fp ppf "l%d.%d−l%d.%d" l1 c1 l2 c2
 and pp_expression_with_loc ppf e = Pp.fp ppf "%a(%a)"
-    pp_expression e.data pp_loc e.loc
+    pp_expression e.data Loc.pp e.loc
 
 
 (** {Normalize} computes the normal form of a given m2l code fragment *)

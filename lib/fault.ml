@@ -54,24 +54,24 @@ module Log = struct
 
   let kcritical k fmt =
     kf k @@
-      ("@[[\x1b[91mCritical error\x1b[39m]: @[<hov>"^^fmt^^"@]@]@.")
+      ("[\x1b[91mCritical error\x1b[39m]: "^^fmt ^^"@\n" )
 
   let kerror k fmt =
     kf k
-    ("@[[\x1b[31m%s\x1b[39m]: @[<hov>"^^fmt^^"@]@]@.")
+    ("[\x1b[31m%s\x1b[39m]: "^^fmt^^"@\n")
     (if k = Ok then "Error" else "Fatal error")
 
   let kwarning k fmt = kf k
-    ("@[<hov2>[\x1b[35m%s\x1b[39m]:@,@ @[" ^^ fmt ^^ "@]@]@.")
+    ("[\x1b[35m%s\x1b[39m]: " ^^ fmt ^^"@\n" )
     (if k = Ok then "Warning" else "Fatal warning")
 
   let knotification k fmt = kf k
-    ("@[<hov2>[\x1b[36m%s\x1b[39m]:@,@ @[" ^^ fmt ^^ "@]@]@.")
+    ("[\x1b[36m%s\x1b[39m]: " ^^ fmt ^^"@\n")
       (if k = Ok then "Notification" else "Fatal notification")
 
 
   let kwhisper k fmt = kf k
-    ("@[<hov2>[%s]:@,@ @[" ^^ fmt ^^ "@]@]@.")
+    ("[%s]: " ^^ fmt ^^"@\n")
     (if k = Ok then "Miscellaneous" else "Fatal accident")
 
   let critical fmt = kcritical Fail fmt

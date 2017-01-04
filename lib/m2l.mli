@@ -152,6 +152,7 @@ end
 
 module Loc: sig
   type t = location
+  val pp: Format.formatter -> t -> unit
   val nowhere: 'a -> 'a with_location
   val create: t -> 'a -> 'a with_location
   val expand: t -> ((int*int) * (int*int)) option

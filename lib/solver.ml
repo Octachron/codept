@@ -5,7 +5,7 @@ module Failure = struct
   module Set = Set.Make(struct type t = i let compare = compare end)
 
   type status =
-    | Cycle of Name.t
+    | Cycle of Name.t M2l.with_location
     | Extern of Name.t
     | Depend_on of Name.t
     | Internal_error
@@ -21,7 +21,7 @@ module Failure = struct
       let update r = s, Name.Map.add u.input.name (u,r) map in
       match M2l.Block.m2l u.code with
       | None -> update (ref @@ Some Internal_error)
-      | Some { data = name'; _ } ->
+      | Some { data = name'; loc } ->
         if not (Name.Map.mem name' map) then
          update (ref @@ Some (Extern name') )
         else
@@ -33,10 +33,10 @@ module Failure = struct
               track s map (u',r)
             end
             else begin
-              r:= Some (Cycle u'.input.name);
+              r:= Some (Cycle { data = u'.input.name; loc});
               s, map
             end
-          | Some (Depend_on name| Cycle name) ->
+          | Some (Depend_on name| Cycle {data=name;_}) ->
             (r := Some (Depend_on name); s, map)
           | Some (Extern _ | Internal_error ) ->
             (r := Some (Depend_on u'.input.name); s, map)
@@ -89,7 +89,7 @@ module Failure = struct
   let normalize name_map map =
     Map.fold (function
         | Internal_error | Extern _ | Depend_on _ as st -> Map.add_set st
-        | Cycle name as st -> fun set map ->
+        | Cycle {data=name; _ } as st -> fun set map ->
           let u = fst @@ Name.Map.find name name_map in
           let k = kernel name_map Set.empty u in
           let map = Map.add st k map in
@@ -105,13 +105,13 @@ module Failure = struct
     map, categorize map |> normalize map
 
 
-  let rec pp_circular map start first ppf name =
-    Pp.string ppf name;
-    if name <> start || first then
-      let u = fst @@ Name.Map.find name map in
+  let rec pp_circular map start first ppf (name: string M2l.with_location) =
+    Pp.fp ppf "%s(%a)" name.M2l.data M2l.Loc.pp name.loc;
+    if name.data <> start || first then
+      let u = fst @@ Name.Map.find name.data map in
       match M2l.Block.m2l u.code with
       | None -> ()
-      | Some { data = next; _ } -> begin
+      | Some next -> begin
           Pp.fp ppf " ⇒ ";
           pp_circular map start false ppf next
         end
@@ -120,25 +120,24 @@ module Failure = struct
     let name u = u.input.name in
     let names units = List.map name @@ Set.elements units in
     match st with
-    | Internal_error -> Pp.fp ppf "@[ Internal error for units: {%a} @]"
+    | Internal_error -> Pp.fp ppf "−Internal error for units: @[<hov>{%a}@] "
                           Pp.(list ~sep:(s ", @ ") @@ string ) (names units)
-    | Extern name -> Pp.fp ppf "Non-resolved external dependency.\n@[\
+    | Extern name -> Pp.fp ppf "−Non-resolved external dependency.@; @[<hov>\
                                 The following units {%a} depend on \
                                 the unknown module \"%s\" @]"
-                       Pp.(list ~sep:(s ", @ ") @@ string ) (names units)
+                       Pp.(list ~sep:(s ", ") @@ string ) (names units)
                        name
     | Depend_on name ->
-      Pp.fp ppf "Non-resolved internal dependency.@;\
-                 The following modules {%a} depend on the unit \
-                 \"%s\" that could not be resolved."
+      Pp.fp ppf "@[ −Non-resolved internal dependency.@;\
+                 The following modules @[<hov>{%a}@] depend on the unit \
+                 \"%s\" that could not be resolved.@]"
         Pp.(list ~sep:(s ", @ ") @@ string ) (names units)
         name
-    | Cycle name ->  Pp.fp ppf "Circular dependencies: %a"
-                        (pp_circular map name true) name
-  (* Pp.(list ~sep:(s ", @ ") @@ pp ) (Set.elements units) *)
+    | Cycle name ->  Pp.fp ppf "−Circular dependencies: @[%a@]"
+                        (pp_circular map name.data true) name
 
   let pp map ppf m =
-    Pp.fp ppf "@[%a@]"
+    Pp.fp ppf "%a"
       Pp.(list ~sep:(s"@;") @@ pp_cat map ) (Map.bindings m)
 
   let pp_cycle ppf sources =
