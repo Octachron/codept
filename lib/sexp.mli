@@ -88,6 +88,12 @@ val tetra: ('a,'k) impl -> ('b,'k2) impl -> ('c, 'k3) impl -> ('d,'k4) impl
 val pair': ('a,'k) impl -> ('b,many) impl -> ('a * 'b, many) impl
 val key_list: ('a,atomic) impl -> ('b,many) impl -> ('a * 'b, one_and_many) impl
 
+val triple': ('a,atomic) impl -> ('b,'k2) impl -> ('c, 'k3) impl ->
+  ('a * 'b * 'c, one_and_many) impl
+val tetra': ('a, atomic) impl -> ('b,'k2) impl -> ('c, 'k3) impl -> ('d,'k4) impl
+  -> ('a * 'b * 'c * ' d, one_and_many) impl
+
+
 val major_minor: ('a,'k) impl -> 'b -> ('b,'k2) impl -> ('a * 'b, many) impl
 
 val cons: ('a,'k) impl -> ('a list,many) impl -> ('a list, many) impl

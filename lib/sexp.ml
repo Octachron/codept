@@ -441,7 +441,7 @@ let pair l r =
 let triple a b c =
   let parse = function
     | List [x;y;z] -> begin
-      match any_parse a x, any_parse b y, any_parse c y with
+      match any_parse a x, any_parse b y, any_parse c z with
       | Some x, Some y, Some z -> Some(x,y,z)
       | _ -> None
       end
@@ -453,7 +453,7 @@ let triple a b c =
 let tetra a b c d =
   let parse = function
     | List [x;y;z;t] -> begin
-      match any_parse a x, any_parse b y, any_parse c y, any_parse d t with
+      match any_parse a x, any_parse b y, any_parse c z, any_parse d t with
       | Some x, Some y, Some z, Some t -> Some(x,y,z,t)
       | _ -> None
       end
@@ -462,6 +462,34 @@ let tetra a b c d =
       [ any @@ embed a x; any @@ embed b y;
         any @@ embed c z; any @@ embed d t ] in
   { parse; embed; kind = Many }
+
+let triple' a b c =
+  let parse = function
+    | Keyed_list (x, [y;z]) -> begin
+      match parse a (Atom x), any_parse b y, any_parse c z with
+      | Some x, Some y, Some z -> Some(x,y,z)
+      | _ -> None
+      end
+    | _ -> None in
+  let embed (x,y,z) =
+    let (Atom a) = embed a x in
+    Keyed_list(a, [any @@ embed b y; any @@ embed c z]) in
+  { parse; embed; kind = One_and_many }
+
+let tetra' a b c d =
+  let parse = function
+    | Keyed_list (x, [y;z;t]) -> begin
+      match parse a (Atom x), any_parse b y, any_parse c z, any_parse d t with
+      | Some x, Some y, Some z, Some t -> Some(x,y,z,t)
+      | _ -> None
+      end
+    | _ -> None in
+  let embed (x,y,z,t) =
+    let (Atom x)= embed a x in
+    Keyed_list ( x,
+                 [ any @@ embed b y;
+                   any @@ embed c z; any @@ embed d t ] ) in
+  { parse; embed; kind = One_and_many }
 
 
 let conv bij impl =
