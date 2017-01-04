@@ -977,7 +977,7 @@ let args = Cmd.[
     "-inner-modules", Unit (set @@ modules ~filter:inner_filter),
     ": print raw inner dependencies";
     "-unknown-modules", Unit (set @@ modules ~filter:extern_filter),
-    ": print raw unresolved dependencies\n Findlib options: \n";
+    ": print raw unresolved dependencies\n\n Findlib options: \n";
 
     "-pkg", Cmd.String Findlib.(update pkg),
     "<pkg_name>: use the ocamlfind package <pkg_name> during the analysis";
@@ -990,11 +990,11 @@ let args = Cmd.[
     "<ppopt>: add <opt> to the active pp preprocessor";
     "-syntax", Cmd.String Findlib.(update syntax),
     "<syntax name>: use the <syntax> preprocessor provided \
-     by one of the availabe findlib package.\n Fault polycy:\n";
+     by one of the available findlib packages.";
     "-native-filter", Cmd.Unit native,
     ": generate native compilation only dependencies";
     "-bytecode-filter", Cmd.Unit bytecode,
-    ": generate bytecode only dependencies. Fault options";
+    ": generate bytecode only dependencies.\n\n Fault options:\n";
 
     "-closed-world", Unit close_world,
     ": require that all dependencies are provided";
@@ -1004,16 +1004,16 @@ let args = Cmd.[
     ": ignore and silent all recoverable errors and keep going";
     "-fault", String fault, "<fault.path=level>: update fault polycy for the given\
                              fault.";
-    "-faults-doc", Unit print_polycy, "Show fault polycy documentation";
+    "-fault-doc", Unit print_polycy, ": show fault polycy documentation";
     "-silent-fault-level", String silent_level,
     "<level>: only print fault beyond level <level>";
     "-exit-fault-level", String exit_level,
-    "<level>: exit for fault at level <level> and beyond.\n Misc options:";
+    "<level>: exit for fault at level <level> and beyond.\n\n Misc options:\n";
 
     "-L", String lib, "<dir>: use all cmi files in <dir> \
                        in the analysis";
     "-no-alias-deps", Cmd.Unit (fun () -> transparent_aliases true),
-    ": Delay aliases dependencies";
+    ": delay aliases dependencies";
     "-o", Cmd.String o, "<filename>: set current output file";
     "-no-implicits", Cmd.Unit no_implicits,
     ": do not implicitly search for a mli \
@@ -1026,7 +1026,7 @@ let args = Cmd.[
     "-see", Cmd.String add_invisible_file,
     "<file>: use <file> in dependencies computation but do not display it.";
     "-transparent-extension-node", Cmd.Bool transparent_extension,
-    "<bool>: inspect unknown extension nodes"
+    "<bool>: inspect unknown extension nodes\n"
   ]
 
 let () =
