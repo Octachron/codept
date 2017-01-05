@@ -177,7 +177,7 @@ let applied_unknown =
 let unknown_approximated =
   { path = ["typing"; "unknown"; "approximation"];
     log = (fun lvl path l ->
-        log lvl "%a, @ the non-resolvable module ⟨%a⟩ has been \
+        log lvl "%a,@ a non-resolvable module, ⟨%a⟩, has been \
                  replaced by an approximation"
           loc l Paths.S.pp path);
     expl = "Signature fault: an unknown module was approximated, yielding, \
