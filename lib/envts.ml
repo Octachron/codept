@@ -89,7 +89,7 @@ module Base = struct
           find0 false level q  @@ restrict env m.signature
 
   let find level path env=
-    find0 false level path env
+    Ok(find0 false level path env)
 
   let deps _env = Paths.P.Set.empty
   let reset_deps = ignore
@@ -101,7 +101,14 @@ module Base = struct
     { top; current = top }
 end
 
+
 module Open_world(Envt:extended_with_deps) = struct
+
+  let fault path =
+    let f = Fault.unknown_approximated in
+    { f with Fault.log = (fun lvl -> f.log lvl path) }
+
+
   module P = Paths.Pkg
   type t = { core: Envt.t; world: P.t Name.map; externs: P.set ref }
 
@@ -127,9 +134,9 @@ module Open_world(Envt:extended_with_deps) = struct
     | [] -> raise (Invalid_argument "Empty path")
     | [name] ->
       Module.create name
-                ~origin:(Unit {Paths.P.source=Unknown; file=[name]})
-                ~precision:Unknown
-                Module.Sig.empty
+        ~origin:(Unit {Paths.P.source=Unknown; file=[name]})
+        ~precision:Unknown
+        Module.Sig.empty
     | l ->
       let name = last l in
       Module.create name ~origin:Submodule ~precision:Unknown S.empty
@@ -168,10 +175,10 @@ module Open_world(Envt:extended_with_deps) = struct
               env.externs := P.Set.add
                   { P.file = [root]; source = Unknown } !(env.externs)
             end;
-          approx path
+          Error( approx path, fault path)
         )
       else
-        approx path
+        Error(approx path, fault path)
 
   let (>>) env sg = { env with core = Envt.( env.core >> sg ) }
   let add_unit env m = { env with core = Envt.add_unit env.core m }
@@ -277,7 +284,7 @@ module Layered = struct
       match find_name false (adjust_level level q) a env with
       | Alias {path; _ } -> find0 start_env level (path @ q ) start_env
       | M.M m ->
-        if q = [] then m
+        if q = [] then Ok m
         else
           find0 start_env level q (restrict env m.signature)
 
@@ -348,7 +355,7 @@ module Tracing(Envt:extended) = struct
         end
 
   let find level path env =
-    find0 ~root:true ~require_top:false level path env
+    Ok(find0 ~root:true ~require_top:false level path env)
 
   let find_name root level name env =
     M.M (find0 ~root ~require_top:false level [name] env)

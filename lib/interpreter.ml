@@ -9,10 +9,12 @@ module M = Module
 module Arg = M.Arg
 module S = Module.Sig
 
+type envt_fault = (Paths.P.t * M2l.Loc.t -> unit ) Fault.t
 module type envt = sig
   type t
   val is_exterior: Paths.Simple.t -> t -> bool
-  val find: Module.level -> Paths.Simple.t -> t -> Module.m
+  val find: Module.level -> Paths.Simple.t -> t ->
+    (Module.m, Module.m * envt_fault ) result
   val (>>) : t -> D.t -> t
   val add_unit: t -> Module.t -> t
 end
@@ -45,7 +47,12 @@ module Make(Envt:envt)(Param:param) = struct
 
   include Param
   let fault x = Fault.handle polycy x
-  let find = Envt.find
+
+  let find loc level path env =
+    match Envt.find level path env with
+    | Ok x -> x
+    | Error (x, msg) ->
+      fault msg loc; x
 
   let drop_arg loc (p:Module.Partial.t) =  match  p.args with
       | _ :: args -> { p with args }
@@ -64,14 +71,14 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok def -> def
 
   type level = Module.level = Module | Module_type
-  let minor module_expr str state m =
+  let minor loc module_expr str state m =
     let value l v = match str state v with
       | Ok _ -> l
       | Error h -> h :: l in
-    let access n m = match find Module [n] state with
+    let access n m = match find loc Module [n] state with
       | _ -> m
       | exception Not_found -> Name.Set.add n m in
-    let packed l p = match module_expr state p with
+    let packed l p = match module_expr loc state p with
       | Ok _ -> l
       | Error h -> h :: l in
     let values = List.fold_left value [] m.values in
@@ -84,17 +91,17 @@ module Make(Envt:envt)(Param:param) = struct
       Error { access; values; packed }
 
 
-  let mt_ident level state id =
-    begin match find level id state with
+  let mt_ident loc level state id =
+    begin match find loc level id state with
     | x -> Ok(P.of_module x)
     | exception Not_found -> Error id
   end
 
-  let epath state path =
+  let epath loc state path =
     let paths = Paths.Expr.multiples path in
     let l = match paths with
       | a :: q ->
-        (mt_ident Module_type state a) ::  List.map (mt_ident Module state) q
+        (mt_ident loc Module_type state a) ::  List.map (mt_ident loc Module state) q
       | [] -> []
     in
     match l with
@@ -110,7 +117,7 @@ module Make(Envt:envt)(Param:param) = struct
         | Unit _ | Submodule | Arg -> ()
 
   let open_ loc state path =
-    match find Module path state with
+    match find loc Module path state with
     | x -> warn_open loc x;
       Ok (Some( D.sg_see x.signature ))
     | exception Not_found -> Error (Open path)
@@ -231,12 +238,12 @@ module Make(Envt:envt)(Param:param) = struct
     | Abstract -> Ok P.empty
     | Unpacked -> Ok P.{ empty with origin = First_class }
     | Val m -> begin
-        match minor (module_expr loc) (m2l @@ filename loc) state m with
+        match minor loc module_expr (m2l @@ filename loc) state m with
         | Ok _ -> Ok { P.empty with origin = First_class }
         | Error h -> Error (Val h)
       end  (* todo : check warning *)
     | Ident i ->
-      begin match find Module i state with
+      begin match find loc Module i state with
         | x -> Ok (P.of_module x)
         | exception Not_found -> Error (Ident i: module_expr)
       end
@@ -261,7 +268,7 @@ module Make(Envt:envt)(Param:param) = struct
       let state = Envt.( state >> resolved ) in
       module_expr loc state expr
     | Open_me {opens=a :: q ; resolved; expr } as me ->
-      begin match find Module a state with
+      begin match find loc Module a state with
         | exception Not_found -> Error me
         | x -> warn_open loc x;
           let resolved = Def.( resolved +| D.sg_see x.signature ) in
@@ -289,12 +296,12 @@ module Make(Envt:envt)(Param:param) = struct
       drop_state @@ signature (filename loc) state s
     | Resolved d -> Ok d
     | Ident id ->
-      begin match epath state id with
+      begin match epath loc state id with
         | Ok x -> Ok x
         | Error p -> Error (Ident p)
       end
     | Alias i ->
-      begin match find Module i state with
+      begin match find loc Module i state with
         | x -> Ok (P.of_module x)
         | exception Not_found -> Error (Alias i)
       end
@@ -351,7 +358,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Bind_sig b -> reloc @@ bind_sig state (module_type loc) b
     | Bind_rec bs -> reloc @@ bind_rec state (module_expr loc) (module_type loc) bs
     | Minor m -> reloc @@ Mresult.fmap_error (fun m -> Minor m) @@
-      minor (module_expr loc) (m2l file) state m
+      minor loc module_expr (m2l file) state m
     | Extension_node n -> begin
         match extension loc state n with
         | Ok () -> Ok None
@@ -369,7 +376,7 @@ module Make(Envt:envt)(Param:param) = struct
           | Module m -> fmap (fun x -> { e with extension= Module x} ) ignore @@
             m2l filename state m
           | Val x -> fmap (fun x -> { e with extension=Val x}) ignore @@
-            minor (module_expr loc) (m2l filename) state x
+            minor loc module_expr (m2l filename) state x
         end
       end
 

@@ -63,7 +63,7 @@ end
 
 (** Location type for error message *)
 type loc = Paths.Pkg.t * M2l.Loc.t
-
+val loc: Format.formatter -> loc -> unit
 
 (** {3 Extension node fault} *)
 val extension_ignored : ( loc -> string -> unit) t
@@ -77,7 +77,7 @@ val included_first_class : (loc -> unit) t
 val applied_structure : (loc -> Module.Partial.t -> unit) t
 val structure_expected : (loc -> Module.Partial.t -> unit) t
 val applied_unknown : (loc -> Module.Partial.t -> unit) t
-
+val unknown_approximated : (Paths.S.t -> loc -> unit) t
 
 (** {3 Parsing approximation faults} *)
 val concordant_approximation : (Paths.Pkg.t -> unit) t

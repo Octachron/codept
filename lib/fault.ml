@@ -174,6 +174,17 @@ let applied_unknown =
   }
 
 
+let unknown_approximated =
+  { path = ["typing"; "unknown"; "approximation"];
+    log = (fun lvl path l ->
+        log lvl "%a, @ the non-resolvable module ⟨%a⟩ has been \
+                 replaced by an approximation"
+          loc l Paths.S.pp path);
+    expl = "Signature fault: an unknown module was approximated, yielding, \
+            possibly to an over-approximation of dependencies";
+  }
+
+
 let concordant_approximation =
   { path = ["parsing"; "approximation"; "concordant"];
     expl = "Parsing fault: The signature and dependency of an unit were obtained \
@@ -288,6 +299,7 @@ module Polycy = struct
     |> set_err (applied_structure, warning)
     |> set_err (structure_expected,warning)
     |> set_err (applied_unknown, notification)
+    |> set_err (unknown_approximated, notification)
 
 
   let strict =

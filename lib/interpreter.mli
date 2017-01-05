@@ -1,10 +1,14 @@
 (** Monotonic interpreter for m2l ast *)
 
+(** Input fault type *)
+type envt_fault = (Paths.P.t * M2l.Loc.t -> unit ) Fault.t
+
 (** Input type *)
 module type envt = sig
   type t
   val is_exterior: Paths.Simple.t -> t -> bool
-  val find: Module.level -> Paths.Simple.t -> t -> Module.m
+  val find: Module.level -> Paths.Simple.t -> t ->
+    (Module.m, Module.m * envt_fault) result
   val (>>) : t -> Definition.t -> t
   val add_unit: t -> Module.t -> t
 end
