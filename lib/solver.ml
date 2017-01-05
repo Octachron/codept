@@ -117,22 +117,26 @@ module Failure = struct
         end
 
   let pp_cat map ppf (st, units) =
-    let name u = u.input.name in
-    let names units = List.map name @@ Set.elements units in
+    let paths units = List.map (fun u -> u.input.path) @@ Set.elements units in
+    let path_pp = Paths.P.pp in
     match st with
-    | Internal_error -> Pp.fp ppf "@[<hov 2> −Internal error for units: {%a}@] "
-                          Pp.(list ~sep:(s ", @ ") @@ string ) (names units)
-    | Extern name -> Pp.fp ppf "@[<hov 2> −Non-resolved external dependency.@;\
-                                The following units {%a} depend on \
-                                the unknown module \"%s\" @]"
-                       Pp.(list ~sep:(s ", ") @@ string ) (names units)
-                       name
-    | Depend_on name ->
-      Pp.fp ppf "@[<hov 2> −Non-resolved internal dependency.@;\
-                 The following modules @[<hov>{%a}@] depend on the unit \
-                 \"%s\" that could not be resolved.@]"
-        Pp.(list ~sep:(s ", @ ") @@ string ) (names units)
+    | Internal_error ->
+      Pp.fp ppf "@[<hov 2> −Codept internal error for compilation units: {%a}@] "
+        Pp.(list ~sep:(s ", @ ") @@ path_pp ) (paths units)
+
+    | Extern name ->
+      Pp.fp ppf "@[<hov 2> −Non-resolved external dependency.@;\
+                 The following compilation units {%a} @ depend on \
+                 the unknown module \"%s\" @]"
+        Pp.(list ~sep:(s ", ") @@ path_pp ) (paths units)
         name
+    | Depend_on name ->
+      let u = fst @@ Name.Map.find name map in (* map ∋ name *)
+      Pp.fp ppf "@[<hov 2> −Non-resolved internal dependency.@;\
+                 The following compilation units {%a}@ depend on the compilation \
+                 units \"%a\" that could not be resolved.@]"
+        Pp.(list ~sep:(s ",@ ") @@ Paths.P.pp ) (paths units)
+        path_pp u.input.path
     | Cycle name ->  Pp.fp ppf "@[<hov 4> −Circular dependencies: @ @[%a@]@]"
                         (pp_circular map name.data true) name
 
