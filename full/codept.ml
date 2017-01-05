@@ -37,7 +37,7 @@ module Self_polycy = struct
       { path = ["resolving"; "blocker" ];
         expl = "Solver fault: major errors during analysis.";
         log = (fun lvl -> log lvl
-                  "Solver failure\n@?@[@<2> @[<0>@;%a@]@]" Solver.Failure.pp_cycle
+                  "Solver failure@?@[@<2> @[<0>@;%a@]@]" Solver.Failure.pp_cycle
               )
       }
 

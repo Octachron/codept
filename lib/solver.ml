@@ -106,13 +106,13 @@ module Failure = struct
 
 
   let rec pp_circular map start first ppf (name: string M2l.with_location) =
-    Pp.fp ppf "%s(%a)" name.M2l.data M2l.Loc.pp name.loc;
+    Pp.fp ppf "%s" name.M2l.data;
     if name.data <> start || first then
       let u = fst @@ Name.Map.find name.data map in
       match M2l.Block.m2l u.code with
       | None -> ()
       | Some next -> begin
-          Pp.fp ppf " ⇒ ";
+          Pp.fp ppf " −(%a:%a)⟶@ " Paths.Pkg.pp u.input.path M2l.Loc.pp name.loc;
           pp_circular map start false ppf next
         end
 
@@ -120,25 +120,25 @@ module Failure = struct
     let name u = u.input.name in
     let names units = List.map name @@ Set.elements units in
     match st with
-    | Internal_error -> Pp.fp ppf "−Internal error for units: @[<hov>{%a}@] "
+    | Internal_error -> Pp.fp ppf "@[<hov 2> −Internal error for units: {%a}@] "
                           Pp.(list ~sep:(s ", @ ") @@ string ) (names units)
-    | Extern name -> Pp.fp ppf "−Non-resolved external dependency.@; @[<hov>\
+    | Extern name -> Pp.fp ppf "@[<hov 2> −Non-resolved external dependency.@;\
                                 The following units {%a} depend on \
                                 the unknown module \"%s\" @]"
                        Pp.(list ~sep:(s ", ") @@ string ) (names units)
                        name
     | Depend_on name ->
-      Pp.fp ppf "@[ −Non-resolved internal dependency.@;\
+      Pp.fp ppf "@[<hov 2> −Non-resolved internal dependency.@;\
                  The following modules @[<hov>{%a}@] depend on the unit \
                  \"%s\" that could not be resolved.@]"
         Pp.(list ~sep:(s ", @ ") @@ string ) (names units)
         name
-    | Cycle name ->  Pp.fp ppf "−Circular dependencies: @[%a@]"
+    | Cycle name ->  Pp.fp ppf "@[<hov 4> −Circular dependencies: @ @[%a@]@]"
                         (pp_circular map name.data true) name
 
   let pp map ppf m =
     Pp.fp ppf "%a"
-      Pp.(list ~sep:(s"@;") @@ pp_cat map ) (Map.bindings m)
+      Pp.(list ~sep:(s"\n@;") @@ pp_cat map ) (Map.bindings m)
 
   let pp_cycle ppf sources =
     let map, cmap = analyze sources in
