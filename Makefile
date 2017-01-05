@@ -1,7 +1,7 @@
 all: codept test
 
 codept: lib/*.ml lib/*.mli full/*.ml
-	ocamlbuild -use-codept -use-ocamlfind codept.native\
+	ocamlbuild -use-ocamlfind codept.native\
 		&& mv codept.native codept
 
 clean:
@@ -19,5 +19,5 @@ doc: codept
 self_test:
 	ocamlbuild -clean; \
 	ln -s ocamlbuild/myocamlbuild.ml myocamlbuild.ml; \
-	ocamlbuild -use-ocamlfind -classic-display codept.native; \
+	ocamlbuild -use-ocamlfind codept.native; \
 	rm myocamlbuild.ml

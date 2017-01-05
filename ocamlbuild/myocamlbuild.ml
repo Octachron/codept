@@ -28,7 +28,8 @@ let codept' ~approx mode tags =
       tags' -- "no_alias_deps"
     else
       tags' in
-  let k = if approx then S [ A"-k"] else S [] in
+  let k = if approx then S [ A"-k"; A "-silent-fault-level"; A "notification" ]
+    else S [] in
   S [ A "codept"; T tags'; k; mode]
 
 
