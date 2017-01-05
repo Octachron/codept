@@ -41,7 +41,6 @@ module Self_polycy = struct
               )
       }
 
-
   let polycy =
     let open Polycy in
     polycy
@@ -913,9 +912,16 @@ let print_polycy ()=
 
 let usage_msg =
   "Codept is an alternative dependency solver for OCaml.\n\
-   Usage: codept [options] ⟨source files⟩.\n\
+   Usage: codept [options] [⟨signature files⟩] [⟨source files⟩] [⟨m2l files⟩]\n\
+   − ⟨m2l⟩ files are serialized m2l ast files, identified by either a ⟨.m2l⟩ or\
+     ⟨.m2li⟩ extension.\n\
+   − ⟨signature⟩ files are signature information files, identified by \
+   a ⟨.sig⟩ extension.\n\
+   These two files format are useful to save persistent information between \
+   multiple calls to codept.\n\n\
+   Non-existent files and files with an unknown extension are ignored.\
+   \n\
    The following options are common with ocamldep:\n"
-
 
 let args = Cmd.[
     "-absname", Cmd.Unit abs_path, ": use absolute path name";
