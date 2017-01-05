@@ -61,18 +61,22 @@ end
 
 (** {2 Predefined faults} *)
 
+(** Location type for error message *)
+type loc = Paths.Pkg.t * M2l.Loc.t
+
+
 (** {3 Extension node fault} *)
-val extension_ignored : (M2l.Loc.t -> string -> unit) t
-val extension_traversed : (M2l.Loc.t -> string -> unit) t
+val extension_ignored : ( loc -> string -> unit) t
+val extension_traversed : (loc -> string -> unit) t
 
 (** {3 First-class module faults} *)
-val opened_first_class : (M2l.Loc.t -> string -> unit) t
-val included_first_class : (M2l.Loc.t -> unit) t
+val opened_first_class : (loc -> string -> unit) t
+val included_first_class : (loc -> unit) t
 
 (** {3 Typing fault} *)
-val applied_structure : (M2l.Loc.t -> Module.Partial.t -> unit) t
-val structure_expected : (M2l.Loc.t -> Module.Partial.t -> unit) t
-val applied_unknown : (M2l.Loc.t -> Module.Partial.t -> unit) t
+val applied_structure : (loc -> Module.Partial.t -> unit) t
+val structure_expected : (loc -> Module.Partial.t -> unit) t
+val applied_unknown : (loc -> Module.Partial.t -> unit) t
 
 
 (** {3 Parsing approximation faults} *)

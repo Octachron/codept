@@ -33,7 +33,7 @@ end
 module type s =
 sig
   type envt
-  val m2l : envt -> M2l.t -> (envt * Module.Sig.t, M2l.t) result
+  val m2l : Paths.P.t -> envt -> M2l.t -> (envt * Module.Sig.t, M2l.t) result
 end
 
 (** Create an interpreter adapted for the environment type *)

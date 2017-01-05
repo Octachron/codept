@@ -225,7 +225,7 @@ module Layered = struct
   let rec track source stack = match stack with
     | [] -> ()
     | (name, path, code) :: q ->
-      match I.m2l source.resolved code with
+      match I.m2l path source.resolved code with
       | Error code ->
         begin match M2l.Block.m2l code with
           | None -> assert false
@@ -366,8 +366,3 @@ end
 
 module Trl = Tracing(Layered)
 module Tr = Open_world(Trl)
-
-module Interpreters = struct
-  module Sg = Interpreter.Make(Base)
-  module Tr = Interpreter.Make(Tr)
-end

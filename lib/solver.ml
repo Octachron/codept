@@ -178,7 +178,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       { postponed = []; env; pending = []; resolved = [] } units
 
   let compute_more env (u:i) =
-    let result = Eval.m2l env u.code in
+    let result = Eval.m2l u.input.path env u.code in
     let deps = Envt.deps env in
     Envt.reset_deps env;
     deps, result

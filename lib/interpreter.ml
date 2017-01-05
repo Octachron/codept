@@ -31,7 +31,7 @@ end
 
 module type s = sig
   type envt
-  val m2l : envt -> M2l.t -> (envt * Module.Sig.t, M2l.t) result
+  val m2l : Paths.P.t -> envt -> M2l.t -> (envt * Module.Sig.t, M2l.t) result
 end
 
 module type param = sig
@@ -54,6 +54,8 @@ module Make(Envt:envt)(Param:param) = struct
         | Exact -> Fault.(handle polycy applied_structure) loc p; p
         | Unknown -> p (* we guessed the arg wrong *)
 
+
+   let filename loc = fst loc
 
   let of_partial loc p =
     match D.of_partial p with
@@ -229,7 +231,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Abstract -> Ok P.empty
     | Unpacked -> Ok P.{ empty with origin = First_class }
     | Val m -> begin
-        match minor (module_expr loc) m2l state m with
+        match minor (module_expr loc) (m2l @@ filename loc) state m with
         | Ok _ -> Ok { P.empty with origin = First_class }
         | Error h -> Error (Val h)
       end  (* todo : check warning *)
@@ -252,7 +254,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Str[{data=Defs d;_ }] -> Ok (P.no_arg d.defined)
     | Resolved d -> Ok d
     | Str str -> Mresult.fmap (fun s -> Str s) P.no_arg @@
-      drop_state @@ m2l state str
+      drop_state @@ m2l (filename loc) state str
     | Constraint(me,mt) ->
       constraint_ loc state me mt
     | Open_me {opens=[]; resolved; expr } ->
@@ -284,7 +286,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Sig [] -> Ok P.empty
     | Sig [{data=Defs d;_}] -> Ok (P.no_arg d.defined)
     | Sig s -> Mresult.fmap (fun s -> Sig s) P.no_arg @@
-      drop_state @@ signature state s
+      drop_state @@ signature (filename loc) state s
     | Resolved d -> Ok d
     | Ident id ->
       begin match epath state id with
@@ -322,24 +324,24 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok d -> Ok d
 
 
-  and m2l state = function
+  and m2l filename state = function
     | [] -> Ok (state, S.empty)
     | a :: q ->
-      match expr state a with
+      match expr filename state a with
       | Ok (Some defs)  ->
-        begin match m2l Envt.( state >> defs ) q with
+        begin match m2l filename Envt.( state >> defs ) q with
           | Ok (state,sg) ->  Ok (state, S.merge defs.defined sg)
           | Error q' -> Error ( snd @@ Normalize.all @@
                                 Loc.nowhere (Defs defs) :: q')
         end
-      | Ok None -> m2l state q
+      | Ok None -> m2l filename state q
       | Error h -> Error ( snd @@ Normalize.all @@ h :: q)
 
-  and signature state  = m2l state
+  and signature filename state  = m2l filename state
 
-  and expr state e =
-    let loc = e.loc in
-    let reloc = Mresult.fmap_error @@ Loc.create loc in
+  and expr file state e =
+    let loc = file, e.loc in
+    let reloc = Mresult.fmap_error @@ Loc.create e.loc in
     match e.data with
     | Defs d -> Ok (Some d)
     | Open p -> reloc @@ open_ loc state p
@@ -349,7 +351,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Bind_sig b -> reloc @@ bind_sig state (module_type loc) b
     | Bind_rec bs -> reloc @@ bind_rec state (module_expr loc) (module_type loc) bs
     | Minor m -> reloc @@ Mresult.fmap_error (fun m -> Minor m) @@
-      minor (module_expr loc) m2l state m
+      minor (module_expr loc) (m2l file) state m
     | Extension_node n -> begin
         match extension loc state n with
         | Ok () -> Ok None
@@ -360,13 +362,14 @@ module Make(Envt:envt)(Param:param) = struct
       ( fault Fault.extension_ignored loc e.name; Ok () )
     else
       begin
+        let filename = fst loc in
         fault Fault.extension_traversed loc e.name;
         begin let open M2l in
           match e.extension with
           | Module m -> fmap (fun x -> { e with extension= Module x} ) ignore @@
-            m2l state m
+            m2l filename state m
           | Val x -> fmap (fun x -> { e with extension=Val x}) ignore @@
-            minor (module_expr loc) m2l state x
+            minor (module_expr loc) (m2l filename) state x
         end
       end
 

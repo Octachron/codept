@@ -50,6 +50,7 @@ module Open_world :
               externs : Paths.Pkg.set ref; }
 
     include extended_with_deps with type t := t
+    val start: Envt.t -> Paths.Pkg.t Name.Map.t -> t
 end
 
 
@@ -74,37 +75,9 @@ module Tracing :
   functor (Envt : extended) ->
     sig
       type t = { env : Envt.t; deps : Paths.Pkg.set ref; }
-      include extended with type t := t
+      include extended_with_deps with type t := t
       val extend: Envt.t -> t
     end
 
-module Trl :
-sig
-  type t = Tracing(Layered).t =
-    { env : Layered.t; deps : Paths.Pkg.set ref; }
-  include extended_with_deps with type t:= t
-  val extend: Layered.t -> t
-end
-
-
-module Tr :
-sig
-  type t = Open_world(Trl).t =
-    { core : Trl.t;
-      world : Paths.Pkg.t Name.map;
-      externs : Paths.Pkg.set ref; }
-
-  include extended_with_deps with type t := t
-  val start : Trl.t -> Paths.Pkg.t Name.map -> t
-end
-
-module Interpreters :
-  sig
-    module Sg :
-      functor (Param : Interpreter.param) ->
-      sig val m2l : Base.t -> M2l.t ->
-        (Base.t * Module.signature, M2l.t) result end
-    module Tr :
-      functor (Param : Interpreter.param) ->
-        sig val m2l : Tr.t -> M2l.t -> (Tr.t * Module.signature, M2l.t) result end
-  end
+module Trl: module type of Tracing(Layered)
+module Tr: module type of Open_world(Trl)

@@ -54,24 +54,24 @@ module Log = struct
 
   let kcritical k fmt =
     kf k @@
-      ("[\x1b[91mCritical error\x1b[39m]: "^^fmt ^^"@\n" )
+      ("@[[\x1b[91mCritical error\x1b[39m]: "^^fmt ^^"@]@." )
 
   let kerror k fmt =
     kf k
-    ("[\x1b[31m%s\x1b[39m]: "^^fmt^^"@\n")
+    ("@[[\x1b[31m%s\x1b[39m]: "^^fmt^^"@]@.")
     (if k = Ok then "Error" else "Fatal error")
 
   let kwarning k fmt = kf k
-    ("[\x1b[35m%s\x1b[39m]: " ^^ fmt ^^"@\n" )
+    ("@[[\x1b[35m%s\x1b[39m]: " ^^ fmt ^^"@]@." )
     (if k = Ok then "Warning" else "Fatal warning")
 
   let knotification k fmt = kf k
-    ("[\x1b[36m%s\x1b[39m]: " ^^ fmt ^^"@\n")
+    ("@[[\x1b[36m%s\x1b[39m]: " ^^ fmt ^^"@]@.")
       (if k = Ok then "Notification" else "Fatal notification")
 
 
   let kwhisper k fmt = kf k
-    ("[%s]: " ^^ fmt ^^"@\n")
+    ("@[[%s]: " ^^ fmt ^^"@]@.")
     (if k = Ok then "Miscellaneous" else "Fatal accident")
 
   let critical fmt = kcritical Fail fmt
@@ -98,16 +98,13 @@ let log i fmt =
       fns.(i.level) k fmt
     end
 
-
-let llog fmt = fun level -> log level fmt
-
-
 type explanation = string
 type 'a fault = { path: Paths.S.t; expl: explanation; log: log_info -> 'a }
 type 'a t = 'a fault
 
+type loc = Paths.Pkg.t * M2l.Loc.t
+let loc ppf (path,x)= Pp.fp ppf "%a:%a" Paths.Pkg.pp path M2l.Loc.pp x
 
-let loc = M2l.Loc.pp
 (** Warnings *)
 let extension_ignored =
   { path = ["extension"; "ignored"];

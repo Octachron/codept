@@ -183,11 +183,11 @@ let approx_file ppf  _param (_,f) =
   Pp.fp ppf  "lower bound:%a@. upper bound:%a@."
     M2l.pp lower M2l.pp upper
 
-let one_pass ppf param f =
+let one_pass ppf param ( (_,filename) as f) =
   let module Param = (val lift param) in
-  let module Sg = Envts.Interpreters.Sg(Param) in
+  let module Sg = Interpreter.Make(Envts.Base)(Param) in
   let start = to_m2l param.polycy param.sig_only f in
-  match Option.( start >>| Sg.m2l Envts.Base.empty ) with
+  match Option.( start >>| Sg.m2l (Pkg.local filename) Envts.Base.empty ) with
   | None -> ()
   | Some (Ok (_state,d)) -> Pp.fp ppf "Computation finished:\n %a@." S.pp d
   | Some (Error h) -> Pp.fp ppf "Computation halted at:\n %a@." M2l.pp h
