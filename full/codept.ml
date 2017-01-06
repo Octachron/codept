@@ -211,6 +211,29 @@ let m2l_sexp ppf param f =
   >< ()
 
 (** Topological order functions *)
+let full_topological_sort deps paths =
+  let visited = Hashtbl.create 17 in
+  let mark x = Hashtbl.add visited x true in
+  let is_visited x = Hashtbl.mem visited x in
+  let rec sort sorted = function
+    | [] -> sorted
+    | a :: q ->
+      if is_visited a then
+        sort sorted q
+      else
+        let sorted = sort_at sorted a in
+        sort sorted q
+  and sort_at sorted x =
+    let sorted = Paths.Pkg.Set.fold sort_dep (deps x) sorted in
+    mark x;
+    x :: sorted
+  and sort_dep y sorted =
+    if is_visited y then
+      sorted
+    else
+      sort_at sorted y in
+  List.rev @@ sort [] paths
+
 let order units =
   let open Unit in
   let compute (i,m) u = i+1, Name.Map.add u.Unit.name i m in
@@ -224,6 +247,9 @@ let topos_compare order x y =
   | None, Some _ -> -1
   | Some _, None -> 1
   | None, None -> compare x y
+
+let toposort order m =
+    List.sort (fun x y -> topos_compare order (m x) (m y))
 
 (** Basic files reading *)
 let local = Pkg.local
@@ -412,10 +438,8 @@ let upath x = x.Unit.path
 
 let sort proj param mli =
   let order = order mli in
-  let compare x y = topos_compare order (proj x) (proj y) in
-  if param.sort then List.sort compare
+  if param.sort then toposort order proj
   else id
-
 
 let gen_modules proj ppf param task =
   let {Unit.ml; mli} = analyze param task in
@@ -508,7 +532,7 @@ let print_deps param order input dep ppf (unit,imore,dmore) =
   let unit = replace_deps param.includes unit in
   let make_abs = make_abs param.abs_path in
   let pkg_pp = Pkg.pp_gen param.slash in
-  let sort = if param.sort then List.sort (topos_compare order) else id in
+  let sort = if param.sort then toposort order id else id in
   let open Unit in
   let dep x= make_abs @@ dep x in
   let ppl ppf l = Pp.(list ~sep:(s" ") ~post:(s" ") pkg_pp) ppf
@@ -522,8 +546,6 @@ let print_deps param order input dep ppf (unit,imore,dmore) =
       @@ local_dependencies sort unit
     )
     ppl dmore
-
-
 
 
 let makefile ppf param task =
@@ -584,6 +606,32 @@ let makefile ppf param task =
       | { ml = None; mli = None } -> ()
     ) m
 
+let local_deps x =
+  let filter = function { Pkg.source = Local; _ } -> true | _ -> false in
+  x.Unit.dependencies |> Pkg.Set.filter filter
+  |> Pkg.Set.elements
+  |> List.map (Pkg.change_extension ".ml")
+  |> Pkg.Set.of_list
+
+
+let dsort ppf param task =
+  let units: _ Unit.pair = analyze param task in
+  let gs = Unit.Groups.R.group units in
+  let extract_path _ g l = match g with
+    | { Unit.ml = Some x; mli = _ }
+    | { ml = None; mli = Some x }  -> x.Unit.path :: l
+    | { ml = None; mli = None } -> l in
+  let paths =
+    Paths.S.Map.fold extract_path gs []  in
+  let deps path =
+    let key = path.Pkg.file in
+    match Unit.Groups.R.Map.find key gs with
+    | { ml = Some x; mli = Some y } ->
+      Pkg.Set.union (local_deps x) (local_deps y)
+    | { ml = Some x; mli = None } | { mli= Some x; ml =None } -> local_deps x
+    | { ml = None; mli = None } -> Pkg.Set.empty in
+  full_topological_sort deps paths
+  |> Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp ppf
 
 let task = ref {
     files = { Unit.ml = []; Unit.mli = [] };
@@ -965,6 +1013,7 @@ let args = Cmd.[
     "-export", Unit (set export), ": export resolved modules signature";
 
     "-dot", Unit (set dot), ": print dependencies in dot format";
+    "-dsort", Unit(set dsort),": print unit paths in topological order";
     "-makefile", Unit (set makefile), ": print makefile depend file(default)";
     "-approx-m2l", Unit (set_iter approx_file), ": print approximated m2l ast";
     "-m2l", Unit (set_iter m2l), ": print m2l ast";
