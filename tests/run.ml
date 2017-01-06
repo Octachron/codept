@@ -373,6 +373,8 @@ let result =
           "mresult.ml", ([],["List"],[]);
           "sexp.ml", (["Name"; "Option"; "Pp"],
                       [ "Obj"; "Format";"List";"Map"; "Hashtbl"; "String"], [] );
+          "sexp.mli", (["Name"],
+                      [ "Format"], [] );
           "solver.mli", (["Unit";"M2l";"Name";"Interpreter";"Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
