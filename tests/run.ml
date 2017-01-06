@@ -190,11 +190,14 @@ let result =
     ["include.ml", ["List"] ];
     ["include_functor.ml", ["A"] ];
     ["letin.ml", ["List"] ];
+    ["let_open.ml", [] ];
     ["module_rec.ml", ["Set"] ];
     ["more_functor.ml", ["Ext";"Ext2"] ];
     ["nested_modules.ml", [] ];
     ["no_deps.ml", [] ];
     ["not_self_cycle.ml", ["E"] ];
+    ["nothing.ml", [] ];
+    ["unknown_arg.ml", ["Ext"] ];
     ["opens.ml", ["A";"B"] ];
     ["pattern_open.ml", ["E1"; "E2"; "E3";"E4"] ];
     ["recmods.ml", ["Ext"]];
