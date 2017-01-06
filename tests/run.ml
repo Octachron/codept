@@ -186,6 +186,7 @@ let result =
     ["functor.ml", [] ];
     ["functor_with_include.ml", [] ];
     [ "hidden.ml", ["Ext"] ];
+    ["imperfect_modules.ml", ["Ext"] ];
     ["include.ml", ["List"] ];
     ["include_functor.ml", ["A"] ];
     ["letin.ml", ["List"] ];
