@@ -36,6 +36,7 @@ let codept' ~approx mode tags =
 let codept ?(approx=true) mode arg out env _build =
   let arg = env arg and out = env out in
   let tags = tags_of_pathname arg in
+  tag_file out (Tags.elements tags);
   (** use codept "-k" to not fail on apparent self-reference *)
   Cmd(S[codept' ~approx mode tags; P arg; Sh ">"; Px out])
 
@@ -67,34 +68,7 @@ let parse_maps file =
     let l = List.map (fun x -> List.hd @@ String.split_on_char '{' x ) l in
     Some l
 
-(*
-let codept_maps  arg out env build =
-  let arg = env arg and out = env out in
-  let tags = tags_of_pathname arg in
-  match parse_map arg with
-  | None -> S [ touch; Px out]
-  | Some l ->
-  (** eliminate self-dependency *)
-  let include_dirs = Pathname.(include_dirs_of @@ dirname arg ) in
-  let cmi = List.map (fun m -> expand_module include_dirs m ["cmi"])
-      maps in
-  let outcmi = build cmi in
-  let sigs =
-    List.map Outcome.good
-    @@ List.filter Outcome.(function Good _ -> true | Bad _ -> false )
-    @@ outsigs in
-  Cmd( S[ codept' maps tags; P arg; Command.atomize_paths sigs;
-          Sh ">"; Px out])
-*)
-
 module R() = struct
-
-  (*rule "m2l ⇒ ml.maps.depends"
-    ~insert:top
-    ~deps:"%.m2l"
-    ~prod:"%.ml.maps.depends"
-    (codept_maps "%.ml" "%.ml.maps.depends");
-  *)
 
   rule "ml → m2l"
     ~insert:`top
@@ -114,14 +88,14 @@ rule "m2l → ml.r.depends"
   ~prod:"%.ml.r.depends"
   ~dep:"%.m2l"
   ~doc:"Compute approximate dependencies using codept."
-  (codept mdeps "%.ml" "%.ml.r.depends");
+  (codept mdeps "%.m2l" "%.ml.r.depends");
 
 rule "m2li → mli.r.depends"
   ~insert:`top
   ~prod:"%.mli.r.depends"
   ~dep:"%.m2li"
   ~doc:"Compute approximate dependencies using codept."
-  (codept mdeps "%.mli" "%.mli.r.depends");
+  (codept mdeps "%.m2li" "%.mli.r.depends");
 
 rule "m2li → sig depends"
   ~insert:`top
@@ -156,19 +130,19 @@ rule "m2l → r.sig.depends"
 
 rule "m2l → ml.depends"
   ~insert:`top
-  ~prods:["%.ml.depends";"%.ml.maps.depends"]
+  ~prods:["%.ml.depends"]
   ~deps:["%.m2l";"%.ml.r.depends"]
   ~doc:"Compute approximate dependencies using codept."
-  (codept_dep N "%.ml" "%.ml.r.depends"
+  (codept_dep N "%.m2l" "%.ml.r.depends"
      [fdeps, "%.ml.depends"] )
 ;
 
 
 rule "m2li → mli.depends"
   ~insert: `top
-  ~prods:["%.mli.depends";"%.mli.maps.depends"]
+  ~prods:["%.mli.depends"]
   ~deps:["%.m2li";"%.mli.r.depends"]
-  (codept_dep N "%.mli" "%.mli.r.depends"
+  (codept_dep N "%.m2li" "%.mli.r.depends"
      [fdeps, "%.mli.depends"] )
 
 end
