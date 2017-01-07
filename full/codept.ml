@@ -4,10 +4,6 @@ module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 
 (** Utility functions and module *)
-open M2l
-module S = Module.Sig
-let (%) f g x = f (g x)
-
 open Params
 let tool_name = "codept"
 let version = 0.3
@@ -55,52 +51,6 @@ let param = ref {
     may_approx = false;
     output = "%"
   }
-
-(** Printing directly from source file *)
-let to_m2l polycy sig_only (k,f) =
-    match Read.file k f with
-    | _name, Ok x ->
-      if sig_only then Some (M2l.Sig_only.filter x) else Some x
-    | _, Error (Ocaml msg) -> Fault.handle polycy Fault.syntaxerr msg; None
-    | _, Error M2l -> Fault.handle polycy Codept_polycy.m2l_syntaxerr f; None
-
-
-let approx_file ppf _param (_,f) =
-  let _name, lower, upper = Approx_parser.file f in
-  Pp.fp ppf  "lower bound:%a@. upper bound:%a@."
-    M2l.pp lower M2l.pp upper
-
-let one_pass ppf param ( (_,filename) as f) =
-  let param = param.analyzer in
-  let module Param = (val Analysis.lift param) in
-  let module Sg = Interpreter.Make(Envts.Base)(Param) in
-  let start = to_m2l param.polycy param.sig_only f in
-  match Option.( start >>| Sg.m2l (Pkg.local filename) Envts.Base.empty ) with
-  | None -> ()
-  | Some (Ok (_state,d)) -> Pp.fp ppf "Computation finished:\n %a@." S.pp d
-  | Some (Error h) -> Pp.fp ppf "Computation halted at:\n %a@." M2l.pp h
-
-let m2l ppf param f =
-  let param = param.analyzer in
-  let start = to_m2l param.polycy param.sig_only f in
-  let open Option in
-  start
-  >>| Normalize.all
-  >>| snd
-  >>| Pp.fp ppf  "%a@." M2l.pp
-  >< ()
-
-let m2l_sexp ppf param f =
-  let param = param.analyzer in
-  let start = to_m2l param.polycy param.sig_only f in
-  let open Option in
-  start
-  >>| Normalize.all
-  >>| snd
-  >>| M2l.sexp.embed
-  >>| Pp.fp ppf  "%a@." Sexp.pp
-  >< ()
-
 
 let task: Common.task ref = ref {
     Common.files = { Unit.ml = []; Unit.mli = [] };
@@ -297,11 +247,12 @@ let args = Cmd.[
     "-dot", Unit (setc Modes.dot), ": print dependencies in dot format";
     "-dsort", Unit(setc Modes.dsort),": print unit paths in topological order";
     "-makefile", Unit (setc makefile_c), ": print makefile depend file(default)";
-    "-approx-m2l", Unit (set_iter approx_file), ": print approximated m2l ast";
-    "-m2l", Unit (set_iter m2l), ": print m2l ast";
-    "-m2l-sexp", Unit (set_iter m2l_sexp), ": print m2l ast in s-expression format";
-
-    "-one-pass", Unit (set_iter one_pass), ": print m2l ast after one pass";
+    "-approx-m2l", Unit (set_iter Single.approx_file),
+    ": print approximated m2l ast";
+    "-m2l", Unit (set_iter Single.m2l), ": print m2l ast";
+    "-m2l-sexp", Unit (set_iter Single.m2l_sexp),
+    ": print m2l ast in s-expression format";
+    "-one-pass", Unit (set_iter Single.one_pass), ": print m2l ast after one pass";
     "-sig", Unit (setc Modes.sign), ": print inferred signature";
     "-sig-only", set_t sig_only,
     ": filter produced m2l to keep only signature-level elements.\
