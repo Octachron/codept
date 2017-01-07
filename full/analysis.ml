@@ -50,10 +50,9 @@ let base_env signatures no_stdlib =
 type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
-let start_env param signatures includes fileset filemap
-  =
+let start_env param {Common.libs; signatures; _} fileset filemap =
   let base = base_env signatures param.no_stdlib in
-  let layered = Envts.Layered.create includes fileset base in
+  let layered = Envts.Layered.create libs fileset base in
   let traced = Envts.Trl.extend layered in
   if not param.closed_world then
     E ((module Envts.Tr: Interpreter.envt_with_deps with type t = Envts.Tr.t ) ,
@@ -93,13 +92,19 @@ let remove_units invisibles =
       not @@ Paths.S.Set.mem file invisibles
     | _ -> false
 
-let check_env param (E((module Envt), e)) units =
+(** Check that the starting environment e and the list of units does
+    not contain module name collision *)
+let check_env param (task:Common.task) units =
+  let module E = Envts.Layered in
+  let env =
+    let base = base_env task.signatures param.no_stdlib in
+    E.create task.libs Name.Set.empty base in
   let m = Name.Map.empty in
   let add name path m =
     let s = Option.default Paths.P.Set.empty @@ Name.Map.find_opt name m in
     Name.Map.add name (Paths.P.Set.add path s) m in
   let m = List.fold_left (fun m (u:Unit.s) ->
-      match Envt.find M.Module [u.name] e with
+      match E.find M.Module [u.name] env with
       | exception Not_found -> m
       | Ok { M.origin = Unit p; _ } ->
         (add u.name p @@ add u.name u.path m)
@@ -109,20 +114,19 @@ let check_env param (E((module Envt), e)) units =
   List.iter (fun (name,paths) ->
       Fault.handle param.polycy Codept_polycy.module_conflict
         name @@ Paths.P.Set.elements paths)
-    (Name.Map.bindings m);
-  Envt.reset_deps e
+    (Name.Map.bindings m)
 
 (** Analysis step *)
-let main param {Common.opens;libs;invisibles; signatures; files;_} =
-  let units, filemap = organize param.polycy param.sig_only opens files in
+let main param (task:Common.task) =
+  let units, filemap = organize param.polycy param.sig_only task.opens task.files in
   let files_set = units.mli
                   |> List.map (fun (u:Unit.s) -> u.name)
                   |> Name.Set.of_list in
-  let e = start_env param signatures libs files_set filemap in
   let () =
     (* check that no modules is defined twice *)
-    check_env param e units.mli in
+    check_env param task units.mli in
+  let e = start_env param task files_set filemap in
   let {Unit.ml; mli} = solve param e units in
-  let ml = remove_units invisibles ml in
-  let mli = remove_units invisibles mli in
+  let ml = remove_units task.invisibles ml in
+  let mli = remove_units task.invisibles mli in
   {Unit.ml;mli}
