@@ -5,7 +5,7 @@ type param = {
   transparent_extension_nodes: bool;
   polycy: Fault.Polycy.t;
   no_stdlib:bool;
-  no_std_otherlibs:bool;
+  std_otherlibs:bool;
   closed_world: bool;
   sig_only:bool;
 }
@@ -45,11 +45,11 @@ let full_stdlib =
   Std_graph.signature +
   Std_num.signature + Std_threads.signature + Std_unix.signature
 
-let base_env signatures no_stdlib no_std_otherlibs =
+let base_env signatures no_stdlib std_otherlibs =
   let start =
     if no_stdlib then
       Envts.Base.empty
-    else if no_std_otherlibs then
+    else if not std_otherlibs then
       Envts.Base.start Stdlib.signature
     else
       Envts.Base.start full_stdlib in
@@ -60,7 +60,7 @@ type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
 let start_env param {Common.libs; signatures; _} fileset filemap =
-  let base = base_env signatures param.no_stdlib param.no_std_otherlibs in
+  let base = base_env signatures param.no_stdlib param.std_otherlibs in
   let layered = Envts.Layered.create libs fileset base in
   let traced = Envts.Trl.extend layered in
   if not param.closed_world then
@@ -116,7 +116,7 @@ module Collisions = struct
   let libs param (task:Common.task) units =
     let module E = Envts.Layered in
     let env =
-      let base = base_env task.signatures param.no_stdlib param.no_std_otherlibs in
+      let base = base_env task.signatures param.no_stdlib param.std_otherlibs in
       E.create task.libs Name.Set.empty base in
     let m = Name.Map.empty in
     List.fold_left (fun m (u:Unit.s) ->

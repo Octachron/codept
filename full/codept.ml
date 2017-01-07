@@ -45,7 +45,7 @@ let param = ref {
     analyzer = {
       transparent_aliases = false;
       transparent_extension_nodes = true;
-      no_stdlib = false; no_std_otherlibs = false;
+      no_stdlib = false; std_otherlibs = false;
       closed_world = false;
       sig_only = false;
       polycy = Codept_polycy.polycy;
@@ -602,8 +602,8 @@ let args = Cmd.[
      file when given a ml file input";
     "-no-include", set_t no_include, ": do not include base directory by default";
     "-no-stdlib", set_t no_stdlib, ": do not use precomputed stdlib environment";
-    "-no-std-otherlibs", set_t no_stdlib,
-    ": do not use precomputed signature for stdlib otherlibs, \
+    "-std-otherlibs", set_t std_otherlibs,
+    ": use precomputed signature for stdlib otherlibs, \
      i.e. bigarray, threads … ";
     "-read-sig", Cmd.String read_sig,
     "<signature>: add signature to the base environment";
