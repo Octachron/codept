@@ -41,7 +41,7 @@ let polycy =
   |> set_err (unknown_extension, Level.warning)
   |> set_err (m2l_syntaxerr, Level.warning)
   |> set_err (solver_error, Level.error)
-  |> set_err (module_conflict, Level.error)
+  |> set_err (module_conflict, Level.warning)
 
 
 let parsing_approx = let open Polycy in
