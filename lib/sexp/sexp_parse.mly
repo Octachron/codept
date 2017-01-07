@@ -28,6 +28,7 @@ atom:
 
 list0:
   | ATOM list { Any( Keyed_list($1, $2) ) }
+  | L R list {Any (List (Any (List []) :: $3)) }
   | L list0 R list { Any ( List ($2 :: $4) ) }
 
 list:
