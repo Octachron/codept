@@ -514,7 +514,7 @@ let args = Cmd.[
                                        for ml";
     "-mli-synonym", String ml_synonym, "<s>: use <s> extension as a synonym \
                                         for mli";
-    "-modules", Unit (setc @@ modules ~filter:inner_filter),
+    "-modules", Unit (setc @@ modules ~filter:dep_filter),
     ": print raw module dependencies";
     "-native", set_t native, ": generate native compilation only dependencies";
     "-bytecode", set_t bytecode, ": generate bytecode only dependencies";
