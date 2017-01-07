@@ -26,6 +26,7 @@ let synonyms =
   |> add "sig" {kind = Signature; format = Src }
 
 let param = ref {
+
     makefile = {
       all = false;
       native = false;
@@ -35,18 +36,21 @@ let param = ref {
       slash = Filename.dir_sep;
       implicits = true;
     };
+
     common= {
       includes = Name.Map.empty;
       synonyms;
     };
-  analyzer = {
-    transparent_aliases = false;
-    transparent_extension_nodes = true;
-    no_stdlib = false;
-    closed_world = false;
-    sig_only = false;
-    polycy = Codept_polycy.polycy;
-  };
+
+    analyzer = {
+      transparent_aliases = false;
+      transparent_extension_nodes = true;
+      no_stdlib = false; no_std_otherlibs = false;
+      closed_world = false;
+      sig_only = false;
+      polycy = Codept_polycy.polycy;
+    };
+
     no_include = false;
     may_approx = false;
     output = "%"
@@ -598,6 +602,9 @@ let args = Cmd.[
      file when given a ml file input";
     "-no-include", set_t no_include, ": do not include base directory by default";
     "-no-stdlib", set_t no_stdlib, ": do not use precomputed stdlib environment";
+    "-no-std-otherlibs", set_t no_stdlib,
+    ": do not use precomputed signature for stdlib otherlibs, \
+     i.e. bigarray, threads … ";
     "-read-sig", Cmd.String read_sig,
     "<signature>: add signature to the base environment";
     "-see", Cmd.String add_invisible_file,
