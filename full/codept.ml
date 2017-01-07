@@ -56,22 +56,6 @@ let param = ref {
     output = "%"
   }
 
-
-
-exception Unknown_file_type of string
-
-let extension name =
-  let n = String.length name in
-  let r = try String.rindex name '.' with Not_found -> n-1 in
-  String.sub name (r+1) (n-r-1)
-
-let classify polycy synonyms f =
-  let ext = extension f in
-  match Name.Map.find ext synonyms with
-  | x -> Some x
-  | exception Not_found ->
-    Fault.handle polycy Codept_polycy.unknown_extension ext; None
-
 (** Printing directly from source file *)
 let to_m2l polycy sig_only (k,f) =
     match Read.file k f with
@@ -311,63 +295,6 @@ let makefile_c ppf param task =
   Makefile.main ppf param.common param.analyzer param.makefile task
 
 (** {2 Option implementations } *)
-let add_invi name =
-  task := { !task with
-            invisibles = Pth.Set.add (Paths.S.parse_filename name) (!task).invisibles
-          }
-
-let add_impl format name =
-  let k = { Read.kind = Structure; format } in
-  let {Unit.ml;mli} = (!task).files in
-  task := { !task with files = { ml = (k,name) :: ml; mli } }
-
-let add_intf format name =
-  let k = { Read.kind = Signature; format } in
-  let {Unit.ml;mli} = !(task).files in
-  task := {!task with files = { mli = (k,name) :: mli; ml } }
-
-
-let parse_sig lexbuf=
-  Sexp.( (list Module.sexp).parse )
-  @@ Sexp_parse.many Sexp_lex.main
-  @@ lexbuf
-
-let read_sigfile filename =
-  let chan = open_in filename in
-  let lexbuf = Lexing.from_channel chan in
-  let sigs = parse_sig lexbuf in
-  close_in chan;
-  sigs
-
-let add_sig more =
-  let sigs = !(task).signatures in
-  Option.iter (fun more ->
-      task := {!task with signatures = more @ sigs  })
-    more
-
-let read_sig ssig =
-  add_sig
-  @@ parse_sig
-  @@ Lexing.from_string ssig
-
-let add_file name =
-  if Sys.file_exists name then
-    match classify !param.analyzer.polycy !param.common.synonyms name with
-    | None -> ()
-    | Some { kind = Implementation; format } ->
-      add_impl format name
-    | Some { kind = Interface; format } -> add_intf format name
-    | Some { kind = Signature; _ } -> add_sig @@ read_sigfile name
-
-let add_invisible_file name =
-  if Sys.file_exists name then
-    ( add_invi name;
-      add_file name
-    )
-
-let add_open name =
-  task := { !task with opens = [name] :: (!task).opens }
-
 let first_ppx = Compenv.first_ppx
 
 let add_ppx ppx =
@@ -386,9 +313,6 @@ let mli_synonym s =
   let info = { Resource.format = Src; kind = Interface } in
   let synonyms =   Name.Map.add s info synonyms in
   param.[L.synonyms] <- synonyms
-
-let lib f =
-  task := { !task with libs = f :: (!task).libs }
 
 let action = ref []
 
@@ -418,15 +342,6 @@ let set_iter command () = action :=
 let print_vnum ()= Format.printf "%.2f@." version
 let print_version ()= Format.printf "codept, version %.2f@." version
 
-
-let map file =
-  L.( param.[transparent_aliases] <- true );
-  add_invisible_file file
-
-let as_map file =
-  L.( param.[transparent_aliases] <- true ) ;
-  add_file file
-
 let add_include dir =
   let files = Sys.readdir dir in
   let dir = if dir = "." then [] else Paths.S.parse_filename dir in
@@ -437,7 +352,7 @@ let add_include dir =
           let open Fault in
           Polycy.set_err (Codept_polycy.unknown_extension, Level.whisper)
             !param.[polycy] in
-        match classify polycy L.( !param.[synonyms] ) x with
+        match Task.classify polycy L.( !param.[synonyms] ) x with
         | None | Some { kind = Signature; _ } -> m
         | Some { kind = Interface | Implementation ; _ } ->
           Name.Map.add (Read.name x)
@@ -482,6 +397,8 @@ let use_p lens value =
   let open L in
   param.[lens] <- value
 
+let task_p f = Cmd.String (f param task)
+let taskc f = Cmd.String (f task)
 
 let usage_msg =
   "Codept is an alternative dependency solver for OCaml.\n\
@@ -496,19 +413,20 @@ let usage_msg =
    \n\
    The following options are common with ocamldep:\n"
 open L
+open Task
 let args = Cmd.[
     "-absname", set_t abs_path, ": use absolute path name";
     "-all", set_t all, ": display full dependencies in makefile";
     "-allow-approx", set_p polycy Fault.Polycy.parsing_approx,
     ": fall back to approximated parser \
                                         in presence of syntax errors.";
-    "-as-map", Cmd.String as_map, "<file>: same as \
+    "-as-map", task_p as_map, "<file>: same as \
                                    \"-no-alias-deps <file>\"";
     "-I", String add_include,"<dir>: do not filter files in <dir> when printing \
                           dependencies";
-    "-impl", String (add_impl Src), "<f>: read <f> as a ml file";
-    "-intf", String (add_intf Src), "<f>: read <f> as a mli file";
-    "-map", Cmd.String map, "<file>: same as \"-no-alias-deps \
+    "-impl", taskc (add_impl Src), "<f>: read <f> as a ml file";
+    "-intf", taskc (add_intf Src), "<f>: read <f> as a mli file";
+    "-map", task_p map, "<file>: same as \"-no-alias-deps \
                             -see <file>\"";
     "-ml-synonym", String ml_synonym, "<s>: use <s> extension as a synonym \
                                        for ml";
@@ -520,9 +438,9 @@ let args = Cmd.[
     "-bytecode", set_t bytecode, ": generate bytecode only dependencies";
 
     "-one-line", Cmd.Unit ignore, ": does nothing";
-    "-open", String add_open, "<name>: open module <name> at the start of \
-                               all compilation units \n\
-                               (except units whose name is <name>).";
+    "-open", taskc add_open, "<name>: open module <name> at the start of \
+                             all compilation units \n\
+                             (except units whose name is <name>).";
     "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
     "<cmd>: pipe sources through preprocessor <cmd>";
     "-ppx", Cmd.String add_ppx,
@@ -593,7 +511,7 @@ let args = Cmd.[
     "-exit-fault-level", String exit_level,
     "<level>: exit for fault at level <level> and beyond.\n\n Misc options:\n";
 
-    "-L", String lib, "<dir>: use all cmi files in <dir> \
+    "-L", taskc lib, "<dir>: use all cmi files in <dir> \
                        in the analysis";
     "-no-alias-deps", set_t transparent_aliases, ": delay aliases dependencies";
     "-o", Cmd.String (use_p output), "<filename>: setc current output file";
@@ -605,9 +523,9 @@ let args = Cmd.[
     "-std-otherlibs", set_t std_otherlibs,
     ": use precomputed signature for stdlib otherlibs, \
      i.e. bigarray, threads … ";
-    "-read-sig", Cmd.String read_sig,
+    "-read-sig", taskc read_sig,
     "<signature>: add signature to the base environment";
-    "-see", Cmd.String add_invisible_file,
+    "-see", task_p add_invisible_file,
     "<file>: use <file> in dependencies computation but do not display it.";
     "-transparent-extension-node", Cmd.Bool (use_p transparent_extension_nodes),
     "<bool>: inspect unknown extension nodes\n"
@@ -616,9 +534,9 @@ let args = Cmd.[
 let () =
   Compenv.readenv stderr Before_args
   ; if not !param.no_include then add_include "."
-  ; Cmd.parse args add_file usage_msg
+  ; Cmd.parse args (add_file param task) usage_msg
   ; let libs, ppxs = Findlib.process () in
-    List.iter lib libs; List.iter (Option.iter add_ppx) ppxs
+    List.iter (lib task) libs; List.iter (Option.iter add_ppx) ppxs
   ; Compenv.readenv stderr Before_link
   ; if !action = [] then setc makefile_c ()
   ; List.iter act !action
