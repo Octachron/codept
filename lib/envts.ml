@@ -277,22 +277,22 @@ module Layered = struct
 
   let restrict env sg = { env with local = Base.restrict env.local sg }
 
-  let rec find0 start_env level path env =
+  let rec find0 level path env =
     match path with
     | [] -> raise (Invalid_argument "Layered.find cannot find empty path")
     | a :: q  ->
       match find_name false (adjust_level level q) a env with
-      | Alias {path; _ } -> find0 start_env level (path @ q ) start_env
+      | Alias {path; _ } -> find0 level (path @ q ) (top env)
       | M.M m ->
         if q = [] then Ok m
         else
-          find0 start_env level q (restrict env m.signature)
+          find0 level q (restrict env m.signature)
 
   let find level path env =
     if Name.Set.mem (List.hd path (* paths are not empty *)) env.local_units then
       Base.find level path env.local
     else
-      find0 env level path env
+      find0 level path env
 
 
   let (>>) e1 sg = { e1 with local = Base.( e1.local >> sg) }
