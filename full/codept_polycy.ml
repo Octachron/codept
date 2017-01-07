@@ -30,7 +30,7 @@ let module_conflict =
     expl = "A module name appears in multiple locations, only the first one will\
             be used in the following analysis.";
     log = (fun lvl name paths -> log lvl
-              "Module conflict,@; Module name %s is provided simultaneously by
+              "Module conflict,@; Module %s is provided simultaneously by
 @[<hov> %a@]" name Pp.(list ~pre:(s "(") ~sep:(s", ") ~post:(s")") Paths.P.pp) paths
           )
   }

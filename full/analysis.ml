@@ -92,40 +92,61 @@ let remove_units invisibles =
       not @@ Paths.S.Set.mem file invisibles
     | _ -> false
 
-(** Check that the starting environment e and the list of units does
-    not contain module name collision *)
-let check_env param (task:Common.task) units =
-  let module E = Envts.Layered in
-  let env =
-    let base = base_env task.signatures param.no_stdlib in
-    E.create task.libs Name.Set.empty base in
-  let m = Name.Map.empty in
+
+module Collisions = struct
+  (** Check that there is no module name collisions with libraries and local files*)
+  (** Note: no library/library collision detection*)
+
+  (** add a new collision [path] to a map of collision [m]
+      for a module name [name] *)
   let add name path m =
     let s = Option.default Paths.P.Set.empty @@ Name.Map.find_opt name m in
-    Name.Map.add name (Paths.P.Set.add path s) m in
-  let m = List.fold_left (fun m (u:Unit.s) ->
-      match E.find M.Module [u.name] env with
-      | exception Not_found -> m
-      | Ok { M.origin = Unit p; _ } ->
-        (add u.name p @@ add u.name u.path m)
-      | Error _ | Ok { M.origin = (Arg|Submodule|First_class); _ } -> m
+    Name.Map.add name (Paths.P.Set.add path s) m
 
-    ) m units in
-  List.iter (fun (name,paths) ->
-      Fault.handle param.polycy Codept_polycy.module_conflict
-        name @@ Paths.P.Set.elements paths)
-    (Name.Map.bindings m)
+  (** Compute local/libraries collisions *)
+  let libs param (task:Common.task) units =
+    let module E = Envts.Layered in
+    let env =
+      let base = base_env task.signatures param.no_stdlib in
+      E.create task.libs Name.Set.empty base in
+    let m = Name.Map.empty in
+    List.fold_left (fun m (u:Unit.s) ->
+        match E.find M.Module [u.name] env with
+        | exception Not_found -> m
+        | Ok { M.origin = Unit p; _ } ->
+          (add u.name p @@ add u.name u.path m)
+        | Error _ | Ok { M.origin = (Arg|Submodule|First_class); _ } -> m
+
+      ) m units
+
+  (** Print error message for a given collision map *)
+  let handle polycy collisions =
+    List.iter (fun (name,paths) ->
+        Fault.handle polycy Codept_polycy.module_conflict
+          name @@ Paths.P.Set.elements paths)
+      (Name.Map.bindings collisions)
+
+  (** Compute local/local collisions *)
+  let local collisions units =
+    List.fold_left
+      (fun (collisions, name_set) (u:Unit.s) ->
+         if Name.Set.mem u.name name_set then
+           (add u.name u.path collisions, name_set)
+         else
+           (collisions, Name.Set.add u.name name_set)
+      ) (collisions,Name.Set.empty) units
+
+end
 
 (** Analysis step *)
 let main param (task:Common.task) =
   let units, filemap = organize param.polycy param.sig_only task.opens task.files in
-  let files_set = units.mli
-                  |> List.map (fun (u:Unit.s) -> u.name)
-                  |> Name.Set.of_list in
+  let collisions = Collisions.libs param task units.mli in
+  let collisions, file_set = Collisions.local collisions units.mli in
   let () =
-    (* check that no modules is defined twice *)
-    check_env param task units.mli in
-  let e = start_env param task files_set filemap in
+    (* warns if any module is defined twice *)
+    Collisions.handle param.polycy collisions in
+  let e = start_env param task file_set filemap in
   let {Unit.ml; mli} = solve param e units in
   let ml = remove_units task.invisibles ml in
   let mli = remove_units task.invisibles mli in
