@@ -76,24 +76,6 @@ let pp_aliases ppf param (task:Common.task) =
     | _ -> () in
       List.iter pp_m task.signatures
 
-
-let inner_filter = function
-  | { Pkg.source = Local; _ } -> true
-  |  _ -> false
-
-let dep_filter = function
-  | { Pkg.source = (Unknown|Local); _ } -> true
-  |  _ -> false
-
-
-let extern_filter = function
-  | { Pkg.source = Unknown; _ } -> true
-  | _ -> false
-
-let lib_filter = function
-  | { Pkg.source = (Pkg _ | Special _ ) ; _ } -> true
-  | _ -> false
-
 let id x = x
 let upath x = x.Unit.path
 

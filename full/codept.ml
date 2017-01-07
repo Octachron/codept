@@ -204,6 +204,25 @@ let exit_level s =
 let print_polycy ()=
   Fault.Polycy.pp Pp.std L.(!param.[polycy])
 
+module Filter = struct
+  let inner = function
+    | { Pkg.source = Local; _ } -> true
+    |  _ -> false
+
+  let dep = function
+    | { Pkg.source = (Unknown|Local); _ } -> true
+    |  _ -> false
+
+
+  let extern = function
+    | { Pkg.source = Unknown; _ } -> true
+    | _ -> false
+
+  let lib = function
+    | { Pkg.source = (Pkg _ | Special _ ) ; _ } -> true
+    | _ -> false
+end
+
 let set_p lens value =
   let open L in
   Cmd.Unit( fun () -> param.[lens] <- value)
@@ -233,7 +252,6 @@ let usage_msg =
    The following options are common with ocamldep:\n"
 open L
 open Task
-open Modes
 let args = Cmd.[
     "-absname", set_t abs_path, ": use absolute path name";
     "-all", set_t all, ": display full dependencies in makefile";
@@ -252,7 +270,7 @@ let args = Cmd.[
                                        for ml";
     "-mli-synonym", String ml_synonym, "<s>: use <s> extension as a synonym \
                                         for mli";
-    "-modules", Unit (setc @@ modules ~filter:dep_filter),
+    "-modules", Unit (setc @@ Modes.modules ~filter:Filter.dep),
     ": print raw module dependencies";
     "-native", set_t native, ": generate native compilation only dependencies";
     "-bytecode", set_t bytecode, ": generate bytecode only dependencies";
@@ -272,30 +290,30 @@ let args = Cmd.[
     "-vnum", Cmd.Unit print_vnum, ": print version number\n\n Codept only modes:\n";
 
 
-    "-aliases", Unit (setc pp_aliases), ": print aliases";
-    "-info", Unit (setc info), ": print detailed information";
-    "-export", Unit (setc export), ": export resolved modules signature";
+    "-aliases", Unit (setc Modes.pp_aliases), ": print aliases";
+    "-info", Unit (setc Modes.info), ": print detailed information";
+    "-export", Unit (setc Modes.export), ": export resolved modules signature";
 
-    "-dot", Unit (setc dot), ": print dependencies in dot format";
-    "-dsort", Unit(setc dsort),": print unit paths in topological order";
+    "-dot", Unit (setc Modes.dot), ": print dependencies in dot format";
+    "-dsort", Unit(setc Modes.dsort),": print unit paths in topological order";
     "-makefile", Unit (setc makefile_c), ": print makefile depend file(default)";
     "-approx-m2l", Unit (set_iter approx_file), ": print approximated m2l ast";
     "-m2l", Unit (set_iter m2l), ": print m2l ast";
     "-m2l-sexp", Unit (set_iter m2l_sexp), ": print m2l ast in s-expression format";
 
     "-one-pass", Unit (set_iter one_pass), ": print m2l ast after one pass";
-    "-sig", Unit (setc sign), ": print inferred signature";
+    "-sig", Unit (setc Modes.sign), ": print inferred signature";
     "-sig-only", set_t sig_only,
     ": filter produced m2l to keep only signature-level elements.\
      \n\n Module suboptions:\n";
 
-    "-nl-modules", Unit (setc @@ line_modules ~filter:dep_filter),
+    "-nl-modules", Unit (setc @@ Modes.line_modules ~filter:Filter.dep),
     ": print new-line separated raw dependencies";
-    "-extern-modules", Unit (setc @@ modules ~filter:lib_filter),
+    "-extern-modules", Unit (setc @@ Modes.modules ~filter:Filter.lib),
     ": print raw extern dependencies";
-    "-inner-modules", Unit (setc @@ modules ~filter:inner_filter),
+    "-inner-modules", Unit (setc @@ Modes.modules ~filter:Filter.inner),
     ": print raw inner dependencies";
-    "-unknown-modules", Unit (setc @@ modules ~filter:extern_filter),
+    "-unknown-modules", Unit (setc @@ Modes.modules ~filter:Filter.extern),
     ": print raw unresolved dependencies\n\n Findlib options: \n";
 
     "-pkg", Cmd.String Findlib.(update pkg),
