@@ -129,7 +129,7 @@ let opened_first_class =
            unresolved. Consequently, all inferred dependendency after this \
            point may be an over-approximation.";
     log = (fun lvl ->
-      log lvl "%a,@ first-class module %s was opened while its signature was\
+      log lvl "%a,@ first-class module %s was opened while its signature was \
                unknown." loc
       )
   }
@@ -156,8 +156,8 @@ let applied_structure =
 
 let structure_expected =
   { path = ["typing"; "structure_expected"];
-    log = (fun lvl l -> log lvl "%a, @ a structure, i.e. not a functor was expected;\
-                                 got:%a"
+    log = (fun lvl l -> log lvl "%a, @ a structure, i.e. not a functor was \
+                                 expected; got:%a"
               loc l
               Module.Partial.pp);
     expl = "Signature fault: a functor was not expected in this situation."
