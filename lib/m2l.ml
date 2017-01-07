@@ -180,7 +180,7 @@ module More_sexp = struct
   end
   let loc =
     let open Location in
-    C2.sum simple [simple;multiline]
+    C2.sum simple [simple;multiline;nowhere]
 
   let with_loc impl =
     convr (pair impl loc)

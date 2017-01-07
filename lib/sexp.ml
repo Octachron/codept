@@ -354,6 +354,8 @@ let sum l =
          | C c -> c.proj x <> None
          | Cs c -> c.value = x in
        match List.find find l with
+       | exception Not_found ->
+         raise @@ Invalid_argument ("Incomplete sum type")
        | Cs c ->
          begin
            let r =Keyed_list(c.name, []) in
@@ -371,7 +373,8 @@ let sum l =
              | Some y when inner = y ->
              Keyed_list(cnstr.name,[])
              | _ ->
-                 Keyed_list (cnstr.name, [any (cnstr.impl.embed inner)])
+               Keyed_list (cnstr.name, [any (cnstr.impl.embed inner)])
+
          in
          let o = Obj.repr x in
         if not (Obj.is_int o) then
@@ -420,6 +423,9 @@ let sum default l =
     | None ->
       let find (C c) = c.proj x <> None in
       match List.find find l with
+      | exception Not_found ->
+        let s = String.concat ", " (List.map cname l) in
+        raise @@ Invalid_argument ("Incomplete Sexp.sum type:["^s^"]")
       | C cnstr ->
         match cnstr.proj x with
         | None -> raise (Invalid_argument "Sexp.sum")
