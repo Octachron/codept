@@ -1,3 +1,4 @@
+module M = Module
 
 type param = {
   transparent_aliases: bool;
@@ -92,6 +93,24 @@ let remove_units invisibles =
       not @@ Paths.S.Set.mem file invisibles
     | _ -> false
 
+let check_env param (E((module Envt), e)) units =
+  let m = Name.Map.empty in
+  let add name path m =
+    let s = Option.default Paths.P.Set.empty @@ Name.Map.find_opt name m in
+    Name.Map.add name (Paths.P.Set.add path s) m in
+  let m = List.fold_left (fun m (u:Unit.s) ->
+      match Envt.find M.Module [u.name] e with
+      | exception Not_found -> m
+      | Ok { M.origin = Unit p; _ } ->
+        (add u.name p @@ add u.name u.path m)
+      | Error _ | Ok { M.origin = (Arg|Submodule|First_class); _ } -> m
+
+    ) m units in
+  List.iter (fun (name,paths) ->
+      Fault.handle param.polycy Codept_polycy.module_conflict
+        name @@ Paths.P.Set.elements paths)
+    (Name.Map.bindings m);
+  Envt.reset_deps e
 
 (** Analysis step *)
 let main param {Common.opens;libs;invisibles; signatures; files;_} =
@@ -100,6 +119,9 @@ let main param {Common.opens;libs;invisibles; signatures; files;_} =
                   |> List.map (fun (u:Unit.s) -> u.name)
                   |> Name.Set.of_list in
   let e = start_env param signatures libs files_set filemap in
+  let () =
+    (* check that no modules is defined twice *)
+    check_env param e units.mli in
   let {Unit.ml; mli} = solve param e units in
   let ml = remove_units invisibles ml in
   let mli = remove_units invisibles mli in

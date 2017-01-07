@@ -18,10 +18,20 @@ let m2l_syntaxerr =
   }
 
 let solver_error =
-  { path = ["resolving"; "blocker" ];
+  { path = ["solver"; "block" ];
     expl = "Solver fault: major errors during analysis.";
     log = (fun lvl -> log lvl
               "Solver failure@?@[@<2> @[<0>@;%a@]@]" Solver.Failure.pp_cycle
+          )
+  }
+
+let module_conflict =
+  { path = ["codept"; "input"; "module conflict" ];
+    expl = "A module name appears in multiple locations, only the first one will\
+            be used in the following analysis.";
+    log = (fun lvl name paths -> log lvl
+              "Module conflict,@; Module name %s is provided simultaneously by
+@[<hov> %a@]" name Pp.(list ~pre:(s "(") ~sep:(s", ") ~post:(s")") Paths.P.pp) paths
           )
   }
 
@@ -31,6 +41,8 @@ let polycy =
   |> set_err (unknown_extension, Level.warning)
   |> set_err (m2l_syntaxerr, Level.warning)
   |> set_err (solver_error, Level.error)
+  |> set_err (module_conflict, Level.error)
+
 
 let parsing_approx = let open Polycy in
   polycy |> set_err (syntaxerr, Level.warning)
