@@ -51,8 +51,6 @@ let dependencies ?filter sort (u:Unit.r) =
   |> List.map Pkg.module_name
 
 
-let aliases (x:Unit.r) = Module.(aliases @@ M (create "" x.signature) )
-
 let pp_module {Makefile.abs_path;slash; _ } proj ppf (u:Unit.r) =
   let pp_pkg = Pkg.pp_gen slash in
   let elts = proj u in
@@ -60,21 +58,19 @@ let pp_module {Makefile.abs_path;slash; _ } proj ppf (u:Unit.r) =
     Pp.( list ~sep:(s" ") Name.pp )
     elts
 
-
 let pp_aliases ppf param (task:Common.task) =
+  let {Unit.mli; _} = analyze param task in
+  let aliases (x:Unit.r) = Module.(aliases @@ M (create "" x.signature) ) in
   let param = param.makefile in
   let pp_pkg = Pkg.pp_gen param.slash in
-  let pp_m m =
-    let open Module in
-    match m with
-    | M { origin = Unit path; _ } as m ->
-      let path' = Pkg.update_extension
-          (function "m2l" -> ".ml" | "m2li" -> ".mli" | s -> s ) path in
-      let f = Makefile.make_abs param.abs_path path' in
-      Pp.fp ppf "%a: %a\n" pp_pkg f
-        Pp.( list ~sep:(s" ") Name.pp ) (aliases m)
-    | _ -> () in
-      List.iter pp_m task.signatures
+  let pp_m (u:Unit.r) =
+    let path = u.path in
+    let path' = Pkg.update_extension
+        (function "m2l" -> ".ml" | "m2li" -> ".mli" | s -> s ) path in
+    let f = Makefile.make_abs param.abs_path path' in
+    Pp.fp ppf "%a: %a\n" pp_pkg f
+      Pp.( list ~sep:(s" ") Name.pp ) (aliases u) in
+  List.iter pp_m mli
 
 let id x = x
 let upath x = x.Unit.path
