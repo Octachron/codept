@@ -1,15 +1,11 @@
 module Pkg = Paths.Pkg
 open Params
 
-let analyze param = Analysis.main param.analyzer
-
-let info ppf param task =
-  let {Unit.ml; mli} = analyze param task in
+let info ppf _param {Unit.ml; mli} =
   let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) ppf in
   print ml; print mli
 
-let export ppf param task =
-  let {Unit.mli; _} = analyze param task in
+let export ppf _param {Unit.mli; _} =
   let sign (u:Unit.r)= u.signature in
   let md (unit:Unit.r) =
     Module.M {Module.
@@ -29,8 +25,7 @@ let export ppf param task =
              %a\
              @]@." Module.reflect_signature s
 
-let sign ppf param task =
-  let {Unit.mli; _} = analyze param task in
+let sign ppf _param {Unit.mli; _} =
   let md {Unit.signature; name; path; _  } =
     Module.M ( Module.create ~args:[]
       ~origin:(Unit path)
@@ -58,8 +53,7 @@ let pp_module {Makefile.abs_path;slash; _ } proj ppf (u:Unit.r) =
     Pp.( list ~sep:(s" ") Name.pp )
     elts
 
-let pp_aliases ppf param (task:Common.task) =
-  let {Unit.mli; _} = analyze param task in
+let pp_aliases ppf param {Unit.mli; _ } =
   let aliases (x:Unit.r) = Module.(aliases @@ M (create "" x.signature) ) in
   let param = param.makefile in
   let pp_pkg = Pkg.pp_gen param.slash in
@@ -83,8 +77,7 @@ let sort proj param mli =
 end
 open Hidden
 
-let gen_modules proj ppf param task =
-  let {Unit.ml; mli} = analyze param task in
+let gen_modules proj ppf param {Unit.mli; ml } =
   let sort_p = sort id param mli in
   let sort_u = sort upath param mli in
   let print units = Pp.fp ppf "%a"
@@ -107,8 +100,7 @@ let pp_only_deps sort ?filter ppf u =
     Pp.( list ~sep:(s"\n") Name.pp )
     ( List.map Pkg.module_name elts)
 
-let line_modules ?filter ppf param task =
-  let {Unit.ml; mli} = analyze param task in
+let line_modules ?filter ppf param {Unit.mli; ml } =
   let sort_p = sort id param mli in
   let sort_u = sort upath param mli in
   let print units = Pp.fp ppf "%a"
@@ -124,9 +116,8 @@ let local_dependencies sort unit =
   @@ Pkg.Set.elements unit.Unit.dependencies
 
 
-let dot ppf param task =
+let dot ppf param {Unit.mli; _ } =
   let open Unit in
-  let {mli; _ } = analyze param task in
   let sort = sort id param mli in
   Pp.fp ppf "digraph G {\n";
   List.iter (fun u ->
@@ -144,8 +135,7 @@ let local_deps x =
   |> Pkg.Set.of_list
 
 
-let dsort ppf param task =
-  let units: _ Unit.pair = analyze param task in
+let dsort ppf _param (units: _ Unit.pair) =
   let gs = Unit.Groups.R.group units in
   let extract_path _ g l = match g with
     | { Unit.ml = Some x; mli = _ }

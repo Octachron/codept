@@ -61,7 +61,7 @@ let task: Common.task ref = ref {
   }
 
 let makefile_c ppf param task =
-  Makefile.main ppf param.common param.analyzer param.makefile task
+  Makefile.main ppf param.common param.makefile task
 
 (** {2 Option implementations } *)
 let first_ppx = Compenv.first_ppx
@@ -84,6 +84,7 @@ let mli_synonym s =
   param.[L.synonyms] <- synonyms
 
 let action = ref []
+let active_modes = ref []
 
 let act (file,action) =
   if file = "%" then
@@ -96,8 +97,10 @@ let act (file,action) =
     close_out f
 
 
-let setc command () =
-  action:= (!param.output, fun out -> command out !param !task) :: !action
+let mode command () =
+  active_modes :=
+    (fun units -> (!param.output, fun out -> command out !param units) )
+                 :: !active_modes
 
 let set_iter command () = action :=
     ( !param.output,
@@ -220,7 +223,7 @@ let args = Cmd.[
                                        for ml";
     "-mli-synonym", String ml_synonym, "<s>: use <s> extension as a synonym \
                                         for mli";
-    "-modules", Unit (setc @@ Modes.modules ~filter:Filter.dep),
+    "-modules", Unit (mode @@ Modes.modules ~filter:Filter.dep),
     ": print raw module dependencies";
     "-native", set_t native, ": generate native compilation only dependencies";
     "-bytecode", set_t bytecode, ": generate bytecode only dependencies";
@@ -240,31 +243,31 @@ let args = Cmd.[
     "-vnum", Cmd.Unit print_vnum, ": print version number\n\n Codept only modes:\n";
 
 
-    "-aliases", Unit (setc Modes.pp_aliases), ": print aliases";
-    "-info", Unit (setc Modes.info), ": print detailed information";
-    "-export", Unit (setc Modes.export), ": export resolved modules signature";
+    "-aliases", Unit (mode Modes.pp_aliases), ": print aliases";
+    "-info", Unit (mode Modes.info), ": print detailed information";
+    "-export", Unit (mode Modes.export), ": export resolved modules signature";
 
-    "-dot", Unit (setc Modes.dot), ": print dependencies in dot format";
-    "-dsort", Unit(setc Modes.dsort),": print unit paths in topological order";
-    "-makefile", Unit (setc makefile_c), ": print makefile depend file(default)";
+    "-dot", Unit (mode Modes.dot), ": print dependencies in dot format";
+    "-dsort", Unit(mode Modes.dsort),": print unit paths in topological order";
+    "-makefile", Unit (mode makefile_c), ": print makefile depend file(default)";
     "-approx-m2l", Unit (set_iter Single.approx_file),
     ": print approximated m2l ast";
     "-m2l", Unit (set_iter Single.m2l), ": print m2l ast";
     "-m2l-sexp", Unit (set_iter Single.m2l_sexp),
     ": print m2l ast in s-expression format";
     "-one-pass", Unit (set_iter Single.one_pass), ": print m2l ast after one pass";
-    "-sig", Unit (setc Modes.sign), ": print inferred signature";
+    "-sig", Unit (mode Modes.sign), ": print inferred signature";
     "-sig-only", set_t sig_only,
     ": filter produced m2l to keep only signature-level elements.\
      \n\n Module suboptions:\n";
 
-    "-nl-modules", Unit (setc @@ Modes.line_modules ~filter:Filter.dep),
+    "-nl-modules", Unit (mode @@ Modes.line_modules ~filter:Filter.dep),
     ": print new-line separated raw dependencies";
-    "-extern-modules", Unit (setc @@ Modes.modules ~filter:Filter.lib),
+    "-extern-modules", Unit (mode @@ Modes.modules ~filter:Filter.lib),
     ": print raw extern dependencies";
-    "-inner-modules", Unit (setc @@ Modes.modules ~filter:Filter.inner),
+    "-inner-modules", Unit (mode @@ Modes.modules ~filter:Filter.inner),
     ": print raw inner dependencies";
-    "-unknown-modules", Unit (setc @@ Modes.modules ~filter:Filter.extern),
+    "-unknown-modules", Unit (mode @@ Modes.modules ~filter:Filter.extern),
     ": print raw unresolved dependencies\n\n Findlib options: \n";
 
     "-pkg", Cmd.String Findlib.(update pkg),
@@ -303,7 +306,7 @@ let args = Cmd.[
     "-L", taskc lib, "<dir>: use all cmi files in <dir> \
                        in the analysis";
     "-no-alias-deps", set_t transparent_aliases, ": delay aliases dependencies";
-    "-o", Cmd.String (use_p output), "<filename>: setc current output file";
+    "-o", Cmd.String (use_p output), "<filename>: mode current output file";
     "-no-implicits", set_f implicits,
     ": do not implicitly search for a mli \
      file when given a ml file input";
@@ -327,5 +330,9 @@ let () =
   ; let libs, ppxs = Findlib.process () in
     List.iter (lib task) libs; List.iter (Option.iter add_ppx) ppxs
   ; Compenv.readenv stderr Before_link
-  ; if !action = [] then setc makefile_c ()
+  ; if !action = [] && !active_modes = [] then
+    mode makefile_c ()
   ; List.iter act !action
+  ; if not (!active_modes = []) then
+    let analyzed = Analysis.main !param.analyzer !task in
+    List.iter (fun f -> act @@ f analyzed) !active_modes

@@ -72,12 +72,10 @@ let regroup {Unit.ml;mli} =
   let add l m = List.fold_left (fun x y -> Unit.Groups.R.Map.add y x) m l in
   add mli @@ add ml @@ Pth.Map.empty
 
-let main ppf common_p analyzer_p param task =
+let main ppf common_p param units =
   let all = param.all in
   let if_all l = if all then l else [] in
-  (*  let make_abs = make_abs param.abs_path in *)
   let print_deps = print_deps common_p param in
-  let units = Analysis.main analyzer_p task in
   let order = Sorting.order units.Unit.mli in
   let m =regroup units in
   let cmi_or or_ path =
