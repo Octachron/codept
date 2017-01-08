@@ -98,8 +98,9 @@ let act (file,action) =
 
 
 let mode command () =
+  let output = !param.output in
   active_modes :=
-    (fun units -> (!param.output, fun out -> command out !param units) )
+    (fun units -> (output, fun out -> command out !param units) )
                  :: !active_modes
 
 let set_iter command () = action :=
