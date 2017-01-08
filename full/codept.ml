@@ -244,7 +244,7 @@ let args = Cmd.[
     "-vnum", Cmd.Unit print_vnum, ": print version number\n\n Codept only modes:\n";
 
 
-    "-aliases", Unit (mode Modes.pp_aliases), ": print aliases";
+    "-aliases", Unit (mode Modes.aliases), ": print aliases";
     "-info", Unit (mode Modes.info), ": print detailed information";
     "-export", Unit (mode Modes.export), ": export resolved modules signature";
 
@@ -257,7 +257,7 @@ let args = Cmd.[
     "-m2l-sexp", Unit (set_iter Single.m2l_sexp),
     ": print m2l ast in s-expression format";
     "-one-pass", Unit (set_iter Single.one_pass), ": print m2l ast after one pass";
-    "-sig", Unit (mode Modes.sign), ": print inferred signature";
+    "-sig", Unit (mode Modes.signature), ": print inferred signature";
     "-sig-only", set_t sig_only,
     ": filter produced m2l to keep only signature-level elements.\
      \n\n Module suboptions:\n";
