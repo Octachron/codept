@@ -5,6 +5,7 @@ type info = { format: Read.format; kind : kind }
 (** Standard file format *)
 val ml: info
 val mli: info
+
 (** Convert info to standard type *)
 val classic: info -> Read.kind option
 
