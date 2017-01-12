@@ -52,7 +52,7 @@ let dependencies ?filter sort (u:Unit.r) =
 let pp_module {Makefile.abs_path;slash; _ } proj ppf (u:Unit.r) =
   let pp_pkg = Pkg.pp_gen slash in
   let elts = proj u in
-  Pp.fp ppf "%a: %a\n" pp_pkg (Makefile.make_abs abs_path u.path)
+  Pp.fp ppf "%a: %a\n" pp_pkg (Common.make_abs abs_path u.path)
     Pp.( list ~sep:(s" ") Name.pp )
     elts
 
@@ -64,7 +64,7 @@ let aliases ppf param {Unit.mli; _ } =
     let path = u.path in
     let path' = Pkg.update_extension
         (function "m2l" -> ".ml" | "m2li" -> ".mli" | s -> s ) path in
-    let f = Makefile.make_abs param.abs_path path' in
+    let f = Common.make_abs param.abs_path path' in
     Pp.fp ppf "%a: %a\n" pp_pkg f
       Pp.( list ~sep:(s" ") Name.pp ) (mk_aliases u) in
   List.iter pp_m mli

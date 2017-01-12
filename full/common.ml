@@ -32,3 +32,10 @@ let local_dependencies sort unit =
     (function {Pkg.source=Unknown; _ }
             | {Pkg.source=Special _ ; _ } -> false | _ -> true )
   @@ Pkg.Set.elements unit.U.dependencies
+
+let make_abs abs p =
+  let open Paths.Pkg in
+  if abs && p.source = Local then
+    { p with file = Sys.getcwd() :: p.file }
+  else
+    p

@@ -40,18 +40,11 @@ let implicit_dep synonyms path =
     )
         synonyms {ml=false;mli=false}
 
-let make_abs abs p =
-  let open Paths.Pkg in
-  if abs && p.source = Local then
-    { p with file = Sys.getcwd() :: p.file }
-  else
-    p
-
 let id x = x
 
 let print_deps (univ:Common.param) param order input dep ppf (unit,imore,dmore) =
   let unit = replace_deps univ.includes unit in
-  let make_abs = make_abs param.abs_path in
+  let make_abs = Common.make_abs param.abs_path in
   let pkg_pp = Pkg.pp_gen param.slash in
   let default_sort = Sorting.toposort order Paths.Pkg.module_name in
   let sort = if param.sort then default_sort else id in
