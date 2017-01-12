@@ -9,7 +9,7 @@ type t =
   }
 
 module L = struct
-  type ('a,'b) t = { get: 'a -> 'b; update: 'a -> 'b -> 'a }
+  type ('a,'b) l = { get: 'a -> 'b; update: 'a -> 'b -> 'a }
 
   let create f g = { get = f; update = g}
   let get x lens = lens.get x
@@ -21,7 +21,7 @@ module L = struct
     let set = set
   end
 
-  let compose (type a b c) (l: (a,b) t)  (r:(b,c) t) =
+  let compose (type a b c) (l: (a,b) l)  (r:(b,c) l) =
     { get = (fun x -> x.[l].[r]) ;
       update = (fun x y ->
           update x l ( update x.[l] r y) ) ;
