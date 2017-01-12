@@ -30,7 +30,7 @@ let implicit_dep synonyms path =
   *)
   let exists ext =  Sys.file_exists @@ Filename.remove_extension
       (Pkg.filename path) ^ "." ^ ext in
-  Name.Map.fold (fun ext (info:Resource.info) (found:bool Unit.pair) ->
+  Name.Map.fold (fun ext (info:Common.info) (found:bool Unit.pair) ->
       match info.kind with
       | Interface ->
         { found with mli = found.mli || exists ext }
