@@ -1,6 +1,6 @@
 (** Analysis on single files *)
 
-type single = Format.formatter -> Params.t -> string * string -> unit
+type single = Format.formatter -> Params.t -> Read.kind * string -> unit
 
 (** Use the heuristic approximate parser and display the resulting
     lower and upper bound m2l approximation *)
