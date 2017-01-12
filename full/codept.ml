@@ -11,7 +11,7 @@ let stderr= Format.err_formatter
 let std = Format.std_formatter
 
 let synonyms =
-  let open Resource in
+  let open Common in
   let add = Name.Map.add in
   Name.Map.empty
   |> add "ml" {kind=Implementation; format = Src}
@@ -60,6 +60,8 @@ let task: Common.task ref = ref {
     opens = [];
   }
 
+let findlib_info = ref Findlib.empty
+
 let makefile_c ppf param task =
   Makefile.main ppf param.common param.makefile task
 
@@ -72,14 +74,14 @@ let add_ppx ppx =
 let ml_synonym s =
   let open L in
   let synonyms = !param.[synonyms] in
-  let info = { Resource.format = Src; kind = Implementation } in
+  let info = { Common.format = Src; kind = Implementation } in
   let synonyms =   Name.Map.add s info synonyms in
   param.[L.synonyms] <- synonyms
 
 let mli_synonym s =
   let open L in
   let synonyms = !param.[synonyms] in
-  let info = { Resource.format = Src; kind = Interface } in
+  let info = { Common.format = Src; kind = Interface } in
   let synonyms =   Name.Map.add s info synonyms in
   param.[L.synonyms] <- synonyms
 
@@ -192,6 +194,9 @@ let use_p lens value =
 let task_p f = Cmd.String (f param task)
 let taskc f = Cmd.String (f task)
 
+let findlib update =
+  Cmd.String (fun s -> findlib_info := update !findlib_info s)
+
 let usage_msg =
   "Codept is an alternative dependency solver for OCaml.\n\
    Usage: codept [options] [⟨signature files⟩] [⟨source files⟩] [⟨m2l files⟩]\n\
@@ -271,16 +276,16 @@ let args = Cmd.[
     "-unknown-modules", Unit (mode @@ Modes.modules ~filter:Filter.extern),
     ": print raw unresolved dependencies\n\n Findlib options: \n";
 
-    "-pkg", Cmd.String Findlib.(update pkg),
+    "-pkg", findlib Findlib.pkg,
     "<pkg_name>: use the ocamlfind package <pkg_name> during the analysis";
-    "-package", Cmd.String Findlib.(update pkg), "<pkg_name>: same as pkg";
-    "-predicates", Cmd.String Findlib.(update predicates),
+    "-package", findlib Findlib.pkg, "<pkg_name>: same as pkg";
+    "-predicates", findlib Findlib.predicates,
     "<comma-separated list of string>: add predicates to ocamlfind processing";
-    "-ppxopt", Cmd.String Findlib.(update ppxopt),
+    "-ppxopt", findlib Findlib.ppxopt,
     "<ppx,opt>: add <opt> as an option of <ppx>";
-    "-ppopt", Cmd.String Findlib.(update ppopt),
+    "-ppopt", findlib Findlib.ppopt,
     "<ppopt>: add <opt> to the active pp preprocessor";
-    "-syntax", Cmd.String Findlib.(update syntax),
+    "-syntax", findlib Findlib.syntax,
     "<syntax name>: use the <syntax> preprocessor provided \
      by one of the available findlib packages.";
     "-native-filter", set_t native,
@@ -328,7 +333,7 @@ let () =
   Compenv.readenv stderr Before_args
   ; if not !param.no_include then add_include "."
   ; Cmd.parse args (add_file param task) usage_msg
-  ; let libs, ppxs = Findlib.process () in
+  ; let libs, ppxs = Findlib.process !findlib_info in
     List.iter (lib task) libs; List.iter (Option.iter add_ppx) ppxs
   ; Compenv.readenv stderr Before_link
   ; if !action = [] && !active_modes = [] then

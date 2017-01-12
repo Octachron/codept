@@ -77,7 +77,7 @@ let predicates info s =
   let l = List.map String.trim @@ String.split_on_char ',' s in
   { info with predicates = l @ info.predicates }
 
-let info = ref
+let empty =
     {
       pkgs = [];
       syntaxes =[];
@@ -86,8 +86,6 @@ let info = ref
       predicates = []
     }
 
-let update f s = info := f !info s
-
 let process_pp info name =
   try
     let s = find_pp info name info.pkgs in
@@ -95,8 +93,7 @@ let process_pp info name =
     Clflags.preprocessor := Some s
   with Not_found -> ()
 
-let process () =
-  let info = !info in
+let process info =
   let syntaxes = Name.Set.of_list (info.syntaxes) in
   Name.Set.iter (process_pp info) syntaxes;
   List.fold_left (fun (libs,ppxs) pkg ->
