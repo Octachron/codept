@@ -1,6 +1,6 @@
 all: codept test
 
-codept: lib/*.ml lib/*.mli full/*.ml
+codept: lib/*.ml lib/*.mli full/*.ml full/*.mli
 	ocamlbuild -use-ocamlfind codept.native\
 		&& mv codept.native codept
 

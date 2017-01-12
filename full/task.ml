@@ -46,14 +46,14 @@ let read_sigfile filename =
   close_in chan;
   sigs
 
-let add_sig task more =
+let add_sig0 task more =
   let sigs = !(task).signatures in
   Option.iter (fun more ->
       task := {!task with signatures = more @ sigs  })
     more
 
-let read_sig task ssig =
-  add_sig task
+let add_sig task ssig =
+  add_sig0 task
   @@ parse_sig
   @@ Lexing.from_string ssig
 
@@ -64,7 +64,7 @@ let add_file param task name =
     | Some { kind = Implementation; format } ->
       add_impl format task name
     | Some { kind = Interface; format } -> add_intf format task name
-    | Some { kind = Signature; _ } -> add_sig task @@ read_sigfile name
+    | Some { kind = Signature; _ } -> add_sig0 task @@ read_sigfile name
 
 let add_invisible_file param task name =
   if Sys.file_exists name then

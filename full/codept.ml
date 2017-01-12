@@ -321,7 +321,7 @@ let args = Cmd.[
     "-std-otherlibs", set_t std_otherlibs,
     ": use precomputed signature for stdlib otherlibs, \
      i.e. bigarray, threads … ";
-    "-read-sig", taskc read_sig,
+    "-read-sig", taskc add_sig,
     "<signature>: add signature to the base environment";
     "-see", task_p add_invisible_file,
     "<file>: use <file> in dependencies computation but do not display it.";
