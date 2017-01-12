@@ -154,5 +154,5 @@ let dsort ppf _param (units: _ Unit.pair) =
       Pkg.Set.union (local_deps x) (local_deps y)
     | { ml = Some x; mli = None } | { mli= Some x; ml =None } -> local_deps x
     | { ml = None; mli = None } -> Pkg.Set.empty in
-  Sorting.full_topological_sort deps paths
-  |> Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp ppf
+  Option.iter (Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp ppf)
+    (Sorting.full_topological_sort deps paths)

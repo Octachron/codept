@@ -1,26 +1,35 @@
 (** Topological order functions *)
 let full_topological_sort deps paths =
   let visited = Hashtbl.create 17 in
-  let mark x = Hashtbl.add visited x true in
+  let temporary = Hashtbl.create 17 in
+  let guard x = Hashtbl.add temporary x true in
+  let cycle x = Hashtbl.mem temporary x in
+  let mark x = Hashtbl.add visited x true; Hashtbl.remove temporary x in
   let is_visited x = Hashtbl.mem visited x in
   let rec sort sorted = function
     | [] -> sorted
     | a :: q ->
       if is_visited a then
         sort sorted q
+      else if cycle a then None
       else
         let sorted = sort_at sorted a in
         sort sorted q
   and sort_at sorted x =
+    guard x;
     let sorted = Paths.Pkg.Set.fold sort_dep (deps x) sorted in
+    let open Option in
+    sorted >>| fun sorted ->
     mark x;
     x :: sorted
   and sort_dep y sorted =
     if is_visited y then
       sorted
+    else if cycle y then
+      None
     else
       sort_at sorted y in
-  List.rev @@ sort [] paths
+  Option.fmap List.rev @@ sort (Some []) paths
 
 let remember_order units =
   let open Unit in
