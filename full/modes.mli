@@ -1,3 +1,5 @@
+(** Codept output modes *)
+
 type mode = Format.formatter -> Params.t -> Unit.r list Unit.pair -> unit
 
 (** Display aliases:
@@ -25,7 +27,7 @@ val info: mode
 val modules : ?filter:(Paths.Pkg.t -> bool) -> mode
 
 (** Display module dependencies line-by-line, intended to use by ocamlbuild *)
-val line_module: ?filter:(Paths.Pkg.t -> bool) -> mode
+val line_modules: ?filter:(Paths.Pkg.t -> bool) -> mode
 
 (** Export the inferred m2l signature in a s-expression format, intended
     to be read by ulterior call to codept *)

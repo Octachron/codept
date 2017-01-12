@@ -53,7 +53,8 @@ let print_deps (univ:Common.param) param order input dep ppf (unit,imore,dmore) 
   let unit = replace_deps univ.includes unit in
   let make_abs = make_abs param.abs_path in
   let pkg_pp = Pkg.pp_gen param.slash in
-  let sort = if param.sort then Sorting.toposort order id else id in
+  let default_sort = Sorting.toposort order Paths.Pkg.module_name in
+  let sort = if param.sort then default_sort else id in
   let open Unit in
   let dep x= make_abs @@ dep x in
   let ppl ppf l = Pp.(list ~sep:(s" ") ~post:(s" ") pkg_pp) ppf
@@ -63,7 +64,7 @@ let print_deps (univ:Common.param) param order input dep ppf (unit,imore,dmore) 
     ppl imore
     Pp.(list ~pre:(s " ") ~sep:(s " ") pkg_pp)
     ( List.rev_map dep
-      @@ Sorting.toposort order id
+      @@ default_sort
       @@ Common.local_dependencies sort unit
     )
     ppl dmore
@@ -76,7 +77,7 @@ let main ppf common_p param units =
   let all = param.all in
   let if_all l = if all then l else [] in
   let print_deps = print_deps common_p param in
-  let order = Sorting.order units.Unit.mli in
+  let order = Sorting.remember_order units.Unit.mli in
   let m =regroup units in
   let cmi_or or_ path =
     let open Unit in

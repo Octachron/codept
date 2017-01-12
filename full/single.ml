@@ -1,5 +1,7 @@
 (** Analysis on single files *)
 
+type single = Format.formatter -> Params.t -> Read.kind * string -> unit
+
 module Pkg = Paths.Pkg
 open Params
 open M2l

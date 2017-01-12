@@ -1,6 +1,9 @@
 module Pkg = Paths.Pkg
 open Params
 
+type mode = Format.formatter -> Params.t -> Unit.r list Unit.pair -> unit
+
+
 let info ppf _param {Unit.ml; mli} =
   let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) ppf in
   print ml; print mli
@@ -25,7 +28,7 @@ let export ppf _param {Unit.mli; _} =
              %a\
              @]@." Module.reflect_signature s
 
-let sign ppf _param {Unit.mli; _} =
+let signature ppf _param {Unit.mli; _} =
   let md {Unit.signature; name; path; _  } =
     Module.M ( Module.create ~args:[]
       ~origin:(Unit path)
@@ -53,8 +56,8 @@ let pp_module {Makefile.abs_path;slash; _ } proj ppf (u:Unit.r) =
     Pp.( list ~sep:(s" ") Name.pp )
     elts
 
-let pp_aliases ppf param {Unit.mli; _ } =
-  let aliases (x:Unit.r) = Module.(aliases @@ M (create "" x.signature) ) in
+let aliases ppf param {Unit.mli; _ } =
+  let mk_aliases (x:Unit.r) = Module.(aliases @@ M (create "" x.signature) ) in
   let param = param.makefile in
   let pp_pkg = Pkg.pp_gen param.slash in
   let pp_m (u:Unit.r) =
@@ -63,22 +66,23 @@ let pp_aliases ppf param {Unit.mli; _ } =
         (function "m2l" -> ".ml" | "m2li" -> ".mli" | s -> s ) path in
     let f = Makefile.make_abs param.abs_path path' in
     Pp.fp ppf "%a: %a\n" pp_pkg f
-      Pp.( list ~sep:(s" ") Name.pp ) (aliases u) in
+      Pp.( list ~sep:(s" ") Name.pp ) (mk_aliases u) in
   List.iter pp_m mli
 
 let id x = x
-let upath x = x.Unit.path
+let mname x = Pkg.module_name x
+let upath x = mname @@ x.Unit.path
 
 module Hidden = struct
 let sort proj param mli =
-  let order = Sorting.order mli in
+  let order = Sorting.remember_order mli in
   if param.makefile.sort then Sorting.toposort order proj
   else id
 end
 open Hidden
 
 let gen_modules proj ppf param {Unit.mli; ml } =
-  let sort_p = sort id param mli in
+  let sort_p = sort mname param mli in
   let sort_u = sort upath param mli in
   let print units = Pp.fp ppf "%a"
       Pp.(list ~sep:(s"") @@ pp_module param.makefile @@ proj sort_p)
@@ -101,7 +105,7 @@ let pp_only_deps sort ?filter ppf u =
     ( List.map Pkg.module_name elts)
 
 let line_modules ?filter ppf param {Unit.mli; ml } =
-  let sort_p = sort id param mli in
+  let sort_p = sort mname param mli in
   let sort_u = sort upath param mli in
   let print units = Pp.fp ppf "%a"
       Pp.(list ~sep:(s"") @@ pp_only_deps sort_p ?filter)
@@ -118,7 +122,7 @@ let local_dependencies sort unit =
 
 let dot ppf param {Unit.mli; _ } =
   let open Unit in
-  let sort = sort id param mli in
+  let sort = sort mname param mli in
   Pp.fp ppf "digraph G {\n";
   List.iter (fun u ->
       List.iter (fun p ->
