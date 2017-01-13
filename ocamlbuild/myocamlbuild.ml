@@ -30,7 +30,9 @@ let codept' ~approx mode tags =
       tags' in
   let k = if approx then S [ A"-k"; A "-silent-fault-level"; A "notification" ]
     else S [] in
-  S [ A "codept"; T tags'; k; mode]
+  let pp = Command.reduce @@ T (tags++ "ocaml" ++ "pp" ++ "pp:dep") in
+  let pp = match pp with N -> N | s -> S [ A "-pp"; Quote s] in
+  S [ A "codept"; T tags'; pp ; k; mode]
 
 
 let codept ?(approx=true) mode arg out env _build =
