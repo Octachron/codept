@@ -106,6 +106,8 @@ module Collisions = struct
   (** Check that there is no module name collisions with libraries and local files*)
   (** Note: no library/library collision detection*)
 
+  let empty = Name.Map.empty
+
   (** add a new collision [path] to a map of collision [m]
       for a module name [name] *)
   let add name path m =
@@ -150,7 +152,11 @@ end
 (** Analysis step *)
 let main param (task:Common.task) =
   let units, filemap = organize param.polycy param.sig_only task.opens task.files in
-  let collisions = Collisions.libs param task units.mli in
+  let collisions =
+    if Fault.is_silent param.polycy Codept_polycy.module_conflict then
+      Collisions.empty
+    else
+      Collisions.libs param task units.mli in
   let collisions, file_set = Collisions.local collisions units.mli in
   let () =
     (* warns if any module is defined twice *)

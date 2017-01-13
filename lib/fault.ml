@@ -257,7 +257,7 @@ module Polycy = struct
       end
     | Map m, [] -> with_default m.lvl
 
-  let find {map; exit; _ } = find exit map
+  let level {map; exit; _ } error = find exit map error.path
 
   let rec set (path,expl,lvl) env = match path, env with
     | [], Level l -> Level {expl = Option.default l.expl expl;lvl }
@@ -349,7 +349,10 @@ let set = Polycy.set_err
 let handle (polycy:Polycy.t) error =
   error.log {
     level =
-      Polycy.find polycy error.path;
+      Polycy.level polycy error;
     silent = polycy.silent;
     exit = polycy.exit;
   }
+
+let is_silent polycy fault =
+  Polycy.level polycy fault <= polycy.silent

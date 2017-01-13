@@ -99,7 +99,7 @@ sig
   val pp: Format.formatter -> t -> unit
 
   (** {2 Utility functions} *)
-  val find : t -> Paths.S.t -> Level.t
+  val level : t -> 'a fault -> Level.t
   val set : Paths.S.t * explanation option * Level.t -> t -> t
   val set_err : 'a fault * Level.t -> t -> t
 
@@ -114,3 +114,4 @@ end
 (** {2 Fault handling with polycy} *)
 val set : 'a t * Level.t -> Polycy.t -> Polycy.t
 val handle : Polycy.t -> 'a t -> 'a
+val is_silent: Polycy.t -> 'a fault -> bool
