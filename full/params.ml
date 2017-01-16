@@ -62,10 +62,8 @@ module L = struct
   let transparent_extension_nodes = analyzer %  create
       (fun x-> x.transparent_extension_nodes)
       (fun x y -> { x with transparent_extension_nodes = y })
-  let no_stdlib = analyzer % create (fun x-> x.no_stdlib)
-      (fun x y -> { x with no_stdlib = y })
-  let std_otherlibs = analyzer % create (fun x-> x.std_otherlibs)
-      (fun x y -> { x with std_otherlibs = y })
+  let precomputed_libs = analyzer % create (fun x-> x.precomputed_libs)
+      (fun x y -> { x with precomputed_libs = y })
   let closed_world = analyzer % create (fun x-> x.closed_world)
       (fun x y -> { x with closed_world = y })
   let sig_only = analyzer % create

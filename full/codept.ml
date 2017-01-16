@@ -41,7 +41,7 @@ let param = ref {
     analyzer = {
       transparent_aliases = false;
       transparent_extension_nodes = true;
-      no_stdlib = false; std_otherlibs = false;
+      precomputed_libs = Name.Set.singleton "stdlib";
       closed_world = false;
       sig_only = false;
       polycy = Codept_polycy.polycy;
@@ -197,6 +197,22 @@ let taskc f = Cmd.String (f task)
 let findlib update =
   Cmd.String (fun s -> findlib_info := update !findlib_info s)
 
+let pkg =
+  Cmd.String( fun s ->
+      if Common.is_stdlib_pkg s then
+        let open L in
+        param.[precomputed_libs] <- Name.Set.add s !param.[precomputed_libs]
+      else
+        findlib_info := Findlib.pkg !findlib_info s;
+    )
+
+let no_stdlib =
+  Cmd.Unit( fun () ->
+      let open L in
+      param.[precomputed_libs] <-
+        Name.Set.remove "stdlib" !param.[precomputed_libs]
+    )
+
 let usage_msg =
   "Codept is an alternative dependency solver for OCaml.\n\
    Usage: codept [options] [⟨signature files⟩] [⟨source files⟩] [⟨m2l files⟩]\n\
@@ -317,10 +333,7 @@ let args = Cmd.[
     ": do not implicitly search for a mli \
      file when given a ml file input";
     "-no-include", set_t no_include, ": do not include base directory by default";
-    "-no-stdlib", set_t no_stdlib, ": do not use precomputed stdlib environment";
-    "-std-otherlibs", set_t std_otherlibs,
-    ": use precomputed signature for stdlib otherlibs, \
-     i.e. bigarray, threads … ";
+    "-no-stdlib", no_stdlib, ": do not use precomputed stdlib environment";
     "-read-sig", taskc add_sig,
     "<signature>: add signature to the base environment";
     "-see", task_p add_invisible_file,

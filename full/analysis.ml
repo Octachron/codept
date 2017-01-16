@@ -4,8 +4,7 @@ type param = {
   transparent_aliases: bool;
   transparent_extension_nodes: bool;
   polycy: Fault.Polycy.t;
-  no_stdlib:bool;
-  std_otherlibs:bool;
+  precomputed_libs: Name.set;
   closed_world: bool;
   sig_only:bool;
 }
@@ -39,28 +38,29 @@ let organize polycy sig_only opens files =
   units, m
 
 
-let full_stdlib =
-  let (+) = Module.Sig.merge in
-  Stdlib.signature + Std_bigarray.signature + Std_dynlink.signature +
-  Std_graph.signature +
-  Std_num.signature + Std_threads.signature + Std_unix.signature
+let stdlib_pkg s l = match s with
+  | "stdlib" -> Stdlib.signature :: l
+  | "unix" -> Std_unix.signature :: l
+  | "bigarray" -> Std_bigarray.signature :: l
+  | "dynlink" -> Std_dynlink.signature :: l
+  | "graph" -> Std_graph.signature :: l
+  | "num" -> Std_num.signature :: l
+  | "threads" -> Std_threads.signature :: l
+  | _ -> l
 
-let base_env signatures no_stdlib std_otherlibs =
-  let start =
-    if no_stdlib then
-      Envts.Base.empty
-    else if not std_otherlibs then
-      Envts.Base.start Stdlib.signature
-    else
-      Envts.Base.start full_stdlib in
-  List.fold_left Envts.Base.add_unit start signatures
+
+let base_env signatures =
+  Envts.Base.start @@
+  List.fold_left Module.Sig.merge Module.Sig.empty signatures
 
 (** Environment *)
 type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
 let start_env param {Common.libs; signatures; _} fileset filemap =
-  let base = base_env signatures param.no_stdlib param.std_otherlibs in
+  let signs = Name.Set.fold stdlib_pkg param.precomputed_libs [] in
+  let base = base_env signs in
+  let base = List.fold_left Envts.Base.add_unit base signatures in
   let layered = Envts.Layered.create libs fileset base in
   let traced = Envts.Trl.extend layered in
   if not param.closed_world then
@@ -115,10 +115,10 @@ module Collisions = struct
     Name.Map.add name (Paths.P.Set.add path s) m
 
   (** Compute local/libraries collisions *)
-  let libs param (task:Common.task) units =
+  let libs (task:Common.task) units =
     let module E = Envts.Layered in
     let env =
-      let base = base_env task.signatures param.no_stdlib param.std_otherlibs in
+      let base = Envts.Base.empty in
       E.create task.libs Name.Set.empty base in
     let m = Name.Map.empty in
     List.fold_left (fun m (u:Unit.s) ->
@@ -156,7 +156,7 @@ let main param (task:Common.task) =
     if Fault.is_silent param.polycy Codept_polycy.module_conflict then
       Collisions.empty
     else
-      Collisions.libs param task units.mli in
+      Collisions.libs task units.mli in
   let collisions, file_set = Collisions.local collisions units.mli in
   let () =
     (* warns if any module is defined twice *)

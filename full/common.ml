@@ -39,3 +39,8 @@ let make_abs abs p =
     { p with file = Sys.getcwd() :: p.file }
   else
     p
+
+let is_stdlib_pkg = function
+  | "stdlib" | "unix" | "threads" | "bigarray" | "graph" | "num" | "threads"
+  | "dynlink" -> true
+  | _ -> false

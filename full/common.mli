@@ -31,3 +31,5 @@ val local_dependencies:
   (Paths.Pkg.t list -> Paths.Pkg.t list) -> Unit.r -> Paths.Pkg.t list
 
 val make_abs: bool -> Paths.Pkg.t -> Paths.Pkg.t
+
+val is_stdlib_pkg: Name.t -> bool

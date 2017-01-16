@@ -7,5 +7,7 @@ true: short_paths
 true: strict_formats
 <lib> or <full> or <precomputed> or <tests> or <lib/sexp> :  include
 <**/*.ml> or <**/*.mli>: package(compiler-libs.common)
-"full/codept.native" or "tests/run.native": package(compiler-libs.common), use_unix
+"full/codept.native" or "tests/run.native": package(compiler-libs.common), package(unix)
+"tests/run.ml" or "full/findlib.ml" : package(unix)
+
 <tests/*>: -traverse

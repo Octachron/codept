@@ -43,8 +43,7 @@ module L :
     val includes : (t, Paths.Pkg.t Name.map) l
     val transparent_aliases : (t, bool) l
     val transparent_extension_nodes : (t, bool) l
-    val no_stdlib : (t, bool) l
-    val std_otherlibs : (t, bool) l
+    val precomputed_libs : (t, Name.set) l
     val closed_world : (t, bool) l
     val sig_only : (t, bool) l
     val polycy : (t, Fault.Polycy.t) l
