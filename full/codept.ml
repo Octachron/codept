@@ -292,9 +292,9 @@ let args = Cmd.[
     "-unknown-modules", Unit (mode @@ Modes.modules ~filter:Filter.extern),
     ": print raw unresolved dependencies\n\n Findlib options: \n";
 
-    "-pkg", findlib Findlib.pkg,
+    "-pkg", pkg,
     "<pkg_name>: use the ocamlfind package <pkg_name> during the analysis";
-    "-package", findlib Findlib.pkg, "<pkg_name>: same as pkg";
+    "-package", pkg, "<pkg_name>: same as pkg";
     "-predicates", findlib Findlib.predicates,
     "<comma-separated list of string>: add predicates to ocamlfind processing";
     "-ppxopt", findlib Findlib.ppxopt,
