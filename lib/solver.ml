@@ -148,7 +148,65 @@ module Failure = struct
     let map, cmap = analyze sources in
     pp map ppf cmap
 
+  let approx_cycle set (i:i) =
+    let mock (unit: Unit.s) =
+            Module.create unit.name
+              ~origin:(Unit unit.path)
+              ~precision:Unknown
+              Module.Sig.empty in
+    let add_set def =
+      Set.fold
+        (fun n acc -> Definition.see (Module.M(mock n.input)) acc) set def in
+    let code =
+      match i.code with
+      | { data = M2l.Defs def; loc } :: q ->
+        { M2l.data = M2l.Defs (add_set def); loc } :: q
+      | code -> (M2l.Loc.nowhere @@ M2l.Defs (add_set Definition.empty)) :: code
+    in
+    { i with code }
+
+    let approx_and_try_harder pending  =
+    let cmap, map = analyze pending in
+    let undo key x acc = match key with
+      | Extern _ | Internal_error -> acc
+      | Depend_on f ->
+        begin
+          match ancestor_status f cmap with
+          | Cycle _ -> Set.union x acc
+          | _ -> acc
+        end
+      | Cycle _ ->
+        Set.elements x
+        |> List.map (approx_cycle x)
+        |> Set.of_list in
+    Set.elements @@ Map.fold undo map Set.empty
+
 end
+
+
+(** Common functions *)
+
+  let eval_bounded polycy eval (unit:Unit.s) =
+    let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
+    let r, r' = eval unit, eval unit' in
+    let lower, upper = fst r, fst r' in
+    let sign = match snd r, snd r' with
+      | _ , Ok (_,sg)
+      | Ok(_,sg) , Error _  ->  sg
+      | Error _, Error _ -> Module.Sig.empty
+        (* something bad happened but we are already parsing problematic
+           input *) in
+    let elts = Paths.P.Set.elements in
+    if elts upper = elts lower then
+      Fault.(handle polycy concordant_approximation unit.path)
+    else
+      Fault.(handle polycy discordant_approximation
+        unit.path
+        (List.map Paths.P.module_name @@ elts lower)
+        ( List.map Paths.P.module_name @@ elts
+          @@ Paths.P.Set.diff upper lower) );
+    Unit.lift sign upper unit
+
 
 module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
   open Unit
@@ -208,28 +266,8 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       let unit = { unit with deps; code } in
       { state with pending = unit :: state.pending }
 
-  let eval_bounded core (unit:Unit.s) =
-    let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
-    let r, r' = compute_more core @@ start_u unit,
-                compute_more core @@ start_u unit' in
-    let lower, upper = fst r, fst r' in
-    let sign = match snd r, snd r' with
-      | _ , Ok (_,sg)
-      | Ok(_,sg) , Error _  ->  sg
-      | Error _, Error _ -> Module.Sig.empty
-        (* something bad happened but we are already parsing problematic
-           input *) in
-    let elts = Paths.P.Set.elements in
-    if elts upper = elts lower then
-      Fault.(handle Param.polycy concordant_approximation unit.path)
-    else
-      Fault.(handle Param.polycy discordant_approximation
-        unit.path
-        (List.map Paths.P.module_name @@ elts lower)
-        ( List.map Paths.P.module_name @@ elts
-          @@ Paths.P.Set.diff upper lower) );
-    Unit.lift sign upper unit
-
+  let eval_bounded core =
+    eval_bounded Param.polycy (fun unit -> compute_more core @@ start_u unit)
 
   let resolve_dependencies_main ?(learn=true) state =
     let rec resolve alert state =
@@ -261,41 +299,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       end
     | Error s -> Error (`Mli s)
 
-
-  let approx_cycle set (i:i) =
-    let mock (unit: Unit.s) =
-            Module.create unit.name
-              ~origin:(Unit unit.path)
-              ~precision:Unknown
-              Module.Sig.empty in
-    let add_set def =
-      Failure.Set.fold
-        (fun n acc -> Definition.see (Module.M(mock n.input)) acc) set def in
-    let code =
-      match i.code with
-      | { data = M2l.Defs def; loc } :: q ->
-        { M2l.data = M2l.Defs (add_set def); loc } :: q
-      | code -> (M2l.Loc.nowhere @@ M2l.Defs (add_set Definition.empty)) :: code
-    in
-    { i with code }
-
   let approx_and_try_harder state  =
-    let open Failure in
-    let cmap, map = analyze state.pending in
-    let undo key x acc = match key with
-      | Failure.Extern _ | Internal_error -> acc
-      | Depend_on f ->
-        begin
-          match Failure.ancestor_status f cmap with
-          | Cycle _ -> Set.union x acc
-          | _ -> acc
-        end
-      | Cycle _ ->
-        Set.elements x
-        |> List.map (approx_cycle x)
-        |> Set.of_list in
-    let pending = Set.elements @@ Failure.Map.fold undo map Set.empty in
-    { state with pending }
-
+    { state with pending = Failure.approx_and_try_harder state.pending }
 
 end
