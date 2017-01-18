@@ -133,13 +133,8 @@ module Open_world(Envt:extended_with_deps) = struct
     match path with
     | [] -> raise (Invalid_argument "Empty path")
     | [name] ->
-      Module.create name
-        ~origin:(Unit {Paths.P.source=Unknown; file=[name]})
-        ~precision:Unknown
-        Module.Sig.empty
-    | l ->
-      let name = last l in
-      Module.create name ~origin:Submodule ~precision:Unknown S.empty
+      Module.mockup name ~path:{Paths.P.source=Unknown; file=[name]}
+    | l -> let name = last l in Module.mockup name
 
  let find_name root level name env =
     try Envt.find_name root level name env.core with
@@ -147,7 +142,7 @@ module Open_world(Envt:extended_with_deps) = struct
       if root && Name.Map.mem name env.world then
         raise Not_found
       else
-        Module.M ( approx [name] )
+        Module.md @@ approx [name]
 
  let find level path env =
    (*   Format.printf "Open world looking for %a\n" Paths.S.pp path; *)
@@ -321,8 +316,7 @@ module Tracing(Envt:extended) = struct
     { env; deps = ref P.Set.empty }
 
 
-  let record env m =
-    let open Module in
+  let record env (m:Module.m) =
     match m.origin with
     | Origin.Unit p ->
       (* Format.printf "Recording %a\n" pp (Module.M m) ; *)

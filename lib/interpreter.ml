@@ -166,12 +166,7 @@ module Make(Envt:envt)(Param:param) = struct
     let triple name me mt = name, me, mt in
     (* first we try to compute the signature of each argument using
        approximative signature *)
-    let mockup ({name;_}:_ M2l.bind) =
-      M.M {M.name;
-       origin = Submodule;
-       precision = Unknown;
-       args = [];
-       signature = S.empty } in
+    let mockup ({name;_}:_ M2l.bind) = M.md @@ M.mockup name in
     let add_mockup defs arg = Envt.(>>) defs @@ Def.md @@ mockup arg in
     let state' = List.fold_left add_mockup state bs in
     let mapper {name;expr} =

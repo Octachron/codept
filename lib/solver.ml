@@ -1,5 +1,6 @@
 
 type i = { input: Unit.s; code: M2l.t; deps: Paths.P.set }
+let make input = { input; code = input.code; deps = Paths.P.Set.empty }
 
 module Failure = struct
   module Set = Set.Make(struct type t = i let compare = compare end)
@@ -149,14 +150,10 @@ module Failure = struct
     pp map ppf cmap
 
   let approx_cycle set (i:i) =
-    let mock (unit: Unit.s) =
-            Module.create unit.name
-              ~origin:(Unit unit.path)
-              ~precision:Unknown
-              Module.Sig.empty in
+    let mock (unit: Unit.s) = Module.(md @@ mockup unit.name ~path:unit.path) in
     let add_set def =
       Set.fold
-        (fun n acc -> Definition.see (Module.M(mock n.input)) acc) set def in
+        (fun n acc -> Definition.see (mock n.input) acc) set def in
     let code =
       match i.code with
       | { data = M2l.Defs def; loc } :: q ->
@@ -213,7 +210,6 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
 
   module Eval = Interpreter.Make(Envt)(Param)
 
-  let start_u input = { input; code = input.code; deps = Paths.P.Set.empty }
 
   type state = { resolved: Unit.r list;
                  env: Envt.t;
@@ -224,17 +220,11 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
   let start env (units:Unit.s list) =
     List.fold_left (fun state (u:Unit.s) ->
         match u.precision with
-        | Exact -> { state with pending = start_u u :: state.pending }
+        | Exact -> { state with pending = make u :: state.pending }
         | Approx ->
-          let fictious =
-            Module.M { Module.name = u.name;
-              origin = Unit u.path;
-              precision = Module.Precision.Unknown;
-              args = [];
-              signature = Module.Sig.empty
-                     } in
+          let mock = Module.mockup u.name ~path:u.path in
           { state with postponed = u:: state.postponed;
-                       env = Envt.add_unit state.env fictious
+                       env = Envt.add_unit state.env (Module.md mock)
           }
       )
       { postponed = []; env; pending = []; resolved = [] } units
@@ -267,7 +257,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       { state with pending = unit :: state.pending }
 
   let eval_bounded core =
-    eval_bounded Param.polycy (fun unit -> compute_more core @@ start_u unit)
+    eval_bounded Param.polycy (fun unit -> compute_more core @@ make unit)
 
   let resolve_dependencies_main ?(learn=true) state =
     let rec resolve alert state =

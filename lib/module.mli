@@ -75,12 +75,17 @@ val of_arg : ?precision:Precision.t -> arg -> m
 val is_functor : t -> bool
 val name: t -> Name.t
 
+val md: m -> t
+
 val empty : 'a Name.map
 val create :
   ?args:m option list -> ?precision:Precision.t ->
   ?origin:origin -> Name.t -> signature -> m
 
 val aliases: t -> Name.t list
+
+(** Create a mockup module with empty signature *)
+val mockup: ?origin:Origin.t -> ?path:Paths.P.t -> Name.t -> m
 
 (** {2 Printers} *)
 

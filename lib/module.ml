@@ -116,6 +116,8 @@ let name = function
   | Alias {name; _ } -> name
   | M {name; _ } -> name
 
+let md s = M s
+
 let rec aliases0 l = function
   | Alias {path = a :: _ ; _ } -> a :: l
   | Alias _ -> l
@@ -196,6 +198,20 @@ and pp_args ppf args = Pp.fp ppf "%a" (Pp.(list ~sep:(s "@,→") ) @@ pp_arg )
 
 
 let empty = Name.Map.empty
+let empty_sig = {modules = empty; module_types = empty }
+
+let mockup ?origin ?path name =
+  let origin = match origin, path with
+    | _, Some p -> Origin.Unit p
+    | Some o, None -> o
+    | _ -> Submodule in
+  {
+    name;
+    origin;
+    precision = Precision.Unknown;
+    args = [];
+    signature = empty_sig
+  }
 
 let create
     ?(args=[])
@@ -299,8 +315,7 @@ module Sig = struct
     | Module -> add
     | Module_type -> add_type
 
-  let empty =
-    {modules = empty; module_types = empty }
+  let empty = empty_sig
 
   let pp = pp_signature
 
