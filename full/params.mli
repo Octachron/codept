@@ -36,7 +36,6 @@ module L :
     val native : (t, bool) l
     val bytecode : (t, bool) l
     val abs_path : (t, bool) l
-    val sort : (t, bool) l
     val slash : (t, string) l
     val implicits : (t, bool) l
     val synonyms : (t, Common.info Name.map) l

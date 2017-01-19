@@ -28,7 +28,6 @@ let param = ref {
       native = false;
       bytecode = false;
       abs_path = false;
-      sort = false;
       slash = Filename.dir_sep;
       implicits = true;
     };
@@ -259,7 +258,7 @@ let args = Cmd.[
     "-ppx", Cmd.String add_ppx,
     "<cmd>: pipe abstract syntax trees through ppx preprocessor <cmd>";
     "-slash", set_p slash "/", ": use forward slash as directory separator";
-    "-sort", set_t sort, ": sort dependencies when printing";
+    "-sort", Unit(mode Modes.sort),": sort files according to their dependencies";
     "-version", Cmd.Unit print_version,
     ": print human-friendly version description";
     "-vnum", Cmd.Unit print_vnum, ": print version number\n\n Codept only modes:\n";
@@ -270,7 +269,6 @@ let args = Cmd.[
     "-export", Unit (mode Modes.export), ": export resolved modules signature";
 
     "-dot", Unit (mode Modes.dot), ": print dependencies in dot format";
-    "-dsort", Unit(mode Modes.dsort),": print unit paths in topological order";
     "-makefile", Unit (mode makefile_c), ": print makefile depend file(default)";
     "-approx-m2l", Unit (set_iter Single.approx_file),
     ": print approximated m2l ast";

@@ -8,7 +8,6 @@ type param =
     bytecode: bool;
     abs_path: bool;
     slash:string;
-    sort:bool;
     implicits: bool;
   }
 
@@ -46,8 +45,7 @@ let print_deps (univ:Common.param) param order input dep ppf (unit,imore,dmore) 
   let unit = replace_deps univ.includes unit in
   let make_abs = Common.make_abs param.abs_path in
   let pkg_pp = Pkg.pp_gen param.slash in
-  let default_sort = Sorting.toposort order Paths.Pkg.module_name in
-  let sort = if param.sort then default_sort else id in
+  let sort = Sorting.toposort order Paths.Pkg.module_name in
   let open Unit in
   let dep x= make_abs @@ dep x in
   let ppl ppf l = Pp.(list ~sep:(s" ") ~post:(s" ") pkg_pp) ppf
@@ -57,7 +55,7 @@ let print_deps (univ:Common.param) param order input dep ppf (unit,imore,dmore) 
     ppl imore
     Pp.(list ~pre:(s " ") ~sep:(s " ") pkg_pp)
     ( List.rev_map dep
-      @@ default_sort
+      @@ sort
       @@ Common.local_dependencies sort unit
     )
     ppl dmore

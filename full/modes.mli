@@ -14,7 +14,7 @@ val dot: mode
 
 (** Display compilation units using the topological partial order for
     implementation files *)
-val dsort: mode
+val sort: mode
 
 (** Export the inferred m2l signature in ocaml syntax *)
 val export: mode

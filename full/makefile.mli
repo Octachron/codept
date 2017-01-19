@@ -7,7 +7,6 @@ type param =
     bytecode: bool;
     abs_path: bool;
     slash:string;
-    sort:bool;
     implicits: bool;
   }
 

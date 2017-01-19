@@ -76,8 +76,7 @@ let upath x = mname @@ x.Unit.path
 module Hidden = struct
 let sort proj param mli =
   let order = Sorting.remember_order mli in
-  if param.makefile.sort then Sorting.toposort order proj
-  else id
+  Sorting.toposort order proj
 end
 open Hidden
 
@@ -135,11 +134,10 @@ let local_deps x =
   let filter = function { Pkg.source = Local; _ } -> true | _ -> false in
   x.Unit.dependencies |> Pkg.Set.filter filter
   |> Pkg.Set.elements
-  |> List.map (Pkg.change_extension ".ml")
   |> Pkg.Set.of_list
 
 
-let dsort ppf _param (units: _ Unit.pair) =
+let sort ppf _param (units: _ Unit.pair) =
   let gs = Unit.Groups.R.group units in
   let extract_path _ g l = match g with
     | { Unit.ml = Some x; mli = _ }
@@ -151,7 +149,11 @@ let dsort ppf _param (units: _ Unit.pair) =
     let key = path.Pkg.file in
     match Unit.Groups.R.Map.find key gs with
     | { ml = Some x; mli = Some y } ->
-      Pkg.Set.union (local_deps x) (local_deps y)
+      if path = x.path then
+        let (+) = Pkg.Set.union in
+        (local_deps x) + (local_deps y) + (Pkg.Set.singleton y.path)
+      else
+        local_deps y
     | { ml = Some x; mli = None } | { mli= Some x; ml =None } -> local_deps x
     | { ml = None; mli = None } -> Pkg.Set.empty in
   Option.iter (Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp ppf)

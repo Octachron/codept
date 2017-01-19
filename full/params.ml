@@ -47,7 +47,6 @@ module L = struct
                    (fun x y -> { x with bytecode = y })
   let abs_path = makefile % create (fun x-> x.abs_path)
                    (fun x y -> { x with abs_path = y })
-  let sort = makefile % create (fun x-> x.sort) (fun x y -> { x with sort = y })
   let slash = makefile % create (fun x-> x.slash) (fun x y -> { x with slash = y })
   let implicits = makefile % create (fun x-> x.implicits)
       (fun x y -> { x with implicits = y })
