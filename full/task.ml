@@ -59,14 +59,16 @@ let add_sig task ssig =
 
 let rec add_file ~prefix ~cycle_guard ~polycy param task name0 =
   let name = String.concat "/" (prefix @ [name0]) in
+  let lax = let open Fault in
+    Polycy.set_err (Codept_polycy.unknown_extension, Level.whisper)
+      L.(!param.[polycy]) in
   if Sys.file_exists name then
-    match classify polycy L.(!param.[synonyms]) name with
+    match classify lax L.(!param.[synonyms]) name with
     | None -> if Sys.is_directory name then
-        let polycy = let open Fault in
-          Polycy.set_err (Codept_polycy.unknown_extension, Level.whisper)
-            L.(!param.[polycy]) in
-        add_dir ~prefix ~polycy ~cycle_guard param task
+        add_dir ~prefix ~polycy:lax ~cycle_guard param task
           ~dir_name:name0 ~abs_name:name
+      else
+        Fault.handle polycy Codept_polycy.unknown_extension name; ()
     | Some { kind = Implementation; format } ->
       add_impl format task name
     | Some { kind = Interface; format } -> add_intf format task name
