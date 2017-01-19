@@ -38,9 +38,9 @@ module Failure :
   end
 
 (** Create a solver using the environment module [Envt] for
-    name resolution and dependendy trackinf and
+    name resolution and dependendy tracking and
     the parameter module [Param] *)
-module Make (Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
+module Make(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
   sig
 
     type state = { resolved: Unit.r list;
@@ -77,3 +77,21 @@ module Make (Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
           dependencies. Drop intermediary units that are deemed non-resolvable *)
       val approx_and_try_harder: state -> state
     end
+
+(** Alternative solver *)
+module Tracker(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
+sig
+  type state
+  val wip: state -> i list
+  val end_result: state -> Envt.t * Unit.r list
+
+  type gen = Name.t -> Unit.s option Unit.pair
+
+  val start: gen -> Envt.t -> Name.t list ->
+    state
+
+  val eval: state -> Name.t * Paths.P.t -> (state,state) result
+
+  val solve: state -> (Envt.t * Unit.r list, i list) result
+
+end

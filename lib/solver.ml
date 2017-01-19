@@ -1,5 +1,12 @@
 
-type i = { input: Unit.s; code: M2l.t; deps: Paths.P.set }
+module Deps = struct
+  type t = Paths.P.set
+  let empty = Paths.P.Set.empty
+  let merge = Paths.P.Set.union
+  let (+) = merge
+end
+
+type i = { input: Unit.s; code: M2l.t; deps: Deps.t  }
 let make input = { input; code = input.code; deps = Paths.P.Set.empty }
 
 module Failure = struct
@@ -291,5 +298,142 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
 
   let approx_and_try_harder state  =
     { state with pending = Failure.approx_and_try_harder state.pending }
+
+end
+
+
+
+module Tracker(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
+  open Unit
+
+  module Eval = Interpreter.Make(Envt)(Param)
+
+
+  type gen = Name.t -> Unit.s option Unit.pair
+
+  type state = {
+    gen: gen;
+    resolved: Name.set;
+    not_ancestors: Name.set;
+    result: (Deps.t * Module.Sig.t) Name.map;
+    wip: (M2l.t * Deps.t) Name.map;
+    units: Unit.s Name.map;
+    env: Envt.t;
+    postponed: Unit.s list;
+    roots: Name.t list
+  }
+
+  let get state name =
+    (* Invariant name ∈ results *)
+    Name.Map.find name state.wip
+
+  let step state (name,path) =
+    let code, deps = get state name in
+    let result = Eval.m2l path state.env code in
+    let deps =Deps.( deps + Envt.deps state.env) in
+    Envt.reset_deps state.env;
+    deps, result
+
+  let add_unit (u:Unit.s) state =
+    match u.precision with
+    | Exact ->
+      { state with
+        units = Name.Map.add u.name u state.units;
+        wip = Name.Map.add u.name (u.code,Deps.empty) state.wip
+      }
+    | Approx ->
+      let mockup = Module.(md @@ mockup ~path:u.path u.name) in
+      { state with env = Envt.add_unit state.env mockup;
+                   postponed = u :: state.postponed
+      }
+
+  let add_pair state pair =
+      match pair with
+    | { ml = Some ml; mli = Some mli } ->
+      { (add_unit mli state) with postponed = ml :: state.postponed }
+    | { ml = Some u; mli = None}
+    | { mli = Some u; ml = None } -> add_unit u state
+    | { ml = None; mli = None } -> state
+
+
+  let add_name state name =
+    add_pair state @@ state.gen name
+
+  let rec eval state ((name,path) as np) =
+    let not_ancestors = Name.Set.add name state.not_ancestors in
+    let state = { state with not_ancestors } in
+    match step state np with
+    | deps, Ok(_,sg) ->
+      let md = Module.md @@ Module.(create ~origin:(Unit path)) name sg in
+      Ok { state with
+           env = Envt.add_unit state.env md;
+           result = Name.Map.add name (deps,sg) state.result;
+           wip = Name.Map.remove name state.wip;
+           not_ancestors = Name.Set.remove name state.not_ancestors;
+           resolved = Name.Set.add name state.resolved
+         }
+    | deps, Error m2l ->
+      (* first, we update the work-in-progress map *)
+      let state = { state with wip = Name.Map.add name (m2l,deps) state.wip } in
+      (* we check the first missing module *)
+      match M2l.Block.m2l m2l with
+      | None -> assert false (* we failed to eval the m2l code due to something *)
+      | Some { M2l.data = first_parent; _ } ->
+      (* are we cycling? *)
+        if Name.Set.mem first_parent state.not_ancestors then
+          Error state
+        else
+          let go_on state (u:Unit.s) =
+            match eval state (u.name,u.path) with
+            | Ok state -> eval state np
+            | Error state -> Error state in
+          (* do we have an unit corresponding to this unit name *)
+          match Name.Map.find_opt name state.units with
+          | Some u -> go_on state u
+          | None ->
+            match state.gen name with
+            | {mli=None; ml = None} -> Error state
+            | ({ mli = Some u; _ } | { ml = Some u; mli = None } as pair) ->
+              go_on (add_pair state pair) u
+
+
+  let wip state =
+    Name.Map.fold (fun name (code,deps) acc ->
+        let input = Name.Map.find name state.units in
+        { input; code; deps } :: acc
+      ) state.wip []
+
+  let end_result state =
+    state.env,
+    Name.Set.fold (fun name acc ->
+        let deps, md = Name.Map.find name state.result in
+        let u = Name.Map.find name state.units in
+        (Unit.lift md deps u) :: acc)
+      state.resolved []
+
+  let start gen env roots =
+    {
+      gen;
+      resolved= Name.Set.empty;
+      not_ancestors= Name.Set.empty;
+      result= Name.Map.empty;
+      wip= Name.Map.empty;
+      units= Name.Map.empty;
+      env;
+      postponed= [];
+      roots
+    }
+
+  let solve state =
+    let rec solve_for_roots state = function
+      | [] -> Ok (end_result state)
+      | a :: q ->
+        let state = add_name state a in
+        let u = Name.Map.find a state.units in
+        match eval state (a,u.path) with
+        | Error s -> Error (wip s)
+        | Ok state -> solve_for_roots state q in
+
+    solve_for_roots state state.roots
 
 end
