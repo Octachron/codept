@@ -35,15 +35,22 @@ let (&&) x y = match x,y with
   | Some x, Some y -> Some (x,y)
   | _ -> None
 
-let rec list_join list = match list with
-  | [] -> Some []
-  | None :: _ -> None
-  | Some x :: q ->
-    q |> list_join >>| (fun q -> x :: q)
+let mcons list x =
+  match x with Some x -> x :: list | None -> list
 
-let rec list_map f list = match list with
-  | [] -> Some []
-  | x :: q ->
-    f x >>= fun x ->
-    list_map f q >>| fun q ->
-    x :: q
+module List' = struct
+  let filter l = List.fold_left mcons [] l
+  let rec join list = match list with
+    | [] -> Some []
+    | None :: _ -> None
+    | Some x :: q ->
+      q |> join >>| (fun q -> x :: q)
+
+  let rec map f list = match list with
+    | [] -> Some []
+    | x :: q ->
+      f x >>= fun x ->
+      map f q >>| fun q ->
+      x :: q
+
+end

@@ -18,5 +18,9 @@ val ( >> ) : 'a option -> 'b option -> 'b option
 val ( >< ) : 'a option -> 'a -> 'a
 
 val ( && ) : 'a option -> 'b option -> ('a * 'b) option
-val list_join : 'a option list -> 'a list option
-val list_map : ('a -> 'b option) -> 'a list -> 'b list option
+
+module List': sig
+  val join : 'a option list -> 'a list option
+  val filter: 'a option list -> ' a list
+  val map : ('a -> 'b option) -> 'a list -> 'b list option
+end

@@ -84,13 +84,13 @@ type ('a,'b) impl = {
 let parse impl x = impl.parse x
 let embed impl x = impl.embed x
 
-
 open Option
 let (%) f g x = f (g x)
 let (%>) f g x = g (f x)
 
 
 let reforge_kl m =
+  let open Option in
   m |> extract_kl >>| fun(s,n) -> Keyed_list(s,n)
 
 let any_parse: type i. ('a,i) impl -> (any -> 'a option) =
@@ -102,7 +102,7 @@ let any_parse: type i. ('a,i) impl -> (any -> 'a option) =
   | Many, Any (List _ as sexp) -> impl.parse sexp
   | Many, ( Any(Atom _ ) as sexp) -> impl.parse (List [sexp])
   | Many, Any (Keyed_list _ as k) -> impl.parse (forget_key k)
-  | One_and_many, Any m -> m |> reforge_kl >>= impl.parse
+  | One_and_many, Any m -> Option.( m |> reforge_kl >>= impl.parse )
 
 
 let atomic show parse =
@@ -113,7 +113,7 @@ let atomic show parse =
 
 let list impl =
   let parse sexp =
-    sexp |> extract_list |> List.map (any_parse impl) |> list_join in
+    sexp |> extract_list |> List.map (any_parse impl) |> List'.join in
   { parse;
     embed = list' % List.map (any % impl.embed);
     kind = Many;
@@ -216,7 +216,7 @@ module Record = struct
     let (:=) = let_
 
 
-let map (impl_map: m) =
+  let map (impl_map: m) =
   let rec parse: type k. ( k * n ) sexp -> t option = function
     | List [] -> Some empty
     | List ( Any(Atom s) :: q ) -> parse @@ Keyed_list(s,q)
@@ -285,7 +285,7 @@ let keyed_list key impl =
   let parse = function
     | List [] -> None
     | List ( Any (Atom a) :: q) when a = key ->
-      q |> List.map (any_parse impl) |> list_join
+      q |> List.map (any_parse impl) |> List'.join
     | List (_ :: _) -> None
   in
   let embed s = list' @@ Any (Atom key) :: ( List.map (any % impl.embed) s ) in
