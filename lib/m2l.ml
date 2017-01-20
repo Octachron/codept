@@ -524,11 +524,17 @@ module Block = struct
     | Bind_sig {expr;_} -> mt expr
     | Bind_rec l ->
       first (fun b -> me b.expr) l
-    | Minor _ -> None
+    | Minor m -> minor m
     | Extension_node _ -> None
   and expr_loc {loc;data} =
       Option.fmap (fun data -> {loc;data}) @@ expr data
   and m2l code = first expr_loc code
+  and minor m =
+    if Name.Set.cardinal m.access > 0 then
+      Some (Name.Set.choose m.access)
+    else
+      either Option.(first m2l m.values >>| data) (first me) m.packed
+
 end
 
 module Annot = struct
