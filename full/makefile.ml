@@ -39,8 +39,6 @@ let implicit_dep synonyms path =
     )
         synonyms {ml=false;mli=false}
 
-let id x = x
-
 let print_deps (univ:Common.param) param order input dep ppf (unit,imore,dmore) =
   let unit = replace_deps univ.includes unit in
   let make_abs = Common.make_abs param.abs_path in

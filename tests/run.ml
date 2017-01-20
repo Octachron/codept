@@ -13,21 +13,18 @@ let classify filename =  match Filename.extension filename with
 let polycy = Fault.Polycy.quiet
 
 let organize polycy files =
-   let add_name m (_,n)  =  Name.Map.add (Read.name n) (local n) m in
-  let m = List.fold_left add_name
-      Name.Map.empty (files.Unit.ml @ files.mli) in
-  let units =
-    Unit.unimap (List.map @@ fun (info,f) -> Unit.read_file polycy info f) files in
-  let units = Unit.Groups.Unit.(split % group) units in
-   units, m
+  files
+  |> Unit.unimap (List.map @@ fun (info,f) -> Unit.read_file polycy info f)
+  |> Unit.Groups.Unit.(split % group)
+
 
 module Envt = Envts.Tr
 
-let start_env includes fileset filemap =
+let start_env includes fileset =
   let base = Envts.Base.start Stdlib.signature in
   let layered = Envts.Layered.create includes fileset base in
   let traced = Envts.Trl.extend layered in
-  Envt.start traced filemap
+  Envt.start traced fileset
 
 module Param = struct
   let polycy = polycy
@@ -38,12 +35,12 @@ end
 module S = Solver.Make(Envt)(Param)
 
 let analyze pkgs files =
-  let units, filemap = organize polycy files in
+  let units = organize polycy files in
   let fileset = units.Unit.mli
                 |> List.map (fun (u:Unit.s) -> u.name)
                 |> Name.Set.of_list in
   let module Envt = Envts.Tr in
-  let core = start_env pkgs fileset filemap in
+  let core = start_env pkgs fileset in
   S.resolve_split_dependencies core units
 
 
@@ -362,7 +359,7 @@ let result =
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map"], [] );
           "option.mli", ([],[],[]);
-          "option.ml", ([],[],[]);
+          "option.ml", ([],["List"],[]);
           "paths.mli", (["Name"; "Sexp"], ["Map";"Set";"Format"],[]);
           "paths.ml", (["Name"; "Pp"; "Sexp" ],
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);

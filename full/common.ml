@@ -19,8 +19,8 @@ type param = {
 
 type task =
   {
-    files: (Read.kind * string) list Unit.pair;
-    signatures: Module.t list;
+    files: (info * string) list;
+    seeds: Name.t list;
     invisibles: Paths.S.set;
     libs: string list;
     opens: Paths.S.t list
@@ -41,6 +41,6 @@ let make_abs abs p =
     p
 
 let is_stdlib_pkg = function
-  | "stdlib" | "unix" | "threads" | "bigarray" | "graph" | "num" | "threads"
+  | "stdlib" | "unix" | "threads" | "bigarray" | "graph" | "num"
   | "dynlink" -> true
   | _ -> false

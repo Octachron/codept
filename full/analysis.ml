@@ -20,22 +20,69 @@ let open_within opens unit =
       | m -> { unit with code = (M2l.Build.ghost @@ M2l.Open m) :: unit.code }
     ) opens unit
 
+type ('a,'b) either = Left of 'a | Right of 'b
+
+(* self-note another candidate for typed optional argument *)
+let split either =
+  let rec split either ( (l,r) as t) = function
+    | [] -> t
+    | a :: q ->
+      q |> split either
+        ( match either a with
+          | Left a -> a :: l, r
+          | Right a -> l, a :: r
+        )
+  in
+  split either ([],[])
+
+let parse_sig lexbuf=
+  Sexp.( (list Module.sexp).parse )
+  @@ Sexp_parse.many Sexp_lex.main
+  @@ lexbuf
+
+let read_sigfile filename =
+  let chan = open_in filename in
+  let lexbuf = Lexing.from_channel chan in
+  let sigs = parse_sig lexbuf in
+  close_in chan;
+  sigs
+
+let info_split = function
+  | {Common.kind=Signature; _ }, f -> Right (read_sigfile f)
+  | {Common.kind=Implementation;format} ,f ->
+    Left ({ Read.kind = Structure; format}, f )
+  | {Common.kind=Interface;format} ,f -> Left ({ Read.kind=Signature;format}, f )
+
+let pair_split l =
+  let folder (pair: _ Unit.pair) (x:Unit.s) =
+    match x.kind with
+    | M2l.Structure -> { pair with ml = x :: pair.ml }
+    | Signature -> { pair with mli = x :: pair.mli } in
+  List.fold_left folder {ml=[];mli=[]} l
 
 (** organisation **)
-let organize polycy sig_only opens files =
-  let add_name m (_,n)  =  Name.Map.add (Read.name n) (local n) m in
-  let m = List.fold_left add_name
-      Name.Map.empty (files.Unit.ml @ files.mli) in
+let pre_organize files =
+  let units, signatures = split info_split files in
+  let signatures =
+    List.flatten @@ Option.List'.filter signatures in
+  units, signatures
+
+let load_file polycy sig_only opens (info,file) =
   let filter_m2l (u: Unit.s) = if sig_only then
       { u with Unit.code = M2l.Sig_only.filter u.code }
     else
       u in
-  let units =
-    Unit.unimap (List.map @@ fun (info,f) -> Unit.read_file polycy info f )
-      files in
-  let units = Unit.unimap (List.map @@ filter_m2l % open_within opens) units in
-  let units = Unit.Groups.Unit.(split % group) units in
-  units, m
+  file
+  |> Unit.read_file polycy info
+  |> filter_m2l
+  |> open_within opens
+
+
+let organize polycy sig_only opens files =
+  let units, signatures = pre_organize files in
+  let units = List.map (load_file polycy sig_only opens) units in
+  let units = Unit.Groups.Unit.(split % group) @@ pair_split units in
+  units, signatures
 
 
 let stdlib_pkg s l = match s with
@@ -57,7 +104,7 @@ let base_env signatures =
 type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
-let start_env param {Common.libs; signatures; _} fileset filemap =
+let start_env param libs signatures fileset =
   let signs = Name.Set.fold stdlib_pkg param.precomputed_libs [] in
   let base = base_env signs in
   let base = List.fold_left Envts.Base.add_unit base signatures in
@@ -65,7 +112,7 @@ let start_env param {Common.libs; signatures; _} fileset filemap =
   let traced = Envts.Trl.extend layered in
   if not param.closed_world then
     E ((module Envts.Tr: Interpreter.envt_with_deps with type t = Envts.Tr.t ) ,
-       Envts.Tr.start traced filemap )
+       Envts.Tr.start traced fileset )
   else
     E ( (module Envts.Trl: Interpreter.envt_with_deps with type t = Envts.Trl.t),
         traced
@@ -81,7 +128,31 @@ let lift { polycy; transparent_extension_nodes; transparent_aliases; _ } =
   end
   : Interpreter.param )
 
-
+let oracle polycy load_file files =
+  let (++) = Unit.adder List.cons in
+  let add_g (k,x) g = g ++ (k.Read.kind, (k,x) ) in
+  let add (s,m) ((_,x) as f) =
+    let name =  Paths.P.( module_name @@ local x) in
+    let g = Option.default {Unit.ml = []; mli=[]} @@ Name.Map.find_opt name m in
+    Name.Set.add name s, Name.Map.add name (add_g f g) m in
+  let s, m = List.fold_left add Name.(Set.empty, Map.empty) files in
+  let convert k l =
+    match l with
+    | [] -> None
+    | [a] -> Some a
+    | a :: _  ->
+      Fault.handle polycy Codept_polycy.module_conflict k
+        @@ List.map (Paths.P.local % snd) l;
+      Some a in
+  let convert_p (k, p) = k, Unit.unimap (convert k) p
+  in
+  let m = List.fold_left (fun acc (k,x) -> Name.Map.add k x acc) Name.Map.empty
+    @@ List.map convert_p @@ Name.Map.bindings m in
+  s,
+  fun name ->
+    Name.Map.find_opt name m
+    |> Option.default {Unit.ml = None; mli = None}
+    |> Unit.unimap (Option.fmap load_file)
 
 let solve param (E((module Envt), core)) (units: _ Unit.pair) =
   let module S = Solver.Make(Envt)((val lift param)) in
@@ -94,6 +165,17 @@ let solve param (E((module Envt), core)) (units: _ Unit.pair) =
   let env, mli = solve_harder @@ S.start core units.mli in
   let _, ml = solve_harder @@ S.start env units.ml in
   {Unit.ml;mli}
+
+let solve_from_seeds seeds gen param (E((module Envt), core)) =
+  let module S = Solver.Directed(Envt)((val lift param)) in
+  let rec solve_harder state =
+    match S.solve state with
+    | Ok (e,l) -> e, l
+    | Error i ->
+      Fault.handle param.polycy Codept_polycy.solver_error i;
+      solve_harder @@ S.approx_and_try_harder i state in
+  snd @@ solve_harder @@ S.start gen core seeds
+
 
 let remove_units invisibles =
   List.filter @@ function
@@ -149,9 +231,11 @@ module Collisions = struct
 
 end
 
+
 (** Analysis step *)
-let main param (task:Common.task) =
-  let units, filemap = organize param.polycy param.sig_only task.opens task.files in
+let main_std param (task:Common.task) =
+  let units, signatures =
+    organize param.polycy param.sig_only task.opens task.files in
   let collisions =
     if Fault.is_silent param.polycy Codept_polycy.module_conflict then
       Collisions.empty
@@ -161,8 +245,29 @@ let main param (task:Common.task) =
   let () =
     (* warns if any module is defined twice *)
     Collisions.handle param.polycy collisions in
-  let e = start_env param task file_set filemap in
+  let e = start_env param task.libs signatures file_set in
   let {Unit.ml; mli} = solve param e units in
   let ml = remove_units task.invisibles ml in
   let mli = remove_units task.invisibles mli in
   {Unit.ml;mli}
+
+(** Analysis step *)
+let main_seed param (task:Common.task) =
+  let units, signatures =
+    pre_organize task.files in
+  let file_set, gen = oracle param.polycy
+      (load_file param.polycy param.sig_only task.opens) units in
+  let e = start_env param task.libs signatures file_set in
+  let units = solve_from_seeds task.seeds gen param e in
+  let units = remove_units task.invisibles units in
+  let units = List.fold_left (fun (pair: _ Unit.pair) (u:Unit.r)->
+      match u.kind with
+      | Structure -> { pair with ml = u :: pair.ml }
+      | Signature -> {pair with mli = u :: pair.mli }
+    ) { ml=[]; mli=[]} units in
+  Unit.Groups.R.(split % group) units
+
+let main param (task:Common.task) =
+  match task.seeds with
+  | [] -> main_std param task
+  | _ -> main_seed param task

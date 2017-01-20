@@ -46,11 +46,11 @@ module Open_world :
   functor (Envt : extended_with_deps ) ->
   sig
     type t ={ core : Envt.t;
-              world : Paths.Pkg.t Name.map;
+              world : Name.set;
               externs : Paths.Pkg.set ref; }
 
     include extended_with_deps with type t := t
-    val start: Envt.t -> Paths.Pkg.t Name.Map.t -> t
+    val start: Envt.t -> Name.set -> t
 end
 
 

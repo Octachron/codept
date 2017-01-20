@@ -79,7 +79,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
     end
 
 (** Alternative solver *)
-module Tracker(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
+module Directed(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
 sig
   type state
   val wip: state -> i list
@@ -93,5 +93,6 @@ sig
   val eval: state -> Name.t * Paths.P.t -> (state,state) result
 
   val solve: state -> (Envt.t * Unit.r list, i list) result
+  val approx_and_try_harder: i list -> state -> state
 
 end

@@ -1,6 +1,6 @@
 (** Analysis on single files *)
 
-type single = Format.formatter -> Params.t -> Read.kind * string -> unit
+type single = Format.formatter -> Params.t -> Common.info * string -> unit
 
 module Pkg = Paths.Pkg
 open Params
@@ -8,6 +8,9 @@ open M2l
 
 (** Printing directly from source file *)
 let to_m2l polycy sig_only (k,f) =
+  match Common.classic k with
+  | None -> None
+  | Some k ->
     match Read.file k f with
     | _name, Ok x ->
       if sig_only then Some (M2l.Sig_only.filter x) else Some x

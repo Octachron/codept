@@ -52,9 +52,9 @@ let param = ref {
   }
 
 let task: Common.task ref = ref {
-    Common.files = { Unit.ml = []; Unit.mli = [] };
-    signatures = [];
-    invisibles = Pth.Set.empty;
+    Common.files = [];
+    seeds = [];
+    invisibles = Paths.S.Set.empty;
     libs = [];
     opens = [];
   }
@@ -108,8 +108,7 @@ let set_iter command () = action :=
     ( !param.output,
       begin
         fun out ->
-          let {Unit.ml;mli} = (!task).files  in
-          List.iter (command out !param) (ml @ mli)
+          List.iter (command out !param) (!task).files
       end
     ) :: !action
 
@@ -323,6 +322,8 @@ let args = Cmd.[
     "-exit-fault-level", String exit_level,
     "<level>: exit for fault at level <level> and beyond.\n\n Misc options:\n";
 
+    "-only-ancestors-of", task_p Task.add_seed,
+    "<module name>: only analyze files which are an ancestor of <module name>";
     "-L", taskc lib, "<dir>: use all cmi files in <dir> \
                        in the analysis";
     "-no-alias-deps", set_t transparent_aliases, ": delay aliases dependencies";

@@ -15,14 +15,14 @@ type param = {
     includes: Paths.Pkg.path Name.map;
 }
 
-(** Task *)
+(** Task types *)
 type task =
   {
-    files: (Read.kind * string) list Unit.pair;
-    signatures: Module.t list;
-    invisibles: Paths.S.set;
-    libs: string list;
-    opens: Paths.S.t list
+    files: (info * string) list; (** files to be analyzed *)
+    seeds: Name.t list; (** modules of which ancestors needs to be resolved *)
+    invisibles: Paths.S.set; (** files to be analyzed, quietly *)
+    libs: Name.t list; (** libraries to be used in the analysis *)
+    opens: Paths.S.t list (** modules to be opened at the start of any file *)
   }
 
 
@@ -30,6 +30,9 @@ type task =
 val local_dependencies:
   (Paths.Pkg.t list -> Paths.Pkg.t list) -> Unit.r -> Paths.Pkg.t list
 
+(**[make_abs bool] if <bool> convert relative path to absolute path *)
 val make_abs: bool -> Paths.Pkg.t -> Paths.Pkg.t
 
+(** Check if a package name corresponds to one of the compiler distributed
+    libraries *)
 val is_stdlib_pkg: Name.t -> bool

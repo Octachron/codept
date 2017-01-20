@@ -110,7 +110,7 @@ module Open_world(Envt:extended_with_deps) = struct
 
 
   module P = Paths.Pkg
-  type t = { core: Envt.t; world: P.t Name.map; externs: P.set ref }
+  type t = { core: Envt.t; world: Name.set; externs: P.set ref }
 
   let is_exterior path env = Envt.is_exterior path env.core
   let top env = { env with core = Envt.top env.core }
@@ -139,7 +139,7 @@ module Open_world(Envt:extended_with_deps) = struct
  let find_name root level name env =
     try Envt.find_name root level name env.core with
     | Not_found ->
-      if root && Name.Map.mem name env.world then
+      if root && Name.Set.mem name env.world then
         raise Not_found
       else
         Module.md @@ approx [name]
@@ -157,7 +157,7 @@ module Open_world(Envt:extended_with_deps) = struct
         match Envt.find level [root] env.core with
         | exception Not_found -> true
         | _ -> false in
-      if Name.Map.mem root env.world
+      if Name.Set.mem root env.world
       && record_level level path (* module types never come from files *)
       && undefined (* is root defined to be something else than
                            the unit root? *)
@@ -194,15 +194,15 @@ module Layered = struct
   let read_dir dir =
     let files = Sys.readdir dir in
     let origin = Paths.S.parse_filename dir in
-    let cmis =
-      Array.fold_left (fun m x ->
+    let cmis_set, cmis_map =
+      Array.fold_left (fun (s,m) x ->
           if Filename.check_suffix x ".cmi" then
             let p = {P.source = P.Pkg origin; file = Paths.S.parse_filename x} in
-            Name.Map.add (P.module_name p) p m
-          else m
+            Name.Set.add (P.module_name p) s, Name.Map.add (P.module_name p) p m
+          else s, m
         )
-        Name.Map.empty files in
-    { origin; resolved= Envt.start Base.empty cmis; cmis }
+        Name.(Set.empty,Map.empty) files in
+    { origin; resolved= Envt.start Base.empty cmis_set; cmis= cmis_map }
 
   type t = { local: Base.t; local_units: Name.set; pkgs: source list }
 

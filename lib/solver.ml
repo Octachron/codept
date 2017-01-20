@@ -303,7 +303,7 @@ end
 
 
 
-module Tracker(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
+module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
   open Unit
 
   module Eval = Interpreter.Make(Envt)(Param)
@@ -377,7 +377,9 @@ module Tracker(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struc
       let state = { state with wip = Name.Map.add name (m2l,deps) state.wip } in
       (* we check the first missing module *)
       match M2l.Block.m2l m2l with
-      | None -> assert false (* we failed to eval the m2l code due to something *)
+      | None ->
+        M2l.pp Pp.std m2l;
+        assert false (* we failed to eval the m2l code due to something *)
       | Some { M2l.data = first_parent; _ } ->
       (* are we cycling? *)
         if Name.Set.mem first_parent state.not_ancestors then
@@ -388,10 +390,10 @@ module Tracker(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struc
             | Ok state -> eval state np
             | Error state -> Error state in
           (* do we have an unit corresponding to this unit name *)
-          match Name.Map.find_opt name state.units with
+          match Name.Map.find_opt first_parent state.units with
           | Some u -> go_on state u
           | None ->
-            match state.gen name with
+            match state.gen first_parent with
             | {mli=None; ml = None} -> Error state
             | ({ mli = Some u; _ } | { ml = Some u; mli = None } as pair) ->
               go_on (add_pair state pair) u
@@ -435,5 +437,8 @@ module Tracker(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struc
         | Ok state -> solve_for_roots state q in
 
     solve_for_roots state state.roots
+
+  let approx_and_try_harder _i _state =
+    assert false
 
 end

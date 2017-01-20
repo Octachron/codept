@@ -5,6 +5,7 @@ open Common
 open Params
 module Pth=Paths.S
 
+
 let extension name =
   let n = String.length name in
   let r = try String.rindex name '.' with Not_found -> n-1 in
@@ -17,45 +18,24 @@ let classify polycy synonyms f =
   | exception Not_found ->
     Fault.handle polycy Codept_polycy.unknown_extension ext; None
 
-
 let add_invi task name =
   task := { !task with
             invisibles = Pth.Set.add (Paths.S.parse_filename name) (!task).invisibles
           }
 
-let add_impl format task name =
-  let k = { Read.kind = Structure; format } in
-  let {Unit.ml;mli} = (!task).files in
-  task := { !task with files = { ml = (k,name) :: ml; mli } }
-
-let add_intf format task name =
-  let k = { Read.kind = Signature; format } in
-  let {Unit.ml;mli} = !(task).files in
-  task := {!task with files = { mli = (k,name) :: mli; ml } }
+let add_file kind format task name =
+  let k = { Common.kind ; format } in
+  let files = (!task).files in
+  task := { !task with files = (k,name) :: files }
 
 
-let parse_sig lexbuf=
-  Sexp.( (list Module.sexp).parse )
-  @@ Sexp_parse.many Sexp_lex.main
-  @@ lexbuf
 
-let read_sigfile filename =
-  let chan = open_in filename in
-  let lexbuf = Lexing.from_channel chan in
-  let sigs = parse_sig lexbuf in
-  close_in chan;
-  sigs
+let add_impl = add_file Implementation
+let add_intf = add_file Interface
+let add_sig = add_file Signature Read.M2l
 
-let add_sig0 task more =
-  let sigs = !(task).signatures in
-  Option.iter (fun more ->
-      task := {!task with signatures = more @ sigs  })
-    more
-
-let add_sig task ssig =
-  add_sig0 task
-  @@ parse_sig
-  @@ Lexing.from_string ssig
+let add_seed _param task seed =
+  task := { !task with seeds = seed :: (!task).seeds }
 
 let rec add_file ~prefix ~cycle_guard ~polycy param task name0 =
   let name = String.concat "/" (prefix @ [name0]) in
@@ -72,7 +52,7 @@ let rec add_file ~prefix ~cycle_guard ~polycy param task name0 =
     | Some { kind = Implementation; format } ->
       add_impl format task name
     | Some { kind = Interface; format } -> add_intf format task name
-    | Some { kind = Signature; _ } -> add_sig0 task @@ read_sigfile name
+    | Some { kind = Signature; _ } -> add_sig task name
 and add_dir ~polycy ~prefix ~cycle_guard param task ~dir_name ~abs_name =
     if  cycle_guard && dir_name = "." then
        ()
