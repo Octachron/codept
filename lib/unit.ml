@@ -52,6 +52,10 @@ type 'a pair = { ml:'a; mli:'a}
 let map fs xs = { ml = fs.ml xs.ml; mli = fs.mli xs.mli}
 let unimap f xs = { ml = f xs.ml; mli = f xs.mli }
 
+let adder add p = function
+  | M2l.Structure, x -> { p with ml = add x p.ml }
+  | M2l.Signature, x -> { p with mli = add x p.mli }
+
 
 module type group =
 sig

@@ -43,6 +43,7 @@ val pp_input : Format.formatter -> s -> unit
 type 'a pair = { ml : 'a; mli : 'a; }
 val map: ('a -> 'b) pair -> 'a pair -> 'b pair
 val unimap: ('a -> 'b) -> 'a pair -> 'b pair
+val adder:  ('a->'b->'b) -> 'b pair -> M2l.kind * 'a -> 'b pair
 
 (** {!group} handles pair of ml/mli files together *)
 module type group =
