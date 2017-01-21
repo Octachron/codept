@@ -314,37 +314,46 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
   type state = {
     gen: gen;
     resolved: Unit.r list;
+    learned: Name.set;
     not_ancestors: Name.set;
-    wip: (M2l.t * Deps.t) Name.map;
-    units: Unit.s Name.map;
+    pending: i list Name.map;
     env: Envt.t;
     postponed: Unit.s list;
     roots: Name.t list
   }
 
-  let get state name =
-    (* Invariant name ∈ results *)
-    Name.Map.find name state.wip
+  let get name state =
+    (* Invariant name ∈ state.pending *)
+    List.hd @@ Name.Map.find name state.pending
 
+  let remove name pending =
+    match Name.Map.find name pending with
+    | _ :: (b :: _ as q) -> Some b, Name.Map.add name q pending
+    | [_] as q -> None, Name.Map.add name q pending
+    | [] -> None, Name.Map.remove name pending
 
-  let compute state deps path code =
-    let result = Eval.m2l path state.env code in
-    let deps =Deps.( deps + Envt.deps state.env) in
+  let add_pending i state =
+    let l = Option.default [] @@ Name.Map.find_opt i.input.name state.pending in
+    { state with
+      pending = Name.Map.add i.input.name ( i :: l ) state.pending
+    }
+
+  let update_pending i state =
+    let pending =
+    match Name.Map.find i.input.name state.pending with
+    | _ :: q -> Name.Map.add i.input.name (i::q) state.pending
+    | [] -> Name.Map.add i.input.name [i] state.pending in
+    { state with pending }
+
+  let compute state i =
+    let result = Eval.m2l i.input.path state.env i.code in
+    let deps =Deps.( i.deps + Envt.deps state.env) in
     Envt.reset_deps state.env;
     deps, result
 
-
-  let step state (name,path) =
-    let code, deps = get state name in
-    compute state deps path code
-
   let add_unit (u:Unit.s) state =
     match u.precision with
-    | Exact ->
-      { state with
-        units = Name.Map.add u.name u state.units;
-        wip = Name.Map.add u.name (u.code,Deps.empty) state.wip
-      }
+    | Exact -> add_pending (make u) state
     | Approx ->
       let mockup = Module.(md @@ mockup ~path:u.path u.name) in
       { state with env = Envt.add_unit state.env mockup;
@@ -352,9 +361,9 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       }
 
   let add_pair state pair =
-      match pair with
+    match pair with
     | { ml = Some ml; mli = Some mli } ->
-      { (add_unit mli state) with postponed = ml :: state.postponed }
+      add_unit mli @@ add_unit ml state
     | { ml = Some u; mli = None}
     | { mli = Some u; ml = None } -> add_unit u state
     | { ml = None; mli = None } -> state
@@ -363,22 +372,31 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
   let add_name state name =
     add_pair state @@ state.gen name
 
-  let rec eval state (u:Unit.s) =
-    let name, path as np = u.name, u.path in
+  let rec eval state i =
+    let name, path = i.input.name, i.input.path in
     let not_ancestors = Name.Set.add name state.not_ancestors in
     let state = { state with not_ancestors } in
-    match step state np with
+    match compute state i with
     | deps, Ok(_,sg) ->
-      let md = Module.md @@ Module.(create ~origin:(Unit path)) name sg in
-      Ok { state with
-           env = Envt.add_unit state.env md;
-           resolved = Unit.lift sg deps u :: state.resolved;
-           wip = Name.Map.remove name state.wip;
-           not_ancestors = Name.Set.remove name state.not_ancestors
-         }
+      let more, pending = remove name state.pending in
+      let state =
+        if Name.Set.mem name state.learned then
+          state
+        else
+          let md = Module.md @@ Module.(create ~origin:(Unit path)) name sg in
+          { state with env = Envt.add_unit state.env md;
+                       learned = Name.Set.add name state.learned
+          } in
+      let state =
+        { state with
+          resolved = Unit.lift sg deps i.input :: state.resolved;
+          pending;
+          not_ancestors = Name.Set.remove name state.not_ancestors
+        } in
+      Option.(more >>| eval state >< Ok state )
     | deps, Error m2l ->
       (* first, we update the work-in-progress map *)
-      let state = { state with wip = Name.Map.add name (m2l,deps) state.wip } in
+      let state = update_pending { i with deps; code = m2l } state in
       (* we check the first missing module *)
       match M2l.Block.m2l m2l with
       | None ->
@@ -388,27 +406,27 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
         if Name.Set.mem first_parent state.not_ancestors then
           Error state
         else
-          let go_on state (u':Unit.s) =
-            match eval state u' with
-            | Ok state -> eval state u
+          let go_on state i' =
+            match eval state i' with
+            | Ok state -> eval state i
             | Error state -> Error state in
           (* do we have an unit corresponding to this unit name *)
-          match Name.Map.find_opt first_parent state.units with
-          | Some u -> go_on state u
-          | None ->
+          match get first_parent state with
+          | u -> go_on state u
+          | exception Not_found ->
             match state.gen first_parent with
             | {mli=None; ml = None} -> Error state
             | ({ mli = Some u; _ } | { ml = Some u; mli = None } as pair) ->
-              go_on (add_pair state pair) u
+              go_on (add_pair state pair) (make u)
 
   let eval_post state =
-    let compute (u:Unit.s) = compute state Deps.empty u.path u.code in
+    let compute (u:Unit.s) = compute state @@ make u in
     let rec eval_more status state =
       match state.postponed with
       | [] -> status, state
       | u :: postponed ->
         let state =
-          { state with units = Name.Map.add u.name u state.units; postponed } in
+          { (add_pending (make u) state) with postponed } in
       match u.precision with
       | Approx ->
         let r = eval_bounded Param.polycy compute u in
@@ -416,19 +434,15 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
           resolved = r :: state.resolved
         }
       | Exact ->
-        let state = { state with
-                      wip = Name.Map.add u.name (u.code,Deps.empty) state.wip } in
-        match eval state u with
+        let state = add_pending (make u) state in
+        match eval state (make u) with
         | Ok s -> eval_more status s
         | Error s -> eval_more false s
     in
     eval_more true state
 
   let wip state =
-    Name.Map.fold (fun name (code,deps) acc ->
-        let input = Name.Map.find name state.units in
-        { input; code; deps } :: acc
-      ) state.wip []
+    List.flatten @@ List.map snd @@ Name.Map.bindings state.pending
 
   let end_result state =
     state.env, state.resolved
@@ -437,9 +451,9 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
     {
       gen;
       resolved = [] ;
+      learned = Name.Set.empty;
       not_ancestors= Name.Set.empty;
-      wip= Name.Map.empty;
-      units= Name.Map.empty;
+      pending= Name.Map.empty;
       env;
       postponed= [];
       roots
@@ -452,17 +466,23 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
         if ok then
           Ok (end_result state)
         else
-          Error (wip state)
+          Error state
       | a :: q ->
         let state = add_name state a in
-        let u = Name.Map.find a state.units in
+        let u = get a state in
         match eval state u with
-        | Error s -> Error (wip s)
+        | Error s -> Error s
         | Ok state -> solve_for_roots state q in
 
     solve_for_roots state state.roots
 
-  let approx_and_try_harder _i _state =
-    assert false
+  let flip f x y = f y x
+
+  let approx_and_try_harder state =
+    state
+    |> wip
+    |> Failure.approx_and_try_harder
+    |> List.fold_left (flip add_pending)
+      { state with pending = Name.Map.empty; not_ancestors = Name.Set.empty }
 
 end

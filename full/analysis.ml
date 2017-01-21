@@ -171,9 +171,9 @@ let solve_from_seeds seeds gen param (E((module Envt), core)) =
   let rec solve_harder state =
     match S.solve state with
     | Ok (e,l) -> e, l
-    | Error i ->
-      Fault.handle param.polycy Codept_polycy.solver_error i;
-      solve_harder @@ S.approx_and_try_harder i state in
+    | Error s ->
+      Fault.handle param.polycy Codept_polycy.solver_error (S.wip s);
+      solve_harder @@ S.approx_and_try_harder s in
   snd @@ solve_harder @@ S.start gen core seeds
 
 
