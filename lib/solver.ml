@@ -329,8 +329,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
   let remove name pending =
     match Name.Map.find name pending with
     | _ :: (b :: _ as q) -> Some b, Name.Map.add name q pending
-    | [_] as q -> None, Name.Map.add name q pending
-    | [] -> None, Name.Map.remove name pending
+    | [_]| [] -> None, Name.Map.remove name pending
 
   let add_pending i state =
     let l = Option.default [] @@ Name.Map.find_opt i.input.name state.pending in
@@ -372,13 +371,14 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
   let add_name state name =
     add_pair state @@ state.gen name
 
-  let rec eval state i =
+  let rec eval_depth state i =
     let name, path = i.input.name, i.input.path in
     let not_ancestors = Name.Set.add name state.not_ancestors in
     let state = { state with not_ancestors } in
     match compute state i with
     | deps, Ok(_,sg) ->
       let more, pending = remove name state.pending in
+      let state = { state with pending } in
       let state =
         if Name.Set.mem name state.learned then
           state
@@ -390,10 +390,9 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       let state =
         { state with
           resolved = Unit.lift sg deps i.input :: state.resolved;
-          pending;
           not_ancestors = Name.Set.remove name state.not_ancestors
         } in
-      Option.(more >>| eval state >< Ok state )
+      Option.(more >>| eval_depth state >< Ok state )
     | deps, Error m2l ->
       (* first, we update the work-in-progress map *)
       let state = update_pending { i with deps; code = m2l } state in
@@ -407,8 +406,8 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
           Error state
         else
           let go_on state i' =
-            match eval state i' with
-            | Ok state -> eval state i
+            match eval_depth state i' with
+            | Ok state -> eval_depth state i
             | Error state -> Error state in
           (* do we have an unit corresponding to this unit name *)
           match get first_parent state with
@@ -418,6 +417,16 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
             | {mli=None; ml = None} -> Error state
             | ({ mli = Some u; _ } | { ml = Some u; mli = None } as pair) ->
               go_on (add_pair state pair) (make u)
+
+  let rec eval state i=
+    let open Mresult.Ok in
+    (eval_depth state i)
+    >>=  (fun state ->
+        if Name.Map.cardinal state.pending = 0 then
+          Ok state
+        else
+          state.pending |> Name.Map.choose |> snd |> List.hd |> eval state
+      )
 
   let eval_post state =
     let compute (u:Unit.s) = compute state @@ make u in

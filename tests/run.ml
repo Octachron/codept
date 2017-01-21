@@ -379,8 +379,8 @@ let result =
           "solver.mli", (["Unit";"M2l";"Name";"Interpreter";"Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
-            ["Approx_parser"; "Definition"; "Interpreter"; "M2l"; "Module"; "Name";
-             "Option"; "Pp"; "Paths"; "Unit"; "Fault"],
+            ["Approx_parser"; "Definition"; "Interpreter"; "M2l"; "Module";
+             "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Unit"; "Fault"],
             ["List"; "Map"; "Set"],[]);
           "unit.mli", (["Paths"; "M2l"; "Module"; "Name"; "Fault"; "Read"],
                        ["Format";"Set"],[]);
