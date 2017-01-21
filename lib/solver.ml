@@ -313,9 +313,8 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
 
   type state = {
     gen: gen;
-    resolved: Name.set;
+    resolved: Unit.r list;
     not_ancestors: Name.set;
-    result: (Deps.t * Module.Sig.t) Name.map;
     wip: (M2l.t * Deps.t) Name.map;
     units: Unit.s Name.map;
     env: Envt.t;
@@ -327,12 +326,17 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
     (* Invariant name ∈ results *)
     Name.Map.find name state.wip
 
-  let step state (name,path) =
-    let code, deps = get state name in
+
+  let compute state deps path code =
     let result = Eval.m2l path state.env code in
     let deps =Deps.( deps + Envt.deps state.env) in
     Envt.reset_deps state.env;
     deps, result
+
+
+  let step state (name,path) =
+    let code, deps = get state name in
+    compute state deps path code
 
   let add_unit (u:Unit.s) state =
     match u.precision with
@@ -359,7 +363,8 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
   let add_name state name =
     add_pair state @@ state.gen name
 
-  let rec eval state ((name,path) as np) =
+  let rec eval state (u:Unit.s) =
+    let name, path as np = u.name, u.path in
     let not_ancestors = Name.Set.add name state.not_ancestors in
     let state = { state with not_ancestors } in
     match step state np with
@@ -367,10 +372,9 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       let md = Module.md @@ Module.(create ~origin:(Unit path)) name sg in
       Ok { state with
            env = Envt.add_unit state.env md;
-           result = Name.Map.add name (deps,sg) state.result;
+           resolved = Unit.lift sg deps u :: state.resolved;
            wip = Name.Map.remove name state.wip;
-           not_ancestors = Name.Set.remove name state.not_ancestors;
-           resolved = Name.Set.add name state.resolved
+           not_ancestors = Name.Set.remove name state.not_ancestors
          }
     | deps, Error m2l ->
       (* first, we update the work-in-progress map *)
@@ -378,16 +382,15 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       (* we check the first missing module *)
       match M2l.Block.m2l m2l with
       | None ->
-        M2l.pp Pp.std m2l;
         assert false (* we failed to eval the m2l code due to something *)
       | Some { M2l.data = first_parent; _ } ->
       (* are we cycling? *)
         if Name.Set.mem first_parent state.not_ancestors then
           Error state
         else
-          let go_on state (u:Unit.s) =
-            match eval state (u.name,u.path) with
-            | Ok state -> eval state np
+          let go_on state (u':Unit.s) =
+            match eval state u' with
+            | Ok state -> eval state u
             | Error state -> Error state in
           (* do we have an unit corresponding to this unit name *)
           match Name.Map.find_opt first_parent state.units with
@@ -398,6 +401,28 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
             | ({ mli = Some u; _ } | { ml = Some u; mli = None } as pair) ->
               go_on (add_pair state pair) u
 
+  let eval_post state =
+    let compute (u:Unit.s) = compute state Deps.empty u.path u.code in
+    let rec eval_more status state =
+      match state.postponed with
+      | [] -> status, state
+      | u :: postponed ->
+        let state =
+          { state with units = Name.Map.add u.name u state.units; postponed } in
+      match u.precision with
+      | Approx ->
+        let r = eval_bounded Param.polycy compute u in
+        status, { state with
+          resolved = r :: state.resolved
+        }
+      | Exact ->
+        let state = { state with
+                      wip = Name.Map.add u.name (u.code,Deps.empty) state.wip } in
+        match eval state u with
+        | Ok s -> eval_more status s
+        | Error s -> eval_more false s
+    in
+    eval_more true state
 
   let wip state =
     Name.Map.fold (fun name (code,deps) acc ->
@@ -406,19 +431,13 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       ) state.wip []
 
   let end_result state =
-    state.env,
-    Name.Set.fold (fun name acc ->
-        let deps, md = Name.Map.find name state.result in
-        let u = Name.Map.find name state.units in
-        (Unit.lift md deps u) :: acc)
-      state.resolved []
+    state.env, state.resolved
 
   let start gen env roots =
     {
       gen;
-      resolved= Name.Set.empty;
+      resolved = [] ;
       not_ancestors= Name.Set.empty;
-      result= Name.Map.empty;
       wip= Name.Map.empty;
       units= Name.Map.empty;
       env;
@@ -428,11 +447,16 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
 
   let solve state =
     let rec solve_for_roots state = function
-      | [] -> Ok (end_result state)
+      | [] ->
+        let ok, state = eval_post state in
+        if ok then
+          Ok (end_result state)
+        else
+          Error (wip state)
       | a :: q ->
         let state = add_name state a in
         let u = Name.Map.find a state.units in
-        match eval state (a,u.path) with
+        match eval state u with
         | Error s -> Error (wip s)
         | Ok state -> solve_for_roots state q in
 

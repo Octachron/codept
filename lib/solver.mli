@@ -90,7 +90,7 @@ sig
   val start: gen -> Envt.t -> Name.t list ->
     state
 
-  val eval: state -> Name.t * Paths.P.t -> (state,state) result
+  val eval: state -> Unit.s -> (state,state) result
 
   val solve: state -> (Envt.t * Unit.r list, i list) result
   val approx_and_try_harder: i list -> state -> state
