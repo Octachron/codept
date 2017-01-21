@@ -14,10 +14,28 @@ let fmap f g = function
   | Error x -> Error (f x)
   | Ok r -> Ok (g r)
 
-let fmap_ok f = function
-  | Error _ as h  -> h
-  | Ok r -> Ok (f r)
+module Ok = struct
+  let fmap f = function
+    | Error _ as h  -> h
+    | Ok r -> Ok (f r)
+  let (>>|) x f = fmap f x
 
-let fmap_error f = function
-  | Error h  -> Error (f h)
-  | Ok _ as r -> r
+  let bind f = function
+    | Error _ as h  -> h
+    | Ok r -> f r
+  let (>>=) x f = bind f x
+end
+
+module Error = struct
+  let fmap f = function
+    | Error h  -> Error (f h)
+    | Ok _ as r -> r
+  let (>>|) x f = fmap f x
+
+  let bind f = function
+    | Error h  -> f h
+    | Ok _ as r -> r
+
+  let (>>=) x f = bind f x
+
+end

@@ -343,7 +343,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   and expr file state e =
     let loc = file, e.loc in
-    let reloc = Mresult.fmap_error @@ Loc.create e.loc in
+    let reloc = Mresult.Error.fmap @@ Loc.create e.loc in
     match e.data with
     | Defs d -> Ok (Some d)
     | Open p -> reloc @@ open_ loc state p
@@ -352,7 +352,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Bind b -> reloc @@ bind state (module_expr loc) b
     | Bind_sig b -> reloc @@ bind_sig state (module_type loc) b
     | Bind_rec bs -> reloc @@ bind_rec state (module_expr loc) (module_type loc) bs
-    | Minor m -> reloc @@ Mresult.fmap_error (fun m -> Minor m) @@
+    | Minor m -> reloc @@ Mresult.Error.fmap (fun m -> Minor m) @@
       minor loc module_expr (m2l file) state m
     | Extension_node n -> begin
         match extension loc state n with
