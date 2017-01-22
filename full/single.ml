@@ -1,5 +1,11 @@
 (** Analysis on single files *)
 
+type t =
+  | Approx_file
+  | One_pass
+  | M2l
+  | M2l_sexp
+
 type single = Format.formatter -> Params.t -> Common.info * string -> unit
 
 module Pkg = Paths.Pkg
@@ -53,3 +59,10 @@ let m2l_sexp ppf param f =
   >>| M2l.sexp.embed
   >>| Pp.fp ppf  "%a@." Sexp.pp
   >< ()
+
+
+let eval = function
+  | Approx_file -> approx_file
+  | One_pass -> one_pass
+  | M2l -> m2l
+  | M2l_sexp -> m2l_sexp

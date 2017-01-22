@@ -1,6 +1,28 @@
 (** Codept output modes *)
 
+type filter =
+  | Inner
+  | Extern
+  | Lib
+  | Dep
+
+type variant =
+  | Standard
+  | Nl
+
+type t =
+  | Aliases
+  | Dot
+  | Export
+  | Modules of variant * filter
+  | Info
+  | Signature
+  | Sort
+
+
 type mode = Format.formatter -> Params.t -> Unit.r list Unit.pair -> unit
+
+val eval: t -> mode
 
 (** Display aliases:
     compilation unit submodules aliased to another compiler units.

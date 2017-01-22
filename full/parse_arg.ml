@@ -4,11 +4,12 @@ module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 
 type action = {
-  active_modes: (Unit.r list Unit.pair -> string * (Format.formatter -> unit))  list;
-  action: (string * (Format.formatter -> unit) ) list
+  modes:  (string * Modes.t)  list;
+  singles: (string * Single.t) list;
+  makefiles : string list
 }
 
-let action0 = { active_modes = []; action = [] }
+let action0 = { modes = []; singles = []; makefiles = [] }
 
 let synonyms =
   let open Common in
@@ -61,8 +62,28 @@ let task0 : Common.task = {
 
 let findlib_query0 =  Findlib.empty
 
-let makefile_c ppf param task =
+let makefile_eval ppf param task =
   Makefile.main ppf param.common param.makefile task
+
+
+let makefile_c action param () =
+  action :=
+    { !action with makefiles = (!param).output :: (!action).makefiles }
+
+let with_output s f=
+  if s = "%" then
+    f Pp.std
+  else
+    let chan= open_out s in
+    let formatter= Format.formatter_of_out_channel chan in
+    f formatter ;
+    Format.pp_print_flush formatter ();
+    close_out chan
+
+let iter_makefile param interm s =
+  with_output s (fun ppf ->
+      Makefile.main ppf param.common param.makefile interm
+    )
 
 (** {2 Option implementations } *)
 let first_ppx = Compenv.first_ppx
@@ -85,36 +106,38 @@ let mli_synonym param s =
   param.[L.synonyms] <- synonyms
 
 
-let act (file,action) =
-  if file = "%" then
-    action Pp.std
-  else
-    let f= open_out file in
-    let f'= Format.formatter_of_out_channel f in
-    action f';
-    Format.pp_print_flush f' ();
-    close_out f
+let eval_single param (task:Common.task) (file,single) =
+  with_output file (fun ppf ->
+      List.iter (Single.eval single ppf param) task.files)
+
+let iter_mode param r (file,mode) =
+  with_output file (fun ppf ->
+      Modes.eval mode ppf param r
+    )
 
 
-let mode  action param command () =
+let mode action param command () =
+  let output = !param.output in
+  action  :=
+    { !action with
+      modes = (output, command) :: (!action).modes
+    }
+
+
+(*let mode  action param command () =
   let output = !param.output in
   action  :=
     { !action with
       active_modes =
         (fun units -> (output, fun out -> command out !param units) )
         :: !action.active_modes
-    }
+    }*)
 
-let set_iter action param (task:Common.task ref) command () =
+let set_iter action param command () =
   action :=
     { !action with
-      action =
-        ( !param.output,
-          begin
-            fun out ->
-              List.iter (command out !param) (!task).files
-          end
-        ) :: (!action).action
+      singles =
+        ( !param.output, command ) :: (!action).singles
     }
 
 let print_vnum version ()= Format.printf "%.2f@." version
@@ -163,24 +186,6 @@ let exit_level param s =
 let print_polycy param ()=
   Fault.Polycy.pp Pp.std L.(!param.[polycy])
 
-module Filter = struct
-  let inner = function
-    | { Pkg.source = Local; _ } -> true
-    |  _ -> false
-
-  let dep = function
-    | { Pkg.source = (Unknown|Local); _ } -> true
-    |  _ -> false
-
-
-  let extern = function
-    | { Pkg.source = Unknown; _ } -> true
-    | _ -> false
-
-  let lib = function
-    | { Pkg.source = (Pkg _ | Special _ ) ; _ } -> true
-    | _ -> false
-end
 
 let set_p param lens value =
   let open L in
@@ -238,7 +243,7 @@ let args action param task fquery version =
   let task_p = task_p param task in
   let taskc = taskc task in
   let mode = mode action param in
-  let set_iter = set_iter action param task in
+  let set_iter = set_iter action param in
   let findlib = findlib fquery in
 
   Cmd.[
@@ -259,7 +264,7 @@ let args action param task fquery version =
     "<s>: use <s> extension as a synonym for ml";
     "-mli-synonym", String (mli_synonym param),
     "<s>: use <s> extension as a synonym for mli";
-    "-modules", Unit (mode @@ Modes.modules ~filter:Filter.dep),
+    "-modules", Unit (mode @@ Modes.(Modules(Standard, Dep))),
     ": print raw module dependencies";
     "-native", set_t native, ": generate native compilation only dependencies";
     "-bytecode", set_t bytecode, ": generate bytecode only dependencies";
@@ -273,37 +278,37 @@ let args action param task fquery version =
     "-ppx", Cmd.String add_ppx,
     "<cmd>: pipe abstract syntax trees through ppx preprocessor <cmd>";
     "-slash", set_p slash "/", ": use forward slash as directory separator";
-    "-sort", Unit(mode Modes.sort),": sort files according to their dependencies";
+    "-sort", Unit(mode Modes.Sort),": sort files according to their dependencies";
     "-version", Cmd.Unit (print_version version),
     ": print human-friendly version description";
     "-vnum", Cmd.Unit (print_vnum version), ": print version number\
                                              \n\n Codept only modes:\n";
 
 
-    "-aliases", Unit (mode Modes.aliases), ": print aliases";
-    "-info", Unit (mode Modes.info), ": print detailed information";
-    "-export", Unit (mode Modes.export), ": export resolved modules signature";
+    "-aliases", Unit (mode Modes.Aliases), ": print aliases";
+    "-info", Unit (mode Modes.Info), ": print detailed information";
+    "-export", Unit (mode Modes.Export), ": export resolved modules signature";
 
-    "-dot", Unit (mode Modes.dot), ": print dependencies in dot format";
-    "-makefile", Unit (mode makefile_c), ": print makefile depend file(default)";
-    "-approx-m2l", Unit (set_iter Single.approx_file),
+    "-dot", Unit (mode Modes.Dot), ": print dependencies in dot format";
+    "-makefile", Unit (makefile_c action param), ": print makefile depend file(default)";
+    "-approx-m2l", Unit (set_iter Single.Approx_file),
     ": print approximated m2l ast";
-    "-m2l", Unit (set_iter Single.m2l), ": print m2l ast";
-    "-m2l-sexp", Unit (set_iter Single.m2l_sexp),
+    "-m2l", Unit (set_iter Single.M2l), ": print m2l ast";
+    "-m2l-sexp", Unit (set_iter Single.M2l_sexp),
     ": print m2l ast in s-expression format";
-    "-one-pass", Unit (set_iter Single.one_pass), ": print m2l ast after one pass";
-    "-sig", Unit (mode Modes.signature), ": print inferred signature";
+    "-one-pass", Unit (set_iter Single.One_pass), ": print m2l ast after one pass";
+    "-sig", Unit (mode Modes.Signature), ": print inferred signature";
     "-sig-only", set_t sig_only,
     ": filter produced m2l to keep only signature-level elements.\
      \n\n Module suboptions:\n";
 
-    "-nl-modules", Unit (mode @@ Modes.line_modules ~filter:Filter.dep),
+    "-nl-modules", Unit (mode @@ Modes.(Modules(Nl,Dep)) ),
     ": print new-line separated raw dependencies";
-    "-extern-modules", Unit (mode @@ Modes.modules ~filter:Filter.lib),
+    "-extern-modules", Unit (mode @@ Modes.(Modules(Standard,Lib))),
     ": print raw extern dependencies";
-    "-inner-modules", Unit (mode @@ Modes.modules ~filter:Filter.inner),
+    "-inner-modules", Unit (mode @@ Modes.(Modules(Standard,Inner)) ),
     ": print raw inner dependencies";
-    "-unknown-modules", Unit (mode @@ Modes.modules ~filter:Filter.extern),
+    "-unknown-modules", Unit (mode @@ Modes.(Modules(Standard,Extern)) ),
     ": print raw unresolved dependencies\n\n Findlib options: \n";
 
     "-pkg", pkg param fquery,
@@ -382,7 +387,7 @@ let process version argv =
   ; if not !params.no_include then add_include params "."
   ; Compenv.readenv stderr Before_link
   ; if !action = action0 then
-    mode action params makefile_c ()
+    makefile_c action params ()
   ; { params= !params; task = !task; findlib = !findlib_query; action = !action }
 
 let translate_findlib_query task query =

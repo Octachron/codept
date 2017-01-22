@@ -3,6 +3,25 @@ open Params
 
 type mode = Format.formatter -> Params.t -> Unit.r list Unit.pair -> unit
 
+type filter =
+  | Inner
+  | Extern
+  | Lib
+  | Dep
+
+type variant =
+  | Standard
+  | Nl
+
+type t =
+  | Aliases
+  | Dot
+  | Export
+  | Modules of variant * filter
+  | Info
+  | Signature
+  | Sort
+
 
 let info ppf _param {Unit.ml; mli} =
   let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) ppf in
@@ -158,3 +177,41 @@ let sort ppf _param (units: _ Unit.pair) =
     | { ml = None; mli = None } -> Pkg.Set.empty in
   Option.iter (Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp ppf)
     (Sorting.full_topological_sort deps paths)
+
+
+module Filter = struct
+  let inner = function
+    | { Pkg.source = Local; _ } -> true
+    |  _ -> false
+
+  let dep = function
+    | { Pkg.source = (Unknown|Local); _ } -> true
+    |  _ -> false
+
+
+  let extern = function
+    | { Pkg.source = Unknown; _ } -> true
+    | _ -> false
+
+  let lib = function
+    | { Pkg.source = (Pkg _ | Special _ ) ; _ } -> true
+    | _ -> false
+
+  let eval = function
+    | Inner -> inner
+    | Dep -> dep
+    | Extern -> extern
+    | Lib -> lib
+end
+
+
+
+let eval = function
+  | Aliases -> aliases
+  | Dot -> dot
+  | Export -> export
+  | Modules (Standard, filter) -> modules ~filter:(Filter.eval filter)
+  | Modules (Nl, filter) -> line_modules ~filter:(Filter.eval filter)
+  | Info -> info
+  | Signature ->  signature
+  | Sort -> sort

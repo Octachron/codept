@@ -14,8 +14,9 @@ let std = Format.std_formatter
 let () =
   let query = Parse_arg.process version Sys.argv in
   let task = Parse_arg.translate_findlib_query query.task query.findlib in
-  let act = Parse_arg.act in
-  List.iter Parse_arg.act query.action.action;
-  if not (query.action.active_modes = []) then
+  List.iter (Parse_arg.eval_single query.params query.task) query.action.singles;
+  if not (query.action.modes = [] && query.action.makefiles = [] ) then
     let analyzed = Analysis.main query.params.analyzer task in
-    List.iter (fun f -> act @@ f analyzed) query.action.active_modes
+    List.iter (Parse_arg.iter_mode query.params analyzed) query.action.modes;
+    List.iter (Parse_arg.iter_makefile query.params analyzed)
+      query.action.makefiles
