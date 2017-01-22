@@ -9,6 +9,13 @@ type param = {
   sig_only:bool;
 }
 
+type io = {
+  sign: string -> Module.t list option;
+  m2l: Fault.Polycy.t -> Read.kind -> string -> Unit.s;
+  findlib: Common.task -> Findlib.query -> Common.task ;
+  env: Module.Sig.t
+}
+
 (** Basic files reading *)
 let local = Paths.Pkg.local
 let (%) f g x = f @@ g x
@@ -46,8 +53,8 @@ let read_sigfile filename =
   close_in chan;
   sigs
 
-let info_split = function
-  | {Common.kind=Signature; _ }, f -> Right (read_sigfile f)
+let info_split io = function
+  | {Common.kind=Signature; _ }, f -> Right (io.sign f)
   | {Common.kind=Implementation;format} ,f ->
     Left ({ Read.kind = Structure; format}, f )
   | {Common.kind=Interface;format} ,f -> Left ({ Read.kind=Signature;format}, f )
@@ -60,26 +67,26 @@ let pair_split l =
   List.fold_left folder {ml=[];mli=[]} l
 
 (** organisation **)
-let pre_organize files =
-  let units, signatures = split info_split files in
+let pre_organize io files =
+  let units, signatures = split (info_split io) files in
   let signatures =
     List.flatten @@ Option.List'.filter signatures in
   units, signatures
 
-let load_file polycy sig_only opens (info,file) =
+let load_file io polycy sig_only opens (info,file) =
   let filter_m2l (u: Unit.s) = if sig_only then
       { u with Unit.code = M2l.Sig_only.filter u.code }
     else
       u in
   file
-  |> Unit.read_file polycy info
+  |> io.m2l polycy info
   |> filter_m2l
   |> open_within opens
 
 
-let organize polycy sig_only opens files =
-  let units, signatures = pre_organize files in
-  let units = List.map (load_file polycy sig_only opens) units in
+let organize io polycy sig_only opens files =
+  let units, signatures = pre_organize io files in
+  let units = List.map (load_file io polycy sig_only opens) units in
   let units = Unit.Groups.Unit.(split % group) @@ pair_split units in
   units, signatures
 
@@ -95,17 +102,18 @@ let stdlib_pkg s l = match s with
   | _ -> l
 
 
-let base_env signatures =
+let base_env io signatures =
+  let (++) = Module.Sig.merge in
   Envts.Base.start @@
-  List.fold_left Module.Sig.merge Module.Sig.empty signatures
-
+  List.fold_left (++) Module.Sig.empty signatures
+  ++ io.env
 (** Environment *)
 type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
-let start_env param libs signatures fileset =
+let start_env io param libs signatures fileset =
   let signs = Name.Set.fold stdlib_pkg param.precomputed_libs [] in
-  let base = base_env signs in
+  let base = base_env io signs in
   let base = List.fold_left Envts.Base.add_unit base signatures in
   let layered = Envts.Layered.create libs fileset base in
   let traced = Envts.Trl.extend layered in
@@ -231,10 +239,34 @@ module Collisions = struct
 end
 
 
+module Findlib = struct
+(** Small import *)
+let add_ppx ppx =
+  let first_ppx = Compenv.first_ppx in
+  first_ppx := ppx :: !first_ppx
+
+let lib (task:Common.task ref) f =
+  task := { !task with libs = f :: (!task).libs }
+
+let expand task query =
+  let task = ref task in
+  let result = Findlib.process query in
+  Clflags.preprocessor := result.pp;
+  List.iter (lib task) result.libs; List.iter add_ppx result.ppxs;
+  !task
+end
+
+let  direct_io = {
+  sign = read_sigfile;
+  m2l = Unit.read_file;
+  env = Module.Sig.empty;
+  findlib = Findlib.expand
+}
+
 (** Analysis step *)
-let main_std param (task:Common.task) =
+let main_std io param (task:Common.task) =
   let units, signatures =
-    organize param.polycy param.sig_only task.opens task.files in
+    organize io param.polycy param.sig_only task.opens task.files in
   let collisions =
     if Fault.is_silent param.polycy Codept_polycy.module_conflict then
       Collisions.empty
@@ -244,19 +276,19 @@ let main_std param (task:Common.task) =
   let () =
     (* warns if any module is defined twice *)
     Collisions.handle param.polycy collisions in
-  let e = start_env param task.libs signatures file_set in
+  let e = start_env io param task.libs signatures file_set in
   let {Unit.ml; mli} = solve param e units in
   let ml = remove_units task.invisibles ml in
   let mli = remove_units task.invisibles mli in
   {Unit.ml;mli}
 
 (** Analysis step *)
-let main_seed param (task:Common.task) =
+let main_seed io param (task:Common.task) =
   let units, signatures =
-    pre_organize task.files in
+    pre_organize io task.files in
   let file_set, gen = oracle param.polycy
-      (load_file param.polycy param.sig_only task.opens) units in
-  let e = start_env param task.libs signatures file_set in
+      (load_file io param.polycy param.sig_only task.opens) units in
+  let e = start_env io param task.libs signatures file_set in
   let units = solve_from_seeds task.seeds gen param e in
   let units = remove_units task.invisibles units in
   let units = List.fold_left (fun (pair: _ Unit.pair) (u:Unit.r)->
@@ -266,7 +298,7 @@ let main_seed param (task:Common.task) =
     ) { ml=[]; mli=[]} units in
   Unit.Groups.R.(split % group) units
 
-let main param (task:Common.task) =
+let main io param (task:Common.task) =
   match task.seeds with
-  | [] -> main_std param task
-  | _ -> main_seed param task
+  | [] -> main_std io param task
+  | _ -> main_seed io param task

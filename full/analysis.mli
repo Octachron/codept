@@ -9,10 +9,19 @@ type param = {
   sig_only:bool;
 }
 
+(** System interaction function *)
+type io = {
+  sign: string -> Module.t list option;
+  m2l: Fault.Polycy.t -> Read.kind -> string -> Unit.s;
+  findlib: Common.task -> Findlib.query -> Common.task ;
+  env: Module.Sig.t
+}
+
+val direct_io: io
 
 (** Lift parameter to a module parameter *)
 val lift: param -> (module Interpreter.param)
 
 (** [main param task] performs dependency analysis
     with parameters [param] on the given task *)
-val main: param -> Common.task -> Unit.r list Unit.pair
+val main: io -> param -> Common.task -> Unit.r list Unit.pair
