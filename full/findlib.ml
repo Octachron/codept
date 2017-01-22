@@ -1,11 +1,13 @@
 
-  type info =
+  type query =
     { pkgs: Name.t list;
       predicates: string list;
       syntaxes: Name.t list;
       ppxopts: string list Name.map;
       ppopt: string list
     }
+
+type result = { libs: string list; ppxs: string list; pp: string option }
 
 
 let run cmd =
@@ -86,17 +88,22 @@ let empty =
       predicates = []
     }
 
-let process_pp info name =
+let process_pp info name pp =
   try
     let s = find_pp info name info.pkgs in
     let s = String.concat " " s in
-    Clflags.preprocessor := Some s
-  with Not_found -> ()
+    Some s
+  with Not_found -> pp
+
+let ( |:: ) x l = Option.( x >>| (fun x -> x :: l) >< l)
 
 let process info =
   let syntaxes = Name.Set.of_list (info.syntaxes) in
-  Name.Set.iter (process_pp info) syntaxes;
-  List.fold_left (fun (libs,ppxs) pkg ->
-      let lib, ppx = process_pkg info pkg in
-      (lib @ libs, ppx :: ppxs))
-    ([],[]) info.pkgs
+  let pp = Name.Set.fold (process_pp info) syntaxes None in
+  let libs, ppxs =
+    List.fold_left (fun (libs,ppxs) pkg ->
+        let lib, ppx = process_pkg info pkg in
+        (lib @ libs, ppx |:: ppxs))
+      ([],[]) info.pkgs
+  in
+  {ppxs;libs;pp}

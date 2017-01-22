@@ -59,7 +59,7 @@ let task: Common.task ref = ref {
     opens = [];
   }
 
-let findlib_info = ref Findlib.empty
+let findlib_query = ref Findlib.empty
 
 let makefile_c ppf param task =
   Makefile.main ppf param.common param.makefile task
@@ -193,7 +193,7 @@ let task_p f = Cmd.String (f param task)
 let taskc f = Cmd.String (f task)
 
 let findlib update =
-  Cmd.String (fun s -> findlib_info := update !findlib_info s)
+  Cmd.String (fun s -> findlib_query := update !findlib_query s)
 
 let pkg =
   Cmd.String( fun s ->
@@ -201,7 +201,7 @@ let pkg =
         let open L in
         param.[precomputed_libs] <- Name.Set.add s !param.[precomputed_libs]
       else
-        findlib_info := Findlib.pkg !findlib_info s;
+        findlib_query := Findlib.pkg !findlib_query s;
     )
 
 let no_stdlib =
@@ -341,12 +341,16 @@ let args = Cmd.[
     "<bool>: inspect unknown extension nodes\n"
   ]
 
+let translate_findlib_query query =
+  let result = Findlib.process query in
+  Clflags.preprocessor := result.pp;
+  List.iter (lib task) result.libs; List.iter add_ppx result.ppxs
+
 let () =
   Compenv.readenv stderr Before_args
   ; if not !param.no_include then add_include "."
   ; Cmd.parse args (add_file param task) usage_msg
-  ; let libs, ppxs = Findlib.process !findlib_info in
-    List.iter (lib task) libs; List.iter (Option.iter add_ppx) ppxs
+  ; translate_findlib_query !findlib_query
   ; Compenv.readenv stderr Before_link
   ; if !action = [] && !active_modes = [] then
     mode makefile_c ()

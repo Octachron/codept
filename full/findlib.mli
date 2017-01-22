@@ -1,13 +1,23 @@
 (** Findlib queries *)
-type info
 
-val empty: info
+type query =
+  { pkgs: Name.t list;
+    predicates: string list;
+    syntaxes: Name.t list;
+    ppxopts: string list Name.map;
+    ppopt: string list
+  }
 
-val predicates: info -> string -> info
-val pkg: info -> string -> info
-val ppxopt: info -> string -> info
-val ppopt: info -> string -> info
-val syntax: info -> string -> info
+type result = { libs: string list; ppxs: string list; pp: string option }
 
 
-val process: info -> string list * string option list
+val empty: query
+
+val predicates: query -> string -> query
+val pkg: query -> string -> query
+val ppxopt: query -> string -> query
+val ppopt: query -> string -> query
+val syntax: query -> string -> query
+
+
+val process: query -> result
