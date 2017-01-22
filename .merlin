@@ -5,4 +5,6 @@ S precomputed
 S tests
 S lib/sexp
 PKG compiler-libs.common
+PKG threads unix
 FLG -w A-44-42-45-4-41-48-6-40-30@8
+B +threads

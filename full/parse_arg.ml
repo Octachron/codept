@@ -70,9 +70,9 @@ let makefile_c action param () =
   action :=
     { !action with makefiles = (!param).output :: (!action).makefiles }
 
-let with_output s f=
+let with_output out s f=
   if s = "%" then
-    f Pp.std
+    f out
   else
     let chan= open_out s in
     let formatter= Format.formatter_of_out_channel chan in
@@ -80,8 +80,8 @@ let with_output s f=
     Format.pp_print_flush formatter ();
     close_out chan
 
-let iter_makefile param interm s =
-  with_output s (fun ppf ->
+let iter_makefile out param interm s =
+  with_output out s (fun ppf ->
       Makefile.main ppf param.common param.makefile interm
     )
 
@@ -106,12 +106,12 @@ let mli_synonym param s =
   param.[L.synonyms] <- synonyms
 
 
-let eval_single param (task:Common.task) (file,single) =
-  with_output file (fun ppf ->
+let eval_single out param (task:Common.task) (file,single) =
+  with_output out file (fun ppf ->
       List.iter (Single.eval single ppf param) task.files)
 
-let iter_mode param r (file,mode) =
-  with_output file (fun ppf ->
+let iter_mode out param r (file,mode) =
+  with_output out file (fun ppf ->
       Modes.eval mode ppf param r
     )
 

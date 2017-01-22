@@ -1,20 +1,31 @@
-all: codept test
+OPTS= -use-ocamlfind
+
+all: codept codept-client codept-server test
 
 codept: lib/*.ml lib/*.mli full/*.ml full/*.mli
-	ocamlbuild -use-ocamlfind codept.native\
+	ocamlbuild $(OPTS) codept.native\
 		&& mv codept.native codept
 
 clean:
 	ocamlbuild -clean
 
-test: tests/**/*.ml run.native serialization.native codept
-	./run.native && ./serialization.native
+test: tests/**/*.ml test-run test-serialization codept
+	./test-run && ./test-serialization
 
-%.native: tests/%.ml codept
-	ocamlbuild -use-ocamlfind $@
+test-%: tests/%.ml codept
+	ocamlbuild $(OPTS) $*.native && mv $*.native $@ 
+
+%.native: full/%.ml
+	ocamlbuild $(OPTS) $*.native 
+
+codept-server: codept_server.native
+	mv codept_server.native codept-server
+
+codept-client: codept_client.native
+	mv codept_client.native codept-client
 
 doc: codept
-	ocamlbuild -use-ocamlfind -docflags -charset,utf-8 codept.docdir/index.html
+	ocamlbuild $(OPTS) -docflags -charset,utf-8 codept.docdir/index.html
 
 self_test:
 	ocamlbuild -clean; \
