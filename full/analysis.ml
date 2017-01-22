@@ -22,7 +22,6 @@ let open_within opens unit =
 
 type ('a,'b) either = Left of 'a | Right of 'b
 
-(* self-note another candidate for typed optional argument *)
 let split either =
   let rec split either ( (l,r) as t) = function
     | [] -> t
