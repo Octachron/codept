@@ -75,7 +75,7 @@ let answer f where =
   let query: Parse_arg.query = input_value ch in
   let fmt = Format.formatter_of_out_channel out in
   f fmt query;
-  output_string out "Done\n";
+  output_string out "\n";
   flush out;
   Unix.close where
 
@@ -92,7 +92,6 @@ let process out (query:Parse_arg.query) =
 
 let rec server () =
   Unix.listen socket 10;
-  Printf.printf "Server\n";
   match Unix.select [socket] [] [] 5. with
   | [_], _ , _  ->
     let client, _addr = Unix.accept socket in
