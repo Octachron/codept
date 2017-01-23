@@ -19,6 +19,9 @@ type io = {
 
 val direct_io: io
 
+(** Read signature file *)
+val read_sigfile: string -> Module.t list option
+
 (** Lift parameter to a module parameter *)
 val lift: param -> (module Interpreter.param)
 

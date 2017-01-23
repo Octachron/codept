@@ -5,7 +5,63 @@ let version = 0.3
 let stderr= Format.err_formatter
 let std = Format.std_formatter
 
-let io = Analysis.direct_io
+let cache = Cache.Shared.make Cache.empty
+
+module Sh = Cache.Shared
+
+let sign filename =
+  let cached = Sh.get cache in
+  match Name.Map.find_opt filename cached.signatures with
+  | Some _ as s -> s
+  | None ->
+    let s = Analysis.read_sigfile filename in
+    begin match s with
+      | None -> ()
+      | Some s -> Sh.map (fun (cached:Cache.t) ->
+        let map = Name.Map.add filename s cached.signatures in
+        { cached with signatures = map }
+        ) cache
+    end;
+    s
+
+let m2l polycy k filename =
+  let cached = Sh.get cache in
+  match Name.Map.find_opt filename cached.m2l with
+  | Some u -> u
+  | None ->
+    let u = Unit.read_file polycy k filename in
+    Sh.map (fun (cached:Cache.t) ->
+        let map = Name.Map.add filename u cached.m2l in
+        { cached with m2l = map }
+      ) cache;
+    u
+
+let findlib task query =
+  let cached = Sh.get cache in
+  match Cache.Findmap.find query cached.findlib with
+  | (expand, register) -> register (); expand task
+  | exception Not_found ->
+    let result = Findlib.process query in
+    let add_ppx ppx =
+      let first_ppx = Compenv.first_ppx in
+      first_ppx := ppx :: !first_ppx in
+    let pp () = Clflags.preprocessor := result.pp in
+    let register () =
+      List.iter add_ppx result.ppxs; pp () in
+    let expand (task:Common.task) =
+      { task with libs =  result.libs @ task.libs } in
+    Sh.map (fun (cached:Cache.t) ->
+        let map = Cache.Findmap.add query (expand,register) cached.findlib in
+        { cached with findlib = map }
+      ) cache;
+    register (); expand task
+
+let io = {
+  Analysis.sign;
+  m2l;
+  env = Module.Sig.empty;
+  findlib;
+}
 
 let uaddr= "codept_test_3"
 
