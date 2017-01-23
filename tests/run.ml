@@ -207,6 +207,9 @@ let result =
 
 
   ]
+  (* Note the inferred dependencies is wrong, but there is not much
+     (or far too much ) to do here *)
+  && deps_test  [ "riddle.ml", ["M5"] ]
   &&
   List.for_all deps_test [
     ["broken.ml", ["Ext"; "Ext2"; "Ext3"; "Ext4"; "Ext5" ] ];
