@@ -32,7 +32,7 @@ let codept' ~approx mode tags =
     else S [] in
   let pp = Command.reduce @@ T (tags++ "ocaml" ++ "pp" ++ "pp:dep") in
   let pp = match pp with N -> N | s -> S [ A "-pp"; Quote s] in
-  S [ A "codept"; T tags'; pp ; k; mode]
+  S [ A "codept-client"; T tags'; pp ; k; mode]
 
 
 let codept ?(approx=true) mode arg out env _build =
@@ -62,6 +62,12 @@ let codept_dep ?(approx=false) mode arg deps outs env build =
   Cmd( S[ codept' ~approx mode tags; P arg; Command.atomize_paths sigs;  S outs])
 
 module R() = struct
+
+
+  ignore @@
+    Unix.create_process "codept-server" [|"codept-server"|] Unix.stdin Unix.stdout
+      Unix.stderr
+;
 
   rule "ml → m2l"
     ~insert:`top

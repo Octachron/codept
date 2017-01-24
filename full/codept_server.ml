@@ -5,6 +5,7 @@ let version = 0.3
 let stderr= Format.err_formatter
 let std = Format.std_formatter
 
+let prefix = "_build"
 let cache = Cache.Shared.make Cache.empty
 
 module Sh = Cache.Shared
@@ -63,7 +64,7 @@ let io = {
   findlib;
 }
 
-let uaddr= "codept_test_3"
+let uaddr= "/tmp/codept"
 
 let addr = Unix.ADDR_UNIX uaddr
 let socket = Unix.(socket PF_UNIX SOCK_STREAM 0)
@@ -75,7 +76,7 @@ let answer f where =
   let query: Parse_arg.query = input_value ch in
   let fmt = Format.formatter_of_out_channel out in
   f fmt query;
-  output_string out "\n";
+  Format.fprintf fmt "@?";
   flush out;
   Unix.close where
 
@@ -105,4 +106,5 @@ let rec server () =
 let () =
   Unix.bind socket addr;
   Unix.listen socket 10;
+  Sys.chdir prefix;
   server ()

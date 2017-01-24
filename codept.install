@@ -1,2 +1,2 @@
-bin: ["codept"]
+bin: ["codept" "codept-client" "codept-server"]
 lib: ["META"]
