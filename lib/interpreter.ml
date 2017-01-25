@@ -9,7 +9,7 @@ module M = Module
 module Arg = M.Arg
 module S = Module.Sig
 
-type envt_fault = (Paths.P.t * M2l.Loc.t -> unit ) Fault.t
+type envt_fault = (Paths.P.t * Loc.t -> unit ) Fault.t
 module type envt = sig
   type t
   val is_exterior: Paths.Simple.t -> t -> bool

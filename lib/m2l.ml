@@ -11,14 +11,6 @@ type 'a bind = {name:Name.t; expr:'a}
 
 type kind = Structure | Signature
 
-(** A location within a file *)
-type location =
-  | Nowhere
-  | Simple of { line:int; start:int; stop:int }
-  | Multiline of { start: int * int; stop: int * int }
-
-(** A data structure to add location data *)
-type 'a with_location = { loc:location; data:'a }
 
 type expression =
   | Defs of Definition.t (** Resolved module actions M = … / include … / open … *)
@@ -94,7 +86,7 @@ and extension = {name:string; extension:extension_core}
 and extension_core =
   | Module of m2l
   | Val of annotation
-and m2l = expression with_location list
+and m2l = expression Loc.ext list
 and 'a fn = { arg: module_type Arg.t option; body:'a }
 
 type t = m2l
@@ -102,90 +94,12 @@ type t = m2l
 let annot_empty = { access=Name.Set.empty; values = []; packed = [] }
 
 
-module Loc = struct
-
-  type t = location
-
-  let pp ppf = function
-    | Nowhere -> ()
-    | Simple {line;start;stop} -> Pp.fp ppf "l%d.%d−%d" line start stop
-    | Multiline {start=(l1,c1); stop = (l2,c2) } ->
-      Pp.fp ppf "l%d.%d−l%d.%d" l1 c1 l2 c2
-
-  let create loc data = {loc; data}
-  let nowhere data = { loc = Nowhere; data}
-
-  let expand = function
-    | Nowhere -> None
-    | Simple {line;start;stop} -> Some ( (line,start), (line,stop) )
-    | Multiline m -> Some(m.start, m.stop)
-
-  let compress = function
-    | Multiline {start; stop } when fst start = fst stop ->
-        Simple { line = fst start; start = snd start; stop = snd stop }
-    | (Simple _ | Nowhere | Multiline _) as m -> m
-
-
-  let merge x y = compress @@
-    match expand x, expand y with
-    | None, None -> Nowhere
-    | Some (start,stop) , None | None , Some(start,stop)
-    | Some(start,_), Some(_,stop) ->
-      Multiline {start;stop}
-
-  let list l =
-    List.fold_left (fun loc x -> merge loc x.loc) Nowhere l
-
-  let fmap f x = { x with data = f x.data }
-
-end
 
 
 (** S-expression serialization *)
 module More_sexp = struct
   open Sexp
   module R = Sexp.Record
-
-  module Location = struct
-    let simple = C2.C { name = "Simple";
-                        proj = (function Simple s -> Some(s.line, s.start, s.stop)
-                                       | _ -> None ) ;
-                        inj = (fun (line,start,stop) -> Simple {line;start;stop} );
-                        impl = triple' int int int;
-                      }
-    let multiline = C2.C
-        { name = "Multiline";
-          proj = (function Multiline {start;stop} ->
-              Some(fst start, snd start, fst stop, snd stop )
-                         | _ -> None );
-          inj = (fun (l,c,l2,c2) -> Multiline { start = l, c; stop = l2, c2 });
-          impl = tetra' int int int int
-        }
-
-    let empty_set =
-      let parse = function
-        | Keyed_list ("∅", []) -> Some ()
-        | _ -> None
-      and embed _ = Keyed_list ("∅", [] ) in
-      {parse;embed;kind= One_and_many }
-
-    let nowhere = C2.C
-        { name= "Nowhere";
-          proj = (function Nowhere -> Some () | _ -> None );
-          inj = (fun _ -> Nowhere);
-          impl = empty_set;
-        }
-
-
-  end
-  let loc =
-    let open Location in
-    C2.sum simple [simple;multiline;nowhere]
-
-  let with_loc impl =
-    convr (pair impl loc)
-      (fun (data,loc) -> {data;loc})
-      (fun r -> r.data, r.loc)
 
   let fix r impl = fix (impl r)
   let fix' r impl = fix' (impl r)
@@ -299,7 +213,7 @@ module More_sexp = struct
 
   let nameset = convr (list string) Name.Set.of_list Name.Set.elements
 
-  let m2l r () = list @@ with_loc @@ fix' r expr
+  let m2l r () = list @@ Loc.Sexp.ext @@ fix' r expr
   let annot r () =
     let r = record R.[field access nameset;
              field values (list @@  fix r m2l);
@@ -486,7 +400,7 @@ module Block = struct
   let either x f y = if x = None then f y else x
   let first f l = List.fold_left (fun x y -> either x f y) None l
 
-  let data x = x.data
+  let data x = x.Loc.data
 
 
   let rec me = function
@@ -526,8 +440,8 @@ module Block = struct
       first (fun b -> me b.expr) l
     | Minor m -> minor m
     | Extension_node _ -> None
-  and expr_loc {loc;data} =
-      Option.fmap (fun data -> {loc;data}) @@ expr data
+  and expr_loc {Loc.loc;data} =
+      Option.fmap (fun data -> {Loc.loc;data}) @@ expr data
   and m2l code = first expr_loc code
   and minor m =
     if Name.Set.cardinal m.access > 0 then
@@ -538,7 +452,8 @@ module Block = struct
 end
 
 module Annot = struct
-  type t = annotation with_location
+  open Loc
+  type t = annotation Loc.ext
   let empty = { data = annot_empty; loc = Nowhere }
   let is_empty x  = x.data = annot_empty
   let merge x y =
@@ -548,7 +463,7 @@ module Annot = struct
       values = a1.values @ a2.values;
       packed = a1.packed @ a2.packed
     } in
-    {data; loc = Loc.merge x.loc y.loc}
+    {Loc.data; loc = Loc.merge x.loc y.loc}
 
 
   let (++) = merge
@@ -575,7 +490,7 @@ end
 
 (** Helper function *)
 module Build = struct
-  let ghost data  = {data; loc= Nowhere }
+  let ghost data  = {Loc.data; loc= Nowhere }
 
   let minor x = Minor x
   let access path =
@@ -708,7 +623,7 @@ module Normalize = struct
     | {data = Defs _; _ } as e :: q ->
       let more, q = all q in more, e :: q
     | { data = Minor m; loc } :: q ->
-      Loc.fmap cminor (minor {data=m;loc})  +: all q
+      Loc.fmap cminor (minor {Loc.data=m;loc})  +: all q
     | { data = (Open _ | Include _ | SigInclude _ | Bind_sig _ | Bind _ | Bind_rec _
       | Extension_node _ ); _ }
       :: _ as l ->
@@ -743,7 +658,7 @@ module Sig_only = struct
       map (fun s -> Some { r with Arg.signature = s }) (inner r.signature )
 
   let rec rev keep_opens = function
-    | { data = Defs _ ; _ } :: l -> rev keep_opens l
+    | { Loc.data = Defs _ ; _ } :: l -> rev keep_opens l
     | { data = Minor _; _ } :: l -> rev keep_opens l
     | { data= Open _; _ }  as o :: q ->
       if keep_opens then  o @:: rev keep_opens q
@@ -752,7 +667,7 @@ module Sig_only = struct
     | { data = (SigInclude _| Include _); _ }  as a :: q -> a @:: rev true q
     | { data = Bind {name;expr}; loc }  :: q ->
       let k, expr = mex expr in
-      { data = Bind{name;expr}; loc } @:: rev (k||keep_opens) q
+      { Loc.data = Bind{name;expr}; loc } @:: rev (k||keep_opens) q
     | { data = (Bind_sig  _ | Bind_rec _); _ }  as a :: q
       -> a @:: rev true q
     | [] -> false, []

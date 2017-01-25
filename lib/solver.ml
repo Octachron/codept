@@ -13,7 +13,7 @@ module Failure = struct
   module Set = Set.Make(struct type t = i let compare = compare end)
 
   type status =
-    | Cycle of Name.t M2l.with_location
+    | Cycle of Name.t Loc.ext
     | Extern of Name.t
     | Depend_on of Name.t
     | Internal_error
@@ -113,14 +113,14 @@ module Failure = struct
     map, categorize map |> normalize map
 
 
-  let rec pp_circular map start first ppf (name: string M2l.with_location) =
-    Pp.fp ppf "%s" name.M2l.data;
+  let rec pp_circular map start first ppf (name: string Loc.ext) =
+    Pp.fp ppf "%s" name.Loc.data;
     if name.data <> start || first then
       let u = fst @@ Name.Map.find name.data map in
       match M2l.Block.m2l u.code with
       | None -> ()
       | Some next -> begin
-          Pp.fp ppf " −(%a:%a)⟶@ " Paths.Pkg.pp u.input.path M2l.Loc.pp name.loc;
+          Pp.fp ppf " −(%a:%a)⟶@ " Paths.Pkg.pp u.input.path Loc.pp name.loc;
           pp_circular map start false ppf next
         end
 
@@ -164,8 +164,8 @@ module Failure = struct
     let code =
       match i.code with
       | { data = M2l.Defs def; loc } :: q ->
-        { M2l.data = M2l.Defs (add_set def); loc } :: q
-      | code -> (M2l.Loc.nowhere @@ M2l.Defs (add_set Definition.empty)) :: code
+        { Loc.data = M2l.Defs (add_set def); loc } :: q
+      | code -> (Loc.nowhere @@ M2l.Defs (add_set Definition.empty)) :: code
     in
     { i with code }
 
@@ -400,7 +400,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       match M2l.Block.m2l m2l with
       | None ->
         assert false (* we failed to eval the m2l code due to something *)
-      | Some { M2l.data = first_parent; _ } ->
+      | Some { Loc.data = first_parent; _ } ->
       (* are we cycling? *)
         if Name.Set.mem first_parent state.not_ancestors then
           Error state

@@ -47,7 +47,7 @@ let rec signitem =
 and signature x = mmap signitem x
 and module_type  = function
   | Mty_ident p -> M2l.Ident (from_path p)
-  | Mty_signature s -> M2l.Sig (List.map M2l.Loc.nowhere @@ signature s)
+  | Mty_signature s -> M2l.Sig (List.map Loc.nowhere @@ signature s)
   | Mty_functor ({name;_}, mto, mt) ->
     let open M2l in
     let arg = Option.( mto >>|module_type >>| fun s ->
@@ -57,4 +57,4 @@ and module_type  = function
 
 let m2l path =
   let cm2i = cmi_infos path in
-  List.map M2l.Loc.nowhere @@ signature @@ cm2i.cmi_sign
+  List.map Loc.nowhere @@ signature @@ cm2i.cmi_sign

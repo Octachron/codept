@@ -325,16 +325,16 @@ let result =
       gen_deps_test (ocamlfind "compiler-libs") precise_deps_test
         [
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
-          "ast_converter.ml", ( ["M2l"; "Name"; "Option"; "Module";
+          "ast_converter.ml", ( ["Loc"; "M2l"; "Name"; "Option"; "Module";
                                  "Paths"],
                                 ["List";"Longident"; "Location"; "Lexing";
                                  "Parsetree"], [] );
           "approx_parser.mli", (["M2l"], [],[]);
-          "approx_parser.ml", (["Read";"M2l";"Name"],
+          "approx_parser.ml", (["Loc"; "Read";"M2l";"Name"],
                                ["Lexer"; "Parser"; "Lexing";"List"],[]);
           "cmi.mli", (["M2l"], [], []);
 
-          "cmi.ml", (["M2l";"Module"; "Option"; "Paths"],
+          "cmi.ml", (["Loc"; "M2l";"Module"; "Option"; "Paths"],
                      ["Cmi_format"; "List"; "Path";"Types"], []);
           "definition.mli", (["Module"], ["Format"], []);
           "definition.ml", (["Module"; "Name"; "Pp"; "Mresult"], ["List"], []);
@@ -344,23 +344,28 @@ let result =
              "Paths"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
-          "interpreter.mli", (["Fault";"Module";"Paths";"M2l";"Definition"],[],[]);
+          "interpreter.mli", (["Fault"; "Loc"; "Module";"Paths";"M2l";"Definition"],
+                              [],[]);
           "interpreter.ml", (
-            ["Definition"; "M2l"; "Module"; "Name"; "Option"; "Paths";
+            ["Definition"; "Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths";
              "Mresult"; "Fault"]
           ,["List"],[]);
-          "m2l.mli", (["Module";"Name";"Definition";"Paths";"Sexp" ],["Format"],[]);
-          "m2l.ml", (["Module";"Name";"Option";"Definition";"Paths"; "Pp"; "Sexp" ],
+          "m2l.mli", (["Loc"; "Module";"Name";"Definition";"Paths";"Sexp" ],
+                      ["Format"],[]);
+          "m2l.ml", (["Loc"; "Module";"Name";"Option";"Definition";"Paths"
+                     ; "Pp"; "Sexp" ],
                      ["List"],[]);
-          "fault.ml", (["M2l"; "Module"; "Option"; "Name";"Paths"; "Pp"],
+          "fault.ml", (["Loc"; "Module"; "Option"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"; "Location";"Syntaxerr"],[]);
-          "fault.mli", (["M2l"; "Module"; "Paths"; "Name"],
+          "fault.mli", (["Loc"; "Module"; "Paths"; "Name"],
                           ["Format"; "Syntaxerr"],[]);
 
           "module.mli", ( ["Paths";"Name"; "Sexp"], ["Format"], [] );
           "module.ml", ( ["Paths";"Name"; "Pp"; "Sexp" ], ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map"], [] );
+          "loc.mli", ( ["Sexp"], ["Format"], []);
+          "loc.ml", ( ["Pp";"Sexp"], ["List"], []);
           "option.mli", ([],[],[]);
           "option.ml", ([],["List"],[]);
           "paths.mli", (["Name"; "Sexp"], ["Map";"Set";"Format"],[]);
@@ -379,10 +384,10 @@ let result =
                       [ "Obj"; "Format";"List";"Map"; "Hashtbl"; "String"], [] );
           "sexp.mli", (["Name"],
                       [ "Format"], [] );
-          "solver.mli", (["Unit";"M2l";"Name";"Interpreter";"Paths"],
+          "solver.mli", (["Loc"; "Unit";"M2l";"Name";"Interpreter";"Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
-            ["Approx_parser"; "Definition"; "Interpreter"; "M2l"; "Module";
+            ["Approx_parser"; "Definition"; "Interpreter"; "Loc"; "M2l"; "Module";
              "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Unit"; "Fault"],
             ["List"; "Map"; "Set"],[]);
           "unit.mli", (["Paths"; "M2l"; "Module"; "Name"; "Fault"; "Read"],

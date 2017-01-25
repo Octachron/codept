@@ -62,7 +62,7 @@ end
 (** {2 Predefined faults} *)
 
 (** Location type for error message *)
-type loc = Paths.Pkg.t * M2l.Loc.t
+type loc = Paths.Pkg.t * Loc.t
 val loc: Format.formatter -> loc -> unit
 
 (** {3 Extension node fault} *)

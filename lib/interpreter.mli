@@ -1,7 +1,7 @@
 (** Monotonic interpreter for m2l ast *)
 
 (** Input fault type *)
-type envt_fault = (Paths.P.t * M2l.Loc.t -> unit ) Fault.t
+type envt_fault = (Paths.P.t * Loc.t -> unit ) Fault.t
 
 (** Input type *)
 module type envt = sig

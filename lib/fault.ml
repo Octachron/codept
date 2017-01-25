@@ -102,8 +102,8 @@ type explanation = string
 type 'a fault = { path: Paths.S.t; expl: explanation; log: log_info -> 'a }
 type 'a t = 'a fault
 
-type loc = Paths.Pkg.t * M2l.Loc.t
-let loc ppf (path,x)= Pp.fp ppf "%a:%a" Paths.Pkg.pp path M2l.Loc.pp x
+type loc = Paths.Pkg.t * Loc.t
+let loc ppf (path,x)= Pp.fp ppf "%a:%a" Paths.Pkg.pp path Loc.pp x
 
 (** Warnings *)
 let extension_ignored =

@@ -19,7 +19,6 @@ let txt x= x.Location.txt
 
 
 let from_loc l =
-  let open M2l in
   let open Location in
   let extr lex =
     let open Lexing in
@@ -27,13 +26,13 @@ let from_loc l =
   let l1, c1 as s = extr l.loc_start in
   let l2, c2 as e = extr l.loc_end in
   if l.loc_ghost then
-    Nowhere
+    Loc.Nowhere
   else if l1=l2 then
-    Simple {line=l1; start = c1; stop = c2 }
+    Loc.Simple {line=l1; start = c1; stop = c2 }
   else
-    Multiline { start=s; stop = e }
+    Loc.Multiline { start=s; stop = e }
 
-let with_loc l data = { M2l.loc = from_loc l; data}
+let with_loc l data = { Loc.loc = from_loc l; data}
 let (|?) data l = List.map (with_loc l) data
 
 
@@ -54,10 +53,11 @@ module H = struct
     | T | F _ -> assert false
 
   let do_open lid =
-    [{ M2l.data = M2l.Open (npath lid); loc = extract_loc lid} ]
+    [{ Loc.data = M2l.Open (npath lid); loc = extract_loc lid} ]
 
 
   let (@%) l l' =
+    let open Loc in
     let open M2l in
     match l,l' with
     | [{data = Minor m; loc }] , { data = Minor m'; loc = loc'} :: q ->
@@ -87,7 +87,7 @@ module Pattern = struct
 
   (** At module level, a pattern can only access modules or
       bind a first class module *)
-  type bind = module_expr M2l.bind M2l.with_location
+  type bind = module_expr M2l.bind Loc.ext
   type t = { binds: bind list
            ; annot: Annot.t
            }
@@ -118,16 +118,16 @@ module Pattern = struct
   let open_ m { annot={ data = {values; packed; access}; loc } ; binds} =
     let values =
       ( if Name.Set.cardinal access > 0 then
-          M2l.[{ data = Minor {Annot.empty.data with access}; loc }]
+          M2l.[{ Loc.data = Minor {Annot.empty.data with access}; loc }]
         else
           []
       )
       :: values in
     let op x = M2l.Open x in
-    let values = List.map( List.cons (M2l.Loc.fmap op m) ) values in
+    let values = List.map( List.cons (Loc.fmap op m) ) values in
     let packed = List.map (B.open_me [m.data]) packed in
     let binds = List.map
-        (fun {data={name;expr};loc} ->
+        (fun {Loc.data={name;expr};loc} ->
            Loc.create (Loc.merge m.loc loc) {name; expr = B.open_me [m.data] expr } )
         binds in
     let access = Name.Set.empty in
@@ -170,7 +170,7 @@ let minor' x =
 open Parsetree
 
 
-let data x = x.data
+let data x = x.Loc.data
 
 let rec structure str =
   mmap structure_item str

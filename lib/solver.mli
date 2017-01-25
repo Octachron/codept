@@ -10,9 +10,9 @@ type i = { input: Unit.s; code: M2l.t; deps: Paths.P.set }
 module Failure :
   sig
     type status =
-      | Cycle of string M2l.with_location
-      | Extern of string
-      | Depend_on of string
+      | Cycle of Name.t Loc.ext
+      | Extern of Name.t
+      | Depend_on of Name.t
       | Internal_error
 
     module Set: Set.S with type elt = i
@@ -27,7 +27,7 @@ module Failure :
 
     val pp_circular :
       (i * 'a) Name.map ->
-      string -> bool -> Format.formatter -> Name.t M2l.with_location -> unit
+      string -> bool -> Format.formatter -> Name.t Loc.ext -> unit
     val pp_cat :
       (i * _) Name.map ->
       Format.formatter -> status * Set.t -> unit

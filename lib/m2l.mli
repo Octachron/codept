@@ -33,17 +33,8 @@ type 'a bind = { name: Name.t; expr:'a }
 type kind = Structure | Signature
 (** The nature (ml/mli) of an m2l ast *)
 
-(** A location within a file *)
-type location =
-  | Nowhere
-  | Simple of { line:int; start:int; stop:int }
-  | Multiline of { start: int * int; stop: int * int }
-
-(** A data structure to add location data *)
-type 'a with_location = { loc:location; data:'a }
-
 (** An m2l ast/code fragment is a list of module level expression *)
-type m2l = expression with_location list
+type m2l = expression Loc.ext list
 
 (** The [expression] type is the basic building block of the m2l AST *)
 and expression =
@@ -150,21 +141,8 @@ module More_sexp: sig
 
 end
 
-module Loc: sig
-  type t = location
-  val pp: Format.formatter -> t -> unit
-  val nowhere: 'a -> 'a with_location
-  val create: t -> 'a -> 'a with_location
-  val expand: t -> ((int*int) * (int*int)) option
-  val compress: t -> t
-  val merge: t -> t -> t
-  val fmap: ('a -> 'b) -> 'a with_location -> 'b with_location
-  val list: 'a with_location list -> t
-end
-
-
 module Annot : sig
-  type t = annotation with_location
+  type t = annotation Loc.ext
 
   val empty: t
   val is_empty: t -> bool
@@ -177,18 +155,18 @@ module Annot : sig
   val union: t list -> t
   val union_map: ('a -> t) -> 'a list -> t
 
-  val access: Name.t with_location -> t
+  val access: Name.t Loc.ext -> t
   val value: m2l list -> t
-  val pack: module_expr list with_location -> t
+  val pack: module_expr list Loc.ext -> t
   val opt: ('a -> t) -> 'a option -> t
 end
 
 module Build: sig
-  val ghost: expression -> expression with_location
-  val access: Paths.Expr.t with_location -> expression with_location
-  val open_: Paths.Simple.t with_location -> expression with_location
-  val value: m2l list -> expression with_location
-  val pack: module_expr list with_location -> expression with_location
+  val ghost: expression -> expression Loc.ext
+  val access: Paths.Expr.t Loc.ext -> expression Loc.ext
+  val open_: Paths.Simple.t Loc.ext -> expression Loc.ext
+  val value: m2l list -> expression Loc.ext
+  val pack: module_expr list Loc.ext -> expression Loc.ext
 
   val open_me: Paths.Simple.t list -> module_expr -> module_expr
 
@@ -212,7 +190,7 @@ end
    dependencies that need to be resolved before any interpreter can make
    progress evaluating a given code block *)
 module Block: sig
-  val m2l: m2l -> Name.t with_location option
+  val m2l: m2l -> Name.t Loc.ext option
   val expr: expression -> Name.t option
   val me: module_expr-> Name.t option
   val mt: module_type -> Name.t option
