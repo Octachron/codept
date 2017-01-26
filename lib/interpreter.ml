@@ -1,8 +1,8 @@
 open M2l
 open Mresult
 
-module D = Definition
-module Def = D.Def
+module Y = Summary
+module Def = Summary.Def
 module P = Module.Partial
 
 module M = Module
@@ -15,7 +15,7 @@ module type envt = sig
   val is_exterior: Paths.Simple.t -> t -> bool
   val find: Module.level -> Paths.Simple.t -> t ->
     (Module.m, Module.m * envt_fault ) result
-  val (>>) : t -> D.t -> t
+  val (>>) : t -> Y.t -> t
   val add_unit: t -> Module.t -> t
 end
 
@@ -57,15 +57,19 @@ module Make(Envt:envt)(Param:param) = struct
   let drop_arg loc (p:Module.Partial.t) =  match  p.args with
       | _ :: args -> { p with args }
       | [] ->
-        match p.precision with
-        | Exact -> Fault.(handle polycy applied_structure) loc p; p
-        | Unknown -> p (* we guessed the arg wrong *)
+        if Module.Partial.is_exact p then
+          begin
+            Fault.(handle polycy applied_structure) loc p;
+            p
+            end
+        else
+          p (* we guessed the arg wrong *)
 
 
    let filename loc = fst loc
 
   let of_partial loc p =
-    match D.of_partial p with
+    match Y.of_partial p with
     | Error def -> fault Fault.structure_expected loc p;
       def
     | Ok def -> def
@@ -119,7 +123,7 @@ module Make(Envt:envt)(Param:param) = struct
   let open_ loc state path =
     match find loc Module path state with
     | x -> warn_open loc x;
-      Ok (Some( D.sg_see x.signature ))
+      Ok (Some( Y.sg_see x.signature ))
     | exception Not_found -> Error (Open path)
 
   let gen_include loc unbox box i = match unbox i with
@@ -197,8 +201,8 @@ module Make(Envt:envt)(Param:param) = struct
         let defs =
           List.fold_left
             ( fun defs {name;expr} ->
-                D.bind (M.M (P.to_module ~origin:Submodule name expr)) defs )
-            D.empty defs in
+                Y.bind (M.M (P.to_module ~origin:Submodule name expr)) defs )
+            Y.empty defs in
         Ok ( Some defs )
 
   let drop_state = function
@@ -216,7 +220,7 @@ module Make(Envt:envt)(Param:param) = struct
     match ex_arg with
     | Error me -> Error (fn @@ List.fold_left demote {arg=me;body} args )
     | Ok arg ->
-      let sg = Option.( arg >>| (fun m -> Def.md (M.M m) ) >< D.empty ) in
+      let sg = Option.( arg >>| (fun m -> Def.md (M.M m) ) >< Y.empty ) in
       let state =  Envt.( state >> sg ) in
       match body_type state body with
       | Ok p  -> Ok { p with P.args = arg :: p.P.args }
@@ -266,7 +270,7 @@ module Make(Envt:envt)(Param:param) = struct
       begin match find loc Module a state with
         | exception Not_found -> Error me
         | x -> warn_open loc x;
-          let resolved = Def.( resolved +| D.sg_see x.signature ) in
+          let resolved = Def.( resolved +| Y.sg_see x.signature ) in
           module_expr loc state @@ Open_me {opens = q; resolved; expr }
       end
     | Extension_node n ->
@@ -305,10 +309,16 @@ module Make(Envt:envt)(Param:param) = struct
         match module_type loc state w.body with
         | Error mt -> Error ( With { w with body = mt } )
         | Ok d ->
-          let modules =
-            Name.Set.fold Name.Map.remove w.deletions d.result.modules in
-          let d = { d with result = { d.result with modules} } in
-          Ok d
+          let remove_from d = Name.Set.fold Name.Map.remove w.deletions d in
+          let rec remove = function
+            | M.Blank -> M.Blank
+            | Exact d -> M.Exact { d with modules = remove_from d.modules }
+            | Divergence p ->
+              Divergence {
+                p with before = remove p.before;
+                       after = { p.after with modules = remove_from p.after.modules }
+              } in
+          Ok { d with result = remove d.result }
       end
     | Fun {arg;body} ->
       functor_expr (module_type loc)

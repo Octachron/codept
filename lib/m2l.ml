@@ -2,8 +2,8 @@
 module M = Module
 
 module Arg = M.Arg
-module D = Definition
-module Def = D.Def
+module Sm = Summary
+module Def = Summary.Def
 
 module P = M.Partial
 
@@ -13,7 +13,7 @@ type kind = Structure | Signature
 
 
 type expression =
-  | Defs of Definition.t (** Resolved module actions M = … / include … / open … *)
+  | Defs of Summary.t (** Resolved module actions M = … / include … / open … *)
   | Open of Paths.Simple.t (** [open A.B.C] ⇒ [Open [A;B;C]]  *)
   | Include of module_expr (** [struct include A end] *)
   | SigInclude of module_type
@@ -56,7 +56,7 @@ and module_expr =
       In particular, it is useful for constraining first class module unpacking
       as [Constraint(Abstract, signature)]. *)
   | Unpacked (** [(module M)] *)
-  | Open_me of { resolved: Definition.t; opens:Paths.Simple.t list; expr:module_expr}
+  | Open_me of { resolved: Summary.t; opens:Paths.Simple.t list; expr:module_expr}
   (** M.(…N.( module_expr)…)
       Note: This construction does not exist (yet?) in OCaml proper.
       It is used here to simplify the interaction between
@@ -115,7 +115,7 @@ module More_sexp = struct
   (** Expression *)
 
   let definition =
-    let open Definition in
+    let open Summary in
     convr
       (pair Module.Sig.sexp Module.Sig.sexp)
       (fun (a,b) -> {visible=b;defined=a})
@@ -126,7 +126,7 @@ module More_sexp = struct
     proj = (function Defs d -> Some d | _ -> None);
     inj = (fun x -> Defs x);
     impl = definition;
-    default = Some Definition.empty
+    default = Some Summary.empty
   }
 
   let op_n = C {
@@ -502,7 +502,7 @@ module Build = struct
 
   let open_me ml expr = match expr with
     | Open_me o -> Open_me { o with opens = ml @ o.opens }
-    | expr ->  Open_me { resolved = D.empty; opens = ml; expr }
+    | expr ->  Open_me { resolved = Summary.empty; opens = ml; expr }
 
 
   let demote_str fn arg =
@@ -526,7 +526,7 @@ end
 
 
 let rec pp_expression ppf = function
-  | Defs defs -> Pp.fp ppf "define %a" D.pp defs
+  | Defs defs -> Pp.fp ppf "define %a" Summary.pp defs
 
   | Minor annot -> pp_annot ppf annot
   | Open npath -> Pp.fp ppf "@[<hv>open %a@]" Paths.Simple.pp npath
@@ -581,7 +581,7 @@ and pp_me ppf = function
   | Open_me {opens = a :: q ; resolved; expr} ->
     Pp.fp ppf "%a.(%a)" Paths.Simple.pp a pp_me (Open_me{opens=q;resolved;expr})
   | Open_me {opens=[]; resolved; expr} ->
-    Pp.fp ppf "⟨context:%a⟩ %a" D.pp resolved pp_me expr
+    Pp.fp ppf "⟨context:%a⟩ %a" Summary.pp resolved pp_me expr
 
 and pp_mt ppf = function
   | Resolved fdefs -> Pp.fp ppf "✔%a" P.pp fdefs

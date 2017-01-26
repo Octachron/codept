@@ -14,7 +14,7 @@ type io = {
   sign: string -> Module.t list option;
   m2l: Fault.Polycy.t -> Read.kind -> string -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
-  env: Module.Sig.t
+  env: Module.Def.t
 }
 
 val direct_io: io

@@ -21,11 +21,12 @@ module Arg :
       Format.formatter -> 'a arg option list -> unit
   end
 
-module Precision:sig
-  type t =
-    | Exact
-    | Unknown
- val sexp: (t,Sexp.one_and_many) Sexp.impl
+module Divergence: sig
+  type kind =
+    | First_class_module
+    | External
+  type t = Name.t * kind * Loc.t
+  val pp: Format.formatter -> t -> unit
 end
 
 
@@ -52,7 +53,6 @@ type origin = Origin.t
 (** Main module type *)
 type m = {
   name : string;
-  precision: Precision.t;
   origin : Origin.t;
   args : m option list;
   signature : signature;
@@ -63,15 +63,20 @@ and t =
   | M of m
   | Alias of { name:Name.t; path: Paths.S.t }
 
-and signature = { modules : mdict; module_types : mdict; }
+and definition = { modules : mdict; module_types : mdict }
+and signature =
+  | Blank
+  | Exact of definition
+  | Divergence of { point: Divergence.t; before:signature; after:definition}
 and mdict = t Name.map
 
-type arg = signature Arg.t
+type arg = definition Arg.t
 type level = Module | Module_type
-type modul = t
+type modul_ = t
 
 (** {2 Helper function} *)
-val of_arg : ?precision:Precision.t -> arg -> m
+val is_exact: t -> bool
+val of_arg : arg -> m
 val is_functor : t -> bool
 val name: t -> Name.t
 
@@ -79,7 +84,7 @@ val md: m -> t
 
 val empty : 'a Name.map
 val create :
-  ?args:m option list -> ?precision:Precision.t ->
+  ?args:m option list ->
   ?origin:origin -> Name.t -> signature -> m
 
 val aliases: t -> Name.t list
@@ -105,15 +110,32 @@ val pp_arg : Format.formatter -> m option -> unit
 val pp_args : Format.formatter -> m option list -> unit
 
 (** {2 Sexp} *)
-val sexp: (modul,Sexp.one_and_many) Sexp.impl
+val sexp: (modul_,Sexp.one_and_many) Sexp.impl
+
+(** Helper functions for definitions *)
+module Def: sig
+
+  val empty : definition
+
+  val add : definition -> t ->  definition
+  val add_type : definition -> t -> definition
+  val add_gen : level -> definition -> t -> definition
+
+  val merge: definition -> definition -> definition
+
+  val sexp: (definition,Sexp.many) Sexp.impl
+  type t = definition
+end
 
 (** Helper functions for signature *)
 module Sig :
   sig
     val card : signature -> int
     val merge : signature -> signature -> signature
+    val flatten: signature -> definition
+    val is_exact: signature -> bool
 
-    val create : modul -> signature
+    val create : modul_ -> signature
     val create_type : t -> signature
     val gen_create : level -> t -> signature
 
@@ -136,12 +158,12 @@ module Sig :
 module Partial :
   sig
     type nonrec t = {
-      precision: Precision.t;
       origin : origin;
       args : m option list;
       result : signature;
     }
     val empty : t
+    val is_exact: t -> bool
 
     val simple : signature -> t
 

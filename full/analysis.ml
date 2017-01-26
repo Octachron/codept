@@ -13,7 +13,7 @@ type io = {
   sign: string -> Module.t list option;
   m2l: Fault.Polycy.t -> Read.kind -> string -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
-  env: Module.Sig.t
+  env: Module.Def.t
 }
 
 (** Basic files reading *)
@@ -103,16 +103,17 @@ let stdlib_pkg s l = match s with
 
 
 let base_env io signatures =
-  let (++) = Module.Sig.merge in
+  let (++) = Module.Def.merge in
   Envts.Base.start @@
-  List.fold_left (++) Module.Sig.empty signatures
+  List.fold_left (++) Module.Def.empty signatures
   ++ io.env
 (** Environment *)
 type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
 let start_env io param libs signatures fileset =
-  let signs = Name.Set.fold stdlib_pkg param.precomputed_libs [] in
+  let signs = List.map Module.Sig.flatten
+    @@ Name.Set.fold stdlib_pkg param.precomputed_libs [] in
   let base = base_env io signs in
   let base = List.fold_left Envts.Base.add_unit base signatures in
   let layered = Envts.Layered.create libs fileset base in
@@ -259,7 +260,7 @@ end
 let  direct_io = {
   sign = read_sigfile;
   m2l = Unit.read_file;
-  env = Module.Sig.empty;
+  env = Module.Def.empty;
   findlib = Findlib.expand
 }
 

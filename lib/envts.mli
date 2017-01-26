@@ -35,10 +35,10 @@ end
 (** Basic environment *)
 module Base :
 sig
-  type t = { top: Module.signature; current: Module.signature }
+  type t = { top: Module.definition; current: Module.signature }
   include extended_with_deps with type t := t
   val empty: t
-  val start: Module.signature -> t
+  val start: Module.definition -> t
 end
 
 (** Extend environment with unknowable module handling *)

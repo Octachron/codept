@@ -60,7 +60,7 @@ let findlib task query =
 let io = {
   Analysis.sign;
   m2l;
-  env = Module.Sig.empty;
+  env = Module.Def.empty;
   findlib;
 }
 

@@ -160,12 +160,12 @@ module Failure = struct
     let mock (unit: Unit.s) = Module.(md @@ mockup unit.name ~path:unit.path) in
     let add_set def =
       Set.fold
-        (fun n acc -> Definition.see (mock n.input) acc) set def in
+        (fun n acc -> Summary.see (mock n.input) acc) set def in
     let code =
       match i.code with
       | { data = M2l.Defs def; loc } :: q ->
         { Loc.data = M2l.Defs (add_set def); loc } :: q
-      | code -> (Loc.nowhere @@ M2l.Defs (add_set Definition.empty)) :: code
+      | code -> (Loc.nowhere @@ M2l.Defs (add_set Summary.empty)) :: code
     in
     { i with code }
 

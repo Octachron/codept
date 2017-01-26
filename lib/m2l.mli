@@ -38,7 +38,7 @@ type m2l = expression Loc.ext list
 
 (** The [expression] type is the basic building block of the m2l AST *)
 and expression =
-  | Defs of Definition.t (** Resolved module actions M = … / include … / open … *)
+  | Defs of Summary.t (** Resolved module actions M = … / include … / open … *)
   | Open of Paths.Simple.t (** [open A.B.C] ⇒ [Open [A;B;C]]  *)
   | Include of module_expr (** [struct include A end] *)
   | SigInclude of module_type
@@ -88,7 +88,7 @@ and module_expr =
       In particular, it is useful for constraining first class module unpacking
       as [Constraint(Abstract, signature)]. *)
   | Unpacked (** [(module M)] *)
-  | Open_me of { resolved: Definition.t; opens:Paths.Simple.t list; expr:module_expr}
+  | Open_me of { resolved: Summary.t; opens:Paths.Simple.t list; expr:module_expr}
   (** [M.(…N.( module_expr)…)]
       Note: This construction does not exist (yet?) in OCaml proper.
       It is used here to simplify the interaction between
@@ -170,9 +170,9 @@ module Build: sig
 
   val open_me: Paths.Simple.t list -> module_expr -> module_expr
 
-  val demote_str: module_expr fn -> Definition.t Module.Arg.t option
+  val demote_str: module_expr fn -> Summary.t Module.Arg.t option
     -> module_expr fn
-  val demote_sig: module_type fn -> Definition.t Module.Arg.t option
+  val demote_sig: module_type fn -> Summary.t Module.Arg.t option
     -> module_type fn
 
   val fn_sig: module_type fn -> module_type

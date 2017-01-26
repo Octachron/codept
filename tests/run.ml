@@ -21,7 +21,7 @@ let organize polycy files =
 module Envt = Envts.Tr
 
 let start_env includes fileset =
-  let base = Envts.Base.start Stdlib.signature in
+  let base = Envts.Base.start @@ Module.Sig.flatten Stdlib.signature in
   let layered = Envts.Layered.create includes fileset base in
   let traced = Envts.Trl.extend layered in
   Envt.start traced fileset
@@ -336,23 +336,23 @@ let result =
 
           "cmi.ml", (["Loc"; "M2l";"Module"; "Option"; "Paths"],
                      ["Cmi_format"; "List"; "Path";"Types"], []);
-          "definition.mli", (["Module"], ["Format"], []);
-          "definition.ml", (["Module"; "Name"; "Pp"; "Mresult"], ["List"], []);
+          "summary.mli", (["Module"], ["Format"], []);
+          "summary.ml", (["Module"; "Name"; "Pp"; "Mresult"], ["List"], []);
           "envts.mli", (["Module";"Name"; "Interpreter"; "Paths"], [], []);
           "envts.ml", (
-            ["Cmi"; "Definition"; "Interpreter"; "M2l"; "Fault"; "Module"; "Name";
+            ["Cmi"; "Summary"; "Interpreter"; "M2l"; "Fault"; "Module"; "Name";
              "Paths"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
-          "interpreter.mli", (["Fault"; "Loc"; "Module";"Paths";"M2l";"Definition"],
+          "interpreter.mli", (["Fault"; "Loc"; "Module";"Paths";"M2l";"Summary"],
                               [],[]);
           "interpreter.ml", (
-            ["Definition"; "Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths";
+            ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths";
              "Mresult"; "Fault"]
           ,["List"],[]);
-          "m2l.mli", (["Loc"; "Module";"Name";"Definition";"Paths";"Sexp" ],
+          "m2l.mli", (["Loc"; "Module";"Name";"Summary";"Paths";"Sexp" ],
                       ["Format"],[]);
-          "m2l.ml", (["Loc"; "Module";"Name";"Option";"Definition";"Paths"
+          "m2l.ml", (["Loc"; "Module";"Name";"Option";"Summary";"Paths"
                      ; "Pp"; "Sexp" ],
                      ["List"],[]);
           "fault.ml", (["Loc"; "Module"; "Option"; "Name";"Paths"; "Pp"],
@@ -360,8 +360,8 @@ let result =
           "fault.mli", (["Loc"; "Module"; "Paths"; "Name"],
                           ["Format"; "Syntaxerr"],[]);
 
-          "module.mli", ( ["Paths";"Name"; "Sexp"], ["Format"], [] );
-          "module.ml", ( ["Paths";"Name"; "Pp"; "Sexp" ], ["List"], [] );
+          "module.mli", ( ["Loc";"Paths";"Name"; "Sexp"], ["Format"], [] );
+          "module.ml", ( ["Loc";"Paths";"Name"; "Pp"; "Sexp" ], ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map"], [] );
           "loc.mli", ( ["Sexp"], ["Format"], []);
@@ -387,7 +387,7 @@ let result =
           "solver.mli", (["Loc"; "Unit";"M2l";"Name";"Interpreter";"Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
-            ["Approx_parser"; "Definition"; "Interpreter"; "Loc"; "M2l"; "Module";
+            ["Approx_parser"; "Summary"; "Interpreter"; "Loc"; "M2l"; "Module";
              "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Unit"; "Fault"],
             ["List"; "Map"; "Set"],[]);
           "unit.mli", (["Paths"; "M2l"; "Module"; "Name"; "Fault"; "Read"],

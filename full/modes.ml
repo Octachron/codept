@@ -35,7 +35,6 @@ let export ppf _param {Unit.mli; _} =
     ; origin = Unit { source=Pkg.Special "exported"; file = [unit.name] }
     ; args = []
     ; signature = sign unit
-    ;  precision = Exact
     } in
   let s =
     let open Module.Sig in
@@ -93,7 +92,7 @@ let mname x = Pkg.module_name x
 let upath x = mname @@ x.Unit.path
 
 module Hidden = struct
-let sort proj param mli =
+let sort proj _param mli =
   let order = Sorting.remember_order mli in
   Sorting.toposort order proj
 end

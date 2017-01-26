@@ -4,7 +4,7 @@ module M = Module
 module S = Module.Sig
 
 type t = { defined: Module.signature; visible: Module.signature }
-type definition = t
+type summary = t
 
 let empty = { defined = S.empty; visible = S.empty }
 
@@ -15,8 +15,8 @@ let only_visible defs =
       | Some _, (None|Some _) -> None
       | None , Some y -> Some y
       | None, None -> None ) in
-  let d = defs.defined and v = defs.visible in
-  { Module.modules = diff d.modules v.modules;
+  let d = S.flatten defs.defined and v = S.flatten defs.visible in
+  M.Exact { Module.modules = diff d.modules v.modules;
     module_types = diff d.module_types v.module_types
   }
 
@@ -32,7 +32,7 @@ let pp ppf x = Pp.fp ppf "@[[@,%a@,]@]"
 let sg_bind sign = { defined = sign; visible = sign }
 let sg_see sign = { empty with visible = sign }
 
-let clear_visible defs = { defs with visible = defs.defined }
+let clear_visible summary = { summary with visible = summary.defined }
 
 
 module Def = struct
@@ -58,24 +58,24 @@ module Def = struct
       visible = d1.visible +@ d2.visible }
 end
 
-let bind md defs =
-  { visible = S.add defs.visible md;
-    defined = S.add defs.defined md;
+let bind md summary =
+  { visible = S.add summary.visible md;
+    defined = S.add summary.defined md;
   }
 
-let see md defs =
-  { defs with
-    visible = S.add defs.visible md }
+let see md summary =
+  { summary with
+    visible = S.add summary.visible md }
 
-let bind_sg md defs =
-  { visible = S.add_type defs.visible md;
-    defined = S.add_type defs.defined md }
+let bind_sg md summary =
+  { visible = S.add_type summary.visible md;
+    defined = S.add_type summary.defined md }
 
 let bind_gen level = match level with
   | M.Module -> bind
   | M.Module_type -> bind_sg
 
 let binds l =
-  List.fold_left (fun defs (level,md) -> bind_gen level md defs) empty l
+  List.fold_left (fun summary (level,md) -> bind_gen level md summary) empty l
 
-let of_partial fdefs = Mresult.fmap sg_bind sg_bind @@ M.Partial.to_sign fdefs
+let of_partial fsummary = Mresult.fmap sg_bind sg_bind @@ M.Partial.to_sign fsummary

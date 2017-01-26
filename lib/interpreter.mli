@@ -9,7 +9,7 @@ module type envt = sig
   val is_exterior: Paths.Simple.t -> t -> bool
   val find: Module.level -> Paths.Simple.t -> t ->
     (Module.m, Module.m * envt_fault) result
-  val (>>) : t -> Definition.t -> t
+  val (>>) : t -> Summary.t -> t
   val add_unit: t -> Module.t -> t
 end
 

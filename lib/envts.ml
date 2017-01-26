@@ -1,7 +1,7 @@
 module M = Module
 module S = Module.Sig
 module Origin = M.Origin
-module Def = Definition.Def
+module SDef = Summary.Def
 
 module type extended = sig
   include Interpreter.envt
@@ -35,29 +35,47 @@ let is_unit = function
   | _ -> false
 
 module Base = struct
-  type t = { top: M.signature; current: M.signature }
+  type t = { top: M.definition; current: M.signature }
 
-  let empty = { top = S.empty; current = S.empty }
-  let start s = { top = s; current = s }
-  let top env = { env with current = env.top }
+  let empty = { top = M.Def.empty; current = S.empty }
+  let start s = { top = s; current = Exact s }
+  let top env = { env with current = Exact env.top }
 
-  let proj lvl env = match lvl with
-    | M.Module -> env.current.M.modules
-    | M.Module_type -> env.current.module_types
+  let proj lvl def = match lvl with
+    | M.Module -> def.M.modules
+    | M.Module_type -> def.module_types
 
   let find_name _root level name env =
-    Name.Map.find name @@ proj level env
+    match env.current with
+    | Blank -> raise Not_found
+    | Exact def ->
+      Name.Map.find name @@ proj level def
+    | Divergence d ->
+      match Name.Map.find_opt name @@ proj level d.after with
+      | Some m -> m
+      | None -> raise Not_found
 
   let restrict env sg = { env with current = sg }
 
-  let rec resolve_alias path env =
+  let rec resolve_alias_def path def =
     match path with
     | [] -> None
     | a :: q ->
-      match Name.Map.find a @@ proj Module env with
+      match Name.Map.find a @@ proj Module def with
       | Alias {path; _ } -> Some (List.hd path)
-      | M m -> resolve_alias q @@ restrict env m.signature
-    | exception Not_found -> None
+      | M m -> resolve_alias_sign q m.signature
+      | exception Not_found -> None
+  and resolve_alias_sign path = function
+    | Blank -> None
+    | Exact s -> resolve_alias_def path s
+    | Divergence d ->
+      match resolve_alias_def path d.after with
+      | Some _ as r -> r
+      | None ->
+        (* FIXME: Should we warn here? *)
+        resolve_alias_sign path d.before
+
+  let resolve_alias path env = resolve_alias_sign path env.current
 
   let is_exterior path envt =
     match path with
@@ -94,11 +112,11 @@ module Base = struct
   let deps _env = Paths.P.Set.empty
   let reset_deps = ignore
 
-  let (>>) env def = restrict env Def.(env.current +@ def.Definition.visible)
+  let (>>) env def = restrict env SDef.(env.current +@ def.Summary.visible)
 
   let add_unit env x =
-    let top = S.add env.top x in
-    { top; current = top }
+    let top = M.Def.add env.top x in
+    { top; current = Exact top }
 end
 
 
