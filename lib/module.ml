@@ -28,21 +28,31 @@ end
 
 module Divergence= struct
   type kind =
+    | Open
+    | Include
+
+  type origin =
     | First_class_module
     | External
-  type t = Name.t *  kind * (Paths.Pkg.t * Loc.t)
+  type t = kind *  origin * (Paths.Pkg.t * Loc.t)
 
   let pp_kind ppf s =
     Pp.fp ppf "%s" @@
     match s with
-    | First_class_module -> "First class module"
-    | External -> "External"
+    | Open -> "open"
+    | Include -> "include"
 
-  let pp ppf (name, kind, (path,loc) ) =
-    Pp.fp ppf "%a%a:%s divergence:%a"
-      Paths.Pkg.pp path Loc.pp loc
-      name
+  let pp_origin ppf s =
+    Pp.fp ppf "%s" @@
+    match s with
+    | First_class_module -> "first class module"
+    | External -> "external module"
+
+  let pp ppf (kind, origin, (path,loc) ) =
+    Pp.fp ppf "%a at %a:%a (%a)"
       pp_kind kind
+      Paths.Pkg.pp path Loc.pp loc
+      pp_origin origin
 
 end
 

@@ -69,6 +69,18 @@ let applied_unknown =
   }
 
 
+let ambiguous =
+  { path = [ "typing"; "ambiguous"];
+    expl = "Signature fault: a module resolution was ambiguous, leading
+      to potential spurious dependencies in the future";
+    log = (fun lvl l name div -> log lvl
+              "%a, @ name resolution for ⟨%s⟩ was ambiguous due to an %a. \
+               Spurious dependencies might be inferred due to this ambiguity."
+              loc l
+              name Module.Divergence.pp div
+          )
+  }
+
 let unknown_approximated =
   { path = ["typing"; "unknown"; "approximation"];
     log = (fun lvl path l ->

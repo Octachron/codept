@@ -14,6 +14,8 @@ val applied_structure : (Fault.loc -> Module.Partial.t -> unit) Fault.t
 val structure_expected : (Fault.loc -> Module.Partial.t -> unit) Fault.t
 val applied_unknown : (Fault.loc -> Module.Partial.t -> unit) Fault.t
 val unknown_approximated : (Paths.S.t -> Fault.loc -> unit) Fault.t
+val ambiguous : (Fault.loc -> Name.t -> Module.Divergence.t -> unit) Fault.t
+
 
 (** {2 Parsing approximation faults} *)
 val concordant_approximation : (Paths.Pkg.t -> unit) Fault.t

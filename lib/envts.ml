@@ -61,6 +61,11 @@ module Base = struct
     | M.Module_type -> def.module_types
 
 
+  let ambiguity name breakpoint =
+    let f = Standard_faults.ambiguous in
+    { f  with
+      Fault.log = (fun lvl l -> f.log lvl l name breakpoint)
+    }
 
   let rec find_name level name current =
     match current with
@@ -71,8 +76,9 @@ module Base = struct
       match Name.Map.find_opt name @@ proj level d.after with
       | Some m -> Query.pure @@ m
       | None ->
-        let q = find_name level name d.before in
-          Query.fmap Module.spirit_away q
+        let open Query in
+        find_name level name d.before >>= fun q ->
+        create (Module.spirit_away q) [ambiguity name d.point]
 
   let find_name _root level name env = find_name level name env.current
 

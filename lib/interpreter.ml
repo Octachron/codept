@@ -127,7 +127,7 @@ module Make(Envt:envt)(Param:param) = struct
                           Divergence.First_class_module)
         | Unit _ -> Divergence.External
         | Phantom | Submodule | Arg -> Divergence.External  (*FIXME?*) in
-      let point = (x.name, kind , loc) in
+      let point = ( Divergence.Open, kind , loc) in
       { Summary.visible = S.merge
             (Divergence
                { before = S.empty; point; after = Module.Def.empty}
@@ -147,7 +147,7 @@ module Make(Envt:envt)(Param:param) = struct
                           Divergence.First_class_module)
         | Unit _ -> Divergence.External
         | Phantom | Submodule | Arg -> Divergence.External  (*FIXME?*) in
-      let point = ("", kind , loc) in
+      let point = ( Divergence.Include, kind , loc) in
       { Summary.visible = S.merge
             (Divergence
                { before = S.empty; point; after = Module.Def.empty}
