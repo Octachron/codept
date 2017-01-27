@@ -57,7 +57,7 @@ module Base = struct
       | Some m -> m
       | None ->
         match find_name level name d.before with
-        | _ -> M (Module.mockup name)
+        | m -> Module.spirit_away m
 
   let find_name _root level name env = find_name level name env.current
 
@@ -339,12 +339,15 @@ module Tracing(Envt:extended) = struct
   let extend env =
     { env; deps = ref P.Set.empty }
 
+  let phantom_record name env =
+    path_record { P.source = Unknown; file = [name] } env
 
-  let record env (m:Module.m) =
+  let record root env (m:Module.m) =
     match m.origin with
     | Origin.Unit p ->
       (* Format.printf "Recording %a\n" pp (Module.M m) ; *)
       path_record p env
+    | Phantom -> if root then phantom_record m.name env
     | _ -> ()
 
   let rec find0 ~root ~require_top level path env =
@@ -353,6 +356,8 @@ module Tracing(Envt:extended) = struct
     | a :: q ->
       match Envt.find_name root (adjust_level level q) a env.env with
       | Alias {path; exact; name } ->
+        if root && not exact then
+          phantom_record name env;
         if require_top then
           (* we were looking for a compilation unit and got a submodule alias *)
           raise Not_found
@@ -364,7 +369,7 @@ module Tracing(Envt:extended) = struct
         if require_top && not (is_unit m) then
           raise Not_found
         else begin
-          record env m;
+          record root env m;
           if q = [] then
             m
           else

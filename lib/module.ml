@@ -55,6 +55,7 @@ module Origin = struct
     | Submodule
     | First_class (** Not resolved first-class module *)
     | Arg (** functor argument *)
+    | Phantom (** Ambiguous module, that could be an external module *)
 
   let pp ppf = function
     | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
@@ -64,6 +65,7 @@ module Origin = struct
     | Submodule -> Pp.fp ppf "."
     | First_class -> Pp.fp ppf "'"
     | Arg -> Pp.fp ppf "§"
+    | Phantom -> Pp.fp ppf "👻"
 
   module Sexp = struct
     open Sexp
@@ -77,6 +79,7 @@ module Origin = struct
     let submodule = simple_constr "Submodule" Submodule
     let first_class = simple_constr "First_class" First_class
     let arg = simple_constr "Arg" Arg
+    let phantom = simple_constr "👻" Phantom
 
 
     let  sexp = Sexp.sum [unit; arg; submodule;first_class]
@@ -89,12 +92,15 @@ module Origin = struct
     | Submodule -> Pp.fp ppf "Submodule"
     | First_class -> Pp.fp ppf "First_class"
     | Arg -> Pp.fp ppf "Arg"
+    | Phantom -> Pp.fp ppf "Phantom"
+
 
   let at_most max v = match max, v with
     | (First_class|Arg ) , _ -> max
     | Unit _ , v -> v
     | Submodule, Unit _ -> Submodule
     | Submodule, v -> v
+    | Phantom, _ -> Phantom
 end
 type origin = Origin.t
 
@@ -129,6 +135,26 @@ let name = function
   | Alias {name; _ } -> name
   | M {name; _ } -> name
 
+
+let rec spirit_away root = function
+  | Alias a ->
+    Alias { a with exact = root }
+  | M m ->
+    let origin = if root then m.origin else Phantom in
+    M { m with origin; signature = spirit_away_sign false m.signature }
+and spirit_away_sign root = function
+  | Blank -> Blank
+  | Divergence d -> Divergence {
+      before = spirit_away_sign root d.before;
+      point = d.point;
+      after = spirit_away_def root d.after
+    }
+  | Exact def -> Exact (spirit_away_def root def)
+and spirit_away_def root def =
+  let map root =  Name.Map.map (spirit_away root) in
+  { modules = map root def.modules; module_types = map true def.module_types }
+
+let spirit_away =  spirit_away true
 
 let sig_merge s1 s2 =
   { modules = Name.Map.union' s1.modules s2.modules
@@ -400,7 +426,7 @@ module Sig = struct
 
 
     let add_gen lvl sg x = match sg with
-      | Blank -> Blank
+      | Blank -> Exact (Def.add_gen lvl Def.empty x)
       | Exact sg -> Exact (Def.add_gen lvl sg x)
       | Divergence p -> Divergence { p with after = Def.add_gen lvl p.after x }
 

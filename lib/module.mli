@@ -25,7 +25,7 @@ module Divergence: sig
   type kind =
     | First_class_module
     | External
-  type t = Name.t * kind * Loc.t
+  type t = Name.t * kind * (Paths.Pkg.t * Loc.t)
   val pp: Format.formatter -> t -> unit
 end
 
@@ -37,6 +37,8 @@ module Origin: sig
     | Submodule (** non top-level module *)
     | First_class (** unpacked first-class module *)
     | Arg (** module created for functor application *)
+    | Phantom (** ambiguous module that could be either
+                  an internal module or an external module *)
 
   val at_most : t -> t -> t
   (** [at_most origin origin'] cap the origin [origin'] at
@@ -61,7 +63,7 @@ type m = {
 (** Core module or alias *)
 and t =
   | M of m
-  | Alias of { name:Name.t; path: Paths.S.t }
+  | Alias of { name:Name.t; path: Paths.S.t; exact:bool }
 
 and definition = { modules : mdict; module_types : mdict }
 and signature =
@@ -79,6 +81,9 @@ val is_exact: t -> bool
 val of_arg : arg -> m
 val is_functor : t -> bool
 val name: t -> Name.t
+
+val spirit_away: t -> t
+(** transform to a ghost module *)
 
 val md: m -> t
 

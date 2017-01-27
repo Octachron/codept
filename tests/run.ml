@@ -197,6 +197,7 @@ let result =
     ["unknown_arg.ml", ["Ext"] ];
     ["opens.ml", ["A";"B"] ];
     ["pattern_open.ml", ["A'";"E1"; "E2"; "E3";"E4"] ];
+    ["phantom_maze.ml", ["External"; "B"; "C";"D"; "E"; "X"; "Y" ] ];
     ["recmods.ml", ["Ext"]];
     ["record.ml", ["Ext";"E2";"E3"]];
     ["simple.ml", ["G";"E"; "I"; "A"; "W"; "B"; "C"; "Y"; "Ext"]];

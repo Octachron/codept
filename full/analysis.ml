@@ -216,7 +216,7 @@ module Collisions = struct
         | exception Not_found -> m
         | Ok { M.origin = Unit p; _ } ->
           (add u.name p @@ add u.name u.path m)
-        | Error _ | Ok { M.origin = (Arg|Submodule|First_class); _ } -> m
+        | Error _ | Ok { M.origin = (Phantom|Arg|Submodule|First_class); _ } -> m
 
       ) m units
 
