@@ -135,6 +135,26 @@ module Make(Envt:envt)(Param:param) = struct
         defined = Module.Sig.empty
       }
 
+  let include_check loc (p:P.t) =
+    let open Module in
+    match p.result with
+    | Divergence _ | Exact _ -> of_partial loc p
+    | Blank ->
+      let kind =
+        match p.origin with
+        | First_class -> (fault Fault.included_first_class loc;
+                          Divergence.First_class_module)
+        | Unit _ -> Divergence.External
+        | Phantom | Submodule | Arg -> Divergence.External  (*FIXME?*) in
+      let point = ("", kind , loc) in
+      { Summary.visible = S.merge
+            (Divergence
+               { before = S.empty; point; after = Module.Def.empty}
+            )
+            p.result;
+        defined = Module.Sig.empty
+      }
+
 
   let open_ loc state path =
     match find loc Module path state with
@@ -147,8 +167,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok fdefs ->
       if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
         fault Fault.included_first_class loc;
-      let defs = of_partial loc fdefs in
-      Ok (Some defs)
+      Ok (Some (include_check loc fdefs))
 
   let include_ loc state module_expr =
     gen_include loc (module_expr loc state) (fun i -> Include i)
