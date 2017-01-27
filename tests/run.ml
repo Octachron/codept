@@ -346,7 +346,7 @@ let result =
              "Paths";"Standard_faults";"Standard_policies"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
-          "interpreter.mli", (["Fault"; "Loc"; "Module";"Paths";"M2l";"Summary"],
+          "interpreter.mli", (["Fault"; "Module";"Paths";"M2l";"Summary"],
                               [],[]);
           "interpreter.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths";

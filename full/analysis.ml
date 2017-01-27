@@ -214,9 +214,11 @@ module Collisions = struct
     List.fold_left (fun m (u:Unit.s) ->
         match E.find M.Module [u.name] env with
         | exception Not_found -> m
-        | Ok { M.origin = Unit p; _ } ->
+        | { main = { M.origin = Unit p; _ }; msgs= [] } ->
           (add u.name p @@ add u.name u.path m)
-        | Error _ | Ok { M.origin = (Phantom|Arg|Submodule|First_class); _ } -> m
+        | { msgs = _ :: _ ; _ }
+        | { main = { M.origin = (Phantom|Arg|Submodule|First_class); _ }; _ }
+          -> m
 
       ) m units
 

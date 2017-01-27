@@ -10,12 +10,13 @@ module Arg = M.Arg
 module S = Module.Sig
 module Faults = Standard_faults
 
-type envt_fault = (Paths.P.t * Loc.t -> unit ) Fault.t
+type 'a query_result = { main:'a; msgs: (Fault.loc -> unit ) Fault.t list }
+
 module type envt = sig
   type t
   val is_exterior: Paths.Simple.t -> t -> bool
   val find: Module.level -> Paths.Simple.t -> t ->
-    (Module.m, Module.m * envt_fault ) result
+    Module.m query_result
   val (>>) : t -> Y.t -> t
   val add_unit: t -> Module.t -> t
 end
@@ -52,10 +53,9 @@ module Make(Envt:envt)(Param:param) = struct
   let some x = Some x
 
   let find loc level path env =
-    match Envt.find level path env with
-    | Ok x -> x
-    | Error (x, msg) ->
-      fault msg loc; x
+    let {main; msgs} = Envt.find level path env in
+    List.iter (fun msg -> fault msg loc) msgs;
+    main
 
   let drop_arg loc (p:Module.Partial.t) =  match  p.args with
       | _ :: args -> { p with args }

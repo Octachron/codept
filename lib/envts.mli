@@ -11,7 +11,8 @@ sig
 
   val resolve_alias: Paths.Simple.t -> t -> Name.t option
 
-  val find_name : bool -> Module.level -> string -> t -> Module.t
+  val find_name : bool -> Module.level -> string -> t
+    -> Module.t Interpreter.query_result
 (** [find_name is_root level name env] find if there is a module [name]
     at [level] in the environment [env]. The first argument indicates
     if we are looking for a toplevel module, this is useful for both

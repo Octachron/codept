@@ -3,11 +3,26 @@ module S = Module.Sig
 module Origin = M.Origin
 module SDef = Summary.Def
 
+module Query = struct
+
+  type 'a t = 'a Interpreter.query_result
+  let pure main = { Interpreter.main; msgs = [] }
+  let (++) (query:_ t) fault = { query with msgs = fault :: query.msgs }
+  let create main msgs : _ t = {main; msgs}
+  let fmap f (q: _ t) : _ t = { q with main = f q.main }
+  let (>>|) x f = fmap f x
+  let (>>=) (x: _ t) f: _ t =
+    let {main;msgs}: _ t = f x.main in
+    { main; msgs = msgs @ x.msgs }
+
+end
+
+
 module type extended = sig
   include Interpreter.envt
   val top: t -> t
   val resolve_alias: Paths.Simple.t -> t -> Name.t option
-  val find_name: bool -> M.level -> Name.t -> t -> Module.t
+  val find_name: bool -> M.level -> Name.t -> t -> Module.t Query.t
   val restrict: t -> M.signature -> t
 end
 
@@ -49,15 +64,15 @@ module Base = struct
 
   let rec find_name level name current =
     match current with
-    | Module.Blank -> Module.md @@ Module.mockup name
+    | Module.Blank -> Query.pure @@ Module.md @@ Module.mockup name
     | Exact def ->
-      Name.Map.find name @@ proj level def
+      Query.pure @@ Name.Map.find name @@ proj level def
     | Divergence d ->
       match Name.Map.find_opt name @@ proj level d.after with
-      | Some m -> m
+      | Some m -> Query.pure @@ m
       | None ->
-        match find_name level name d.before with
-        | m -> Module.spirit_away m
+        let q = find_name level name d.before in
+          Query.fmap Module.spirit_away q
 
   let find_name _root level name env = find_name level name env.current
 
@@ -87,7 +102,7 @@ module Base = struct
     match path with
     | [] -> false (* should not happen *)
     | a :: _ ->
-      match find_name () Module a envt with
+      match (find_name () Module a envt).main with
       | M { origin = Unit _; _ } -> true
       | Alias _ -> false
       | exception Not_found -> true
@@ -98,7 +113,9 @@ module Base = struct
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
-      match find_name false (adjust_level level q) a env with
+      let open Query in
+      find_name false (adjust_level level q) a env >>=
+      function
       | M.Alias {path; _ } ->
         if require_root then
           raise Not_found
@@ -108,12 +125,12 @@ module Base = struct
         if require_root && not (is_unit m) then
           raise Not_found
         else if q = [] then
-          m
+          pure m
         else
           find0 false level q  @@ restrict env m.signature
 
   let find level path env=
-    Ok(find0 false level path env)
+    find0 false level path env
 
   let deps _env = Paths.P.Set.empty
   let reset_deps = ignore
@@ -166,7 +183,7 @@ module Open_world(Envt:extended_with_deps) = struct
       if root && Name.Set.mem name env.world then
         raise Not_found
       else
-        Module.md @@ approx [name]
+        Query.pure @@ Module.md @@ approx [name]
 
  let find level path env =
    (*   Format.printf "Open world looking for %a\n" Paths.S.pp path; *)
@@ -194,10 +211,10 @@ module Open_world(Envt:extended_with_deps) = struct
               env.externs := P.Set.add
                   { P.file = [root]; source = Unknown } !(env.externs)
             end;
-          Error( approx path, fault path)
+          Query.( pure (approx path) ++ fault path )
         )
       else
-        Error(approx path, fault path)
+        Query.create (approx path) [fault path]
 
   let (>>) env sg = { env with core = Envt.( env.core >> sg ) }
   let add_unit env m = { env with core = Envt.add_unit env.core m }
@@ -268,7 +285,7 @@ module Layered = struct
 
   let rec pkg_find name source =
     match Envt.find_name true M.Module name source.resolved with
-    | M.M { origin = Unit { source = Unknown; _ }; _ } ->
+    | {main = M.M { origin = Unit { source = Unknown; _ }; _ }; _ } ->
       raise Not_found
     | exception Not_found ->
       let path = Name.Map.find name source.cmis in
@@ -300,10 +317,12 @@ module Layered = struct
     match path with
     | [] -> raise (Invalid_argument "Layered.find cannot find empty path")
     | a :: q  ->
-      match find_name false (adjust_level level q) a env with
+      let open Query in
+      find_name false (adjust_level level q) a env >>=
+      function
       | Alias {path; _ } -> find0 level (path @ q ) (top env)
       | M.M m ->
-        if q = [] then Ok m
+        if q = [] then pure m
         else
           find0 level q (restrict env m.signature)
 
@@ -354,7 +373,9 @@ module Tracing(Envt:extended) = struct
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
-      match Envt.find_name root (adjust_level level q) a env.env with
+      let open Query in
+      Envt.find_name root (adjust_level level q) a env.env >>=
+      function
       | Alias {path; exact; name } ->
         if root && not exact then
           phantom_record name env;
@@ -371,17 +392,17 @@ module Tracing(Envt:extended) = struct
         else begin
           record root env m;
           if q = [] then
-            m
+            pure m
           else
             find0 ~root:false ~require_top:false level q
               @@ restrict env m.signature
         end
 
   let find level path env =
-    Ok(find0 ~root:true ~require_top:false level path env)
+    find0 ~root:true ~require_top:false level path env
 
   let find_name root level name env =
-    M.M (find0 ~root ~require_top:false level [name] env)
+    Query.fmap (fun m -> M.M m) (find0 ~root ~require_top:false level [name] env)
 
 
   let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
