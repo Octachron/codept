@@ -67,6 +67,6 @@ module L = struct
       (fun x y -> { x with closed_world = y })
   let sig_only = analyzer % create
                    (fun x-> x.sig_only) (fun x y -> { x with sig_only = y })
-  let polycy = analyzer % create
-                 (fun x-> x.polycy) (fun x y -> { x with polycy = y })
+  let policy = analyzer % create
+                 (fun x-> x.policy) (fun x y -> { x with policy = y })
 end

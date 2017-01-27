@@ -38,7 +38,7 @@ let read_file polycy kind filename : s =
     | Ok c -> Exact, c
     | Error M2l -> assert false
     | Error (Ocaml msg) ->
-      Fault.(handle polycy syntaxerr msg);
+      Fault.(handle polycy Standard_faults.syntaxerr msg);
       Approx, Approx_parser.lower_bound filename
   in
       { name;

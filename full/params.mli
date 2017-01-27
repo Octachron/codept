@@ -45,5 +45,5 @@ module L :
     val precomputed_libs : (t, Name.set) l
     val closed_world : (t, bool) l
     val sig_only : (t, bool) l
-    val polycy : (t, Fault.Polycy.t) l
+    val policy : (t, Fault.Policy.t) l
   end

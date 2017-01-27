@@ -10,11 +10,11 @@ let classify filename =  match Filename.extension filename with
   | _ -> raise (Invalid_argument "unknown extension")
 
 
-let polycy = Fault.Polycy.quiet
+let policy = Standard_policies.quiet
 
-let organize polycy files =
+let organize policy files =
   files
-  |> Unit.unimap (List.map @@ fun (info,f) -> Unit.read_file polycy info f)
+  |> Unit.unimap (List.map @@ fun (info,f) -> Unit.read_file policy info f)
   |> Unit.Groups.Unit.(split % group)
 
 
@@ -27,7 +27,7 @@ let start_env includes fileset =
   Envt.start traced fileset
 
 module Param = struct
-  let polycy = polycy
+  let policy = policy
   let transparent_aliases = true
   let transparent_extension_nodes = true
 end
@@ -35,7 +35,7 @@ end
 module S = Solver.Make(Envt)(Param)
 
 let analyze pkgs files =
-  let units = organize polycy files in
+  let units = organize policy files in
   let fileset = units.Unit.mli
                 |> List.map (fun (u:Unit.s) -> u.name)
                 |> Name.Set.of_list in
@@ -343,24 +343,24 @@ let result =
           "envts.mli", (["Module";"Name"; "Interpreter"; "Paths"], [], []);
           "envts.ml", (
             ["Cmi"; "Summary"; "Interpreter"; "M2l"; "Fault"; "Module"; "Name";
-             "Paths"],
+             "Paths";"Standard_faults";"Standard_policies"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
           "interpreter.mli", (["Fault"; "Loc"; "Module";"Paths";"M2l";"Summary"],
                               [],[]);
           "interpreter.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths";
-             "Mresult"; "Fault"]
+             "Mresult"; "Fault"; "Standard_faults"]
           ,["List"],[]);
           "m2l.mli", (["Loc"; "Module";"Name";"Summary";"Paths";"Sexp" ],
                       ["Format"],[]);
           "m2l.ml", (["Loc"; "Module";"Name";"Option";"Summary";"Paths"
                      ; "Pp"; "Sexp" ],
                      ["List"],[]);
-          "fault.ml", (["Loc"; "Module"; "Option"; "Name";"Paths"; "Pp"],
-                          ["Array"; "Format"; "Location";"Syntaxerr"],[]);
-          "fault.mli", (["Loc"; "Module"; "Paths"; "Name"],
-                          ["Format"; "Syntaxerr"],[]);
+          "fault.ml", (["Loc"; "Option"; "Name";"Paths"; "Pp"],
+                          ["Array"; "Format"],[]);
+          "fault.mli", (["Loc"; "Paths"; "Name"],
+                          ["Format"],[]);
 
           "module.mli", ( ["Loc";"Paths";"Name"; "Sexp"], ["Format"], [] );
           "module.ml", ( ["Loc";"Paths";"Name"; "Pp"; "Sexp" ], ["List"], [] );
@@ -390,13 +390,19 @@ let result =
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
             ["Approx_parser"; "Summary"; "Interpreter"; "Loc"; "M2l"; "Module";
-             "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Unit"; "Fault"],
+             "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Unit"; "Fault";
+             "Standard_faults"],
             ["List"; "Map"; "Set"],[]);
+          "standard_faults.ml", (["Fault"; "Module"; "Paths"; "Pp" ],
+                                 ["Format"; "Location"; "Syntaxerr"],[]);
+          "standard_faults.mli", (["Fault";"Module"; "Paths" ],["Syntaxerr"],[]);
+          "standard_policies.ml", (["Fault"; "Standard_faults"],[],[]);
+          "standard_policies.mli", (["Fault"],[],[]);
           "unit.mli", (["Paths"; "M2l"; "Module"; "Name"; "Fault"; "Read"],
                        ["Format";"Set"],[]);
           "unit.ml", (
             ["Approx_parser"; "M2l"; "Module"; "Fault";
-             "Option"; "Paths"; "Pp"; "Read"],
+             "Option"; "Paths"; "Pp"; "Read"; "Standard_faults"],
             [ "List"; "Set"],
             []);
         ]

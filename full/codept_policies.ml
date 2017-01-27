@@ -1,5 +1,6 @@
 open Fault
-let polycy = Fault.Polycy.default
+open Standard_faults
+let policy = Standard_policies.default
 let unknown_extension =
   { path = ["codept"; "io"; "unknown extension"];
     expl = "Codept fault: attempting to read a file with an unknwon extension";
@@ -35,24 +36,24 @@ let module_conflict =
           )
   }
 
-let polycy =
-  let open Polycy in
-  polycy
+let policy =
+  let open Policy in
+  policy
   |> set_err (unknown_extension, Level.warning)
   |> set_err (m2l_syntaxerr, Level.warning)
   |> set_err (solver_error, Level.error)
   |> set_err (module_conflict, Level.warning)
 
 
-let parsing_approx = let open Polycy in
-  polycy |> set_err (syntaxerr, Level.warning)
+let parsing_approx = let open Policy in
+  policy |> set_err (syntaxerr, Level.warning)
 
 let lax = { parsing_approx with exit = Level.critical }
 
 let quiet = { lax with silent = Level.error }
 
-let strict = let open Polycy in
-  { polycy with exit = Level.notification }
+let strict = let open Policy in
+  { policy with exit = Level.notification }
   |> set (["typing"], Some "Typing faults", Level.error)
   |> set_err (applied_structure, Level.error)
   |> set_err (structure_expected, Level.error)

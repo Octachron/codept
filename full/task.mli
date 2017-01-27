@@ -1,8 +1,8 @@
 (** Task building functions *)
 
-(** [classify polycy synonyms filename] classifies file type according to
+(** [classify policy synonyms filename] classifies file type according to
     the dictionary [synonyms] *)
-val classify: Fault.Polycy.t -> Common.info Name.map -> string -> Common.info option
+val classify: Fault.Policy.t -> Common.info Name.map -> string -> Common.info option
 
 val add_impl : Read.format -> Common.task ref -> string -> unit
 val add_intf : Read.format -> Common.task ref -> string -> unit

@@ -42,6 +42,10 @@ type 'a fault = { path : Paths.S.t (** hierarchical name for the fault *);
 
 type 'a t = 'a fault (**type synonym *)
 
+(** Location type for error message *)
+type loc = Paths.Pkg.t * Loc.t
+val loc: Format.formatter -> loc -> unit
+
 (** Basic logging function *)
 val log : log_info -> ('a, Format.formatter, unit) format -> 'a
 
@@ -59,34 +63,9 @@ sig
     ('a, Format.formatter, unit, unit, unit, unit) format6 -> 'a
 end
 
-(** {2 Predefined faults} *)
-
-(** Location type for error message *)
-type loc = Paths.Pkg.t * Loc.t
-val loc: Format.formatter -> loc -> unit
-
-(** {3 Extension node fault} *)
-val extension_ignored : ( loc -> string -> unit) t
-val extension_traversed : (loc -> string -> unit) t
-
-(** {3 First-class module faults} *)
-val opened_first_class : (loc -> string -> unit) t
-val included_first_class : (loc -> unit) t
-
-(** {3 Typing fault} *)
-val applied_structure : (loc -> Module.Partial.t -> unit) t
-val structure_expected : (loc -> Module.Partial.t -> unit) t
-val applied_unknown : (loc -> Module.Partial.t -> unit) t
-val unknown_approximated : (Paths.S.t -> loc -> unit) t
-
-(** {3 Parsing approximation faults} *)
-val concordant_approximation : (Paths.Pkg.t -> unit) t
-val discordant_approximation :
-  (Paths.Pkg.t -> string list -> string list -> unit) t
-val syntaxerr : (Syntaxerr.error -> unit) t
 
 (** Fault handling polycy *)
-module Polycy :
+module Policy :
 sig
 
   (** {2 Type definition} *)
@@ -100,18 +79,14 @@ sig
 
   (** {2 Utility functions} *)
   val level : t -> 'a fault -> Level.t
+  val register: Paths.S.t * explanation option -> t -> t
   val set : Paths.S.t * explanation option * Level.t -> t -> t
   val set_err : 'a fault * Level.t -> t -> t
+  val register_err: 'a fault -> t -> t
 
-  (** {2 predefined polycy } *)
-  val strict : t
-  val default : t
-  val parsing_approx : t
-  val lax : t
-  val quiet : t
 end
 
 (** {2 Fault handling with polycy} *)
-val set : 'a t * Level.t -> Polycy.t -> Polycy.t
-val handle : Polycy.t -> 'a t -> 'a
-val is_silent: Polycy.t -> 'a fault -> bool
+val set : 'a t * Level.t -> Policy.t -> Policy.t
+val handle : Policy.t -> 'a t -> 'a
+val is_silent: Policy.t -> 'a fault -> bool

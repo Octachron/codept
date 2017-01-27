@@ -44,7 +44,7 @@ let param0 = {
       precomputed_libs = Name.Set.singleton "stdlib";
       closed_world = false;
       sig_only = false;
-      polycy = Codept_polycy.polycy;
+      policy = Codept_policies.policy;
     };
 
     no_include = false;
@@ -149,11 +149,11 @@ let add_include param dir =
   let open L in
   let includes =
     Array.fold_left (fun m x ->
-        let polycy =
+        let policy =
           let open Fault in
-          Polycy.set_err (Codept_polycy.unknown_extension, Level.whisper)
-            !param.[polycy] in
-        match Task.classify polycy L.( !param.[synonyms] ) x with
+          Policy.set_err (Codept_policies.unknown_extension, Level.whisper)
+            !param.[policy] in
+        match Task.classify policy L.( !param.[synonyms] ) x with
         | None | Some { kind = Signature; _ } -> m
         | Some { kind = Interface | Implementation ; _ } ->
           Name.Map.add (Read.name x)
@@ -170,21 +170,21 @@ let fault param s =
     let path= List.map String.trim @@ String.split_on_char '.' a in
     let level = Fault.Level.of_string b in
     let open L in
-    let polycy = !param.[polycy] in
-    param.[L.polycy] <- Fault.Polycy.set (path,None,level) polycy
+    let policy = !param.[policy] in
+    param.[L.policy] <- Fault.Policy.set (path,None,level) policy
 
 let silent_level param s =
   let open L in
-  let polycy = !param.[polycy] in
-  param.[L.polycy] <- { polycy with silent = Fault.Level.of_string s}
+  let policy = !param.[policy] in
+  param.[L.policy] <- { policy with silent = Fault.Level.of_string s}
 
 let exit_level param s =
   let open L in
-  let polycy = !param.[polycy] in
-  param.[L.polycy] <- { polycy with exit = Fault.Level.of_string s}
+  let policy = !param.[policy] in
+  param.[L.policy] <- { policy with exit = Fault.Level.of_string s}
 
-let print_polycy param ()=
-  Fault.Polycy.pp Pp.std L.(!param.[polycy])
+let print_policy param ()=
+  Fault.Policy.pp Pp.std L.(!param.[policy])
 
 
 let set_p param lens value =
@@ -249,7 +249,7 @@ let args action param task fquery version =
   Cmd.[
     "-absname", set_t abs_path, ": use absolute path name";
     "-all", set_t all, ": display full dependencies in makefile";
-    "-allow-approx", set_p polycy Fault.Polycy.parsing_approx,
+    "-allow-approx", set_p policy Codept_policies.parsing_approx,
     ": fall back to approximated parser \
                                         in presence of syntax errors.";
     "-as-map", task_p as_map, "<file>: same as \
@@ -330,15 +330,15 @@ let args action param task fquery version =
 
     "-closed-world", set_t closed_world,
     ": require that all dependencies are provided";
-    "-k", set_p polycy Codept_polycy.lax,
+    "-k", set_p policy Codept_policies.lax,
     ": ignore most recoverable errors and keep going";
-    "-strict", set_p polycy Codept_polycy.strict,
+    "-strict", set_p policy Codept_policies.strict,
     ": fail rather than approximate anything";
-    "-quiet", set_p polycy Codept_polycy.quiet,
+    "-quiet", set_p policy Codept_policies.quiet,
     ": ignore and silent all recoverable errors and keep going";
     "-fault", String (fault param),
-    "<fault.path=level>: update fault polycy for the given fault.";
-    "-fault-doc", Unit (print_polycy param), ": show fault polycy documentation";
+    "<fault.path=level>: update fault policy for the given fault.";
+    "-fault-doc", Unit (print_policy param), ": show fault policy documentation";
     "-silent-fault-level", String (silent_level param),
     "<level>: only print fault beyond level <level>";
     "-exit-fault-level", String (exit_level param),

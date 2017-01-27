@@ -190,7 +190,7 @@ end
 
 (** Common functions *)
 
-  let eval_bounded polycy eval (unit:Unit.s) =
+  let eval_bounded policy eval (unit:Unit.s) =
     let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
     let r, r' = eval unit, eval unit' in
     let lower, upper = fst r, fst r' in
@@ -202,13 +202,13 @@ end
            input *) in
     let elts = Paths.P.Set.elements in
     if elts upper = elts lower then
-      Fault.(handle polycy concordant_approximation unit.path)
+      Fault.handle policy Standard_faults.concordant_approximation unit.path
     else
-      Fault.(handle polycy discordant_approximation
+      Fault.handle policy Standard_faults.discordant_approximation
         unit.path
         (List.map Paths.P.module_name @@ elts lower)
         ( List.map Paths.P.module_name @@ elts
-          @@ Paths.P.Set.diff upper lower) );
+          @@ Paths.P.Set.diff upper lower);
     Unit.lift sign upper unit
 
 
@@ -264,7 +264,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       { state with pending = unit :: state.pending }
 
   let eval_bounded core =
-    eval_bounded Param.polycy (fun unit -> compute_more core @@ make unit)
+    eval_bounded Param.policy (fun unit -> compute_more core @@ make unit)
 
   let resolve_dependencies_main ?(learn=true) state =
     let rec resolve alert state =
@@ -438,7 +438,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
           { (add_pending (make u) state) with postponed } in
       match u.precision with
       | Approx ->
-        let r = eval_bounded Param.polycy compute u in
+        let r = eval_bounded Param.policy compute u in
         status, { state with
           resolved = r :: state.resolved
         }

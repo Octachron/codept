@@ -129,7 +129,7 @@ end
 module Open_world(Envt:extended_with_deps) = struct
 
   let fault path =
-    let f = Fault.unknown_approximated in
+    let f = Standard_faults.unknown_approximated in
     { f with Fault.log = (fun lvl -> f.log lvl path) }
 
 
@@ -240,7 +240,7 @@ module Layered = struct
     { local = env; local_units = units; pkgs = List.map read_dir includes }
 
   module I = Interpreter.Make(Envt)(struct
-      let polycy = Fault.Polycy.default
+      let policy = Standard_policies.default
       let transparent_aliases = false
       (* we are not recording anything *)
       let transparent_extension_nodes = false

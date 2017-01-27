@@ -3,7 +3,7 @@ module M = Module
 type param = {
   transparent_aliases: bool;
   transparent_extension_nodes: bool;
-  polycy: Fault.Polycy.t;
+  policy: Fault.Policy.t;
   precomputed_libs: Name.set;
   closed_world: bool;
   sig_only:bool;
@@ -11,7 +11,7 @@ type param = {
 
 type io = {
   sign: string -> Module.t list option;
-  m2l: Fault.Polycy.t -> Read.kind -> string -> Unit.s;
+  m2l: Fault.Policy.t -> Read.kind -> string -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
   env: Module.Def.t
 }
@@ -73,20 +73,20 @@ let pre_organize io files =
     List.flatten @@ Option.List'.filter signatures in
   units, signatures
 
-let load_file io polycy sig_only opens (info,file) =
+let load_file io policy sig_only opens (info,file) =
   let filter_m2l (u: Unit.s) = if sig_only then
       { u with Unit.code = M2l.Sig_only.filter u.code }
     else
       u in
   file
-  |> io.m2l polycy info
+  |> io.m2l policy info
   |> filter_m2l
   |> open_within opens
 
 
-let organize io polycy sig_only opens files =
+let organize io policy sig_only opens files =
   let units, signatures = pre_organize io files in
-  let units = List.map (load_file io polycy sig_only opens) units in
+  let units = List.map (load_file io policy sig_only opens) units in
   let units = Unit.Groups.Unit.(split % group) @@ pair_split units in
   units, signatures
 
@@ -128,15 +128,15 @@ let start_env io param libs signatures fileset =
 
 (** Solver step *)
 
-let lift { polycy; transparent_extension_nodes; transparent_aliases; _ } =
+let lift { policy; transparent_extension_nodes; transparent_aliases; _ } =
   (module struct
-    let polycy = polycy
+    let policy = policy
     let transparent_extension_nodes = transparent_extension_nodes
     let transparent_aliases = transparent_aliases
   end
   : Interpreter.param )
 
-let oracle polycy load_file files =
+let oracle policy load_file files =
   let (++) = Unit.adder List.cons in
   let add_g (k,x) g = g ++ (k.Read.kind, (k,x) ) in
   let add (s,m) ((_,x) as f) =
@@ -149,7 +149,7 @@ let oracle polycy load_file files =
     | [] -> None
     | [a] -> Some a
     | a :: _  ->
-      Fault.handle polycy Codept_polycy.module_conflict k
+      Fault.handle policy Codept_policies.module_conflict k
         @@ List.map (Paths.P.local % snd) l;
       Some a in
   let convert_p (k, p) = k, Unit.unimap (convert k) p
@@ -168,7 +168,7 @@ let solve param (E((module Envt), core)) (units: _ Unit.pair) =
     match S.resolve_dependencies ~learn:true state with
     | Ok (e,l) -> e, l
     | Error state ->
-      Fault.handle param.polycy Codept_polycy.solver_error state.pending;
+      Fault.handle param.policy Codept_policies.solver_error state.pending;
       solve_harder @@ S.approx_and_try_harder state in
   let env, mli = solve_harder @@ S.start core units.mli in
   let _, ml = solve_harder @@ S.start env units.ml in
@@ -180,7 +180,7 @@ let solve_from_seeds seeds gen param (E((module Envt), core)) =
     match S.solve state with
     | Ok (e,l) -> e, l
     | Error s ->
-      Fault.handle param.polycy Codept_polycy.solver_error (S.wip s);
+      Fault.handle param.policy Codept_policies.solver_error (S.wip s);
       solve_harder @@ S.approx_and_try_harder s in
   snd @@ solve_harder @@ S.start gen core seeds
 
@@ -221,9 +221,9 @@ module Collisions = struct
       ) m units
 
   (** Print error message for a given collision map *)
-  let handle polycy collisions =
+  let handle policy collisions =
     List.iter (fun (name,paths) ->
-        Fault.handle polycy Codept_polycy.module_conflict
+        Fault.handle policy Codept_policies.module_conflict
           name @@ Paths.P.Set.elements paths)
       (Name.Map.bindings collisions)
 
@@ -267,16 +267,16 @@ let  direct_io = {
 (** Analysis step *)
 let main_std io param (task:Common.task) =
   let units, signatures =
-    organize io param.polycy param.sig_only task.opens task.files in
+    organize io param.policy param.sig_only task.opens task.files in
   let collisions =
-    if Fault.is_silent param.polycy Codept_polycy.module_conflict then
+    if Fault.is_silent param.policy Codept_policies.module_conflict then
       Collisions.empty
     else
       Collisions.libs task units.mli in
   let collisions, file_set = Collisions.local collisions units.mli in
   let () =
     (* warns if any module is defined twice *)
-    Collisions.handle param.polycy collisions in
+    Collisions.handle param.policy collisions in
   let e = start_env io param task.libs signatures file_set in
   let {Unit.ml; mli} = solve param e units in
   let ml = remove_units task.invisibles ml in
@@ -287,8 +287,8 @@ let main_std io param (task:Common.task) =
 let main_seed io param (task:Common.task) =
   let units, signatures =
     pre_organize io task.files in
-  let file_set, gen = oracle param.polycy
-      (load_file io param.polycy param.sig_only task.opens) units in
+  let file_set, gen = oracle param.policy
+      (load_file io param.policy param.sig_only task.opens) units in
   let e = start_env io param task.libs signatures file_set in
   let units = solve_from_seeds task.seeds gen param e in
   let units = remove_units task.invisibles units in

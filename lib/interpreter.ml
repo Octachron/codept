@@ -8,6 +8,7 @@ module P = Module.Partial
 module M = Module
 module Arg = M.Arg
 module S = Module.Sig
+module Faults = Standard_faults
 
 type envt_fault = (Paths.P.t * Loc.t -> unit ) Fault.t
 module type envt = sig
@@ -37,7 +38,7 @@ module type s = sig
 end
 
 module type param = sig
-  val polycy: Fault.Polycy.t
+  val policy: Fault.Policy.t
   val transparent_extension_nodes: bool
   val transparent_aliases: bool
 end
@@ -46,7 +47,7 @@ module Make(Envt:envt)(Param:param) = struct
 
 
   include Param
-  let fault x = Fault.handle polycy x
+  let fault x = Fault.handle policy x
 
   let some x = Some x
 
@@ -61,7 +62,7 @@ module Make(Envt:envt)(Param:param) = struct
       | [] ->
         if Module.Partial.is_exact p then
           begin
-            Fault.(handle polycy applied_structure) loc p;
+            Fault.(handle policy Faults.applied_structure) loc p;
             p
             end
         else
@@ -72,7 +73,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   let of_partial loc p =
     match Y.of_partial p with
-    | Error def -> fault Fault.structure_expected loc p;
+    | Error def -> fault Faults.structure_expected loc p;
       def
     | Ok def -> def
 
@@ -122,7 +123,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Blank ->
       let kind =
         match x.origin with
-        | First_class -> (fault Fault.opened_first_class loc x.name;
+        | First_class -> (fault Faults.opened_first_class loc x.name;
                           Divergence.First_class_module)
         | Unit _ -> Divergence.External
         | Phantom | Submodule | Arg -> Divergence.External  (*FIXME?*) in
@@ -142,7 +143,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Blank ->
       let kind =
         match p.origin with
-        | First_class -> (fault Fault.included_first_class loc;
+        | First_class -> (fault Standard_faults.included_first_class loc;
                           Divergence.First_class_module)
         | Unit _ -> Divergence.External
         | Phantom | Submodule | Arg -> Divergence.External  (*FIXME?*) in
@@ -166,7 +167,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Error h -> Error (box h)
     | Ok fdefs ->
       if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
-        fault Fault.included_first_class loc;
+        fault Standard_faults.included_first_class loc;
       Ok (Some (include_check loc fdefs))
 
   let include_ loc state module_expr =
@@ -407,11 +408,11 @@ module Make(Envt:envt)(Param:param) = struct
       end
   and extension loc state e =
     if not transparent_extension_nodes then
-      ( fault Fault.extension_ignored loc e.name; Ok () )
+      ( fault Faults.extension_ignored loc e.name; Ok () )
     else
       begin
         let filename = fst loc in
-        fault Fault.extension_traversed loc e.name;
+        fault Faults.extension_traversed loc e.name;
         begin let open M2l in
           match e.extension with
           | Module m -> fmap (fun x -> { e with extension= Module x} ) ignore @@

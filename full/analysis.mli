@@ -3,7 +3,7 @@
 type param = {
   transparent_aliases: bool;
   transparent_extension_nodes: bool;
-  polycy: Fault.Polycy.t;
+  policy: Fault.Policy.t;
   precomputed_libs: Name.set  ;
   closed_world: bool;
   sig_only:bool;
@@ -12,7 +12,7 @@ type param = {
 (** System interaction function *)
 type io = {
   sign: string -> Module.t list option;
-  m2l: Fault.Polycy.t -> Read.kind -> string -> Unit.s;
+  m2l: Fault.Policy.t -> Read.kind -> string -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
   env: Module.Def.t
 }
