@@ -48,6 +48,8 @@ module Make(Envt:envt)(Param:param) = struct
   include Param
   let fault x = Fault.handle polycy x
 
+  let some x = Some x
+
   let find loc level path env =
     match Envt.find level path env with
     | Ok x -> x
@@ -114,16 +116,30 @@ module Make(Envt:envt)(Param:param) = struct
       Ok x
     | _ -> Error path
 
-  let warn_open loc x = let open Module in
-      if x.signature = S.empty then
+  let open_diverge loc x = let open Module in
+    match x.signature with
+    | Divergence _ | Exact _ -> Y.sg_see x.signature
+    | Blank ->
+      let kind =
         match x.origin with
-        | First_class -> fault Fault.opened_first_class loc x.name
-        | Unit _ | Submodule | Arg -> ()
+        | First_class -> (fault Fault.opened_first_class loc x.name;
+                          Divergence.First_class_module)
+        | Unit _ -> Divergence.External
+        | Submodule | Arg -> Divergence.External  (*FIXME?*) in
+      let point = (x.name, kind , loc) in
+      { Summary.visible = S.merge
+            (Divergence
+               { before = S.empty; point; after = Module.Def.empty}
+            )
+            x.signature;
+        defined = Module.Sig.empty
+      }
+
 
   let open_ loc state path =
     match find loc Module path state with
-    | x -> warn_open loc x;
-      Ok (Some( Y.sg_see x.signature ))
+    | x ->
+      Ok(open_diverge loc x)
     | exception Not_found -> Error (Open path)
 
   let gen_include loc unbox box i = match unbox i with
@@ -153,7 +169,7 @@ module Make(Envt:envt)(Param:param) = struct
       match b.expr with
       | (Ident p:M2l.module_expr)
       | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
-        let m = Module.Alias { name = b.name; path = p } in
+        let m = Module.Alias { name = b.name; path = p; exact = true } in
         Ok ( Some (Def.md m) )
       | _ -> bind state module_expr b
 
@@ -269,8 +285,9 @@ module Make(Envt:envt)(Param:param) = struct
     | Open_me {opens=a :: q ; resolved; expr } as me ->
       begin match find loc Module a state with
         | exception Not_found -> Error me
-        | x -> warn_open loc x;
-          let resolved = Def.( resolved +| Y.sg_see x.signature ) in
+        | x ->
+          let seen = open_diverge loc x in
+          let resolved = Def.( resolved +| seen ) in
           module_expr loc state @@ Open_me {opens = q; resolved; expr }
       end
     | Extension_node n ->
@@ -356,7 +373,7 @@ module Make(Envt:envt)(Param:param) = struct
     let reloc = Mresult.Error.fmap @@ Loc.create e.loc in
     match e.data with
     | Defs d -> Ok (Some d)
-    | Open p -> reloc @@ open_ loc state p
+    | Open p -> reloc @@ Mresult.Ok.fmap some @@ open_ loc state p
     | Include i -> reloc @@ include_ loc state module_expr i
     | SigInclude i -> reloc @@ sig_include loc state module_type i
     | Bind b -> reloc @@ bind state (module_expr loc) b

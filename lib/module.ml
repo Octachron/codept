@@ -30,7 +30,7 @@ module Divergence= struct
   type kind =
     | First_class_module
     | External
-  type t = Name.t *  kind * Loc.t
+  type t = Name.t *  kind * (Paths.Pkg.t * Loc.t)
 
   let pp_kind ppf s =
     Pp.fp ppf "%s" @@
@@ -38,9 +38,9 @@ module Divergence= struct
     | First_class_module -> "First class module"
     | External -> "External"
 
-  let pp ppf (name, kind, loc ) =
-    Pp.fp ppf "%a:%s divergence:%a"
-      Loc.pp loc
+  let pp ppf (name, kind, (path,loc) ) =
+    Pp.fp ppf "%a%a:%s divergence:%a"
+      Paths.Pkg.pp path Loc.pp loc
       name
       pp_kind kind
 
@@ -106,7 +106,7 @@ type m = {
 }
 and t =
   | M of m
-  | Alias of { name:Name.t; path: Paths.S.t }
+  | Alias of { name:Name.t; path: Paths.S.t; exact:bool }
 
 and definition = { modules : mdict; module_types : mdict }
 and signature =
@@ -145,7 +145,7 @@ let rec flatten = function
 
 let is_exact m =
   match m with
-  | Alias _ -> true
+  | Alias {exact; _ } -> exact
   | M m ->
     match m.signature with
     | Exact _ -> true
@@ -181,8 +181,10 @@ let reflect_level ppf = function
 
 let rec reflect ppf = function
   | M m ->  Pp.fp ppf "M %a" reflect_m m
-  | Alias {name;path} -> Pp.fp ppf "Alias {name=%a;path=[%a]}" Pp.estring name
-                           Pp.(list ~sep:(s ";@  ") @@ estring ) path
+  | Alias {name;path;exact} -> Pp.fp ppf "Alias {name=%a;path=[%a];exact=%s}"
+                                 Pp.estring name
+                                 Pp.(list ~sep:(s ";@  ") @@ estring ) path
+                                 (if exact then "true" else "false")
 and reflect_m ppf {name;args;origin;signature} =
   Pp.fp ppf {|@[<hov>{name="%s"; origin=%a; args=%a; signature=Exact(%a)}@]|}
     name
@@ -213,7 +215,8 @@ and reflect_args ppf args =
   Pp.fp ppf "[%a]" (Pp.(list ~sep:(s "; @,") ) @@ reflect_arg ) args
 
 let rec pp ppf = function
-  | Alias {name;path} -> Pp.fp ppf "%s≡%a" name Paths.S.pp path
+  | Alias {name;path;exact} ->
+    Pp.fp ppf "%s≡%s%a" name (if exact then "" else "(?)" ) Paths.S.pp path
   | M m -> pp_m ppf m
 and pp_m ppf {name;args;origin;signature;_} =
   Pp.fp ppf "%s%a:%a@[<hv>[@,%a@,]@]"
@@ -305,8 +308,9 @@ module Sexp_core = struct
   and args () = list @@ opt @@ fix' m
   and module_ () =
     let alias = C2.C { name = "Alias";
-                    proj = (function Alias a -> Some(a.name, a.path) | _ -> None);
-                    inj = (fun (name,path) -> Alias {name;path} );
+                       proj = (function Alias a -> Some(a.name, a.path)
+                                      | _ -> None);
+                    inj = (fun (name,path) -> Alias {name;path;exact=true} );
                     impl = key_list string Paths.S.sexp;
                      } in
     let mc =
@@ -368,9 +372,9 @@ module Sig = struct
 
   let rec merge s1 s2 = match s1, s2 with
     | Blank, s | s, Blank -> s
-    | Exact s1, Exact s2 ->  Exact (sig_merge s1 s2)
+    | Exact s1, Exact s2 ->  Exact (Def.merge s1 s2)
     | Divergence p , Exact s ->
-      Divergence { p with after = sig_merge p.after s }
+      Divergence { p with after = Def.merge p.after s }
     | s, Divergence p ->
       Divergence { p with before = merge s p.before }
 

@@ -45,15 +45,21 @@ module Base = struct
     | M.Module -> def.M.modules
     | M.Module_type -> def.module_types
 
-  let find_name _root level name env =
-    match env.current with
-    | Blank -> raise Not_found
+
+
+  let rec find_name level name current =
+    match current with
+    | Module.Blank -> Module.md @@ Module.mockup name
     | Exact def ->
       Name.Map.find name @@ proj level def
     | Divergence d ->
       match Name.Map.find_opt name @@ proj level d.after with
       | Some m -> m
-      | None -> raise Not_found
+      | None ->
+        match find_name level name d.before with
+        | _ -> M (Module.mockup name)
+
+  let find_name _root level name env = find_name level name env.current
 
   let restrict env sg = { env with current = sg }
 
@@ -346,7 +352,7 @@ module Tracing(Envt:extended) = struct
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
       match Envt.find_name root (adjust_level level q) a env.env with
-      | Alias {path; _ } ->
+      | Alias {path; exact; name } ->
         if require_top then
           (* we were looking for a compilation unit and got a submodule alias *)
           raise Not_found
