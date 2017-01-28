@@ -46,6 +46,11 @@ let p fmt = Format.printf fmt
 let e fmt = Format.eprintf fmt
 
 let pair ?(sep=",") pp1 pp2 ppf (x,y) = fp ppf "%a%s%a" pp1 x sep pp2 y
+
+let triple ?(sep=",") pp1 pp2 pp3 ppf (x,y,z) =
+  fp ppf "%a%s%a%s%a" pp1 x sep pp2 y sep pp3 z
+
+
 let snd pp ppf (_x,y) = fp ppf "%a" pp y
 let fst pp ppf (x,_y) = fp ppf "%a" pp x
 

@@ -48,6 +48,14 @@ val pair :
   (Format.formatter -> 'a -> unit) ->
   (Format.formatter -> 'b -> unit) -> Format.formatter -> 'a * 'b -> unit
 
+val triple :
+  ?sep:string ->
+  (Format.formatter -> 'a -> unit) ->
+  (Format.formatter -> 'b -> unit) ->
+  (Format.formatter -> 'c -> unit) ->
+  Format.formatter -> 'a * 'b * 'c -> unit
+
+
 val snd :
   (Format.formatter -> 'a -> unit) -> Format.formatter -> 'b * 'a -> unit
 
