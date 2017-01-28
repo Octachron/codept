@@ -23,6 +23,7 @@ let default =
   |> set_err (structure_expected,warning)
   |> set_err (applied_unknown, notification)
   |> set_err (unknown_approximated, notification)
+  |> set_err (ambiguous, warning)
 
 
 let strict =
