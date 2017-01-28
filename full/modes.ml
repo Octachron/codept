@@ -1,7 +1,9 @@
 module Pkg = Paths.Pkg
 open Params
 
-type mode = Format.formatter -> Params.t -> Unit.r list Unit.pair -> unit
+type mode =
+  string -> Io.writer ->
+  Format.formatter -> Params.t -> Unit.r list Unit.pair -> unit
 
 type filter =
   | Inner
@@ -23,11 +25,11 @@ type t =
   | Sort
 
 
-let info ppf _param {Unit.ml; mli} =
+let info _ _ ppf _param {Unit.ml; mli} =
   let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) ppf in
   print ml; print mli
 
-let export ppf _param {Unit.mli; _} =
+let export _ _ ppf _param {Unit.mli; _} =
   let sign (u:Unit.r)= u.signature in
   let md (unit:Unit.r) =
     Module.M {Module.
@@ -46,7 +48,7 @@ let export ppf _param {Unit.mli; _} =
              %a\
              @]@." Module.reflect_signature s
 
-let signature ppf _param {Unit.mli; _} =
+let signature filename writer ppf _param {Unit.mli; _} =
   let md {Unit.signature; name; path; _  } =
     Module.M ( Module.create ~args:[]
       ~origin:(Unit path)
@@ -54,8 +56,8 @@ let signature ppf _param {Unit.mli; _} =
              )
   in
   let mds = List.map md mli in
-  let sexp = Sexp.( (list Module.sexp).embed ) mds in
-  Pp.fp ppf "@[%a@]@." Sexp.pp sexp
+  writer.Io.sign filename ppf mds
+
 
 let dependencies ?filter sort (u:Unit.r) =
   Pkg.Set.elements u.dependencies
@@ -74,7 +76,7 @@ let pp_module {Makefile.abs_path;slash; _ } proj ppf (u:Unit.r) =
     Pp.( list ~sep:(s" ") Name.pp )
     elts
 
-let aliases ppf param {Unit.mli; _ } =
+let aliases _ _ ppf param {Unit.mli; _ } =
   let mk_aliases (x:Unit.r) = Module.(aliases @@ M (create "" x.signature) ) in
   let param = param.makefile in
   let pp_pkg = Pkg.pp_gen param.slash in
@@ -106,7 +108,7 @@ let gen_modules proj ppf param {Unit.mli; ml } =
       (sort_u units) in
   print ml; print mli
 
-let modules ?filter =
+let modules ?filter _ _ =
   gen_modules (dependencies ?filter)
 
 
@@ -121,7 +123,7 @@ let pp_only_deps sort ?filter ppf u =
     Pp.( list ~sep:(s"\n") Name.pp )
     ( List.map Pkg.module_name elts)
 
-let line_modules ?filter ppf param {Unit.mli; ml } =
+let line_modules ?filter _ _ ppf param {Unit.mli; ml } =
   let sort_p = sort mname param mli in
   let sort_u = sort upath param mli in
   let print units = Pp.fp ppf "%a"
@@ -137,7 +139,7 @@ let local_dependencies sort unit =
   @@ Pkg.Set.elements unit.Unit.dependencies
 
 
-let dot ppf param {Unit.mli; _ } =
+let dot _ _ ppf param {Unit.mli; _ } =
   let open Unit in
   let sort = sort mname param mli in
   Pp.fp ppf "digraph G {\n";
@@ -155,7 +157,7 @@ let local_deps x =
   |> Pkg.Set.of_list
 
 
-let sort ppf _param (units: _ Unit.pair) =
+let sort _ _ ppf _param (units: _ Unit.pair) =
   let gs = Unit.Groups.R.group units in
   let extract_path _ g l = match g with
     | { Unit.ml = Some x; mli = _ }

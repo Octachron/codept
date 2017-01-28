@@ -15,7 +15,7 @@ let sign filename =
   match Name.Map.find_opt filename cached.signatures with
   | Some _ as s -> s
   | None ->
-    let s = Analysis.read_sigfile filename in
+    let s = Io.read_sigfile filename in
     begin match s with
       | None -> ()
       | Some s -> Sh.map (fun (cached:Cache.t) ->
@@ -58,10 +58,34 @@ let findlib task query =
     register (); expand task
 
 let io = {
-  Analysis.sign;
-  m2l;
-  env = Module.Def.empty;
-  findlib;
+  Io.reader = {
+    Io.sign;
+    m2l;
+    env = Module.Def.empty;
+    findlib;
+  };
+  writer = {
+    m2l = begin
+      fun (kind,filename) ppf m2l ->
+        Sh.map (fun (cached:Cache.t) ->
+            let path = Paths.P.local filename in
+            let name = Paths.P.module_name path in
+            let u: Unit.s =
+              { precision = Exact; code = m2l; name; path; kind = kind.kind } in
+            let m2l = Name.Map.add filename u cached.m2l in
+            { cached with m2l }
+          ) cache;
+        Io.direct.writer.m2l (kind,filename) ppf m2l
+    end;
+    sign = begin
+      fun filename ppf sign ->
+        Sh.map (fun (cached:Cache.t) ->
+            let signatures = Name.Map.add filename sign cached.signatures in
+            { cached with signatures }
+          ) cache;
+        Io.direct.writer.sign filename ppf sign
+    end;
+  }
 }
 
 let uaddr= "/tmp/codept"
@@ -82,11 +106,13 @@ let answer f where =
 
 
 let process out (query:Parse_arg.query) =
-  let task = io.findlib query.task query.findlib in
-  List.iter (Parse_arg.eval_single out query.params query.task) query.action.singles;
+  let task = io.reader.findlib query.task query.findlib in
+  List.iter (Parse_arg.eval_single out io.writer query.params query.task)
+    query.action.singles;
   if not (query.action.modes = [] && query.action.makefiles = [] ) then
-    let analyzed = Analysis.main io query.params.analyzer task in
-    List.iter (Parse_arg.iter_mode out query.params analyzed) query.action.modes;
+    let analyzed = Analysis.main io.reader query.params.analyzer task in
+    List.iter (Parse_arg.iter_mode out io.writer query.params analyzed)
+      query.action.modes;
     List.iter (Parse_arg.iter_makefile out query.params analyzed)
       query.action.makefiles
 

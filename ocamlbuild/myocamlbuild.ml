@@ -28,7 +28,7 @@ let codept' ~approx mode tags =
       tags' -- "no_alias_deps"
     else
       tags' in
-  let k = if approx then S [ A"-k"; A "-silent-fault-level"; A "notification" ]
+  let k = if approx then S [ A"-k"; A "-silent-fault-level"; A "warning" ]
     else S [] in
   let pp = Command.reduce @@ T (tags++ "ocaml" ++ "pp" ++ "pp:dep") in
   let pp = match pp with N -> N | s -> S [ A "-pp"; Quote s] in
@@ -40,7 +40,7 @@ let codept ?(approx=true) mode arg out env _build =
   let tags = tags_of_pathname arg in
   tag_file out (Tags.elements tags);
   (** use codept "-k" to not fail on apparent self-reference *)
-  Cmd(S[codept' ~approx mode tags; P arg; Sh ">"; Px out])
+  Cmd(S[codept' ~approx ( S[ A "-o"; Px out; mode ] ) tags; P arg])
 
 
 let codept_dep ?(approx=false) mode arg deps outs env build =

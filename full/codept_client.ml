@@ -4,7 +4,7 @@ let version = 0.3
 let stderr= Format.err_formatter
 let std = Format.std_formatter
 
-let io = Analysis.direct_io
+let io = Io.direct
 
 let addr = Unix.( ADDR_UNIX "/tmp/codept" )
 

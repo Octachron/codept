@@ -106,13 +106,13 @@ let mli_synonym param s =
   param.[L.synonyms] <- synonyms
 
 
-let eval_single out param (task:Common.task) (file,single) =
+let eval_single out writer param (task:Common.task) (file,single) =
   with_output out file (fun ppf ->
-      List.iter (Single.eval single ppf param) task.files)
+      List.iter (Single.eval single file writer ppf param) task.files)
 
-let iter_mode out param r (file,mode) =
+let iter_mode out writer param r (file,mode) =
   with_output out file (fun ppf ->
-      Modes.eval mode ppf param r
+      Modes.eval mode file writer  ppf param r
     )
 
 

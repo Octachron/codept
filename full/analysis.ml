@@ -9,12 +9,7 @@ type param = {
   sig_only:bool;
 }
 
-type io = {
-  sign: string -> Module.t list option;
-  m2l: Fault.Policy.t -> Read.kind -> string -> Unit.s;
-  findlib: Common.task -> Findlib.query -> Common.task ;
-  env: Module.Def.t
-}
+
 
 (** Basic files reading *)
 let local = Paths.Pkg.local
@@ -41,19 +36,8 @@ let split either =
   in
   split either ([],[])
 
-let parse_sig lexbuf=
-  Sexp.( (list Module.sexp).parse )
-  @@ Sexp_parse.many Sexp_lex.main
-  @@ lexbuf
 
-let read_sigfile filename =
-  let chan = open_in filename in
-  let lexbuf = Lexing.from_channel chan in
-  let sigs = parse_sig lexbuf in
-  close_in chan;
-  sigs
-
-let info_split io = function
+let info_split (io:Io.reader) = function
   | {Common.kind=Signature; _ }, f -> Right (io.sign f)
   | {Common.kind=Implementation;format} ,f ->
     Left ({ Read.kind = Structure; format}, f )
@@ -73,7 +57,7 @@ let pre_organize io files =
     List.flatten @@ Option.List'.filter signatures in
   units, signatures
 
-let load_file io policy sig_only opens (info,file) =
+let load_file (io:Io.reader) policy sig_only opens (info,file) =
   let filter_m2l (u: Unit.s) = if sig_only then
       { u with Unit.code = M2l.Sig_only.filter u.code }
     else
@@ -106,7 +90,7 @@ let base_env io signatures =
   let (++) = Module.Def.merge in
   Envts.Base.start @@
   List.fold_left (++) Module.Def.empty signatures
-  ++ io.env
+  ++ io.Io.env
 (** Environment *)
 type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
@@ -242,29 +226,8 @@ module Collisions = struct
 end
 
 
-module Findlib = struct
-(** Small import *)
-let add_ppx ppx =
-  let first_ppx = Compenv.first_ppx in
-  first_ppx := ppx :: !first_ppx
 
-let lib (task:Common.task ref) f =
-  task := { !task with libs = f :: (!task).libs }
 
-let expand task query =
-  let task = ref task in
-  let result = Findlib.process query in
-  Clflags.preprocessor := result.pp;
-  List.iter (lib task) result.libs; List.iter add_ppx result.ppxs;
-  !task
-end
-
-let  direct_io = {
-  sign = read_sigfile;
-  m2l = Unit.read_file;
-  env = Module.Def.empty;
-  findlib = Findlib.expand
-}
 
 (** Analysis step *)
 let main_std io param (task:Common.task) =

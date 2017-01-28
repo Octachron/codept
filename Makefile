@@ -28,7 +28,6 @@ doc: codept
 	ocamlbuild $(OPTS) -docflags -charset,utf-8 codept.docdir/index.html
 
 self_test:
-	ocamlbuild -clean; \
 	ln -s ocamlbuild/myocamlbuild.ml myocamlbuild.ml; \
-	ocamlbuild -use-ocamlfind codept.native; \
+	ocamlbuild $(OPTS) codept.native; \
 	rm myocamlbuild.ml

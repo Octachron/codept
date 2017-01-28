@@ -6,7 +6,8 @@ type t =
   | M2l
   | M2l_sexp
 
-type single = Format.formatter -> Params.t -> Common.info * string -> unit
+type single = string -> Io.writer -> Format.formatter -> Params.t
+  -> Common.info * string -> unit
 
 (** Use the heuristic approximate parser and display the resulting
     lower and upper bound m2l approximation *)

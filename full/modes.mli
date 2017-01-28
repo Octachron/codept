@@ -20,7 +20,8 @@ type t =
   | Sort
 
 
-type mode = Format.formatter -> Params.t -> Unit.r list Unit.pair -> unit
+type mode = string -> Io.writer -> Format.formatter
+  -> Params.t -> Unit.r list Unit.pair -> unit
 
 val eval: t -> mode
 
