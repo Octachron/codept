@@ -4,7 +4,6 @@ open Ocamlbuild_plugin
 
 let mdeps = A "-nl-modules"
 let fdeps = A "-modules"
-let sig_only =A "-sig-only"
 let gen_sig = A "-sig"
 let m2l_gen = A "-m2l-sexp"
 let o = A "-o"
@@ -35,15 +34,17 @@ let codept' ~approx mode tags =
   S [ A "codept-client"; T tags'; pp ; k; mode]
 
 
-let codept ?(approx=true) mode arg out env _build =
-  let arg = env arg and out = env out in
+let codept ?(approx=true)  arg outs env _build =
+  let arg = env arg in
   let tags = tags_of_pathname arg in
+  let out = env @@ snd @@ List.hd outs in
   tag_file out (Tags.elements tags);
+  let outs = List.map (fun (mode, name) -> S [o; Px (env name); mode ] ) outs in
   (** use codept "-k" to not fail on apparent self-reference *)
-  Cmd(S[codept' ~approx ( S[ A "-o"; Px out; mode ] ) tags; P arg])
+  Cmd(S[codept' ~approx N tags; P arg; S outs])
 
 
-let codept_dep ?(approx=false) mode arg deps outs env build =
+let codept_dep ?(approx=false) arg deps outs env build =
   let arg = env arg  and deps = env deps in
   let tags = tags_of_pathname arg in
   let approx_deps = string_list_of_file deps in
@@ -59,7 +60,7 @@ let codept_dep ?(approx=false) mode arg deps outs env build =
     @@ List.filter Outcome.(function Good _ -> true | Bad _ -> false )
     @@ outsigs in
   let outs = List.map (fun (mode, name) -> S [o; Px (env name); mode ] ) outs in
-  Cmd( S[ codept' ~approx mode tags; P arg; Command.atomize_paths sigs;  S outs])
+  Cmd( S[ codept' ~approx (S[]) tags; P arg; Command.atomize_paths sigs;  S outs])
 
 module R() = struct
 
@@ -69,9 +70,9 @@ module R() = struct
       Unix.stderr
 ;
 
-  rule "ml → m2l"
+  rule "ml → m2l + approx.depends"
     ~insert:`top
-    ~prod:"%.m2l"
+    ~prods:["%.m2l";"%.ml.approx.depends"]
     ~dep:"%.ml"
     ~doc:"Generate m2l files from ml files. This conversion has two distinct \
           objectives: \n\
@@ -80,93 +81,45 @@ module R() = struct
           m2l level \n\
           − avoid multiple parsing of the same file, in particular in presence of \
           heavy preprocessor rewriting"
-    (codept m2l_gen "%.ml" "%.m2l");
+    (codept  "%.ml" [m2l_gen, "%.m2l"; mdeps, "%.ml.approx.depends"] );
 
-rule "mli → m2li"
+rule "mli → m2li + approx.depends"
   ~insert:`top
-  ~prod:"%.m2li"
+  ~prods:["%.m2li";"%.mli.approx.depends"]
   ~dep:"%.mli"
   ~doc:"Generate m2li files from mli files. See \"ml → m2li\" for more context"
-  (codept m2l_gen "%.mli" "%.m2li")
+  (codept "%.mli" [m2l_gen, "%.m2li"; mdeps, "%.mli.approx.depends"])
 ;
 
-rule "m2l → ml.approx.depends"
+rule "m2li → depends"
   ~insert:`top
-  ~prod:"%.ml.approx.depends"
-  ~dep:"%.m2l"
-  ~doc:"Compute approximate dependencies using codept: at this stage, contextual \
-       is not yet available, and computed dependencies are used to gather \
-        signature information on the potential dependencies."
-  (codept mdeps "%.m2l" "%.ml.approx.depends");
-
-rule "m2li → mli.approx.depends"
-  ~insert:`top
-  ~prod:"%.mli.approx.depends"
-  ~dep:"%.m2li"
-  ~doc:"Compute approximate dependencies using codept. \
-        See \"m2l → ml.approx.depends\" for more context."
-  (codept mdeps "%.m2li" "%.mli.approx.depends");
-
-rule "m2li → sig depends"
-  ~insert:`top
-  ~prods:["%.sig";"%.sig.depends"]
-  ~deps:["%.m2li"; "%.approx.sig.depends"]
+  ~prods:["%.sig";"%.mli.depends"]
+  ~deps:["%.m2li"; "%.mli.approx.depends"]
   ~doc:"Compute the signature and its signature dependency for the current module. \
         Note that signature dependency are a (hopefully small) subset of the the \
         full dependencies."
-  (codept_dep ~approx:false sig_only "%.m2li" "%.approx.sig.depends"
-     [gen_sig, "%.sig"; fdeps, "%.sig.depends"]);
+  (codept_dep ~approx:false "%.m2li" "%.mli.approx.depends"
+     [gen_sig, "%.sig"; fdeps, "%.mli.depends"]);
 
-rule "m2l → sig depends"
-  ~insert:(`after "m2li → sig depends")
-  ~prods:["%.sig"; "%.sig.depends"]
-  ~deps:["%.m2l"; "%.approx.sig.depends"]
+rule "m2l → depends"
+  ~insert:(`after "m2li → depends")
+  ~prods:["%.ml.depends"; "%.sig"]
+  ~deps:["%.m2l"; "%.ml.approx.depends"]
   ~doc:"If there is no correspoding mli file, compute signature and associated \
         dependencies from the ml file."
-  (codept_dep ~approx:false sig_only
-     "%.m2l" "%.approx.sig.depends" [gen_sig, "%.sig"; fdeps, "%.sig.depends"]);
-
-rule "m2li → approx.sig.depends"
-  ~insert:`top
-  ~prod:"%.approx.sig.depends"
-  ~dep:"%.m2li"
-  ~doc:"Compute approximate dependencies for the signature computation. \
-        Signature level dependencies are the subset of the full dependencies \
-        required to compute the compilation unit signature. In particular, if \
-        a compilation unit does not contain include nor submodule, then \
-        signature dependencies are reduced to the empty set."
-  (codept (S [ mdeps; sig_only]) "%.m2li" "%.approx.sig.depends");
-
-rule "m2l → approx.sig.depends"
-  ~insert:(`after "m2li → approx.sig.depends")
-  ~prod:"%.approx.sig.depends"
-  ~dep:"%.m2l"
-  ~doc:"If there is no mli associated to a given computation unit, \
-        compute the approximate signature dependencies from the ml file."
-  (codept (S [ mdeps; sig_only]) "%.m2l" "%.approx.sig.depends");
-
+  (codept_dep ~approx:false
+     "%.m2l" "%.ml.approx.depends" [gen_sig, "%.sig"; fdeps, "%.ml.depends"]);
 
 rule "m2l → ml.depends"
-  ~insert:`top
+  ~insert:(`before "m2l → depends")
   ~prods:["%.ml.depends"]
   ~deps:["%.m2l";"%.ml.approx.depends"]
   ~doc:"Compute the exact dependencies using codept and \
         the contextual information acquired following previously discovered \
         approximate dependencies."
-  (codept_dep N "%.m2l" "%.ml.approx.depends"
+  (codept_dep "%.m2l" "%.ml.approx.depends"
      [fdeps, "%.ml.depends"] )
 ;
-
-
-rule "m2li → mli.depends"
-  ~insert: `top
-  ~prods:["%.mli.depends"]
-  ~deps:["%.m2li";"%.mli.approx.depends"]
-  ~doc:"Compute the exact dependencies using codept and \
-        the contextual information acquired following previously discovered \
-        approximate dependencies."
-  (codept_dep N "%.m2li" "%.mli.approx.depends"
-     [fdeps, "%.mli.depends"] )
 
 end
 
