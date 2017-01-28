@@ -374,7 +374,7 @@ module More_sexp = struct
       C {name = "Val";
          proj = (function (Val mn: extension_core) -> Some mn | _ -> None );
          inj = (fun mn -> Val mn); impl = (fix r r.annot);
-         default = None
+         default = Some annot_empty
         }
 
     let ext_core r = sum [ ext_mod r; ext_val r ]

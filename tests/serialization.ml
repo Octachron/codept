@@ -7,6 +7,11 @@ let sg =
 let m2l =
   "(((Bind_sig (extended (Sig (((Open Interpreter) (6 7 18)) ((SigInclude (Ident (A envt))) (7 2 14)) ((Minor (access Module Name Paths)) (+Multiline 12 2 21 43)))))) (+Multiline 4 0 26 3)) ((Bind_sig (extended_with_deps (Sig (((SigInclude (With ((Ident (A extended))))) (31 2 33)) ((SigInclude (With ((Ident (S ((A Interpreter) with_deps)))))) (32 2 48)))))) (+Multiline 28 0 33 3)) ((Bind (Base (Constraint (Abstract (Sig (((Minor (access Module)) (38 2 63)) ((SigInclude (With ((Ident (A extended_with_deps))))) (39 2 45)) ((Minor (access Module)) (41 2 34)))))))) (+Multiline 36 0 42 3)) ((Bind (Open_world (Constraint (Abstract (Fun (((Envt (Ident (A extended_with_deps)))) (Sig (((Minor (access Envt Name Paths)) (+Multiline 48 4 50 44)) ((SigInclude (With ((Ident (A extended_with_deps))))) (52 4 47)))))))))) (+Multiline 45 0 53 3)) ((Bind (Layered (Constraint (Abstract (Sig (((Bind (Envt (Constraint (Abstract (With ((Ident (A extended)))))))) (59 2 56)) ((Minor (access Base Envt Name Paths)) (+Multiline 60 2 67 53)) ((SigInclude (With ((Ident (A extended))))) (68 2 35)))))))) (+Multiline 57 0 70 3)) ((Bind (Tracing (Constraint (Abstract (Fun (((Envt (Ident (A extended)))) (Sig (((Minor (access Envt Paths)) (76 6 58)) ((SigInclude (With ((Ident (A extended))))) (77 6 39)) ((Minor (access Envt)) (78 6 29)))))))))) (+Multiline 73 0 79 7)) ((Bind (Trl (Constraint (Abstract (Sig (((Minor (access Layered Paths Tracing)) (+Multiline 83 2 84 50)) ((SigInclude (With ((Ident (A extended_with_deps))))) (85 2 44)) ((Minor (access Layered)) (86 2 28)))))))) (+Multiline 81 0 87 3)) ((Bind (Tr (Constraint (Abstract (Sig (((Minor (access Name Open_world Paths Trl)) (+Multiline 92 2 95 36)) ((SigInclude (With ((Ident (A extended_with_deps))))) (97 2 45)) ((Minor (access Name Paths Trl)) (98 2 48)))))))) (+Multiline 90 0 99 3)) ((Bind (Interpreters (Constraint (Abstract (Sig (((Bind (Sg (Constraint (Abstract (Fun (((Param (Ident (S ((A Interpreter) param))))) (Sig (((Minor (access Base M2l Module)) (+Multiline 105 10 106 49)))))))))) (+Multiline 103 4 106 53)) ((Bind (Tr (Constraint (Abstract (Fun (((Param (Ident (S ((A Interpreter) param))))) (Sig (((Minor (access M2l Module Tr)) (109 12 78)))))))))) (+Multiline 107 4 109 82)))))))) (+Multiline 101 0 110 5)))"
 
+
+let m2l2 ="(((Minor (values (((Extension_node (expr Module)) (3 3 12))) (((Extension_node (pat Val)) (2 6 17))))) (+Multiline 2 0 3 12)))"
+
+
+
 let orec = "(((Bind (M (Constraint (Abstract (Fun (() Sig)))))) (1 0 19)))"
 let orec2 = "(((Bind (A Constraint)) (1 0 17)) ((Bind (M (Constraint (Abstract (Fun (() (Sig (((SigInclude (Of (Ident A))) (2 16 42)))))))))) (2 0 46)))"
 
@@ -49,7 +54,7 @@ let () =
    && List.for_all (test keyed Module.Origin.sexp)
      ["(Unit (file dir a))"; "(Arg)"]
    && test many (Sexp.list Module.sexp) sg
-   && List.for_all (test many M2l.sexp) [m2l;orec; orec2]
+   && List.for_all (test many M2l.sexp) [m2l; m2l2; orec; orec2]
    && List.for_all (test many M2l.sexp) [
      "(((Bind_sig (A (With ((Ident (A S)))))) (1 0 35)))"
    ]
