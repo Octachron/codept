@@ -40,7 +40,7 @@ module Origin: sig
     | Submodule (** non top-level module *)
     | First_class (** unpacked first-class module *)
     | Arg (** module created for functor application *)
-    | Phantom of Divergence.t (** ambiguous module that could be either
+    | Phantom of bool * Divergence.t (** ambiguous module that could be either
                   an internal module or an external module *)
 
   val at_most : t -> t -> t

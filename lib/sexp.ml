@@ -613,6 +613,12 @@ let string =
   let id x = x in
   atomic id some
 
+let bool0 s =
+  try Some (bool_of_string s) with
+    Failure _ -> None
+
+let bool = atomic string_of_bool bool0
+
 let unit = {
   parse = (function List [] -> Some () | _ -> None);
   embed = (fun () -> List []);

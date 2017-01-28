@@ -114,7 +114,7 @@ module Origin = struct
     | Submodule
     | First_class (** Not resolved first-class module *)
     | Arg (** functor argument *)
-    | Phantom of Divergence.t
+    | Phantom of bool * Divergence.t
     (** Ambiguous module, that could be an external module *)
 
   let pp ppf = function
@@ -140,9 +140,10 @@ module Origin = struct
     let first_class = simple_constr "First_class" First_class
     let arg = simple_constr "Arg" Arg
     let phantom = C { name = "👻";
-                      proj = (function Phantom b -> Some b | _ -> None);
-                      inj = (fun b -> Phantom b);
-                      impl = Divergence.sexp;
+                      proj = (function Phantom (root,b) -> Some (root,b)
+                                     | _ -> None);
+                      inj = (fun (root,b) -> Phantom (root,b));
+                      impl = pair bool Divergence.sexp;
                       default = None
                     }
 
@@ -156,7 +157,7 @@ module Origin = struct
     | Submodule -> Pp.fp ppf "Submodule"
     | First_class -> Pp.fp ppf "First_class"
     | Arg -> Pp.fp ppf "Arg"
-    | Phantom b -> Pp.fp ppf "Phantom %a" Divergence.reflect b
+    | Phantom (root,b) -> Pp.fp ppf "Phantom (%b,%a)" root Divergence.reflect b
 
 
   let at_most max v = match max, v with
@@ -164,7 +165,7 @@ module Origin = struct
     | Unit _ , v -> v
     | Submodule, Unit _ -> Submodule
     | Submodule, v -> v
-    | Phantom b, _ -> Phantom b
+    | Phantom _ as ph , _ -> ph
 end
 type origin = Origin.t
 
@@ -206,7 +207,11 @@ let rec spirit_away breakpoint root = function
       Alias { a with phantom = Some breakpoint }
     else al
   | M m ->
-    let origin = if root then m.origin else Phantom breakpoint in
+    let origin = Origin.Phantom (root,breakpoint) in
+    let origin = match m.origin with
+      | Unit _  as u -> u
+      | Phantom _ as ph -> ph
+      | _ -> origin in
     M { m with origin; signature = spirit_away_sign breakpoint false m.signature }
 and spirit_away_sign breakpoint root = function
   | Blank -> Blank
@@ -217,7 +222,8 @@ and spirit_away_sign breakpoint root = function
     }
   | Exact def -> Exact (spirit_away_def breakpoint root def)
 and spirit_away_def breakpoint root def =
-  let map root =  Name.Map.map (spirit_away breakpoint root) in
+  let map root =
+    Name.Map.map (spirit_away breakpoint root) in
   { modules = map root def.modules; module_types = map true def.module_types }
 
 let spirit_away b =  spirit_away b true

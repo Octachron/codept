@@ -69,6 +69,8 @@ type ('a,'b) bij = { f: 'a -> 'b; fr:'b -> 'a }
 val id: ('a,'a) bij
 
 val int: (int,atomic) impl
+val bool: (bool,atomic) impl
+
 val string: (string,atomic) impl
 val unit: (unit,many) impl
 

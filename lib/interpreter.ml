@@ -118,9 +118,8 @@ module Make(Envt:envt)(Param:param) = struct
     | _ -> Error path
 
   let open_diverge loc x = let open Module in
-    match x.signature with
-    | Divergence _ | Exact _ -> Y.sg_see x.signature
-    | Blank ->
+    match x.origin, x.signature with
+    | _, Blank | Phantom _, _ ->
       let kind =
         match x.origin with
         | First_class -> (fault Faults.opened_first_class loc x.name;
@@ -135,12 +134,13 @@ module Make(Envt:envt)(Param:param) = struct
             x.signature;
         defined = Module.Sig.empty
       }
+    | _, Divergence _ | _, Exact _ -> Y.sg_see x.signature
+
 
   let include_check loc (p:P.t) =
     let open Module in
-    match p.result with
-    | Divergence _ | Exact _ -> of_partial loc p
-    | Blank ->
+    match p.origin, p.result with
+    | Phantom _, _ | _ , Blank ->
       let kind =
         match p.origin with
         | First_class -> (fault Standard_faults.included_first_class loc;
@@ -155,6 +155,7 @@ module Make(Envt:envt)(Param:param) = struct
             p.result;
         defined = Module.Sig.empty
       }
+    | _, Divergence _ | _, Exact _ -> of_partial loc p
 
 
   let open_ loc state path =

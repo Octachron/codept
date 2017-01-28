@@ -371,9 +371,9 @@ module Tracing(Envt:extended) = struct
   let record root env (m:Module.m) =
     match m.origin with
     | Origin.Unit p ->
-      (* Format.printf "Recording %a\n" pp (Module.M m) ; *)
       path_record p env; []
-    | Phantom b -> if root then
+    | Phantom (phantom_root, b) ->
+      if root && not phantom_root then
         (phantom_record m.name env; [ambiguity m.name b] ) else []
     | _ -> []
 
