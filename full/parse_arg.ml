@@ -383,7 +383,12 @@ let process version argv =
   and action = ref action0 in
   let args = args  action params task findlib_query version in
     Compenv.readenv stderr Before_args
-  ; Cmd.parse_argv argv args (add_file params task) usage_msg
+    ;
+    begin
+      try Cmd.parse_argv argv args (add_file params task) usage_msg with
+      | Arg.Bad msg | Arg.Help msg ->
+        (print_endline msg; exit 2)
+    end
   ; if not !params.no_include then add_include params "."
   ; Compenv.readenv stderr Before_link
   ; if !action = action0 then
