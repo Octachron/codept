@@ -176,7 +176,7 @@ type m = {
 }
 and t =
   | M of m
-  | Alias of { name:Name.t; path: Paths.S.t; exact:bool }
+  | Alias of { name:Name.t; path: Paths.S.t; phantom: Divergence.t option }
 
 and definition = { modules : mdict; module_types : mdict }
 and signature =
@@ -201,8 +201,10 @@ let name = function
 
 
 let rec spirit_away breakpoint root = function
-  | Alias a ->
-    Alias { a with exact = root }
+  | Alias a as al ->
+    if not root then
+      Alias { a with phantom = Some breakpoint }
+    else al
   | M m ->
     let origin = if root then m.origin else Phantom breakpoint in
     M { m with origin; signature = spirit_away_sign breakpoint false m.signature }
@@ -235,7 +237,7 @@ let rec flatten = function
 
 let is_exact m =
   match m with
-  | Alias {exact; _ } -> exact
+  | Alias {phantom ; _ } -> phantom = None
   | M m ->
     match m.signature with
     | Exact _ -> true
@@ -269,12 +271,17 @@ let reflect_level ppf = function
     | Module -> Pp.string ppf "Module"
     | Module_type -> Pp.string ppf "Module type"
 
+let reflect_phantom ppf = function
+  | None -> Pp.fp ppf "None"
+  | Some x -> Pp.fp ppf "Some(%a)" Divergence.reflect x
+
 let rec reflect ppf = function
   | M m ->  Pp.fp ppf "M %a" reflect_m m
-  | Alias {name;path;exact} -> Pp.fp ppf "Alias {name=%a;path=[%a];exact=%s}"
-                                 Pp.estring name
-                                 Pp.(list ~sep:(s ";@  ") @@ estring ) path
-                                 (if exact then "true" else "false")
+  | Alias {name;path;phantom} ->
+    Pp.fp ppf "Alias {name=%a;path=[%a];phantom=%a}"
+      Pp.estring name
+      Pp.(list ~sep:(s ";@  ") @@ estring ) path
+      reflect_phantom phantom
 and reflect_m ppf {name;args;origin;signature} =
   Pp.fp ppf {|@[<hov>{name="%s"; origin=%a; args=%a; signature=Exact(%a)}@]|}
     name
@@ -305,8 +312,8 @@ and reflect_args ppf args =
   Pp.fp ppf "[%a]" (Pp.(list ~sep:(s "; @,") ) @@ reflect_arg ) args
 
 let rec pp ppf = function
-  | Alias {name;path;exact} ->
-    Pp.fp ppf "%s≡%s%a" name (if exact then "" else "(?)" ) Paths.S.pp path
+  | Alias {name;path;phantom} ->
+    Pp.fp ppf "%s≡%s%a" name (if phantom=None then "" else "(👻)" ) Paths.S.pp path
   | M m -> pp_m ppf m
 and pp_m ppf {name;args;origin;signature;_} =
   Pp.fp ppf "%s%a:%a@[<hv>[@,%a@,]@]"
@@ -400,7 +407,7 @@ module Sexp_core = struct
     let alias = C2.C { name = "Alias";
                        proj = (function Alias a -> Some(a.name, a.path)
                                       | _ -> None);
-                    inj = (fun (name,path) -> Alias {name;path;exact=true} );
+                    inj = (fun (name,path) -> Alias {name;path;phantom=None} );
                     impl = key_list string Paths.S.sexp;
                      } in
     let mc =

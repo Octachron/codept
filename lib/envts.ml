@@ -384,10 +384,13 @@ module Tracing(Envt:extended) = struct
       let open Query in
       Envt.find_name root (adjust_level level q) a env.env >>=
       function
-      | Alias {path; exact; name } ->
+      | Alias {path; phantom; name } ->
         let msgs =
-          if root && not exact then
-            (phantom_record name env; [(*todo*)])
+          match phantom with
+          | None -> []
+          | Some b ->
+            if root then
+            (phantom_record name env; [ambiguity name b])
           else [] in
         if require_top then
           (* we were looking for a compilation unit and got a submodule alias *)

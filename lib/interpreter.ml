@@ -189,7 +189,7 @@ module Make(Envt:envt)(Param:param) = struct
       match b.expr with
       | (Ident p:M2l.module_expr)
       | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
-        let m = Module.Alias { name = b.name; path = p; exact = true } in
+        let m = Module.Alias { name = b.name; path = p; phantom = None } in
         Ok ( Some (Def.md m) )
       | _ -> bind state module_expr b
 

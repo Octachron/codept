@@ -66,7 +66,7 @@ type m = {
 (** Core module or alias *)
 and t =
   | M of m
-  | Alias of { name:Name.t; path: Paths.S.t; exact:bool }
+  | Alias of { name:Name.t; path: Paths.S.t; phantom: Divergence.t option }
 
 and definition = { modules : mdict; module_types : mdict }
 and signature =
