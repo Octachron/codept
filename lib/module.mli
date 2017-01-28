@@ -22,13 +22,10 @@ module Arg :
   end
 
 module Divergence: sig
-  type kind =
-    | Open
-    | Include
   type origin =
     | First_class_module
     | External
-  type t = kind * origin * (Paths.Pkg.t * Loc.t)
+  type t = origin * (Paths.Pkg.t * Loc.t)
   val pp: Format.formatter -> t -> unit
 end
 

@@ -27,20 +27,10 @@ end
 
 
 module Divergence= struct
-  type kind =
-    | Open
-    | Include
-
   type origin =
     | First_class_module
     | External
-  type t = kind *  origin * (Paths.Pkg.t * Loc.t)
-
-  let pp_kind ppf s =
-    Pp.fp ppf "%s" @@
-    match s with
-    | Open -> "open"
-    | Include -> "include"
+  type t = origin * (Paths.Pkg.t * Loc.t)
 
   let pp_origin ppf s =
     Pp.fp ppf "%s" @@
@@ -50,11 +40,6 @@ module Divergence= struct
 
 
   module Reflect = struct
-  let kind ppf s =
-    Pp.fp ppf "%s" @@
-    match s with
-    | Open -> "Open"
-    | Include -> "Include"
 
   let origin ppf s =
     Pp.fp ppf "%s" @@
@@ -77,20 +62,15 @@ module Divergence= struct
     Pp.decorate "(" ")" @@ Pp.pair Paths.P.reflect rloc
 
   let divergence =
-    Pp.decorate "(" ")" @@ Pp.triple kind origin floc
+    Pp.decorate "(" ")" @@ Pp.pair origin floc
 
   end
   let reflect = Reflect.divergence
 
-  let pp ppf (kind, origin, (path,loc) ) =
-    Pp.fp ppf "%a at %a:%a (%a)"
-      pp_kind kind
+  let pp ppf (origin, (path,loc) ) =
+    Pp.fp ppf "open at %a:%a (%a)"
       Paths.Pkg.pp path Loc.pp loc
       pp_origin origin
-
-  let sexp_kind =
-    let open Sexp in
-    sum [ simple_constr "Open" Open; simple_constr "Include" Include]
 
   let sexp_origin =
     let open Sexp in
@@ -100,7 +80,7 @@ module Divergence= struct
 
   let sexp =
     let open Sexp in
-    triple sexp_kind sexp_origin (pair Paths.Pkg.sexp Loc.Sexp.t)
+    pair sexp_origin (pair Paths.Pkg.sexp Loc.Sexp.t)
 
 
 end

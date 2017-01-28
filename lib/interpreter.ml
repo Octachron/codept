@@ -126,7 +126,7 @@ module Make(Envt:envt)(Param:param) = struct
                           Divergence.First_class_module)
         | Unit _ -> Divergence.External
         | Phantom _ | Submodule | Arg -> Divergence.External  (*FIXME?*) in
-      let point = ( Divergence.Open, kind , loc) in
+      let point = ( kind , loc) in
       { Summary.visible = S.merge
             (Divergence
                { before = S.empty; point; after = Module.Def.empty}
@@ -135,27 +135,6 @@ module Make(Envt:envt)(Param:param) = struct
         defined = Module.Sig.empty
       }
     | _, Divergence _ | _, Exact _ -> Y.sg_see x.signature
-
-
-  let include_check loc (p:P.t) =
-    let open Module in
-    match p.origin, p.result with
-    | Phantom _, _ | _ , Blank ->
-      let kind =
-        match p.origin with
-        | First_class -> (fault Standard_faults.included_first_class loc;
-                          Divergence.First_class_module)
-        | Unit _ -> Divergence.External
-        | Phantom _ | Submodule | Arg -> Divergence.External  (*FIXME?*) in
-      let point = ( Divergence.Include, kind , loc) in
-      { Summary.visible = S.merge
-            (Divergence
-               { before = S.empty; point; after = Module.Def.empty}
-            )
-            p.result;
-        defined = Module.Sig.empty
-      }
-    | _, Divergence _ | _, Exact _ -> of_partial loc p
 
 
   let open_ loc state path =
@@ -169,7 +148,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok fdefs ->
       if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
         fault Standard_faults.included_first_class loc;
-      Ok (Some (include_check loc fdefs))
+      Ok (Some (of_partial loc fdefs))
 
   let include_ loc state module_expr =
     gen_include loc (module_expr loc state) (fun i -> Include i)
