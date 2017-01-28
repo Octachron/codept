@@ -189,6 +189,7 @@ let result =
     ["letin.ml", ["List"] ];
     ["let_open.ml", [] ];
     ["module_rec.ml", ["Set"] ];
+    ["module_types.ml", ["B"] ];
     ["more_functor.ml", ["Ext";"Ext2"] ];
     ["nested_modules.ml", [] ];
     ["no_deps.ml", [] ];
