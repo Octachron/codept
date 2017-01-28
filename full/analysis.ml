@@ -217,7 +217,7 @@ module Collisions = struct
         | { main = { M.origin = Unit p; _ }; msgs= [] } ->
           (add u.name p @@ add u.name u.path m)
         | { msgs = _ :: _ ; _ }
-        | { main = { M.origin = (Phantom|Arg|Submodule|First_class); _ }; _ }
+        | { main = { M.origin = (Phantom _ |Arg|Submodule|First_class); _ }; _ }
           -> m
 
       ) m units

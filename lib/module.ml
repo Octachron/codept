@@ -48,11 +48,60 @@ module Divergence= struct
     | First_class_module -> "first class module"
     | External -> "external module"
 
+
+  module Reflect = struct
+  let kind ppf s =
+    Pp.fp ppf "%s" @@
+    match s with
+    | Open -> "Open"
+    | Include -> "Include"
+
+  let origin ppf s =
+    Pp.fp ppf "%s" @@
+    match s with
+    | First_class_module -> "First_class_module"
+    | External -> "External"
+
+  let rloc ppf =
+    let open Loc in
+    function
+    | Nowhere -> Pp.fp ppf "Nowhere"
+    | Simple {line;start;stop} -> Pp.fp ppf "Simple{line=%d;start=%d;stop=%d}"
+                                    line start stop
+    | Multiline {start; stop} ->
+      let pair ppf (x,y)= Pp.fp ppf "(%d,%d)" x y in
+      Pp.fp ppf "Multiline{start=%a; stop =%a}"
+        pair start pair stop
+
+  let floc =
+    Pp.decorate "(" ")" @@ Pp.pair Paths.P.reflect rloc
+
+  let divergence =
+    Pp.decorate "(" ")" @@ Pp.triple kind origin floc
+
+  end
+  let reflect = Reflect.divergence
+
   let pp ppf (kind, origin, (path,loc) ) =
     Pp.fp ppf "%a at %a:%a (%a)"
       pp_kind kind
       Paths.Pkg.pp path Loc.pp loc
       pp_origin origin
+
+  let sexp_kind =
+    let open Sexp in
+    sum [ simple_constr "Open" Open; simple_constr "Include" Include]
+
+  let sexp_origin =
+    let open Sexp in
+    sum [ simple_constr "First_class_module" First_class_module;
+          simple_constr "External" External]
+
+
+  let sexp =
+    let open Sexp in
+    triple sexp_kind sexp_origin (pair Paths.Pkg.sexp Loc.Sexp.t)
+
 
 end
 
@@ -65,7 +114,8 @@ module Origin = struct
     | Submodule
     | First_class (** Not resolved first-class module *)
     | Arg (** functor argument *)
-    | Phantom (** Ambiguous module, that could be an external module *)
+    | Phantom of Divergence.t
+    (** Ambiguous module, that could be an external module *)
 
   let pp ppf = function
     | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
@@ -75,7 +125,7 @@ module Origin = struct
     | Submodule -> Pp.fp ppf "."
     | First_class -> Pp.fp ppf "'"
     | Arg -> Pp.fp ppf "§"
-    | Phantom -> Pp.fp ppf "👻"
+    | Phantom _ -> Pp.fp ppf "👻"
 
   module Sexp = struct
     open Sexp
@@ -89,10 +139,14 @@ module Origin = struct
     let submodule = simple_constr "Submodule" Submodule
     let first_class = simple_constr "First_class" First_class
     let arg = simple_constr "Arg" Arg
-    let phantom = simple_constr "👻" Phantom
+    let phantom = C { name = "👻";
+                      proj = (function Phantom b -> Some b | _ -> None);
+                      inj = (fun b -> Phantom b);
+                      impl = Divergence.sexp;
+                      default = None
+                    }
 
-
-    let  sexp = Sexp.sum [unit; arg; submodule;first_class]
+    let  sexp = Sexp.sum [unit; arg; submodule;first_class; phantom]
   end
   let sexp = Sexp.sexp
 
@@ -102,7 +156,7 @@ module Origin = struct
     | Submodule -> Pp.fp ppf "Submodule"
     | First_class -> Pp.fp ppf "First_class"
     | Arg -> Pp.fp ppf "Arg"
-    | Phantom -> Pp.fp ppf "Phantom"
+    | Phantom b -> Pp.fp ppf "Phantom %a" Divergence.reflect b
 
 
   let at_most max v = match max, v with
@@ -110,7 +164,7 @@ module Origin = struct
     | Unit _ , v -> v
     | Submodule, Unit _ -> Submodule
     | Submodule, v -> v
-    | Phantom, _ -> Phantom
+    | Phantom b, _ -> Phantom b
 end
 type origin = Origin.t
 
@@ -146,25 +200,25 @@ let name = function
   | M {name; _ } -> name
 
 
-let rec spirit_away root = function
+let rec spirit_away breakpoint root = function
   | Alias a ->
     Alias { a with exact = root }
   | M m ->
-    let origin = if root then m.origin else Phantom in
-    M { m with origin; signature = spirit_away_sign false m.signature }
-and spirit_away_sign root = function
+    let origin = if root then m.origin else Phantom breakpoint in
+    M { m with origin; signature = spirit_away_sign breakpoint false m.signature }
+and spirit_away_sign breakpoint root = function
   | Blank -> Blank
   | Divergence d -> Divergence {
-      before = spirit_away_sign root d.before;
+      before = spirit_away_sign breakpoint root d.before;
       point = d.point;
-      after = spirit_away_def root d.after
+      after = spirit_away_def breakpoint root d.after
     }
-  | Exact def -> Exact (spirit_away_def root def)
-and spirit_away_def root def =
-  let map root =  Name.Map.map (spirit_away root) in
+  | Exact def -> Exact (spirit_away_def breakpoint root def)
+and spirit_away_def breakpoint root def =
+  let map root =  Name.Map.map (spirit_away breakpoint root) in
   { modules = map root def.modules; module_types = map true def.module_types }
 
-let spirit_away =  spirit_away true
+let spirit_away b =  spirit_away b true
 
 let sig_merge s1 s2 =
   { modules = Name.Map.union' s1.modules s2.modules

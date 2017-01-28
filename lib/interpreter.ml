@@ -126,7 +126,7 @@ module Make(Envt:envt)(Param:param) = struct
         | First_class -> (fault Faults.opened_first_class loc x.name;
                           Divergence.First_class_module)
         | Unit _ -> Divergence.External
-        | Phantom | Submodule | Arg -> Divergence.External  (*FIXME?*) in
+        | Phantom _ | Submodule | Arg -> Divergence.External  (*FIXME?*) in
       let point = ( Divergence.Open, kind , loc) in
       { Summary.visible = S.merge
             (Divergence
@@ -146,7 +146,7 @@ module Make(Envt:envt)(Param:param) = struct
         | First_class -> (fault Standard_faults.included_first_class loc;
                           Divergence.First_class_module)
         | Unit _ -> Divergence.External
-        | Phantom | Submodule | Arg -> Divergence.External  (*FIXME?*) in
+        | Phantom _ | Submodule | Arg -> Divergence.External  (*FIXME?*) in
       let point = ( Divergence.Include, kind , loc) in
       { Summary.visible = S.merge
             (Divergence

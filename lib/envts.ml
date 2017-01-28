@@ -14,6 +14,7 @@ module Query = struct
   let (>>=) (x: _ t) f: _ t =
     let {main;msgs}: _ t = f x.main in
     { main; msgs = msgs @ x.msgs }
+  let add_msg msgs (q: _ t) = { q with msgs = msgs @ q.msgs }
 
 end
 
@@ -49,6 +50,12 @@ let is_unit = function
   |{ M.origin = Origin.Unit _ ; _ } -> true
   | _ -> false
 
+let ambiguity name breakpoint =
+  let f = Standard_faults.ambiguous in
+  { f  with
+    Fault.log = (fun lvl l -> f.log lvl l name breakpoint)
+  }
+
 module Base = struct
   type t = { top: M.definition; current: M.signature }
 
@@ -61,12 +68,6 @@ module Base = struct
     | M.Module_type -> def.module_types
 
 
-  let ambiguity name breakpoint =
-    let f = Standard_faults.ambiguous in
-    { f  with
-      Fault.log = (fun lvl l -> f.log lvl l name breakpoint)
-    }
-
   let rec find_name level name current =
     match current with
     | Module.Blank -> Query.pure @@ Module.md @@ Module.mockup name
@@ -78,7 +79,7 @@ module Base = struct
       | None ->
         let open Query in
         find_name level name d.before >>= fun q ->
-        create (Module.spirit_away q) [ambiguity name d.point]
+        create (Module.spirit_away d.point q) [ambiguity name d.point]
 
   let find_name _root level name env = find_name level name env.current
 
@@ -371,9 +372,10 @@ module Tracing(Envt:extended) = struct
     match m.origin with
     | Origin.Unit p ->
       (* Format.printf "Recording %a\n" pp (Module.M m) ; *)
-      path_record p env
-    | Phantom -> if root then phantom_record m.name env
-    | _ -> ()
+      path_record p env; []
+    | Phantom b -> if root then
+        (phantom_record m.name env; [ambiguity m.name b] ) else []
+    | _ -> []
 
   let rec find0 ~root ~require_top level path env =
     match path with
@@ -383,22 +385,25 @@ module Tracing(Envt:extended) = struct
       Envt.find_name root (adjust_level level q) a env.env >>=
       function
       | Alias {path; exact; name } ->
-        if root && not exact then
-          phantom_record name env;
+        let msgs =
+          if root && not exact then
+            (phantom_record name env; [(*todo*)])
+          else [] in
         if require_top then
           (* we were looking for a compilation unit and got a submodule alias *)
           raise Not_found
         else
           (* aliases link only to compilation units *)
+          Query.add_msg msgs @@
           find0 ~root:true ~require_top:true
             level (path @ q) (top env)
       | M.M m ->
         if require_top && not (is_unit m) then
           raise Not_found
         else begin
-          record root env m;
+          let faults = record root env m in
           if q = [] then
-            pure m
+            create m faults
           else
             find0 ~root:false ~require_top:false level q
               @@ restrict env m.signature
