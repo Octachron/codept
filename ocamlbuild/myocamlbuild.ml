@@ -16,7 +16,7 @@ let is_pflag_included root s =
   List.exists predicate @@ Tags.elements s
 
 
-let codept' ~approx mode tags =
+let codept' port  ~approx mode tags =
   let tags' = tags++"ocaml"++"ocamldep" ++ "codept" in
   let tags' =
     (* when computing dependencies for packed modules, cyclic alias
@@ -31,20 +31,20 @@ let codept' ~approx mode tags =
     else S [] in
   let pp = Command.reduce @@ T (tags++ "ocaml" ++ "pp" ++ "pp:dep") in
   let pp = match pp with N -> N | s -> S [ A "-pp"; Quote s] in
-  S [ A "codept-client"; T tags'; pp ; k; mode]
+  S [ A "codept-client"; A "-port"; A port; T tags'; pp ; k; mode]
 
 
-let codept ?(approx=true)  arg outs env _build =
+let codept port ?(approx=true)  arg outs env _build =
   let arg = env arg in
   let tags = tags_of_pathname arg in
   let out = env @@ snd @@ List.hd outs in
   tag_file out (Tags.elements tags);
   let outs = List.map (fun (mode, name) -> S [o; Px (env name); mode ] ) outs in
   (** use codept "-k" to not fail on apparent self-reference *)
-  Cmd(S[codept' ~approx N tags; P arg; S outs])
+  Cmd(S[codept' port ~approx N tags; P arg; S outs])
 
 
-let codept_dep ?(approx=false) arg deps outs env build =
+let codept_dep port ?(approx=false) arg deps outs env build =
   let arg = env arg  and deps = env deps in
   let tags = tags_of_pathname arg in
   let approx_deps = string_list_of_file deps in
@@ -60,15 +60,27 @@ let codept_dep ?(approx=false) arg deps outs env build =
     @@ List.filter Outcome.(function Good _ -> true | Bad _ -> false )
     @@ outsigs in
   let outs = List.map (fun (mode, name) -> S [o; Px (env name); mode ] ) outs in
-  Cmd( S[ codept' ~approx (S[]) tags; P arg; Command.atomize_paths sigs;  S outs])
+  Cmd( S[ codept' port ~approx (S[]) tags; P arg; Command.atomize_paths sigs;
+          S outs])
 
 module R() = struct
 
-
-  ignore @@
-    Unix.create_process "codept-server" [|"codept-server"|] Unix.stdin Unix.stdout
-      Unix.stderr
-;
+  let port =
+    let socket = Unix.(socket PF_INET SOCK_STREAM 0) in
+    let addr = Unix.( ADDR_INET (inet_addr_loopback, 0) ) in
+    Unix.bind socket addr;
+    Unix.listen socket 10;
+    let port =   match Unix.getsockname socket with
+      | Unix.ADDR_INET(_,port) -> port
+      | Unix.ADDR_UNIX _  -> raise (Invalid_argument "no port for unix socket") in
+    let _n =
+      Unix.create_process "codept-server"
+        [|"codept-server"; "-backport"; string_of_int port  |]
+        Unix.stdin Unix.stdout Unix.stderr in
+    let s, _ = Unix.accept socket in
+    let chan = Unix.in_channel_of_descr s in
+    let n : int = input_value chan in
+    string_of_int n in
 
   rule "ml → m2l + approx.depends"
     ~insert:`top
@@ -81,14 +93,14 @@ module R() = struct
           m2l level \n\
           − avoid multiple parsing of the same file, in particular in presence of \
           heavy preprocessor rewriting"
-    (codept  "%.ml" [m2l_gen, "%.m2l"; mdeps, "%.ml.approx.depends"] );
+    (codept port  "%.ml" [m2l_gen, "%.m2l"; mdeps, "%.ml.approx.depends"] );
 
 rule "mli → m2li + approx.depends"
   ~insert:`top
   ~prods:["%.m2li";"%.mli.approx.depends"]
   ~dep:"%.mli"
   ~doc:"Generate m2li files from mli files. See \"ml → m2li\" for more context"
-  (codept "%.mli" [m2l_gen, "%.m2li"; mdeps, "%.mli.approx.depends"])
+  (codept port "%.mli" [m2l_gen, "%.m2li"; mdeps, "%.mli.approx.depends"])
 ;
 
 rule "m2li → depends"
@@ -98,7 +110,7 @@ rule "m2li → depends"
   ~doc:"Compute the signature and its signature dependency for the current module. \
         Note that signature dependency are a (hopefully small) subset of the the \
         full dependencies."
-  (codept_dep ~approx:false "%.m2li" "%.mli.approx.depends"
+  (codept_dep port ~approx:false "%.m2li" "%.mli.approx.depends"
      [gen_sig, "%.sig"; fdeps, "%.mli.depends"]);
 
 rule "m2l → depends"
@@ -107,7 +119,7 @@ rule "m2l → depends"
   ~deps:["%.m2l"; "%.ml.approx.depends"]
   ~doc:"If there is no correspoding mli file, compute signature and associated \
         dependencies from the ml file."
-  (codept_dep ~approx:false
+  (codept_dep port ~approx:false
      "%.m2l" "%.ml.approx.depends" [gen_sig, "%.sig"; fdeps, "%.ml.depends"]);
 
 rule "m2l → ml.depends"
@@ -117,7 +129,7 @@ rule "m2l → ml.depends"
   ~doc:"Compute the exact dependencies using codept and \
         the contextual information acquired following previously discovered \
         approximate dependencies."
-  (codept_dep "%.m2l" "%.ml.approx.depends"
+  (codept_dep port "%.m2l" "%.ml.approx.depends"
      [fdeps, "%.ml.depends"] )
 ;
 

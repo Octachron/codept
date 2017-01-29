@@ -6,7 +6,7 @@ let std = Format.std_formatter
 
 let io = Io.direct
 
-let addr = Unix.( ADDR_UNIX "/tmp/codept" )
+let addr port = Unix.( ADDR_INET (inet_addr_loopback, port) )
 
 
 let try_connect sock addr =
@@ -25,26 +25,40 @@ let rec retry_connect msg timeout time sock addr =
     else
       retry_connect msg timeout time sock addr
 
+let make_socket () = Unix.(socket PF_INET SOCK_STREAM 0)
 
-let autostart = false
-let make_socket () = Unix.(socket PF_UNIX SOCK_STREAM 0)
+let get_port socket =
+  match Unix.getsockname socket with
+  | Unix.ADDR_INET(_,port) -> port
+  | ADDR_UNIX _  -> raise (Invalid_argument "no port for unix socket")
 
 let launch_server () =
-  ignore @@
-  Unix.create_process "codept-server" [|"codept-server"|]
-    Unix.stdin Unix.stdout Unix.stderr
+  let socket = make_socket () in
+  let addr = addr 0 in
+  Unix.bind socket addr;
+  Unix.listen socket 10;
+  let port = get_port socket in
+  let _n =
+    Unix.create_process "codept-server"
+      [|"codept-server"; "-backport"; string_of_int port  |]
+      Unix.stdin Unix.stdout Unix.stderr in
+  let s, _ = Unix.accept socket in
+  let chan = Unix.in_channel_of_descr s in
+  let n : int = input_value chan in
+  n
 
+let port = ref (-1)
+let arg = Arg.["-port", Int ( fun n -> port := n ) , "server port"]
 
 let client socket =
-  let query = Parse_arg.process version Sys.argv in
+  let query = Parse_arg.process version ~extra:arg Sys.argv in
+  if !port < 0 then
+    port := launch_server ();
+  let addr = addr ! port in
   let connect = try_connect socket addr in
-  if connect  && autostart then
-    begin
-      launch_server ();
-      if not @@ retry_connect "Retrying to connect" 0.020 (Unix.time ())
-          socket addr then
-        exit 2
-    end;
+  let connect =
+    connect ||
+    retry_connect "Retry" 0.20 (Unix.time()) socket addr in
   if connect then
     let ch = Unix.out_channel_of_descr socket in
     let inchan = Unix.in_channel_of_descr socket in

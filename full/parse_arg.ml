@@ -376,7 +376,7 @@ type query =
 let stderr= Format.err_formatter
 
 
-let process version argv =
+let process version ?(extra=[]) argv =
   let params = ref param0
   and task = ref task0
   and findlib_query = ref findlib_query0
@@ -385,7 +385,7 @@ let process version argv =
     Compenv.readenv stderr Before_args
     ;
     begin
-      try Cmd.parse_argv argv args (add_file params task) usage_msg with
+      try Cmd.parse_argv argv (extra @ args) (add_file params task) usage_msg with
       | Arg.Bad msg | Arg.Help msg ->
         (print_endline msg; exit 2)
     end

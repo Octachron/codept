@@ -1,6 +1,6 @@
 (** Codept server *)
 open Params
-let tool_name = "codept"
+let tool_name = "codept-server"
 let version = 0.3
 let stderr= Format.err_formatter
 let std = Format.std_formatter
@@ -88,11 +88,13 @@ let io = {
   }
 }
 
-let uaddr= "/tmp/codept"
 
-let addr = Unix.ADDR_UNIX uaddr
-let socket = Unix.(socket PF_UNIX SOCK_STREAM 0)
+let addr = Unix.( ADDR_INET(inet_addr_loopback, 0) )
+let socket = Unix.( socket PF_INET SOCK_STREAM 0)
+
+(*
 let () = Unix.setsockopt socket Unix.SO_REUSEADDR true
+*)
 
 let answer f where =
   let ch = Unix.in_channel_of_descr where in
@@ -119,18 +121,46 @@ let process out (query:Parse_arg.query) =
 
 let rec server () =
   Unix.listen socket 10;
-  match Unix.select [socket] [] [] 5. with
+  match Unix.select [socket] [] [] 30. with
   | [_], _ , _  ->
     let client, _addr = Unix.accept socket in
     let _t = Thread.create (answer process) client in
     server ()
   | _ ->
-    Unix.close socket;
-    Unix.unlink uaddr
+    Unix.close socket
+
+let usage_msg = "Codept server process"
+
+let port = ref ~-1
+
+let args = ["-backport", Arg.Int (fun n -> port := n),
+            "port to send back binding port" ]
+
+let get_port socket =
+  match Unix.getsockname socket with
+  | ADDR_INET(_,port) -> Some port
+  | ADDR_UNIX _  -> None
+
+let client_socket port =
+  let addr = Unix.( ADDR_INET(inet_addr_loopback, port) ) in
+  let socket = Unix.( socket PF_INET SOCK_STREAM 0) in
+  Unix.connect socket addr;
+  socket
 
 
 let () =
+  Arg.parse args ignore usage_msg;
   Unix.bind socket addr;
+  if !port> 0 then
+    begin
+      let client_socket = client_socket !port in
+      let out = Unix.out_channel_of_descr client_socket in
+      Option.iter (output_value out) (get_port socket);
+      flush out
+    end
+  else
+    Option.iter (Printf.printf "Binding to %d\n") (get_port socket);
+  flush stdout;
   Unix.listen socket 10;
   Sys.chdir prefix;
   server ()
