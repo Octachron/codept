@@ -146,7 +146,7 @@ module Make(Envt:envt)(Param:param) = struct
   let gen_include loc unbox box i = match unbox i with
     | Error h -> Error (box h)
     | Ok fdefs ->
-      if P.( fdefs.result = S.empty (* ? *) && fdefs.origin = First_class ) then
+      if P.( fdefs.result = Blank (* ? *) && fdefs.origin = First_class ) then
         fault Standard_faults.included_first_class loc;
       Ok (Some (of_partial loc fdefs))
 
@@ -251,10 +251,10 @@ module Make(Envt:envt)(Param:param) = struct
 
   let rec module_expr loc state (me:module_expr) = match me with
     | Abstract -> Ok P.empty
-    | Unpacked -> Ok P.{ empty with origin = First_class }
+    | Unpacked -> Ok P.{ empty with result = Blank; origin = First_class }
     | Val m -> begin
         match minor loc module_expr (m2l @@ filename loc) state m with
-        | Ok _ -> Ok { P.empty with origin = First_class }
+        | Ok _ -> Ok { P.empty with result = Blank; origin = First_class }
         | Error h -> Error (Val h)
       end  (* todo : check warning *)
     | Ident i ->
