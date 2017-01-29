@@ -28,18 +28,19 @@ let g x =
 In more details, `codept` works by combining together three main ingredients:
 
 - an AST, called M2l, specialized to handle only module level constructions
-  (see `M2l.mli` )
+  (see [M2l](lib/m2l.mli) )
 
 - an interruptible interpreter which given an environment and a
   `m2l` Ast computes either the signature represented by the m2l ast, or in
   presence of non-resolved dependencies, a simplified m2l ast.
-  (see `Interpreter.ml`)
+  (see [Interpreter](lib/interpreter.mli))
 
 - a family of environment modules that can for instance track dependencies on the
   fly, search for signature of included library toplevel modules, or approximate
-  unknowable modules (see `Envts.ml`).
+  unknowable modules (see [Envts](lib/envts.ml)).
 
-Currently, these three elements are then used in a basic solver (see `solver.ml`). Given a list of ".ml" and ".mli" files and a starting environment, this basic solver iterates over the list of unresolved files and try to compute their signature.
+Currently, these three elements are then used in one of the basic solvers
+(see [Solver](lib/solver.mli)). Given a list of ".ml" and ".mli" files and a starting environment, the default solver iterates over the list of unresolved files and try to compute their signature.
 
 If the computation is successful, the resulting signature is added to the current environment and the current file is removed from the list of unresolved files. Otherwise the solver continues its iteration.
 
@@ -51,13 +52,20 @@ Codept can be used as a drop-in replacement for ocamldep, on Linux at least.
 More tests are needed on other platforms. Unfortunately, most of OCaml build systems
 are built around ocamldep limitation and would not benefit directly from replacing ocamldep by codept.
 
-A possible exception is self-cycle detection: invoking ocamldep
+A possible exception is self-cycle detection: invoking codept
 on the following "a.ml" file
 ```
 (* a.ml *)
 open A
 ```
-yields directly a circular dependency error.
+yields directly a circular dependency error:
+```
+[Fatal error]: Solver failure
+  −Circular dependencies:  A −(a.ml:l2.5−6)⟶ A
+
+```
+
+
 See the [integration](#integration) section for a better overview
 on how to use codept with ocaml build tools.
 
@@ -214,10 +222,12 @@ gives with `codept -modules a.ml` a fictitious `B` dependency
 ```
 a.ml: B
 ```
-and emits a warning
+and emits a warning (and a notification)
 ```
-Warning:
-  First-class module M was opened while its signature was unknown.
+[Warning]: a.ml:l6.11−12,
+first-class module M was opened while its signature was unknown.
+[Notification]: a.ml:l7.11−12,
+a non-resolvable module, ⟨B⟩, has been replaced by an approximation
 ```
 To avoid this situation, a possible fix is to add back a signature annotation:
 
