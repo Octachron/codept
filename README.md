@@ -2,10 +2,14 @@ Codept intends to be a dependency solver for OCaml project and an alternative to
 
 Both ocamldep and codept computes an over-approximation of the dependencies graph of OCaml project. However, codept uses whole project analysis to reduce the number of fictitious dependencies inferred at the project scale, whereas ocamldep is, by design, limited to local file analysis.
 
-Consequently, bugs notwithstanding, codept can compute exact dependency graph in any situation that does not involve first class modules, and is still reliable in some standard use cases of first class modules.
+Consequently, bugs notwithstanding, codept computes an exact dependency graph in any situation that does not involve first class modules, and is still reliable in some standard use cases of first class modules (see this [riddle](tests/case/riddle.ml) as an illustration of why first class modules can be problematic).
+
+Moreover, codept will emit warning messages any time it encounters a source of potential inaccuracies in the dependency graph might be introduced.
+
+A last important point is that codept's whole project analysis feature make it possible to handle uniformly the delayed dependency aspect of module aliases introduced by the `-no-alias-deps` option.
 
 ## Limitations
-More precisely, codept start to fail to compute exact dependencies if a first class module whom signature can not be locally inferred at the point of binding is opened or included. Then subsequent access to submodules of this first class module will generate fictitious dependency. For instance, for a file `a.ml` such as
+More precisely, codept starts to fail to compute exact dependencies if a first class module whom signature can not be locally inferred at the point of binding is opened or included. Then subsequent access to submodules of this first class module will generate fictitious dependency. For instance, for a file `a.ml` such as
 ```OCaml
 (* a.ml *)
 module type S = sig module B: sig end end
@@ -19,7 +23,7 @@ let g x =
 ```
 `codept a.ml` generate a fictitious `B` dependency and a warning
 ```
-[Warning]:
+[Warning]: a.ml:l6.11−12,
   First-class module M was opened while its signature was unknown.
 ```
 
@@ -37,7 +41,7 @@ In more details, `codept` works by combining together three main ingredients:
 
 - a family of environment modules that can for instance track dependencies on the
   fly, search for signature of included library toplevel modules, or approximate
-  unknowable modules (see [Envts](lib/envts.ml)).
+  unknowable modules (see [Envts](lib/envts.mli)).
 
 Currently, these three elements are then used in one of the basic solvers
 (see [Solver](lib/solver.mli)). Given a list of ".ml" and ".mli" files and a starting environment, the default solver iterates over the list of unresolved files and try to compute their signature.
@@ -89,7 +93,7 @@ However, some of the ocamldep options are slightly reinterpreted:
     invalid file that might be more precise − or brittle. More tests are needed.
     See also the more generic `-k` option.
 
-Another possible difference between codept and ocamldep output is codept built-in detection of dependency cycles. Within codept, cycles triggers a fatal error message andstops the current analysis.
+Another possible difference between codept and ocamldep output is codept built-in detection of dependency cycles. Within codept, cycles triggers a fatal error message and stops the current analysis.
 
 
 ##Codept-only options
@@ -149,7 +153,7 @@ Like `ocamldep`, codept can be used to generate `.depends` file for integration
 with a makefile based infrastructure.
 
 Combining `codept` with `ocamlbuild` currently requires more efforts. An example
-of `myocamlbuild.ml` providing accurate dependendencies using codept and ocamlbuild
+of `myocamlbuild.ml` providing accurate dependencies using codept and ocamlbuild
 is available in `ocamlbuild/myocamlbuild.ml`.
 
 Better integration with existing tools is still a work in progress.
@@ -245,7 +249,7 @@ let g x =
 
 # To do
 
-- Improved exterior api for integration in build tools
+- Improved exterior API for integration in build tools
 
 - Parallelized version:
   - ast parsing
