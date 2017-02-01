@@ -16,7 +16,8 @@ let empty =
   }
 
 module Shared = struct
-type 'a shared = { lock:Mutex.t; mutable data:'a}
+  type 'a t = { lock:Mutex.t; mutable data:'a}
+  type 'a shared = 'a t
 
 let make data = { lock = Mutex.create ();data }
 
