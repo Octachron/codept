@@ -200,6 +200,7 @@ let result =
     ["pattern_open.ml", ["A'";"E1"; "E2"; "E3";"E4"] ];
     ["phantom_maze.ml", ["External"; "B"; "C";"D"; "E"; "X"; "Y" ] ];
     ["phantom_maze_2.ml", ["E"; "D"]];
+    ["phantom_maze_3.ml", ["B"; "X"] ];
     ["recmods.ml", ["Ext"]];
     ["record.ml", ["Ext";"E2";"E3"]];
     ["simple.ml", ["G";"E"; "I"; "A"; "W"; "B"; "C"; "Y"; "Ext"]];
