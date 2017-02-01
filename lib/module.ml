@@ -30,7 +30,7 @@ module Divergence= struct
   type origin =
     | First_class_module
     | External
-  type t = origin * (Paths.Pkg.t * Loc.t)
+  type t =  { root: Name.t; origin:origin; loc: Paths.Pkg.t * Loc.t }
 
   let pp_origin ppf s =
     Pp.fp ppf "%s" @@
@@ -41,7 +41,7 @@ module Divergence= struct
 
   module Reflect = struct
 
-  let origin ppf s =
+  let origin_r ppf s =
     Pp.fp ppf "%s" @@
     match s with
     | First_class_module -> "First_class_module"
@@ -61,14 +61,15 @@ module Divergence= struct
   let floc =
     Pp.decorate "(" ")" @@ Pp.pair Paths.P.reflect rloc
 
-  let divergence =
-    Pp.decorate "(" ")" @@ Pp.pair origin floc
+  let divergence ppf {root;loc;origin} =
+    Pp.fp ppf "{root=%a;loc=%a;origin=%a}" Pp.estring root floc loc origin_r origin
 
   end
   let reflect = Reflect.divergence
 
-  let pp ppf (origin, (path,loc) ) =
-    Pp.fp ppf "open at %a:%a (%a)"
+  let pp ppf {root; origin; loc= (path,loc) } =
+    Pp.fp ppf "open %s at %a:%a (%a)"
+      root
       Paths.Pkg.pp path Loc.pp loc
       pp_origin origin
 
@@ -80,8 +81,10 @@ module Divergence= struct
 
   let sexp =
     let open Sexp in
-    pair sexp_origin (pair Paths.Pkg.sexp Loc.Sexp.t)
-
+    let raw = triple string sexp_origin (pair Paths.Pkg.sexp Loc.Sexp.t) in
+    convr raw
+      (fun (r,o,l) -> {root=r; origin = o; loc = l })
+      (fun r -> r.root, r.origin, r.loc )
 
 end
 

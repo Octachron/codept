@@ -70,15 +70,25 @@ module Base = struct
 
   let rec find_name level name current =
     match current with
-    | Module.Blank -> Query.pure @@ Module.md @@ Module.mockup name
+    | Module.Blank ->
+      (* If we have no information on the current signature,
+         we create a mockup module for the requested submodule *)
+      Query.pure @@ Module.md @@ Module.mockup name
     | Exact def ->
       Query.pure @@ Name.Map.find name @@ proj level def
     | Divergence d ->
+      (* If we have a divergent signature, we first look
+         at the signature after the divergence: *)
       match Name.Map.find_opt name @@ proj level d.after with
       | Some m -> Query.pure @@ m
       | None ->
+        (* We then try to find the searched name in the signature
+           before the divergence *)
         let open Query in
         find_name level name d.before >>= fun q ->
+        (* If we found the expected name before the divergence,
+           we add a new message to the message stack, and return
+           the found module, after marking it as a phantom module. *)
         create (Module.spirit_away d.point q) [ambiguity name d.point]
 
   let find_name _root level name env = find_name level name env.current

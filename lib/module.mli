@@ -21,12 +21,24 @@ module Arg :
       Format.formatter -> 'a arg option list -> unit
   end
 
+(** Every time a module with an unknown signature is opened,
+    it can possibly shadows all modules present in the current,
+    or none. The {!Divergence} module is use to store information
+    about such divergence point, in order to be able to pinpoint
+    to the user the exact moment where dependency computation might have
+    gone awry. *)
 module Divergence: sig
+
+  (** The source of the divergence can be either a [First_class_module] or
+      an [External] module. *)
   type origin =
     | First_class_module
     | External
-  type t = origin * (Paths.Pkg.t * Loc.t)
+
+  type t = { root: Name.t; origin:origin; loc: Paths.Pkg.t * Loc.t}
+
   val pp: Format.formatter -> t -> unit
+
 end
 
 
@@ -37,8 +49,11 @@ module Origin: sig
     | Submodule (** non top-level module *)
     | First_class (** unpacked first-class module *)
     | Arg (** module created for functor application *)
-    | Phantom of bool * Divergence.t (** ambiguous module that could be either
-                  an internal module or an external module *)
+    | Phantom of bool * Divergence.t
+    (** Module with an ambiguous signature due to a divergence.
+        In particular, it submodule structure should not be trusted and
+        is kept around only to handle delayed alias dependencies.
+    *)
 
   val at_most : t -> t -> t
   (** [at_most origin origin'] cap the origin [origin'] at
