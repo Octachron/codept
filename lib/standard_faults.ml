@@ -69,15 +69,26 @@ let applied_unknown =
   }
 
 
+let pp_divergence l ppf (d:Module.Divergence.t) =
+  let f x = Pp.fp ppf "the@ opening@ of@ the@ %s@ module ⟨%s⟩,@ at@ location %a"
+      (match d.origin with
+       | First_class_module -> "first class"
+       | External -> "external")
+      d.root x in
+  if fst d.loc = fst l then
+    f Loc.pp (snd d.loc)
+  else
+    f loc d.loc
+
 let ambiguous =
   { path = [ "typing"; "ambiguous"];
     expl = "Signature fault: a module resolution was ambiguous, leading
       to potential spurious dependencies in the future";
     log = (fun lvl l name div -> log lvl
-              "%a, @ name resolution for ⟨%s⟩ was ambiguous due to an %a. \
-               Spurious dependencies might be inferred due to this ambiguity."
+              "%a,@;name resolution for ⟨%s⟩@ was@ ambiguous,@ due@ to@ %a.@ \
+               Spurious@ dependencies@ might@ be@ inferred@ due@ to@ this@ ambiguity."
               loc l
-              name Module.Divergence.pp div
+              name (pp_divergence l) div
           )
   }
 

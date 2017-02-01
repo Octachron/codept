@@ -394,7 +394,7 @@ let result =
              "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Unit"; "Fault";
              "Standard_faults"],
             ["List"; "Map"; "Set"],[]);
-          "standard_faults.ml", (["Fault"; "Module"; "Paths"; "Pp" ],
+          "standard_faults.ml", (["Fault"; "Module"; "Paths"; "Pp"; "Loc" ],
                                  ["Format"; "Location"; "Syntaxerr"],[]);
           "standard_faults.mli", (["Fault"; "Name"; "Module"; "Paths" ],
                                   ["Syntaxerr"],[]);
