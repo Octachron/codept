@@ -6,7 +6,6 @@ type t = {
   analyzer : Analysis.param;
   no_include : bool;
   may_approx : bool;
-  output : string;
 }
 
 (** Lens module for accessing nested record in params *)
@@ -31,7 +30,6 @@ module L :
     val analyzer : (t, Analysis.param) l
     val no_include : (t, bool) l
     val may_approx : (t, bool) l
-    val output : (t, string) l
     val all : (t, bool) l
     val native : (t, bool) l
     val bytecode : (t, bool) l

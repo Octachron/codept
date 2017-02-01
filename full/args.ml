@@ -22,6 +22,7 @@ let synonyms =
   |> add "m2li" {kind=Interface; format = M2l}
   |> add "sig" {kind = Signature; format = Src }
 
+let output = ref "%"
 let param0 = {
 
     makefile = {
@@ -49,7 +50,6 @@ let param0 = {
 
     no_include = false;
     may_approx = false;
-    output = "%"
   }
 
 let task0 : Common.task = {
@@ -68,7 +68,7 @@ let makefile_eval ppf param task =
 
 let makefile_c action param () =
   action :=
-    { !action with makefiles = (!param).output :: (!action).makefiles }
+    { !action with makefiles = !output :: (!action).makefiles }
 
 let with_output out s f=
   if s = "%" then
@@ -117,7 +117,7 @@ let iter_mode out writer param r (file,mode) =
 
 
 let mode action param command () =
-  let output = !param.output in
+  let output = !output in
   action  :=
     { !action with
       modes = (output, command) :: (!action).modes
@@ -137,7 +137,7 @@ let set_iter action param command () =
   action :=
     { !action with
       singles =
-        ( !param.output, command ) :: (!action).singles
+        ( !output, command ) :: (!action).singles
     }
 
 let print_vnum version ()= Format.printf "%.2f@." version
@@ -349,7 +349,7 @@ let args action param task fquery version =
     "-L", taskc lib, "<dir>: use all cmi files in <dir> \
                        in the analysis";
     "-no-alias-deps", set_t transparent_aliases, ": delay aliases dependencies";
-    "-o", Cmd.String (use_p output), "<filename>: mode current output file";
+    "-o", Cmd.String ( (:=) output ), "<filename>: mode current output file";
     "-no-implicits", set_f implicits,
     ": do not implicitly search for a mli \
      file when given a ml file input";

@@ -5,7 +5,6 @@ type t =
     analyzer: Analysis.param;
     no_include:bool;
     may_approx:bool;
-    output: string;
   }
 
 module L = struct
@@ -37,8 +36,6 @@ module L = struct
       (fun x -> x.no_include) (fun x y -> { x with no_include = y})
   let may_approx = create
       (fun x -> x.may_approx) (fun x y -> { x with may_approx = y})
-  let output = create
-      (fun x -> x.output) (fun x y -> { x with output = y})
   open Makefile
   let all = makefile % create (fun x-> x.all) (fun x y -> { x with all = y })
   let native = makefile % create
