@@ -9,13 +9,13 @@ let io = Io.direct
 let out = Pp.std
 
 let () =
-  let query = Parse_arg.process version Sys.argv in
+  let query = Args.process version Sys.argv in
   let task = io.reader.findlib query.task query.findlib in
-  List.iter (Parse_arg.eval_single out io.writer query.params query.task)
+  List.iter (Args.eval_single out io.writer query.params query.task)
     query.action.singles;
   if not (query.action.modes = [] && query.action.makefiles = [] ) then
     let analyzed = Analysis.main io.reader query.params.analyzer task in
-    List.iter (Parse_arg.iter_mode out io.writer query.params analyzed)
+    List.iter (Args.iter_mode out io.writer query.params analyzed)
       query.action.modes;
-    List.iter (Parse_arg.iter_makefile out  query.params analyzed)
+    List.iter (Args.iter_makefile out  query.params analyzed)
       query.action.makefiles

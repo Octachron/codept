@@ -99,7 +99,7 @@ let () = Unix.setsockopt socket Unix.SO_REUSEADDR true
 let answer f where =
   let ch = Unix.in_channel_of_descr where in
   let out = Unix.out_channel_of_descr where in
-  let query: Parse_arg.query = input_value ch in
+  let query: Args.query = input_value ch in
   let fmt = Format.formatter_of_out_channel out in
   f fmt query;
   Format.fprintf fmt "@?";
@@ -107,15 +107,15 @@ let answer f where =
   Unix.close where
 
 
-let process out (query:Parse_arg.query) =
+let process out (query:Args.query) =
   let task = io.reader.findlib query.task query.findlib in
-  List.iter (Parse_arg.eval_single out io.writer query.params query.task)
+  List.iter (Args.eval_single out io.writer query.params query.task)
     query.action.singles;
   if not (query.action.modes = [] && query.action.makefiles = [] ) then
     let analyzed = Analysis.main io.reader query.params.analyzer task in
-    List.iter (Parse_arg.iter_mode out io.writer query.params analyzed)
+    List.iter (Args.iter_mode out io.writer query.params analyzed)
       query.action.modes;
-    List.iter (Parse_arg.iter_makefile out query.params analyzed)
+    List.iter (Args.iter_makefile out query.params analyzed)
       query.action.makefiles
 
 

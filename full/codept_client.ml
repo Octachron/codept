@@ -51,7 +51,7 @@ let port = ref (-1)
 let arg = Arg.["-port", Int ( fun n -> port := n ) , "server port"]
 
 let client socket =
-  let query = Parse_arg.process version ~extra:arg Sys.argv in
+  let query = Args.process version ~extra:arg Sys.argv in
   if !port < 0 then
     port := launch_server ();
   let addr = addr ! port in
