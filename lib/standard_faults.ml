@@ -21,7 +21,7 @@ let extension_traversed =
 let opened_first_class =
   { path = ["first_class"; "open"];
     expl= "A first-class module was opened while its signature was deemed \
-           unresolved. Consequently, all inferred dependendency after this \
+           unresolved. Consequently, inferred dependendencies after this \
            point may be an over-approximation.";
     log = (fun lvl ->
       log lvl "%a,@ first-class module %s was opened while its signature was \
@@ -32,7 +32,7 @@ let opened_first_class =
 let included_first_class =
   { path = ["first_class"; "included"];
     expl = "A first-class module was included while its signature was deemed \
-           unresolved. Consequently, all inferred dependendency after this \
+           unresolved. Consequently, inferred dependendencies after this \
            point may be an over-approximation.";
     log = (fun lvl ->
         log lvl
@@ -61,7 +61,7 @@ let structure_expected =
 
 let applied_unknown =
   { path = ["typing"; "apply"; "unknown"];
-    log = (fun lvl l -> log lvl "%a, @ only functor can be applied, hopefully the\
+    log = (fun lvl l -> log lvl "%a, @ only functor can be applied, hopefully the \
                                  unknown module (%a) is a functor"
               loc l
               Module.Partial.pp);
@@ -98,8 +98,8 @@ let unknown_approximated =
         log lvl "%a,@ a non-resolvable module, ⟨%a⟩, has been \
                  replaced by an approximation"
           loc l Paths.S.pp path);
-    expl = "Signature fault: an unknown module was approximated, yielding, \
-            possibly to an over-approximation of dependencies";
+    expl = "Signature fault: an unknown module was approximated, possibly yielding \
+            to an over-approximation of dependencies";
   }
 
 
@@ -107,7 +107,7 @@ let concordant_approximation =
   { path = ["parsing"; "approximation"; "concordant"];
     expl = "Parsing fault: The signature and dependency of an unit were obtained \
             using the heuristic approximative parser. However, the lower and upper \
-            bounds for dependencies yield the same set. Inferred dependencies \
+            bounds for dependencies are equal: inferred dependencies \
             might be exact.";
     log = (fun lvl path -> log lvl
              "Approximate parsing of %a.\n\
@@ -120,7 +120,7 @@ let discordant_approximation =
   { path = ["parsing"; "approximation"; "discordant"];
     expl = "Parsing fault: The signature and dependencies of an unit were obtained \
             using the heuristic approximative parser. Moreover, the lower and upper \
-            bounds for dependencies yield different sets. Codept shall use \
+            bounds for dependencies are distincts. Codept will use \
             the dependencies upper bound as a safe over-approximation but \
             dependency problems might arise.";
     log = (fun lvl path lower diff -> log lvl
@@ -147,7 +147,7 @@ let print_loc ppf loc =
 
 let syntaxerr =
   { path = ["parsing"; "syntax"];
-    expl = "Parsing fault: not syntactically valide input file.";
+    expl = "Parsing fault: not syntactically valid input file.";
     log = (fun lvl error ->
         log lvl "Syntax error\n %a" print_loc
           (Syntaxerr.location_of_error error)

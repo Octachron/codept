@@ -28,7 +28,7 @@ let solver_error =
 
 let module_conflict =
   { path = ["codept"; "input"; "module conflict" ];
-    expl = "A module name appears in multiple locations, only the first one will\
+    expl = "A module name appears in multiple locations, only the first one will \
             be used in the following analysis.";
     log = (fun lvl name paths -> log lvl
               "Module conflict,@; Module %s is provided simultaneously by
