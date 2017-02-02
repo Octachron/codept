@@ -147,6 +147,7 @@ module Origin = struct
     | (First_class|Arg ) , _ -> max
     | Unit _ , v -> v
     | Submodule, Unit _ -> Submodule
+    | Phantom _, Submodule -> Submodule
     | Submodule, v -> v
     | Phantom _ as ph , _ -> ph
 end

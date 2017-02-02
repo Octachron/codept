@@ -201,6 +201,7 @@ let result =
     ["phantom_maze.ml", ["External"; "B"; "C";"D"; "E"; "X"; "Y" ] ];
     ["phantom_maze_2.ml", ["E"; "D"]];
     ["phantom_maze_3.ml", ["B"; "X"] ];
+    ["phantom_maze_4.ml", ["Extern"] ];
     ["recmods.ml", ["Ext"]];
     ["record.ml", ["Ext";"E2";"E3"]];
     ["simple.ml", ["G";"E"; "I"; "A"; "W"; "B"; "C"; "Y"; "Ext"]];
