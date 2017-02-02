@@ -29,7 +29,7 @@ let lib (task:Common.task ref) f =
 let expand task query =
   let task = ref task in
   let result = Findlib.process query in
-  Clflags.preprocessor := result.pp;
+  Option.iter (fun pp -> Clflags.preprocessor := Some pp) result.pp;
   List.iter (lib task) result.libs; List.iter add_ppx result.ppxs;
   !task
 end

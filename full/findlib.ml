@@ -9,6 +9,10 @@
 
 type result = { libs: string list; ppxs: string list; pp: string option }
 
+let print ppf r =
+  Pp.fp ppf "libs={%a};@; ppxs={%a};@; pp = %a "
+    Pp.(list estring) r.libs Pp.(list estring) r.ppxs
+    Pp.(opt estring) r.pp
 
 let run cmd =
   let cin = Unix.open_process_in cmd in

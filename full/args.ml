@@ -398,6 +398,7 @@ let process version ?(extra=[]) argv =
 let translate_findlib_query task query =
   let task = ref task in
   let result = Findlib.process query in
-  Clflags.preprocessor := result.pp;
+  Pp.fp Pp.std "pp? %a\n" Pp.(opt string) result.pp;
+  Option.iter ( fun p -> Clflags.preprocessor := Some p ) result.pp;
   List.iter (lib task) result.libs; List.iter add_ppx result.ppxs;
   !task
