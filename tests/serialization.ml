@@ -11,7 +11,6 @@ let m2l =
 let m2l2 ="(((Minor (values (((Extension_node (expr Module)) (3 3 12))) (((Extension_node (pat Val)) (2 6 17))))) (+Multiline 2 0 3 12)))"
 
 
-
 let orec = "(((Bind (M (Constraint (Abstract (Fun (() Sig)))))) (1 0 19)))"
 let orec2 = "(((Bind (A Constraint)) (1 0 17)) ((Bind (M (Constraint (Abstract (Fun (() (Sig (((SigInclude (Of (Ident A))) (2 16 42)))))))))) (2 0 46)))"
 
@@ -49,6 +48,7 @@ let () =
       "(Name)";
       "(First Second)";
       "((M modules K L))";
+      "((A (modules (F args ())) (origin Unit (file a.ml))))";
       "((M (args X) (modules K)))";
     ]
    && List.for_all (test keyed Module.Origin.sexp)
