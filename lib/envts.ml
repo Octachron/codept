@@ -309,7 +309,7 @@ module Layered = struct
       track source
         [name, path, Cmi.m2l @@ P.filename path ];
       pkg_find name source
-    | m -> m
+    | m -> m.main
 
   let rec pkgs_find name = function
     | [] -> raise Not_found
@@ -326,7 +326,7 @@ module Layered = struct
       if root && Name.Set.mem name env.local_units then
         raise Not_found
       else
-        pkgs_find name env.pkgs
+        Query.pure @@ pkgs_find name env.pkgs
 
   let restrict env sg = { env with local = Base.restrict env.local sg }
 
