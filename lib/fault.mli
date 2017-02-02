@@ -7,7 +7,6 @@ sig
   val of_string: string -> t
   val of_int: int -> t
 
-
   val whisper : t
   (** Minor fault that should not deserve attention in standard setting *)
 
@@ -45,6 +44,9 @@ type 'a t = 'a fault (**type synonym *)
 (** Location type for error message *)
 type loc = Paths.Pkg.t * Loc.t
 val loc: Format.formatter -> loc -> unit
+
+(** Enable color for fault reporting *)
+ val enable_colors: Format.formatter -> unit
 
 (** Basic logging function *)
 val log : log_info -> ('a, Format.formatter, unit) format -> 'a

@@ -38,6 +38,21 @@ let to_decorator = function
   | 2 -> "\x1b[35m"
   | 1 -> "\x1b[36m"
   | _ -> ""
+
+let mark_open_tag tag =
+  let b = "\x1b[1m" in
+  match of_string tag with
+  | 4 -> b ^ "\x1b[91m"
+  | 3 -> b ^ "\x1b[31m"
+  | 2 -> b ^ "\x1b[35m"
+  | 1 -> b ^ "\x1b[36m"
+  | _ -> match tag with
+    | "loc" -> b
+    | "title" -> b
+    | _ -> ""
+
+let mark_close_tag _tag =
+  "\x1b[0m"
 end
 
 module Log = struct
@@ -52,26 +67,28 @@ module Log = struct
 
   let kf st = Format.kfprintf (kont st) Format.err_formatter
 
+
+
   let kcritical k fmt =
     kf k @@
-      ("@[[\x1b[91mCritical error\x1b[39m]: "^^fmt ^^"@]@." )
+      ("@[[@{<critical>Critical error@}]: "^^fmt ^^"@]@." )
 
   let kerror k fmt =
     kf k
-    ("@[[\x1b[31m%s\x1b[39m]: "^^fmt^^"@]@.")
+    ("@[[@{<error>%s@}]: "^^fmt^^"@]@.")
     (if k = Ok then "Error" else "Fatal error")
 
   let kwarning k fmt = kf k
-    ("@[[\x1b[35m%s\x1b[39m]: " ^^ fmt ^^"@]@." )
+    ("@[[@{<warning>%s@}]: " ^^ fmt ^^"@]@." )
     (if k = Ok then "Warning" else "Fatal warning")
 
   let knotification k fmt = kf k
-    ("@[[\x1b[36m%s\x1b[39m]: " ^^ fmt ^^"@]@.")
+    ("@[[@{<notification>%s@}]: " ^^ fmt ^^"@]@.")
       (if k = Ok then "Notification" else "Fatal notification")
 
 
   let kwhisper k fmt = kf k
-    ("@[[%s]: " ^^ fmt ^^"@]@.")
+    ("@[[@{<whisper>%s@}]: " ^^ fmt ^^"@]@.")
     (if k = Ok then "Miscellaneous" else "Fatal accident")
 
   let critical fmt = kcritical Fail fmt
@@ -103,7 +120,14 @@ type 'a fault = { path: Paths.S.t; expl: explanation; log: log_info -> 'a }
 type 'a t = 'a fault
 
 type loc = Paths.Pkg.t * Loc.t
-let loc ppf (path,x)= Pp.fp ppf "%a:%a" Paths.Pkg.pp path Loc.pp x
+let loc ppf (path,x)= Pp.fp ppf "@{<loc>%a:%a@}" Paths.Pkg.pp path Loc.pp x
+
+let enable_colors ppf =
+  Format.pp_set_tags ppf true;
+  Format.pp_set_mark_tags ppf true;
+  Format.pp_set_formatter_tag_functions ppf
+    Level.{ (Format.pp_get_formatter_tag_functions ppf ()) with
+      mark_open_tag; mark_close_tag }
 
 module Policy = struct
 
@@ -153,8 +177,12 @@ module Policy = struct
   let pp_lvl ppf = function
     | None -> ()
     | Some lvl ->
-      Pp.fp ppf "[%s%s\x1b[39m]"
-        (Level.to_decorator lvl) (Level.to_string lvl)
+      let name = Level.to_string lvl in
+      Pp.fp ppf "[";
+      Format.open_tag name;
+      Pp.string ppf name;
+      Format.close_tag ();
+      Pp.fp ppf "]"
 
   let rec pp_map ppf = function
     | name, Level {expl; lvl} ->

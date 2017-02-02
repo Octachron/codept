@@ -9,6 +9,8 @@ let io = Io.direct
 let out = Pp.std
 
 let () =
+  Fault.enable_colors Pp.err;
+  Fault.enable_colors Pp.std;
   let query = Args.process version Sys.argv in
   let task = io.reader.findlib query.task query.findlib in
   List.iter (Args.eval_single out io.writer query.params query.task)

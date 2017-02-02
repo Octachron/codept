@@ -120,7 +120,7 @@ module Failure = struct
       match M2l.Block.m2l u.code with
       | None -> ()
       | Some next -> begin
-          Pp.fp ppf " −(%a:%a)⟶@ " Paths.Pkg.pp u.input.path Loc.pp name.loc;
+          Pp.fp ppf " −(%a)⟶@ " Fault.loc (u.input.path, name.loc);
           pp_circular map start false ppf next
         end
 
