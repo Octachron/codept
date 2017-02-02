@@ -27,7 +27,7 @@ module Failure :
 
     val pp_circular :
       (i * 'a) Name.map ->
-      string -> bool -> Format.formatter -> Name.t Loc.ext -> unit
+      string -> bool -> Format.formatter -> Name.t -> unit
     val pp_cat :
       (i * _) Name.map ->
       Format.formatter -> status * Set.t -> unit

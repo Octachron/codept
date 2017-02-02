@@ -113,15 +113,15 @@ module Failure = struct
     map, categorize map |> normalize map
 
 
-  let rec pp_circular map start first ppf (name: string Loc.ext) =
-    Pp.fp ppf "%s" name.Loc.data;
-    if name.data <> start || first then
-      let u = fst @@ Name.Map.find name.data map in
+  let rec pp_circular map start first ppf name =
+    Pp.fp ppf "%s" name;
+    if name <> start || first then
+      let u = fst @@ Name.Map.find name map in
       match M2l.Block.m2l u.code with
       | None -> ()
       | Some next -> begin
-          Pp.fp ppf " −(%a)⟶@ " Fault.loc (u.input.path, name.loc);
-          pp_circular map start false ppf next
+          Pp.fp ppf " −(%a)⟶@ " Fault.loc (u.input.path, next.loc);
+          pp_circular map start false ppf next.data
         end
 
   let pp_cat map ppf (st, units) =
@@ -146,7 +146,7 @@ module Failure = struct
         Pp.(list ~sep:(s ",@ ") @@ Paths.P.pp ) (paths units)
         path_pp u.input.path
     | Cycle name ->  Pp.fp ppf "@[<hov 4> −Circular dependencies: @ @[%a@]@]"
-                        (pp_circular map name.data true) name
+                        (pp_circular map name.data true) name.data
 
   let pp map ppf m =
     Pp.fp ppf "%a"
