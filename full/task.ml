@@ -35,6 +35,7 @@ let add_intf = add_file Interface
 let add_sig = add_file Signature Read.M2l
 
 let add_seed _param task seed =
+  let seed = String.capitalize_ascii @@ Filename.remove_extension seed in
   task := { !task with seeds = seed :: (!task).seeds }
 
 let rec add_file ~prefix ~cycle_guard ~policy param task name0 =
