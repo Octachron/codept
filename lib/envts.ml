@@ -212,7 +212,7 @@ module Open_world(Envt:extended_with_deps) = struct
       (* Format.printf "aliased:%b, true name:%s\n" aliased root; *)
       let undefined =
         aliased ||
-        match Envt.find level [root] env.core with
+        match Envt.find Module [root] env.core with
         | exception Not_found -> true
         | _ -> false in
       if Name.Set.mem root env.world

@@ -275,6 +275,10 @@ let result =
                 "main.ml", []
               ]
   )
+  &&
+  ( Sys.chdir "../module_types";
+  deps_test ["a.mli", ["E"];  "b.ml", ["A"] ]
+  )
   && (
     let n = 100 in
     let dep = [ Printf.sprintf "M%d" n ] in
