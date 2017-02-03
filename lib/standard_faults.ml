@@ -5,7 +5,7 @@ let extension_ignored =
   { path = ["extension"; "ignored"];
     expl = "The payload of an extension node was ignored";
   log = (fun lvl ->
-      log lvl "%a, extension node %s ignored." loc)
+      log lvl "%a, extension node @{<m>%s@} ignored." loc)
 }
 
 let extension_traversed =
@@ -13,7 +13,7 @@ let extension_traversed =
     expl = "The payload of the extension node was handled has a standard \
            OCaml code.";
   log = (fun lvl  ->
-      log lvl "%a, @ extension node %s traversed." loc)
+      log lvl "%a, @ extension node @{<m>%s@} traversed." loc)
 }
 
 
@@ -24,7 +24,7 @@ let opened_first_class =
            unresolved. Consequently, inferred dependendencies after this \
            point may be an over-approximation.";
     log = (fun lvl ->
-      log lvl "%a,@ first-class module %s was opened while its signature was \
+      log lvl "%a,@ first-class module @{<m>%s@} was opened while its signature was \
                unknown." loc
       )
   }
@@ -70,7 +70,8 @@ let applied_unknown =
 
 
 let pp_divergence l ppf (d:Module.Divergence.t) =
-  let f x = Pp.fp ppf "the@ opening@ of@ the@ %s@ module ⟨%s⟩,@ at@ location %a"
+  let f x = Pp.fp ppf "the@ opening@ of@ the@ %s@ module @{<m>%s@},@ at@ location \
+                       @{<loc>%a@}"
       (match d.origin with
        | First_class_module -> "first class"
        | External -> "external")
@@ -85,7 +86,7 @@ let ambiguous =
     expl = "Signature fault: a module resolution was ambiguous, leading
       to potential spurious dependencies in the future";
     log = (fun lvl l name div -> log lvl
-              "%a,@;name resolution for ⟨%s⟩@ was@ ambiguous,@ due@ to@ %a.@ \
+              "%a,@;name resolution for @{<m>%s@}@ was@ ambiguous,@ due@ to@ %a.@ \
                Spurious@ dependencies@ might@ be@ inferred@ due@ to@ this@ ambiguity."
               loc l
               name (pp_divergence l) div
@@ -95,7 +96,7 @@ let ambiguous =
 let unknown_approximated =
   { path = ["typing"; "unknown"; "approximation"];
     log = (fun lvl path l ->
-        log lvl "%a,@ a non-resolvable module, ⟨%a⟩, has been \
+        log lvl "%a,@ a non-resolvable module, @{<m>%a@}, has been \
                  replaced by an approximation"
           loc l Paths.S.pp path);
     expl = "Signature fault: an unknown module was approximated, possibly yielding \

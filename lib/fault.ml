@@ -49,7 +49,8 @@ let mark_open_tag tag =
   | _ -> match tag with
     | "loc" -> b
     | "title" -> b
-    | _ -> ""
+    | "m" -> b
+    | _ -> b
 
 let mark_close_tag _tag =
   "\x1b[0m"
