@@ -274,7 +274,7 @@ module Layered = struct
     { local = env; local_units = units; pkgs = List.map read_dir includes }
 
   module I = Interpreter.Make(Envt)(struct
-      let policy = Standard_policies.default
+      let policy = Standard_policies.quiet
       let transparent_aliases = false
       (* we are not recording anything *)
       let transparent_extension_nodes = false
