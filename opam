@@ -6,13 +6,12 @@ bug-reports: "https://github.com/Octachron/codept/issues"
 license: "gpl-3"
 dev-repo: "https://github.com/Octachron/codept"
 build: [
-  [make "codept"]
+  [make "alternative"]
 ]
 build-test: [
-  [make "test"]
+  [make "alt-test"]
 ]
 build-doc: [
-  [make "doc"]
+  [make "alt-doc"]
 ]
-remove: ["ocamlfind" "remove" "codept"]
-depends: "ocamlfind {build} ocamlbuild {build}"
+depends: []
