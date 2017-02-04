@@ -323,7 +323,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
   }
 
   let get name state =
-    (* Invariant name ∈ state.pending *)
+    (* Invariant name ∈ state.pending, except when looking at a new seed *)
     List.hd @@ Name.Map.find name state.pending
 
   let remove name pending =
@@ -478,10 +478,12 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
           Error state
       | a :: q ->
         let state = add_name state a in
-        let u = get a state in
-        match eval state u with
-        | Error s -> Error s
-        | Ok state -> solve_for_roots state q in
+        match get a state with
+        | exception Not_found -> solve_for_roots state q
+        | u ->
+          match eval state u with
+          | Error s -> Error s
+          | Ok state -> solve_for_roots state q in
 
     solve_for_roots state state.roots
 
