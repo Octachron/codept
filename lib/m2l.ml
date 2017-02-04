@@ -397,57 +397,107 @@ let sexp = More_sexp.m2l
 (** The Block module computes the first dependencies needed to be resolved
     before any interpreter can make progress evaluating a given code block *)
 module Block = struct
-  let either x f y = if x = None then f y else x
-  let first f l = List.fold_left (fun x y -> either x f y) None l
+
+  let (+|) = Summary.Def.(+|)
+  let either x f y =
+    Mresult.Error.bind ( fun def ->
+        Mresult.fmap
+          (fun def' -> def +| def' )
+          (fun (def', name) -> ( def +| def', name) )
+          (f y)
+          ) x
+
+  let rec first acc f = function
+    | [] -> Error acc
+    | a :: q -> match f acc a with
+      | Error acc -> first acc f q
+      | Ok _ as ok ->  ok
 
   let data x = x.Loc.data
 
+  let lift def = function
+    | None -> Error def
+    | Some x -> Ok(def,x)
 
-  let rec me = function
-    | Resolved _ -> None
-    | Ident n -> Some( List.hd n )
-    | Apply {f; x} -> either (me f) me  x
+  let rec me defs =
+    let err = Error defs in
+    let ok name = Ok(defs, name) in
+    function
+    | Resolved _ -> err
+    | Ident n -> ok (List.hd n)
+    | Apply {f; x} -> either (me defs f) (me defs)  x
     | Fun fn ->
       either
-        Option.(fn.arg >>= fun {Arg.signature;_} -> mt signature)
-        me fn.body
-    | Constraint (e,t) -> either (me e) mt t
-    | Str code -> Option.fmap data @@ m2l code
-    | Val _ | Extension_node _ | Abstract | Unpacked -> None
-    | Open_me {opens = []; expr; _ } -> me expr
-    | Open_me {opens = a::_ ; _ } -> Some (List.hd a)
-  and mt = function
-    | Resolved _ -> None
-    | Alias n -> Some (List.hd n)
-    | Ident e -> Some (Paths.Expr.prefix e)
-    | Sig code -> Option.fmap data @@ m2l code
-    | Fun fn -> either
-                  Option.(fn.arg >>= fun {Arg.signature;_} -> mt signature)
-                  mt fn.body
-    | With { body; _ } -> mt body
-    | Of e -> me e
-    | Extension_node _
-    | Abstract -> None
-  and expr  =
+        Mresult.Ok.( (lift defs fn.arg) >>= fun (defs, {Arg.signature;_}) ->
+                     mt defs signature)
+        (me defs) fn.body
+    | Constraint (e,t) -> either (me defs e) (mt defs) t
+    | Str code -> Mresult.Ok.fmap data @@ m2l defs code
+    | Val _ | Extension_node _ | Abstract | Unpacked -> err
+    | Open_me {opens = []; expr; _ } -> me defs expr
+    | Open_me {opens = a::_ ; _ } -> ok (List.hd a)
+  and mt defs =
+    let err = Error defs in
+    let ok x = Ok(defs, x) in
     function
-    | Defs _ -> None
-    | Open p -> Some ( List.hd p)
-    | Include e -> me e
-    | SigInclude t -> mt t
-    | Bind {expr;_} -> me expr
-    | Bind_sig {expr;_} -> mt expr
+    | Resolved _ -> err
+    | Alias n -> ok (List.hd n)
+    | Ident e ->  ok (Paths.Expr.prefix e)
+    | Sig code -> Mresult.Ok.fmap data @@ m2l defs code
+    | Fun fn ->
+      either Mresult.Ok.( (lift defs fn.arg) >>= fun (defs, {Arg.signature;_}) ->
+                          mt defs signature)
+        (mt defs) fn.body
+    | With { body; _ } -> mt defs body
+    | Of e -> me defs e
+    | Extension_node _
+    | Abstract -> err
+  and expr defs  =
+    let err = Error defs and ok name = Ok(defs, name) in
+    function
+    | Defs d -> Error ( defs +| d )
+    | Open p -> ok ( List.hd p)
+    | Include e -> me defs e
+    | SigInclude t -> mt defs t
+    | Bind {expr;_} -> me defs expr
+    | Bind_sig {expr;_} -> mt defs expr
     | Bind_rec l ->
-      first (fun b -> me b.expr) l
-    | Minor m -> minor m
-    | Extension_node _ -> None
-  and expr_loc {Loc.loc;data} =
-      Option.fmap (fun data -> {Loc.loc;data}) @@ expr data
-  and m2l code = first expr_loc code
-  and minor m =
+      first defs (fun defs b -> me defs b.expr) l
+    | Minor m -> minor defs m
+    | Extension_node _ -> err
+  and expr_loc defs {Loc.loc;data} =
+      Mresult.Ok.fmap (fun data -> {Loc.loc;data}) @@ expr defs data
+  and m2l defs code = first defs expr_loc code
+  and minor defs m =
     if Name.Set.cardinal m.access > 0 then
-      Some (Name.Set.choose m.access)
+      Ok (defs, Name.Set.choose m.access)
     else
-      either Option.(first m2l m.values >>| data) (first me) m.packed
+      either Mresult.Ok.(first defs m2l m.values >>| data) (first defs me) m.packed
+
+  let resolve_alias find name =
+    match (find name: Module.t) with
+    | Alias {path = name :: _ ; _ } -> name
+    | _ -> name
+    | exception Not_found -> name
+
+  let find y name =
+    let defined = y.Summary.defined in
+    let rec find defs name =
+      match defs with
+      | Module.Blank -> raise Not_found
+      | Module.Exact d -> Name.Map.find name d.Module.modules
+      | Module.Divergence d ->
+        match Name.Map.find name d.after.modules with
+        | x -> x
+        | exception Not_found -> find d.before name in
+    find defined name
+
+  let m2l code =
+    match m2l Summary.empty code with
+    | Error _ -> None
+    | Ok x -> let defs, n = x.data in
+      Some { x with data = resolve_alias (find defs) n }
+
 
 end
 

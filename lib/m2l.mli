@@ -191,10 +191,6 @@ end
    progress evaluating a given code block *)
 module Block: sig
   val m2l: m2l -> Name.t Loc.ext option
-  val expr: expression -> Name.t option
-  val me: module_expr-> Name.t option
-  val mt: module_type -> Name.t option
-
 end
 
 (** {!Normalize} computes the normal form of a given m2l code fragment.

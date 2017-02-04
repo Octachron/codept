@@ -361,7 +361,7 @@ let result =
           ,["List"],[]);
           "m2l.mli", (["Loc"; "Module";"Name";"Summary";"Paths";"Sexp" ],
                       ["Format"],[]);
-          "m2l.ml", (["Loc"; "Module";"Name";"Option";"Summary";"Paths"
+          "m2l.ml", (["Loc"; "Module"; "Mresult"; "Name";"Option";"Summary";"Paths"
                      ; "Pp"; "Sexp" ],
                      ["List"],[]);
           "fault.ml", (["Loc"; "Option"; "Name";"Paths"; "Pp"],
