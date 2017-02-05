@@ -145,24 +145,25 @@ let print_version version ()= Format.printf "codept, version %.2f@." version
 
 let add_include param dir =
   let dir = Task.expand_dir dir in
-  let files = Sys.readdir dir in
-  let dir = if dir = "." then [] else Paths.S.parse_filename dir in
-  let open L in
-  let includes =
-    Array.fold_left (fun m x ->
-        let policy =
-          let open Fault in
-          Policy.set_err (Codept_policies.unknown_extension, Level.whisper)
-            !param.[policy] in
-        match Task.classify policy L.( !param.[synonyms] ) x with
-        | None | Some { kind = Signature; _ } -> m
-        | Some { kind = Interface | Implementation ; _ } ->
-          Name.Map.add (Read.name x)
-            Pkg.( dir / local x) m
-      )
-      !param.[includes] files
-  in
-  param.[L.includes] <- includes
+  if Sys.file_exists dir && Sys.is_directory dir then
+    let files = Sys.readdir dir in
+    let dir = if dir = "." then [] else Paths.S.parse_filename dir in
+    let open L in
+    let includes =
+      Array.fold_left (fun m x ->
+          let policy =
+            let open Fault in
+            Policy.set_err (Codept_policies.unknown_extension, Level.whisper)
+              !param.[policy] in
+          match Task.classify policy L.( !param.[synonyms] ) x with
+          | None | Some { kind = Signature; _ } -> m
+          | Some { kind = Interface | Implementation ; _ } ->
+            Name.Map.add (Read.name x)
+              Pkg.( dir / local x) m
+        )
+        !param.[includes] files
+    in
+    param.[L.includes] <- includes
 
 let fault param s =
   match String.split_on_char '=' s with
