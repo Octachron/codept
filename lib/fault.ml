@@ -187,12 +187,12 @@ module Policy = struct
 
   let rec pp_map ppf = function
     | name, Level {expl; lvl} ->
-      Pp.fp ppf "@;−%s%a:@;@[<hov>%a@]"
+      Pp.fp ppf "@;−@{<title>%s@}%a:@;@[<hov>%a@]"
         name
         pp_lvl lvl
         Format.pp_print_text expl
     | name, Map { lvl; expl; map } ->
-      Pp.fp ppf "@;−%s%a:%s@; @[<v2> %a @]"
+      Pp.fp ppf "@;−@{<title>%s@}%a:%s@; @[<v2> %a @]"
         name
         pp_lvl lvl
         expl
