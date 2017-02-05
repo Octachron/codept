@@ -66,7 +66,7 @@ let makefile_eval ppf param task =
   Makefile.main ppf param.common param.makefile task
 
 
-let makefile_c action param () =
+let makefile_c action () =
   action :=
     { !action with makefiles = !output :: (!action).makefiles }
 
@@ -116,7 +116,7 @@ let iter_mode out writer param r (file,mode) =
     )
 
 
-let mode action param command () =
+let mode action command () =
   let output = !output in
   action  :=
     { !action with
@@ -133,7 +133,7 @@ let mode action param command () =
         :: !action.active_modes
     }*)
 
-let set_iter action param command () =
+let set_iter action command () =
   action :=
     { !action with
       singles =
@@ -244,8 +244,8 @@ let args action param task fquery version =
   let set_p x = set_p param x in
   let task_p = task_p param task in
   let taskc = taskc task in
-  let mode = mode action param in
-  let set_iter = set_iter action param in
+  let mode = mode action in
+  let set_iter = set_iter action in
   let findlib = findlib fquery in
 
   Cmd.[
@@ -292,7 +292,7 @@ let args action param task fquery version =
     "-export", Unit (mode Modes.Export), ": export resolved modules signature";
 
     "-dot", Unit (mode Modes.Dot), ": print dependencies in dot format";
-    "-makefile", Unit (makefile_c action param), ": print makefile depend file(default)";
+    "-makefile", Unit (makefile_c action), ": print makefile depend file(default)";
     "-approx-m2l", Unit (set_iter Single.Approx_file),
     ": print approximated m2l ast";
     "-m2l", Unit (set_iter Single.M2l), ": print m2l ast";
@@ -394,7 +394,7 @@ let process version ?(extra=[]) argv =
   ; if not !params.no_include then add_include params "."
   ; Compenv.readenv stderr Before_link
   ; if !action = action0 then
-    makefile_c action params ()
+    makefile_c action ()
   ; { params= !params; task = !task; findlib = !findlib_query; action = !action }
 
 let translate_findlib_query task query =
