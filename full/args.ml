@@ -144,6 +144,7 @@ let print_vnum version ()= Format.printf "%.2f@." version
 let print_version version ()= Format.printf "codept, version %.2f@." version
 
 let add_include param dir =
+  let dir = Task.expand_dir dir in
   let files = Sys.readdir dir in
   let dir = if dir = "." then [] else Paths.S.parse_filename dir in
   let open L in

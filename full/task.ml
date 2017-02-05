@@ -5,6 +5,18 @@ open Common
 open Params
 module Pth=Paths.S
 
+let compiler_dir =
+  lazy (
+    let ch = Unix.open_process_in "ocamlc -where" in
+    let s= input_line ch in
+    close_in ch;
+    s ^ "/"
+  )
+
+let expand_dir dir =
+    if dir <> "" && dir.[0] = '+' then
+      Lazy.force compiler_dir ^ String.sub dir 1 (String.length dir - 1)
+    else dir
 
 let extension name =
   let n = String.length name in
@@ -77,7 +89,7 @@ let add_open task name =
   task := { !task with opens = [name] :: (!task).opens }
 
 let lib task f =
-  task := { !task with libs = f :: (!task).libs }
+  task := { !task with libs = (expand_dir f) :: (!task).libs }
 
 let map param task file =
   L.( param.[transparent_aliases] <- true );
