@@ -154,3 +154,12 @@ let syntaxerr =
           (Syntaxerr.location_of_error error)
       )
   }
+
+let m2l_syntaxerr =
+  { path = ["parsing"; "m2l"];
+    expl = "Parsing fault: syntax error when parsing a m2l serialized file.";
+    log = (fun lvl -> log lvl
+              "Parsing fault: syntax error when parsing the m2l serialized \
+               file @{<loc>%s@}, this should not happen."
+          )
+  }

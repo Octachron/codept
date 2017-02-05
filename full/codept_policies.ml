@@ -9,14 +9,6 @@ let unknown_extension =
   }
 
 
-let m2l_syntaxerr =
-  { path = ["codept"; "parsing"; "m2l"];
-    expl = "Parsing fault: syntax error when parsing a m2l serialized file.";
-    log = (fun lvl -> log lvl
-              "Parsing fault: syntax error when parsing the m2l serialized \
-               file %s."
-          )
-  }
 
 let solver_error =
   { path = ["solver"; "block" ];
@@ -40,7 +32,6 @@ let policy =
   let open Policy in
   policy
   |> set_err (unknown_extension, Level.warning)
-  |> set_err (m2l_syntaxerr, Level.warning)
   |> set_err (solver_error, Level.error)
   |> set_err (module_conflict, Level.warning)
 

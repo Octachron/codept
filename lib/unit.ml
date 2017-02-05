@@ -36,7 +36,9 @@ let read_file polycy kind filename : s =
   let name, code = Read.file kind filename in
   let precision, code = match code with
     | Ok c -> Exact, c
-    | Error M2l -> assert false
+    | Error M2l ->
+      Fault.(handle polycy Standard_faults.m2l_syntaxerr filename);
+        Approx, []
     | Error (Ocaml msg) ->
       Fault.(handle polycy Standard_faults.syntaxerr msg);
       Approx, Approx_parser.lower_bound filename

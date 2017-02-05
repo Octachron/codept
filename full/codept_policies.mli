@@ -4,9 +4,6 @@
 
 val unknown_extension: (string -> unit) Fault.t
 
-(** Syntax error when parsing serialized m2l file *)
-val m2l_syntaxerr: (string -> unit) Fault.t
-
 (** Solver error when trying to resolve dependencies *)
 val solver_error: (Solver.i list -> unit) Fault.t
 

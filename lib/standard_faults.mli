@@ -22,3 +22,6 @@ val concordant_approximation : (Paths.Pkg.t -> unit) Fault.t
 val discordant_approximation :
   (Paths.Pkg.t -> string list -> string list -> unit) Fault.t
 val syntaxerr : (Syntaxerr.error -> unit) Fault.t
+
+(** Syntax error when parsing serialized m2l file *)
+val m2l_syntaxerr: (string -> unit) Fault.t

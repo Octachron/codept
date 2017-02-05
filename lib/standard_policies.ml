@@ -18,6 +18,7 @@ let default =
   |> register_err syntaxerr
   |> set_err (discordant_approximation, warning)
   |> set_err (concordant_approximation, notification)
+  |> set_err (m2l_syntaxerr, error)
   |> set (["typing"], Some "Typing faults", warning)
   |> set_err (applied_structure, warning)
   |> set_err (structure_expected,warning)

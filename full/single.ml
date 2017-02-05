@@ -23,7 +23,7 @@ let to_m2l policy sig_only (k,f) =
       if sig_only then Some (k, M2l.Sig_only.filter x) else Some (k,x)
     | _, Error (Ocaml msg) -> Fault.handle policy Standard_faults.syntaxerr msg;
       None
-    | _, Error M2l -> Fault.handle policy Codept_policies.m2l_syntaxerr f; None
+    | _, Error M2l -> Fault.handle policy Standard_faults.m2l_syntaxerr f; None
 
 
 let approx_file _ _ ppf _param (_,f) =
