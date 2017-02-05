@@ -244,7 +244,19 @@ let result =
                    "e.ml", []
                  ]
      )
-
+  && (Sys.chdir "../aliases_and_map";
+      deps_test ["n__A.ml", ["M"];
+                 "n__B.ml", ["M"];
+                 "n__C.ml", ["M"; "N__A"];
+                 "n__D.ml", ["M"; "N__B"];
+                 "m.ml", [];
+                 "n__A.mli", ["M"];
+                 "n__B.mli", ["M"];
+                 "n__C.mli", ["M"];
+                 "n__D.mli", ["M"];
+                 "m.mli", [];
+                ]
+     )
   &&
   ( Sys.chdir "../broken_network";
     deps_test [
