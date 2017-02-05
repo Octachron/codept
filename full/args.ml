@@ -206,13 +206,13 @@ let findlib findlib_query update =
   Cmd.String (fun s -> findlib_query := update !findlib_query s)
 
 let pkg param findlib_query =
-  Cmd.String( fun s ->
-      if Common.is_stdlib_pkg s then
-        let open L in
-        param.[precomputed_libs] <- Name.Set.add s !param.[precomputed_libs]
-      else
-        findlib_query := Findlib.pkg !findlib_query s;
-    )
+  let add s =
+    if Common.is_stdlib_pkg s then
+      let open L in
+      param.[precomputed_libs] <- Name.Set.add s !param.[precomputed_libs]
+    else
+      findlib_query := Findlib.pkg !findlib_query s in
+  Cmd.String( fun s -> List.iter add @@ String.split_on_char ',' s )
 
 let no_stdlib param =
   Cmd.Unit( fun () ->
