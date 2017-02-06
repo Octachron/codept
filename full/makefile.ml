@@ -8,6 +8,7 @@ type param =
     bytecode: bool;
     abs_path: bool;
     slash:string;
+    one_line: bool;
     implicits: bool;
   }
 
@@ -39,24 +40,45 @@ let implicit_dep synonyms path =
     )
         synonyms {ml=false;mli=false}
 
-let print_deps (univ:Common.param) param order input dep ppf (unit,imore,dmore) =
+let tokenize_deps (univ:Common.param) param order input dep (unit,imore,dmore) =
   let unit = replace_deps univ.includes unit in
   let make_abs = Common.make_abs param.abs_path in
   let pkg_pp = Pkg.pp_gen param.slash in
   let sort = Sorting.toposort order Paths.Pkg.module_name in
   let open Unit in
   let dep x= make_abs @@ dep x in
-  let ppl ppf l = Pp.(list ~sep:(s" ") ~post:(s" ") pkg_pp) ppf
+  let tok f x = Format.asprintf "%a" f x in
+  let tokens l = List.map (tok pkg_pp)
       (List.map make_abs l) in
-  Pp.fp ppf "%a %a:%a %a\n"
-    pkg_pp ( make_abs @@ input unit.path)
-    ppl imore
-    Pp.(list ~pre:(s " ") ~sep:(s " ") pkg_pp)
+  tok pkg_pp ( make_abs @@ input unit.path)
+  :: tokens imore
+  @ ":"
+  ::  tokens
     ( List.rev_map dep
       @@ sort
       @@ Common.local_dependencies sort unit
     )
-    ppl dmore
+   @  tokens dmore
+
+let render param ppf l =
+  let rec render pos = function
+    | [] -> Format.pp_print_newline ppf ()
+    | a :: q ->
+      let n = String.length a in
+      let pos' =
+        if n + pos >= 77 && param.one_line then
+          (Pp.fp ppf " \\\n   "; 3 + n)
+        else
+          n + pos in
+      let pos =
+        if pos>0 then (Pp.fp ppf " "; pos' + 1) else pos' in
+      Format.pp_print_string ppf a;
+      render pos q in
+  render  0 l
+
+let print_deps univ param order input dep ppf more =
+  tokenize_deps (univ:Common.param) param order input dep more
+  |> render param ppf
 
 let regroup {Unit.ml;mli} =
   let add l m = List.fold_left (fun x y -> Unit.Groups.R.Map.add y x) m l in

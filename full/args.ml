@@ -32,6 +32,7 @@ let param0 = {
       abs_path = false;
       slash = Filename.dir_sep;
       implicits = true;
+      one_line = true;
     };
 
     common= {
@@ -271,7 +272,7 @@ let args action param task fquery version =
     "-native", set_t native, ": generate native compilation only dependencies";
     "-bytecode", set_t bytecode, ": generate bytecode only dependencies";
 
-    "-one-line", Cmd.Unit ignore, ": does nothing";
+    "-one-line", set_f one_line, ": does nothing";
     "-open", taskc add_open, "<name>: open module <name> at the start of \
                              all compilation units \n\
                              (except units whose name is <name>).";

@@ -35,6 +35,7 @@ module L :
     val bytecode : (t, bool) l
     val abs_path : (t, bool) l
     val slash : (t, string) l
+    val one_line : (t, bool) l
     val implicits : (t, bool) l
     val synonyms : (t, Common.info Name.map) l
     val includes : (t, Paths.Pkg.t Name.map) l
