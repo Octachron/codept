@@ -79,9 +79,6 @@ Most of the ocamldep options are also supported by codept.
 
 However, some of the ocamldep options are slightly reinterpreted:
 
-  * `-one-line` is the default and only mode of codept makefile output and
-  thus adding this option does nothing.
-
   * `-as-map <file>` and `-map <file>` are both reinterpreted to use the
   codept specific `-no-alias-deps` option which provides a better handling of
   delayed alias dependencies.
@@ -93,7 +90,8 @@ However, some of the ocamldep options are slightly reinterpreted:
     invalid file that might be more precise − or brittle. More tests are needed.
     See also the more generic `-k` option.
 
-Another possible difference between codept and ocamldep output is codept built-in detection of dependency cycles. Within codept, cycles triggers a fatal error message and stops the current analysis.
+Another possible difference between codept and ocamldep output is codept built-in detection of dependency cycles. With default options, cycles triggers a fatal error message within codept and stops the current analysis. If the option `-k` is specified,
+the analysis goes on by ignoring the submodule structure of cycle when inside the cycle.
 
 
 ##Codept-only options
