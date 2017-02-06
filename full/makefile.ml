@@ -31,7 +31,7 @@ let implicit_dep synonyms path =
       (Pkg.filename path) ^ "." ^ ext in
   Name.Map.fold (fun ext (info:Common.info) (found:bool Unit.pair) ->
       match info.kind with
-      | Interface ->
+      | Interface when info.format <> Cmi ->
         { found with mli = found.mli || exists ext }
       | Implementation ->
         { found with ml = found.ml || exists ext }
