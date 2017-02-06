@@ -9,7 +9,9 @@ type param =
     slash:string;
     one_line:bool;
     implicits: bool;
+    includes: string list;
   }
 
 val main:
-  Format.formatter -> Common.param -> param -> Unit.r list Unit.pair -> unit
+  Fault.Policy.t -> Format.formatter -> Common.param -> param ->
+  Unit.r list Unit.pair -> unit

@@ -12,7 +12,6 @@ val classic: info -> Read.kind option
 (** Filesystem related parameters *)
 type param = {
     synonyms: info Name.Map.t;
-    includes: Paths.Pkg.path Name.map;
 }
 
 (** Task types *)
@@ -26,6 +25,9 @@ type task =
   }
 
 
+(** [expand_dir dir] expands [+name] to [$(ocamlc -where)/name] *)
+val expand_dir: string -> string
+
 (** [local_dependencies u] *)
 val local_dependencies: Unit.r -> Paths.Pkg.t list
 
@@ -35,3 +37,7 @@ val make_abs: bool -> Paths.Pkg.t -> Paths.Pkg.t
 (** Check if a package name corresponds to one of the compiler distributed
     libraries *)
 val is_stdlib_pkg: Name.t -> bool
+
+(** [classify policy synonyms filename] classifies file type according to
+    the dictionary [synonyms] *)
+val classify: Fault.Policy.t -> info Name.map -> string -> info option

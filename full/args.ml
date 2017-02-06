@@ -33,10 +33,10 @@ let param0 = {
       slash = Filename.dir_sep;
       implicits = true;
       one_line = true;
+      includes = [];
     };
 
     common= {
-      includes = Name.Map.empty;
       synonyms;
     };
 
@@ -64,7 +64,7 @@ let task0 : Common.task = {
 let findlib_query0 =  Findlib.empty
 
 let makefile_eval ppf param task =
-  Makefile.main ppf param.common param.makefile task
+  Makefile.main L.(param.[policy]) ppf param.common param.makefile task
 
 
 let makefile_c action () =
@@ -83,7 +83,7 @@ let with_output out s f=
 
 let iter_makefile out param interm s =
   with_output out s (fun ppf ->
-      Makefile.main ppf param.common param.makefile interm
+      Makefile.main L.(param.[policy]) ppf param.common param.makefile interm
     )
 
 (** {2 Option implementations } *)
@@ -106,6 +106,9 @@ let mli_synonym param s =
   let synonyms =   Name.Map.add s info synonyms in
   param.[L.synonyms] <- synonyms
 
+let add_include param filename =
+  let open L in
+  param.[includes] <- filename :: (!param).[includes]
 
 let eval_single out writer param (task:Common.task) (file,single) =
   with_output out file (fun ppf ->
@@ -143,28 +146,6 @@ let set_iter action command () =
 
 let print_vnum version ()= Format.printf "%.2f@." version
 let print_version version ()= Format.printf "codept, version %.2f@." version
-
-let add_include param dir =
-  let dir = Task.expand_dir dir in
-  if Sys.file_exists dir && Sys.is_directory dir then
-    let files = Sys.readdir dir in
-    let dir = if dir = "." then [] else Paths.S.parse_filename dir in
-    let open L in
-    let includes =
-      Array.fold_left (fun m x ->
-          let policy =
-            let open Fault in
-            Policy.set_err (Codept_policies.unknown_extension, Level.whisper)
-              !param.[policy] in
-          match Task.classify policy L.( !param.[synonyms] ) x with
-          | None | Some { kind = Signature; _ } -> m
-          | Some { kind = Interface | Implementation ; _ } ->
-            Name.Map.add (Read.name x)
-              Pkg.( dir / local x) m
-        )
-        !param.[includes] files
-    in
-    param.[L.includes] <- includes
 
 let fault param s =
   match String.split_on_char '=' s with

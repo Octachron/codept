@@ -10,6 +10,7 @@ type param =
     slash:string;
     one_line: bool;
     implicits: bool;
+    includes: string list;
   }
 
 let replace_deps includes unit =
@@ -38,10 +39,36 @@ let implicit_dep synonyms path =
         { found with ml = found.ml || exists ext }
       | _ -> found
     )
-        synonyms {ml=false;mli=false}
+    synonyms {ml=false;mli=false}
 
-let tokenize_deps (univ:Common.param) param order input dep (unit,imore,dmore) =
-  let unit = replace_deps univ.includes unit in
+
+
+let expand_includes policy synonyms includes =
+  let read_dir expanded dir =
+    let dir = Common.expand_dir dir in
+    if Sys.file_exists dir && Sys.is_directory dir then
+      let files = Sys.readdir dir in
+      let dir = if dir = "." then [] else Paths.S.parse_filename dir in
+      Array.fold_left (fun m x ->
+          let policy =
+            let open Fault in
+            Policy.set_err (Codept_policies.unknown_extension, Level.whisper)
+              policy in
+          match Common.classify policy synonyms x with
+          | None | Some { Common.kind = Signature; _ } -> m
+          | Some { Common.kind = Interface | Implementation ; _ } ->
+            Name.Map.add (Read.name x)
+              Pkg.( dir / local x) m
+        )
+        expanded files
+    else
+      expanded
+  in
+  List.fold_left read_dir Name.Map.empty includes
+
+
+let tokenize_deps includes param order input dep (unit,imore,dmore) =
+  let unit = replace_deps includes unit in
   let make_abs = Common.make_abs param.abs_path in
   let pkg_pp = Pkg.pp_gen param.slash in
   let _sort = Sorting.toposort order Paths.Pkg.module_name in
@@ -77,18 +104,20 @@ let render param ppf l =
       render pos q in
   render 0 l
 
-let print_deps univ param order input dep ppf more =
-  tokenize_deps (univ:Common.param) param order input dep more
+let print_deps includes param order input dep ppf more =
+  tokenize_deps includes param order input dep more
   |> render param ppf
 
 let regroup {Unit.ml;mli} =
   let add l m = List.fold_left (fun x y -> Unit.Groups.R.Map.add y x) m l in
   add mli @@ add ml @@ Pth.Map.empty
 
-let main ppf common_p param units =
+let main polycy ppf (common_p:Common.param) param units =
+  let syn = common_p.synonyms in
+  let includes = expand_includes polycy syn param.includes in
   let all = param.all in
   let if_all l = if all then l else [] in
-  let print_deps = print_deps common_p param in
+  let print_deps = print_deps includes param in
   let order = Sorting.remember_order units.Unit.mli in
   let m =regroup units in
   let cmi_or or_ path =

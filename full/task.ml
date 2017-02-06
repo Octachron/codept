@@ -5,30 +5,8 @@ open Common
 open Params
 module Pth=Paths.S
 
-let compiler_dir =
-  lazy (
-    let ch = Unix.open_process_in "ocamlc -where" in
-    let s= input_line ch in
-    close_in ch;
-    s ^ "/"
-  )
 
-let expand_dir dir =
-    if dir <> "" && dir.[0] = '+' then
-      Lazy.force compiler_dir ^ String.sub dir 1 (String.length dir - 1)
-    else dir
 
-let extension name =
-  let n = String.length name in
-  let r = try String.rindex name '.' with Not_found -> n-1 in
-  String.sub name (r+1) (n-r-1)
-
-let classify policy synonyms f =
-  let ext = extension f in
-  match Name.Map.find ext synonyms with
-  | x -> Some x
-  | exception Not_found ->
-    Fault.handle policy Codept_policies.unknown_extension ext; None
 
 let add_invi task name =
   task := { !task with
@@ -39,7 +17,6 @@ let add_file kind format task name =
   let k = { Common.kind ; format } in
   let files = (!task).files in
   task := { !task with files = (k,name) :: files }
-
 
 
 let add_impl = add_file Implementation
@@ -56,7 +33,7 @@ let rec add_file ~prefix ~cycle_guard ~policy param task name0 =
     Policy.set_err (Codept_policies.unknown_extension, Level.whisper)
       L.(!param.[policy]) in
   if Sys.file_exists name then
-    match classify lax L.(!param.[synonyms]) name with
+    match Common.classify lax L.(!param.[synonyms]) name with
     | None -> if Sys.is_directory name then
         add_dir ~prefix ~policy:lax ~cycle_guard param task
           ~dir_name:name0 ~abs_name:name

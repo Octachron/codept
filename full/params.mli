@@ -38,7 +38,7 @@ module L :
     val one_line : (t, bool) l
     val implicits : (t, bool) l
     val synonyms : (t, Common.info Name.map) l
-    val includes : (t, Paths.Pkg.t Name.map) l
+    val includes : (t, string list) l
     val transparent_aliases : (t, bool) l
     val transparent_extension_nodes : (t, bool) l
     val precomputed_libs : (t, Name.set) l

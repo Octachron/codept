@@ -53,7 +53,7 @@ module L = struct
   open Common
   let synonyms = common % create
                    (fun x-> x.synonyms) (fun x y -> { x with synonyms = y })
-  let includes = common % create
+  let includes = makefile % create
                    (fun x-> x.includes) (fun x y -> { x with includes = y })
   open Analysis let (%) = compose
   let transparent_aliases = analyzer % create (fun x-> x.transparent_aliases)
