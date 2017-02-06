@@ -11,4 +11,4 @@ true: thread
 <full/*.native> or "tests/run.native": package(compiler-libs.common), package(unix), package(threads)
 "tests/run.ml" or "full/findlib.ml" : package(unix)
 
-<tests/*>: -traverse
+<ocamlbuild> or <build> or <tests>: -traverse
