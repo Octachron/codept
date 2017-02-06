@@ -26,9 +26,8 @@ type task =
     opens: Paths.S.t list
   }
 
-let local_dependencies sort unit =
-  sort
-  @@ List.filter
+let local_dependencies unit =
+  List.filter
     (function {Pkg.source=Unknown; _ }
             | {Pkg.source=Special _ ; _ } -> false | _ -> true )
   @@ Pkg.Set.elements unit.U.dependencies

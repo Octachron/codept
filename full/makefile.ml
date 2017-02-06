@@ -44,7 +44,7 @@ let tokenize_deps (univ:Common.param) param order input dep (unit,imore,dmore) =
   let unit = replace_deps univ.includes unit in
   let make_abs = Common.make_abs param.abs_path in
   let pkg_pp = Pkg.pp_gen param.slash in
-  let sort = Sorting.toposort order Paths.Pkg.module_name in
+  let _sort = Sorting.toposort order Paths.Pkg.module_name in
   let open Unit in
   let dep x= make_abs @@ dep x in
   let tok f x = Format.asprintf "%a" f x in
@@ -53,12 +53,13 @@ let tokenize_deps (univ:Common.param) param order input dep (unit,imore,dmore) =
   tok pkg_pp ( make_abs @@ input unit.path)
   :: tokens imore
   @ ":"
-  ::  tokens
-    ( List.rev_map dep
-      @@ sort
-      @@ Common.local_dependencies sort unit
-    )
-   @  tokens dmore
+    ::  tokens
+
+      (
+        List.sort (fun x y -> compare (Pkg.module_name y) (Pkg.module_name x))
+        @@ List.rev_map dep @@ Common.local_dependencies unit
+      )
+  @ tokens dmore
 
 let render param ppf l =
   let rec render pos = function
@@ -66,15 +67,15 @@ let render param ppf l =
     | a :: q ->
       let n = String.length a in
       let pos' =
-        if n + pos >= 77 && param.one_line then
-          (Pp.fp ppf " \\\n   "; 3 + n)
+        if n + pos > 75 && param.one_line then
+          (Pp.fp ppf " \\\n   "; 2 + n)
         else
           n + pos in
       let pos =
         if pos>0 then (Pp.fp ppf " "; pos' + 1) else pos' in
       Format.pp_print_string ppf a;
       render pos q in
-  render  0 l
+  render 0 l
 
 let print_deps univ param order input dep ppf more =
   tokenize_deps (univ:Common.param) param order input dep more
@@ -100,13 +101,18 @@ let main ppf common_p param units =
       or_ path
     | { mli = true; ml = false } ->
       Pkg.cmi path in
+  let cmo_or_cmi path =
+    let open Unit in
+    match implicit_dep common_p.synonyms path with
+    | { mli = true; ml = _ } -> Pkg.cmi path
+    |  _ -> Pkg.cmo path in
   Pth.Map.iter (fun _k g ->
       let open Unit in
       match g with
       | { ml= Some impl ; mli = Some intf } ->
         let cmi = Pkg.cmi impl.path in
         if not param.native then
-          print_deps order (Pkg.cmo) (cmi_or Pkg.cmo) ppf
+          print_deps order (Pkg.cmo) cmo_or_cmi ppf
             (impl, [], [cmi] @ if_all [impl.path] );
         if not param.bytecode then
           print_deps order (Pkg.cmx) (cmi_or Pkg.cmx) ppf
@@ -125,7 +131,7 @@ let main ppf common_p param units =
               else [], [cmi] ) in
           if not param.native then
             begin
-              print_deps order Pkg.cmo (cmi_or Pkg.cmo) ppf
+              print_deps order Pkg.cmo cmo_or_cmi ppf
                 (impl, if_all cmi_adep, if_all [impl.path] @ cmi_dep)
             end;
           if not param.bytecode then

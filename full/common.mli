@@ -26,9 +26,8 @@ type task =
   }
 
 
-(** [local_dependencies sort u] *)
-val local_dependencies:
-  (Paths.Pkg.t list -> Paths.Pkg.t list) -> Unit.r -> Paths.Pkg.t list
+(** [local_dependencies u] *)
+val local_dependencies: Unit.r -> Paths.Pkg.t list
 
 (**[make_abs bool] if <bool> convert relative path to absolute path *)
 val make_abs: bool -> Paths.Pkg.t -> Paths.Pkg.t
