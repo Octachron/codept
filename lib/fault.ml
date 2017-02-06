@@ -103,7 +103,7 @@ end
 type log_info = { silent:Level.t; level:Level.t; exit:Level.t}
 let log i fmt =
   let fns = Log.[| kwhisper; knotification; kwarning; kerror; kcritical |] in
-  if i.level <= i.silent then
+  if i.level < i.silent then
     Format.ifprintf Format.err_formatter fmt
   else if i.level >= Level.critical then
     Log.critical fmt

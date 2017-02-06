@@ -5,7 +5,7 @@ open Standard_faults
 
 let default =
   let open Level in
-  { silent = whisper; exit = error;
+  { silent = notification; exit = error;
     map = Level { expl = ""; lvl = Some critical } }
   |> set_err (applied_unknown, warning )
   |> set (["first_class"], Some "First-class module faults", warning )
