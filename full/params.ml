@@ -1,7 +1,7 @@
 type t =
   {
     makefile: Makefile.param;
-    common: Common.param;
+    synonyms:Common.synonyms;
     analyzer: Analysis.param;
     no_include:bool;
     may_approx:bool;
@@ -30,7 +30,6 @@ module L = struct
 
 
   let makefile = create (fun x -> x.makefile) (fun x y -> { x with makefile = y})
-  let common = create (fun x -> x.common) (fun x y -> { x with common = y})
   let analyzer = create (fun x -> x.analyzer) (fun x y -> { x with analyzer = y})
   let no_include = create
       (fun x -> x.no_include) (fun x y -> { x with no_include = y})
@@ -50,8 +49,7 @@ module L = struct
 
   let implicits = makefile % create (fun x-> x.implicits)
       (fun x y -> { x with implicits = y })
-  open Common
-  let synonyms = common % create
+  let synonyms = create
                    (fun x-> x.synonyms) (fun x y -> { x with synonyms = y })
   let includes = makefile % create
                    (fun x-> x.includes) (fun x y -> { x with includes = y })

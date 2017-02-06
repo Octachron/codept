@@ -13,5 +13,5 @@ type param =
   }
 
 val main:
-  Fault.Policy.t -> Format.formatter -> Common.param -> param ->
+  Fault.Policy.t -> Format.formatter -> Common.synonyms -> param ->
   Unit.r list Unit.pair -> unit

@@ -36,9 +36,7 @@ let param0 = {
       includes = [];
     };
 
-    common= {
-      synonyms;
-    };
+    synonyms;
 
     analyzer = {
       transparent_aliases = false;
@@ -64,7 +62,7 @@ let task0 : Common.task = {
 let findlib_query0 =  Findlib.empty
 
 let makefile_eval ppf param task =
-  Makefile.main L.(param.[policy]) ppf param.common param.makefile task
+  Makefile.main L.(param.[policy]) ppf param.synonyms param.makefile task
 
 
 let makefile_c action () =
@@ -83,7 +81,7 @@ let with_output out s f=
 
 let iter_makefile out param interm s =
   with_output out s (fun ppf ->
-      Makefile.main L.(param.[policy]) ppf param.common param.makefile interm
+      Makefile.main L.(param.[policy]) ppf param.synonyms param.makefile interm
     )
 
 (** {2 Option implementations } *)

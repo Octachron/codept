@@ -112,9 +112,8 @@ let regroup {Unit.ml;mli} =
   let add l m = List.fold_left (fun x y -> Unit.Groups.R.Map.add y x) m l in
   add mli @@ add ml @@ Pth.Map.empty
 
-let main polycy ppf (common_p:Common.param) param units =
-  let syn = common_p.synonyms in
-  let includes = expand_includes polycy syn param.includes in
+let main polycy ppf synonyms param units =
+  let includes = expand_includes polycy synonyms param.includes in
   let all = param.all in
   let if_all l = if all then l else [] in
   let print_deps = print_deps includes param in
@@ -122,7 +121,7 @@ let main polycy ppf (common_p:Common.param) param units =
   let m =regroup units in
   let cmi_or or_ path =
     let open Unit in
-    match implicit_dep common_p.synonyms path with
+    match implicit_dep synonyms path with
     | exception Not_found -> or_ path
     | { ml = true; mli = true } | { ml = false; mli=false } ->
         or_ path
@@ -132,7 +131,7 @@ let main polycy ppf (common_p:Common.param) param units =
       Pkg.cmi path in
   let cmo_or_cmi path =
     let open Unit in
-    match implicit_dep common_p.synonyms path with
+    match implicit_dep synonyms path with
     | { mli = true; ml = _ } -> Pkg.cmi path
     |  _ -> Pkg.cmo path in
   Pth.Map.iter (fun _k g ->
@@ -150,7 +149,7 @@ let main polycy ppf (common_p:Common.param) param units =
           (intf,[], [] )
       | { ml = Some impl; mli = None } ->
         begin
-          let implicit = implicit_dep common_p.synonyms impl.path in
+          let implicit = implicit_dep synonyms impl.path in
           let cmi = Pkg.cmi impl.path in
           let imli =  param.implicits
                       && implicit.mli in

@@ -12,9 +12,7 @@ let classic {format;kind}: Read.kind option = match kind with
   | Signature -> None
 
 
-type param = {
-    synonyms: info Name.Map.t;
-}
+type synonyms =info Name.Map.t
 
 type task =
   {

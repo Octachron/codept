@@ -9,10 +9,8 @@ val mli: info
 (** Convert info to standard type *)
 val classic: info -> Read.kind option
 
-(** Filesystem related parameters *)
-type param = {
-    synonyms: info Name.Map.t;
-}
+(** Mapping between extension and file type *)
+type synonyms =  info Name.Map.t
 
 (** Task types *)
 type task =
