@@ -27,7 +27,7 @@ let codept' port  ~approx mode tags =
       tags' -- "no_alias_deps"
     else
       tags' in
-  let k = if approx then S [ A"-k"; A "-silent-fault-level"; A "warning" ]
+  let k = if approx then S [ A"-k"; A "-verbosity"; A "warning" ]
     else S [] in
   let pp = Command.reduce @@ T (tags++ "ocaml" ++ "pp" ++ "pp:dep") in
   let pp = match pp with N -> N | s -> S [ A "-pp"; Quote s] in
