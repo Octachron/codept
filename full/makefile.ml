@@ -13,16 +13,19 @@ type param =
     includes: string list;
   }
 
-let replace_deps includes unit =
-  let replace = function
+let preprocess_deps includes unit =
+  let replace l = function
     | { Pkg.source = Unknown; file = [name] } as x ->
       begin
         try Name.Map.find name includes with Not_found -> x
-      end
-    | x -> x in
+      end :: l
+    | { Pkg.source = Pkg _ ; _ } -> l
+    | x -> x :: l
+
+  in
   { unit with Unit.dependencies =
                 Pkg.Set.of_list
-                @@ List.map replace
+                @@ List.fold_left replace []
                 @@ Pkg.Set.elements unit.Unit.dependencies }
 
 let implicit_dep synonyms path =
@@ -68,7 +71,7 @@ let expand_includes policy synonyms includes =
 
 
 let tokenize_deps includes param order input dep (unit,imore,dmore) =
-  let unit = replace_deps includes unit in
+  let unit = preprocess_deps includes unit in
   let make_abs = Common.make_abs param.abs_path in
   let pkg_pp = Pkg.pp_gen param.slash in
   let _sort = Sorting.toposort order Paths.Pkg.module_name in
