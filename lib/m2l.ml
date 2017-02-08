@@ -552,13 +552,11 @@ module Annot = struct
   let union_map f l =
     List.fold_left (fun res x -> res ++ f x ) empty l
 
-  let access name =
-    Loc.create name.loc { annot_empty with
-                          access = Name.Map.singleton name.data Edge.Normal }
+  let access = Loc.fmap @@ fun x ->
+    { annot_empty with access = Name.Map.singleton x Edge.Normal }
 
-  let abbrev name =
-    Loc.create name.loc { annot_empty with
-                          access = Name.Map.singleton name.data Edge.Epsilon }
+  let abbrev = Loc.fmap @@ fun x ->
+    { annot_empty with access = Name.Map.singleton x Edge.Epsilon }
 
 
   let value v =
@@ -567,7 +565,7 @@ module Annot = struct
       List.fold_left (List.fold_left ext) Nowhere v in
     Loc.create loc { annot_empty with values = v }
 
-  let pack o = Loc.create o.loc { annot_empty with packed = o.data }
+  let pack = Loc.fmap @@ fun x -> { annot_empty with packed = x }
 
   let opt f x = Option.( x >>| f >< empty )
 
