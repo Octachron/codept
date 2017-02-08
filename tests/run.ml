@@ -51,7 +51,7 @@ let ok_only = function
 
 let normalize set =
   set
-  |> Pth.Set.elements
+  |> Deps.to_list
   |> List.map Pth.module_name
   |> List.sort compare
 
@@ -69,7 +69,7 @@ let simple_dep_test name list set =
 let (%) f g x = f (g x)
 
 let normalize_2 set =
-  let l = Pth.Set.elements set in
+  let l = Deps.to_list set in
   let is_inner =
     function { Pth.source = Local; _ } -> true | _ -> false in
   let is_lib =
@@ -351,30 +351,31 @@ let result =
                                 ["List";"Longident"; "Location"; "Lexing";
                                  "Parsetree"], [] );
           "approx_parser.mli", (["M2l"], [],[]);
-          "approx_parser.ml", (["Loc"; "Read";"M2l";"Name"],
+          "approx_parser.ml", (["Deps"; "Loc"; "Read";"M2l";"Name"],
                                ["Lexer"; "Parser"; "Lexing";"List"],[]);
           "cmi.mli", (["M2l"], [], []);
 
           "cmi.ml", (["Loc"; "M2l";"Module"; "Option"; "Paths"],
                      ["Cmi_format"; "List"; "Path";"Types"], []);
+          "deps.ml", (["Option"; "Paths"; "Pp"; "Sexp"],["List"],[]);
           "summary.mli", (["Module"], ["Format"], []);
           "summary.ml", (["Module"; "Name"; "Pp"; "Mresult"], ["List"], []);
-          "envts.mli", (["Module";"Name"; "Interpreter"; "Paths"], [], []);
+          "envts.mli", (["Deps"; "Module";"Name"; "Interpreter"; "Paths"], [], []);
           "envts.ml", (
-            ["Cmi"; "Summary"; "Interpreter"; "M2l"; "Fault"; "Module"; "Name";
-             "Paths";"Standard_faults";"Standard_policies"],
+            ["Cmi"; "Deps"; "Summary"; "Interpreter"; "M2l"; "Fault";
+             "Module"; "Name"; "Paths";"Standard_faults";"Standard_policies"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
-          "interpreter.mli", (["Fault"; "Module";"Paths";"M2l";"Summary"],
+          "interpreter.mli", (["Deps"; "Fault"; "Module";"Paths";"M2l";"Summary"],
                               [],[]);
           "interpreter.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths";
-             "Mresult"; "Fault"; "Standard_faults"]
+             "Mresult"; "Fault"; "Standard_faults"; "Deps"]
           ,["List"],[]);
-          "m2l.mli", (["Loc"; "Module";"Name";"Summary";"Paths";"Sexp" ],
+          "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";"Sexp" ],
                       ["Format"],[]);
-          "m2l.ml", (["Loc"; "Module"; "Mresult"; "Name";"Option";"Summary";"Paths"
-                     ; "Pp"; "Sexp" ],
+          "m2l.ml", (["Loc"; "Deps"; "Module"; "Mresult"; "Name";
+                      "Option";"Summary";"Paths"; "Pp"; "Sexp" ],
                      ["List"],[]);
           "fault.ml", (["Loc"; "Option"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"],[]);
@@ -405,12 +406,12 @@ let result =
                       [ "Obj"; "Format";"List";"Map"; "Hashtbl"; "String"], [] );
           "sexp.mli", (["Name"],
                       [ "Format"], [] );
-          "solver.mli", (["Loc"; "Unit";"M2l";"Name";"Interpreter";"Paths"],
+          "solver.mli", (["Deps"; "Loc"; "Unit";"M2l";"Name";"Interpreter"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
-            ["Approx_parser"; "Summary"; "Interpreter"; "Loc"; "M2l"; "Module";
-             "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Unit"; "Fault";
-             "Standard_faults"],
+            ["Approx_parser"; "Deps"; "Summary"; "Interpreter"; "Loc";
+             "M2l"; "Module"; "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Unit";
+             "Fault"; "Standard_faults"],
             ["List"; "Map"; "Set"],[]);
           "standard_faults.ml", (["Fault"; "Module"; "Paths"; "Pp"; "Loc" ],
                                  ["Format"; "Location"; "Syntaxerr"],[]);
@@ -418,10 +419,10 @@ let result =
                                   ["Syntaxerr"],[]);
           "standard_policies.ml", (["Fault"; "Standard_faults"],[],[]);
           "standard_policies.mli", (["Fault"],[],[]);
-          "unit.mli", (["Paths"; "M2l"; "Module"; "Name"; "Fault"; "Read"],
+          "unit.mli", (["Deps";"Paths"; "M2l"; "Module"; "Name"; "Fault"; "Read"],
                        ["Format";"Set"],[]);
           "unit.ml", (
-            ["Approx_parser"; "M2l"; "Module"; "Fault";
+            ["Approx_parser"; "Deps"; "M2l"; "Module"; "Fault";
              "Option"; "Paths"; "Pp"; "Read"; "Standard_faults"],
             [ "List"; "Set"],
             []);

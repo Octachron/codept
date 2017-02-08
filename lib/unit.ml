@@ -21,7 +21,7 @@ type r = {
   precision: precision;
   code: M2l.t;
   signature: Module.signature;
-  dependencies: Pkg.set
+  dependencies: Deps.t
 }
 type u = r
 
@@ -193,7 +193,7 @@ let pp ppf unit =
     Pkg.pp_simple unit.path
     M2l.pp unit.code
     Module.pp_signature unit.signature
-    Pkg.Set.pp unit.dependencies
+    Deps.pp unit.dependencies
 
 let pp_input ppf (unit:s) =
   Pp.fp ppf "@[<hov2>[ name=%s; @, path=%a; @;\

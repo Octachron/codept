@@ -9,11 +9,6 @@ module P = M.Partial
 
 type 'a bind = {name:Name.t; expr:'a}
 
-module Edge = struct
-  type t = Normal | Epsilon
-  let max x y = if x = Epsilon then Epsilon else y
-end
-
 type kind = Structure | Signature
 
 
@@ -37,7 +32,7 @@ type expression =
   | Extension_node of extension
   (** [[%ext …]] *)
 and annotation =
-  { access: Edge.t Name.map
+  { access: Deps.Edge.t Name.map
   (** [M.N.L.x] ⇒ access \{M = Normal \}
       type t = A.t ⇒ access \{ M = ε \}
   *)
@@ -215,8 +210,6 @@ module More_sexp = struct
           bind_rec r; minor r; extension_node r ]
 
   (** edge *)
-  let edge = sum [simple_constr "Normal" Edge.Normal;
-                  simple_constr "ε" Edge.Epsilon]
 
   (** Annotation *)
   let access = R.( key Many "access" Name.Map.empty )
@@ -226,7 +219,7 @@ module More_sexp = struct
   let nameset = convr (list string) Name.Set.of_list Name.Set.elements
 
   let namemap = convr
-      (list @@ major_minor string Edge.Normal edge)
+      (list @@ major_minor string Deps.Edge.Normal Deps.Edge.sexp)
       (List.fold_left (fun m (k,e) -> Name.Map.add k e m) Name.Map.empty )
       Name.Map.bindings
 
@@ -525,9 +518,9 @@ module Annot = struct
   let is_empty x  = x.data = annot_empty
 
   module Access = struct
-    type t = Edge.t Name.map
+    type t = Deps.Edge.t Name.map
     let merge = Name.Map.merge (fun k x y -> match x, y with
-        | Some x, Some y -> Some (Edge.max x y)
+        | Some x, Some y -> Some (Deps.Edge.max x y)
         | None, (Some _ as x) | (Some _ as x), None -> x
         | None, None -> None
       )
@@ -553,10 +546,10 @@ module Annot = struct
     List.fold_left (fun res x -> res ++ f x ) empty l
 
   let access = Loc.fmap @@ fun x ->
-    { annot_empty with access = Name.Map.singleton x Edge.Normal }
+    { annot_empty with access = Name.Map.singleton x Deps.Edge.Normal }
 
   let abbrev = Loc.fmap @@ fun x ->
-    { annot_empty with access = Name.Map.singleton x Edge.Epsilon }
+    { annot_empty with access = Name.Map.singleton x Deps.Edge.Epsilon }
 
 
   let value v =
@@ -570,7 +563,7 @@ module Annot = struct
   let opt f x = Option.( x >>| f >< empty )
 
   let epsilon_promote = Loc.fmap @@ fun annot ->
-    { annot with access = Name.Map.map (fun _ -> Edge.Epsilon) annot.access }
+    { annot with access = Name.Map.map (fun _ -> Deps.Edge.Epsilon) annot.access }
 
 end
 
@@ -633,7 +626,7 @@ and pp_annot ppf {access;values; packed} =
 and pp_access ppf s =  if Name.Map.cardinal s = 0 then () else
     Pp.fp ppf "access:@[<hv>{%a}@]" (Pp.list pp_access_elt) (Name.Map.bindings s)
 and pp_access_elt ppf (name,edge) =
-  Pp.fp ppf "%s%s" name (if edge = Edge.Normal then "" else "∙ε")
+  Pp.fp ppf "%s%s" name (if edge = Deps.Edge.Normal then "" else "∙ε")
 and pp_opaque ppf me = Pp.fp ppf "⟨%a⟩" pp_me me
 and pp_bind ppf {name;expr} =
   match expr with

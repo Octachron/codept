@@ -25,13 +25,7 @@
 
 *)
 
-(** Edge type for qualifying access *)
-module Edge: sig
-  type t =
-    | Normal (**standard dependency *)
-    | Epsilon (** immediate dependency *)
-  val max: t -> t -> t
-end
+
 
 (** {2 Main types } *)
 
@@ -70,7 +64,7 @@ and expression =
     dependency tracking.
 *)
 and annotation =
-  { access: Edge.t Name.map
+  { access: Deps.Edge.t Name.map
   (** [M.N.L.x] ⇒ access \{M = Normal \}
       type t = A.t ⇒ access \{ M = ε \}
   *)
@@ -156,7 +150,7 @@ module Annot : sig
   type t = annotation Loc.ext
 
   module Access: sig
-    type t = Edge.t Name.map
+    type t = Deps.Edge.t Name.map
     val empty: t
     val merge: t -> t -> t
   end

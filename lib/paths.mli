@@ -84,5 +84,12 @@ module Pkg :
       val pp: Format.formatter -> t -> unit
       end
     type set = Set.t
+
+    module Map : sig
+      include Map.S with type key = t
+      val find_opt: key -> 'a t -> 'a option
+    end
+    type 'a map = 'a Map.t
+
   end
 module P = Pkg

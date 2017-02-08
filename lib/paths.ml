@@ -271,8 +271,13 @@ module Pkg = struct
     include Set.Make(struct type t = path let compare = compare end)
     let pp ppf s = Pp.(clist pp) ppf (elements s)
   end
-
+  module Map = struct
+    include Map.Make(struct type t = path let compare = compare end)
+    let find_opt k m = try Some(find k m) with Not_found -> None
+  end
   type set = Set.t
+  type 'a map = 'a Map.t
+
   let local file = { source = Local; file = S.parse_filename file }
   let (/) simple {source; file} = {source; file = simple @ file }
 

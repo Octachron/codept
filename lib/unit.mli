@@ -22,11 +22,11 @@ type r = {
   precision: precision;
   code: M2l.t;
   signature: Module.signature;
-  dependencies: Pkg.set
+  dependencies: Deps.t
 }
 type u = r
 
-val lift: Module.signature -> Pkg.set -> s -> r
+val lift: Module.signature -> Deps.t -> s -> r
 val proj: r -> s
 
 val read_file : Fault.Policy.t -> Read.kind -> string -> s

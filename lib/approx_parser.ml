@@ -132,7 +132,7 @@ let lower lex =
 let to_upper_bound m2l =
   let lift (%) x y =
     Loc.{data = x.data % y.data; loc = merge x.loc y.loc } in
-  let add n = Name.Map.add n M2l.Edge.Normal in
+  let add n = Name.Map.add n Deps.Edge.Normal in
   let add, union = lift add, lift M2l.Annot.Access.merge in
 
   let open M2l in

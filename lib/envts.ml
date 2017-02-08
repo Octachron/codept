@@ -1,7 +1,11 @@
 module M = Module
 module S = Module.Sig
+module Edge = Deps.Edge
 module Origin = M.Origin
 module SDef = Summary.Def
+
+
+
 
 module Query = struct
 
@@ -23,7 +27,7 @@ module type extended = sig
   include Interpreter.envt
   val top: t -> t
   val resolve_alias: Paths.Simple.t -> t -> Name.t option
-  val find_name: bool -> M.level -> Name.t -> t -> Module.t Query.t
+  val find_name: ?edge:Edge.t -> bool -> M.level -> Name.t -> t -> Module.t Query.t
   val restrict: t -> M.signature -> t
 end
 
@@ -91,7 +95,7 @@ module Base = struct
            the found module, after marking it as a phantom module. *)
         create (Module.spirit_away d.point q) [ambiguity name d.point]
 
-  let find_name _root level name env = find_name level name env.current
+  let find_name ?edge:_ _root level name env = find_name level name env.current
 
   let restrict env sg = { env with current = sg }
 
@@ -126,12 +130,12 @@ module Base = struct
       | _ -> false
 
 
-  let rec find0 require_root level path env =
+  let rec find0 ?edge require_root level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
       let open Query in
-      find_name false (adjust_level level q) a env >>=
+      find_name ?edge false (adjust_level level q) a env >>=
       function
       | M.Alias {path; _ } ->
         if require_root then
@@ -146,10 +150,10 @@ module Base = struct
         else
           find0 false level q  @@ restrict env m.signature
 
-  let find ?edge:_ level path env=
-    find0 false level path env
+  let find ?(edge=Edge.Normal) level path env=
+    find0 ~edge false level path env
 
-  let deps _env = Paths.P.Set.empty
+  let deps _env = Paths.P.Map.empty
   let reset_deps = ignore
 
   let (>>) env def = restrict env SDef.(env.current +@ def.Summary.visible)
@@ -168,7 +172,7 @@ module Open_world(Envt:extended_with_deps) = struct
 
 
   module P = Paths.Pkg
-  type t = { core: Envt.t; world: Name.set; externs: P.set ref }
+  type t = { core: Envt.t; world: Name.set; externs: Edge.t P.map ref }
 
   let is_exterior path env = Envt.is_exterior path env.core
   let top env = { env with core = Envt.top env.core }
@@ -176,16 +180,16 @@ module Open_world(Envt:extended_with_deps) = struct
   let resolve_alias name env =
     Envt.resolve_alias name env.core
 
-  let start core world = { core; world; externs = ref P.Set.empty }
+  let start core world = { core; world; externs = ref P.Map.empty }
 
   let last l = List.hd @@ List.rev l
 
   let reset_deps env =
-    env.externs := P.Set.empty;
+    env.externs := P.Map.empty;
     Envt.reset_deps env.core
 
   let deps env =
-    Paths.Pkg.Set.union !(env.externs) (Envt.deps env.core)
+    Deps.merge !(env.externs) (Envt.deps env.core)
 
   let approx path =
     match path with
@@ -194,15 +198,15 @@ module Open_world(Envt:extended_with_deps) = struct
       Module.mockup name ~path:{Paths.P.source=Unknown; file=[name]}
     | l -> let name = last l in Module.mockup name
 
- let find_name root level name env =
-    try Envt.find_name root level name env.core with
+ let find_name ?edge root level name env =
+    try Envt.find_name ?edge root level name env.core with
     | Not_found ->
       if root && Name.Set.mem name env.world then
         raise Not_found
       else
         Query.pure @@ Module.md @@ approx [name]
 
- let find ?edge:_ level path env =
+ let find ?(edge=Edge.Normal) level path env =
    (*   Format.printf "Open world looking for %a\n" Paths.S.pp path; *)
     try Envt.find level path env.core with
     | Not_found ->
@@ -225,8 +229,8 @@ module Open_world(Envt:extended_with_deps) = struct
         (
           if record_level level path then
             begin
-              env.externs := P.Set.add
-                  { P.file = [root]; source = Unknown } !(env.externs)
+              env.externs := Deps.update
+                  { P.file = [root]; source = Unknown } edge !(env.externs)
             end;
           Query.( pure (approx path) ++ fault path )
         )
@@ -320,8 +324,8 @@ module Layered = struct
       with Not_found ->
         pkgs_find name q
 
-  let find_name root level name env =
-    try Base.find_name root level name env.local with
+  let find_name ?edge root level name env =
+    try Base.find_name ?edge root level name env.local with
     | Not_found when level = Module ->
       if root && Name.Set.mem name env.local_units then
         raise Not_found
@@ -360,7 +364,7 @@ module Tracing(Envt:extended) = struct
 
   module P = Paths.Pkg
   type t = { env: Envt.t;
-             deps: P.set ref
+             deps: Edge.t P.Map.t ref
            }
 
 
@@ -369,25 +373,27 @@ module Tracing(Envt:extended) = struct
   let top env = { env with env = Envt.top env.env }
   let restrict env m = { env with env = Envt.restrict env.env m }
 
-  let path_record p env =
-    env.deps := P.Set.add p !(env.deps)
+
+
+  let path_record edge p env =
+    env.deps := Deps.update p edge !(env.deps)
 
   let extend env =
-    { env; deps = ref P.Set.empty }
+    { env; deps = ref P.Map.empty }
 
   let phantom_record name env =
-    path_record { P.source = Unknown; file = [name] } env
+    path_record Edge.Normal { P.source = Unknown; file = [name] } env
 
-  let record root env (m:Module.m) =
+  let record edge root env (m:Module.m) =
     match m.origin with
     | Origin.Unit p ->
-      path_record p env; []
+      path_record edge p env; []
     | Phantom (phantom_root, b) ->
       if root && not phantom_root then
         (phantom_record m.name env; [ambiguity m.name b] ) else []
     | _ -> []
 
-  let rec find0 ~root ~require_top level path env =
+  let rec find0 ?(edge=Edge.Normal) ~root ~require_top level path env =
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
@@ -414,7 +420,7 @@ module Tracing(Envt:extended) = struct
         if require_top && not (is_unit m) then
           raise Not_found
         else begin
-          let faults = record root env m in
+          let faults = record edge root env m in
           if q = [] then
             create m faults
           else
@@ -425,8 +431,9 @@ module Tracing(Envt:extended) = struct
   let find ?edge:_ level path env =
     find0 ~root:true ~require_top:false level path env
 
-  let find_name root level name env =
-    Query.fmap (fun m -> M.M m) (find0 ~root ~require_top:false level [name] env)
+  let find_name ?(edge=Edge.Normal) root level name env =
+    Query.fmap (fun m -> M.M m)
+      (find0 ~edge ~root ~require_top:false level [name] env)
 
 
   let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
@@ -435,7 +442,7 @@ module Tracing(Envt:extended) = struct
   let add_unit e m = { e with env = Envt.add_unit e.env m }
 
   let deps env = !(env.deps)
-  let reset_deps env =  env.deps := Paths.P.Set.empty
+  let reset_deps env =  env.deps := Paths.P.Map.empty
 
 end
 

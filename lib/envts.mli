@@ -11,7 +11,7 @@ sig
 
   val resolve_alias: Paths.Simple.t -> t -> Name.t option
 
-  val find_name : bool -> Module.level -> string -> t
+  val find_name : ?edge:Deps.Edge.t -> bool -> Module.level -> string -> t
     -> Module.t Interpreter.query_result
 (** [find_name is_root level name env] find if there is a module [name]
     at [level] in the environment [env]. The first argument indicates
@@ -48,7 +48,7 @@ module Open_world :
   sig
     type t ={ core : Envt.t;
               world : Name.set;
-              externs : Paths.Pkg.set ref; }
+              externs : Deps.t ref; }
 
     include extended_with_deps with type t := t
     val start: Envt.t -> Name.set -> t
@@ -75,7 +75,7 @@ end
 module Tracing :
   functor (Envt : extended) ->
     sig
-      type t = { env : Envt.t; deps : Paths.Pkg.set ref; }
+      type t = { env : Envt.t; deps : Deps.t ref; }
       include extended_with_deps with type t := t
       val extend: Envt.t -> t
     end

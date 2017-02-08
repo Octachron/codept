@@ -1,13 +1,6 @@
 
-module Deps = struct
-  type t = Paths.P.set
-  let empty = Paths.P.Set.empty
-  let merge = Paths.P.Set.union
-  let (+) = merge
-end
-
-type i = { input: Unit.s; code: M2l.t; deps: Deps.t  }
-let make input = { input; code = input.code; deps = Paths.P.Set.empty }
+type i = { input: Unit.s; code: M2l.t; deps: Deps.t }
+let make input = { input; code = input.code; deps = Deps.empty }
 
 module Failure = struct
   module Set = Set.Make(struct type t = i let compare = compare end)
@@ -200,15 +193,16 @@ end
       | Error _, Error _ -> Module.Sig.empty
         (* something bad happened but we are already parsing problematic
            input *) in
-    let elts = Paths.P.Set.elements in
+    let elts m = List.map fst @@ Paths.P.Map.bindings m in
+    let set m = Paths.P.Set.of_list @@ elts m in
     if elts upper = elts lower then
       Fault.handle policy Standard_faults.concordant_approximation unit.path
     else
       Fault.handle policy Standard_faults.discordant_approximation
         unit.path
         (List.map Paths.P.module_name @@ elts lower)
-        ( List.map Paths.P.module_name @@ elts
-          @@ Paths.P.Set.diff upper lower);
+        ( List.map Paths.P.module_name @@ Paths.P.Set.elements
+          @@ Paths.P.Set.diff (set upper) (set lower));
     Unit.lift sign upper unit
 
 
@@ -234,13 +228,35 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
                        env = Envt.add_unit state.env (Module.md mock)
           }
       )
-      { postponed = []; env; pending = []; resolved = [] } units
+      { postponed = [];
+        env;
+        pending = [];
+        resolved = [] } units
 
   let compute_more env (u:i) =
     let result = Eval.m2l u.input.path env u.code in
     let deps = Envt.deps env in
     Envt.reset_deps env;
     deps, result
+
+  let expand_epsilon env path deps =
+    let module M = Paths.P.Map in
+    let module S = Paths.P.Set in
+    let (+) = S.union in
+    let (++) = S.add in
+    let expand_dep name edge (d,eps) =
+      let name_eps = Option.default S.empty @@ M.find_opt name env in
+      let eps = name_eps + eps in
+      let eps =
+        if edge = Deps.Edge.Epsilon then
+          name ++ eps
+        else
+          eps in
+      ( name ++ name_eps + d, eps ) in
+    let deps, eps =
+      M.fold expand_dep deps (S.empty, S.empty) in
+    deps, Paths.P.Map.add path eps env
+
 
 
   let eval ?(learn=true) state unit =
@@ -255,11 +271,11 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
         else
           state.env
       in
-      let deps = Pkg.Set.union unit.deps deps in
+      let deps = Deps.merge unit.deps deps in
       let unit = Unit.lift sg deps unit.input in
       { state with env; resolved = unit :: state.resolved }
     | deps, Error code ->
-      let deps = Pkg.Set.union unit.deps deps in
+      let deps = Deps.merge unit.deps deps in
       let unit = { unit with deps; code } in
       { state with pending = unit :: state.pending }
 

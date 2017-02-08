@@ -1,6 +1,6 @@
 (** Basic solver *)
 
-type i = { input: Unit.s; code: M2l.t; deps: Paths.P.set }
+type i = { input: Unit.s; code: M2l.t; deps: Deps.t }
 (** In-processing state for unit files *)
 
 

@@ -15,18 +15,18 @@ type param =
 
 let preprocess_deps includes unit =
   let replace l = function
-    | { Pkg.source = Unknown; file = [name] } as x ->
+    | ({ Pkg.source = Unknown; file = [name] } as p , e ) ->
       begin
-        try Name.Map.find name includes with Not_found -> x
-      end :: l
-    | { Pkg.source = Pkg _ ; _ } -> l
+        (try Name.Map.find name includes with Not_found -> p)
+      , e end :: l
+    | { Pkg.source = Pkg _ ; _ }, _  -> l
     | x -> x :: l
 
   in
   { unit with Unit.dependencies =
-                Pkg.Set.of_list
+                Deps.of_list
                 @@ List.fold_left replace []
-                @@ Pkg.Set.elements unit.Unit.dependencies }
+                @@ Pkg.Map.bindings unit.Unit.dependencies }
 
 let implicit_dep synonyms path =
   (* implicitely looks for interface/implementation files.

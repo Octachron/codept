@@ -7,7 +7,7 @@ type 'a query_result = { main:'a; msgs: (Fault.loc -> unit ) Fault.t list }
 module type envt = sig
   type t
   val is_exterior: Paths.Simple.t -> t -> bool
-  val find: ?edge:M2l.Edge.t -> Module.level -> Paths.Simple.t -> t ->
+  val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t -> t ->
     Module.m query_result
   val (>>) : t -> Summary.t -> t
   val add_unit: t -> Module.t -> t
@@ -15,7 +15,7 @@ end
 
 module type with_deps = sig
   type t
-  val deps: t -> Paths.Pkg.set
+  val deps: t -> Deps.t
   val reset_deps: t -> unit
 end
 
