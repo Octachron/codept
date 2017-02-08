@@ -305,7 +305,6 @@ let result =
   (
     Sys.chdir "../5624";
     Eps.deps_test [ "a.mli", [];
-                "b.ml", ["A"];
                 "b.mli", ["A"];
                 "c.ml", ["A"; "B"]
               ]
