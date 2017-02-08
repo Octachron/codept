@@ -13,7 +13,7 @@ $S/codept-client: $(OBJ) full/codept_client.cmx
 
 
 $S/codept-server: $(OBJ) full/codept_server.cmx
-	$(OCAMLOPT) $(LKS) $(call tocmx, $(codept_server)) -o $S/codept-server
+	$(OCAMLOPT) $(LKS) $(call tocmx, $(codept_serverSORT)) -o $S/codept-server
 
 
 $S/test-run: $(OBJ) tests/run.cmx
@@ -41,8 +41,15 @@ $(OBJ):%.cmx: $S/%.ml
 $(BGENS:=.cmx):%.cmx: %.ml %.cmi
 	$(OCAMLOPT) -c $< -o $@
 
+lib/sexp/sexp_parse.cmi: lib/sexp/sexp_parse.mli
+	$(OCAMLC) -c $< -o $@
+
+lib/sexp/sexp_lex.cmi: lib/sexp/sexp_lex.ml lib/sexp/sexp_parse.cmi
+	$(OCAMLC) -c $< -o $@
+
+
 clean:
-	rm codept*; rm test-*; rm lib/*.cm[iox]; rm full/*.cm[iox]; rm precomputed/*.cm[iox]; rm lib/sexp/*
+	rm lib/*.cm[iox]; rm full/*.cm[iox]; rm precomputed/*.cm[iox]; rm lib/sexp/*cm[iox]
 
 
 %.cmi: %.mli
@@ -52,6 +59,7 @@ clean:
 $(ODOC):docs/%.odoc: $S/lib/%.mli
 	ocamldoc -I lib -I +compiler-libs $< -dump $@
 
+doc: docs/index.html
 docs/index.html: $(ODOC)
 	ocamldoc $(addprefix -load , $(ODOC)) -html -charset utf-8 -d docs
 

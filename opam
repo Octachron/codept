@@ -9,7 +9,7 @@ build: [
   [make "alternative"]
 ]
 build-test: [
-  [make "alt-test"]
+  [make "alt-tests"]
 ]
 build-doc: [
   [make "alt-doc"]
