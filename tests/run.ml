@@ -406,7 +406,7 @@ let result =
                       [ "Obj"; "Format";"List";"Map"; "Hashtbl"; "String"], [] );
           "sexp.mli", (["Name"],
                       [ "Format"], [] );
-          "solver.mli", (["Deps"; "Loc"; "Unit";"M2l";"Name";"Interpreter"],
+          "solver.mli", (["Deps"; "Loc"; "Unit";"M2l";"Name";"Interpreter"; "Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
             ["Approx_parser"; "Deps"; "Summary"; "Interpreter"; "Loc";

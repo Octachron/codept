@@ -206,13 +206,30 @@ end
     Unit.lift sign upper unit
 
 
+let expand_epsilon resolved unit =
+  let module M = Paths.P.Map in
+  let open Unit in
+  let add_epsilon_dep edge name e' deps =
+    if e' = Deps.Edge.Epsilon then
+      Deps.update name edge deps
+    else
+      deps in
+  let expand_dep path edge deps =
+    let deps = Deps.update path edge deps in
+    match M.find_opt path resolved with
+    | None -> deps
+    | Some ancestor ->
+      Paths.P.Map.fold (add_epsilon_dep edge) ancestor.dependencies deps in
+  let deps = M.fold expand_dep unit.dependencies Deps.empty in
+  M.add unit.path { unit with dependencies = deps } resolved
+
 module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
   open Unit
 
   module Eval = Interpreter.Make(Envt)(Param)
 
 
-  type state = { resolved: Unit.r list;
+  type state = { resolved: Unit.r Paths.P.map;
                  env: Envt.t;
                  pending: i list;
                  postponed: Unit.s list
@@ -231,31 +248,13 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       { postponed = [];
         env;
         pending = [];
-        resolved = [] } units
+        resolved = Paths.P.Map.empty } units
 
   let compute_more env (u:i) =
     let result = Eval.m2l u.input.path env u.code in
     let deps = Envt.deps env in
     Envt.reset_deps env;
     deps, result
-
-  let expand_epsilon env path deps =
-    let module M = Paths.P.Map in
-    let module S = Paths.P.Set in
-    let (+) = S.union in
-    let (++) = S.add in
-    let expand_dep name edge (d,eps) =
-      let name_eps = Option.default S.empty @@ M.find_opt name env in
-      let eps = name_eps + eps in
-      let eps =
-        if edge = Deps.Edge.Epsilon then
-          name ++ eps
-        else
-          eps in
-      ( name ++ name_eps + d, eps ) in
-    let deps, eps =
-      M.fold expand_dep deps (S.empty, S.empty) in
-    deps, Paths.P.Map.add path eps env
 
 
 
@@ -273,7 +272,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       in
       let deps = Deps.merge unit.deps deps in
       let unit = Unit.lift sg deps unit.input in
-      { state with env; resolved = unit :: state.resolved }
+      { state with env; resolved = expand_epsilon state.resolved unit }
     | deps, Error code ->
       let deps = Deps.merge unit.deps deps in
       let unit = { unit with deps; code } in
@@ -300,7 +299,9 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
     match resolve_dependencies_main ~learn state with
     | Ok (env, res) ->
       let units' = List.map (eval_bounded env) state.postponed in
-      Ok (env, units' @ res )
+      let res = List.fold_left expand_epsilon res units' in
+      let units = List.map snd @@ Paths.P.Map.bindings res in
+      Ok (env, units )
     | Error _ as e -> e
 
   let resolve_split_dependencies env {ml; mli} =

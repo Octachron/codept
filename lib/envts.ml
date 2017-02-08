@@ -428,8 +428,8 @@ module Tracing(Envt:extended) = struct
               @@ restrict env m.signature
         end
 
-  let find ?edge:_ level path env =
-    find0 ~root:true ~require_top:false level path env
+  let find ?edge level path env =
+    find0 ?edge ~root:true ~require_top:false level path env
 
   let find_name ?(edge=Edge.Normal) root level name env =
     Query.fmap (fun m -> M.M m)

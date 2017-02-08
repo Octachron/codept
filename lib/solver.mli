@@ -43,7 +43,7 @@ module Failure :
 module Make(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
   sig
 
-    type state = { resolved: Unit.r list;
+    type state = { resolved: Unit.r Paths.P.map;
                    env: Envt.t;
                    pending: i list;
                    postponed: Unit.s list
