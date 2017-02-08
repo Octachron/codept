@@ -309,6 +309,19 @@ let result =
                 "c.ml", ["A"; "B"]
               ]
   )
+  &&
+  (
+    Sys.chdir "../deep-eps";
+    Eps.deps_test [
+      "a.mli", ["W";"Z"; "K"];
+      "b.mli", ["A"; "W"; "Z"];
+      "c.ml", ["A"; "B"; "W"; "Z"];
+      "k.ml", ["W"; "Z"];
+      "y.mli", [];
+      "w.mli", ["Y"];
+      "z.mli", ["W"]
+    ]
+  )
   && (
     let n = 100 in
     let dep = [ Printf.sprintf "M%d" n ] in
