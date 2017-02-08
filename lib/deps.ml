@@ -8,16 +8,6 @@ module Edge = struct
          simple_constr "ε" Epsilon]
 end
 
-(*
-(** Edge type for qualifying access *)
-module Edge: sig
-  type t =
-    | Normal (**standard dependency *)
-    | Epsilon (** immediate dependency *)
-  val max: t -> t -> t
-end
-*)
-
 type t = Edge.t Paths.P.map
 
 module P = Paths.P
