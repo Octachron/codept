@@ -407,8 +407,12 @@ and pattern pat =
 
 and type_declaration td: M2l.Annot.t  =
   Annot.union_map (fun (_,t,_) -> core_type t) td.ptype_cstrs
-  ++ type_kind td.ptype_kind
-  ++ Annot.opt core_type td.ptype_manifest
+  ++
+  if td.ptype_kind = Ptype_abstract then
+    Annot.opt (Annot.epsilon_promote % core_type) td.ptype_manifest
+  else
+    type_kind td.ptype_kind
+    ++ Annot.opt core_type td.ptype_manifest
 and type_kind = function
   | Ptype_abstract | Ptype_open -> Annot.empty
   | Ptype_variant constructor_declarations ->

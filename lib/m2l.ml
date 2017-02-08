@@ -569,6 +569,9 @@ module Annot = struct
 
   let opt f x = Option.( x >>| f >< empty )
 
+  let epsilon_promote = Loc.fmap @@ fun annot ->
+    { annot with access = Name.Map.map (fun _ -> Edge.Epsilon) annot.access }
+
 end
 
 (** Helper function *)

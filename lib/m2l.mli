@@ -177,6 +177,7 @@ module Annot : sig
   val value: m2l list -> t
   val pack: module_expr list Loc.ext -> t
   val opt: ('a -> t) -> 'a option -> t
+  val epsilon_promote: t -> t
 end
 
 module Build: sig
