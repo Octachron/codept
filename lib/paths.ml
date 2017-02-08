@@ -1,4 +1,17 @@
 
+let rec last = function
+  | [a] -> a
+  | [] -> raise  @@  Invalid_argument "last expected a non-empty-file"
+  | _ :: q -> last q
+
+let may_chop_extension a =
+  try Filename.chop_extension a with
+    Invalid_argument _ -> a
+
+let module_name file =
+  String.capitalize_ascii @@ may_chop_extension @@ last @@ file
+
+
 module Simple =
 struct
   module Core = struct
@@ -52,6 +65,8 @@ struct
     match List.rev l with
     | "" :: q -> List.rev q
     | l -> List.rev l
+
+  let module_name = module_name
 
 end
 module S = Simple
@@ -197,17 +212,7 @@ module Pkg = struct
     | {source=Unknown; _ } -> false
     | _ -> true
 
-  let rec last = function
-    | [a] -> a
-    | [] -> raise  @@  Invalid_argument "last expected a non-empty-file"
-    | _ :: q -> last q
-
-  let may_chop_extension a =
-    try Filename.chop_extension a with
-      Invalid_argument _ -> a
-
-  let module_name {file; _ } =
-    String.capitalize_ascii @@ may_chop_extension @@ last @@ file
+  let module_name {file; _ } = module_name file
 
   let update_extension f p =
     { p with file = Simple.change_file_extension f p.file }
