@@ -633,7 +633,7 @@ and pp_annot ppf {access;values; packed} =
 and pp_access ppf s =  if Name.Map.cardinal s = 0 then () else
     Pp.fp ppf "access:@[<hv>{%a}@]" (Pp.list pp_access_elt) (Name.Map.bindings s)
 and pp_access_elt ppf (name,edge) =
-  Pp.fp ppf "%s%s" (if edge = Edge.Normal then "" else " -ε->") name
+  Pp.fp ppf "%s%s" name (if edge = Edge.Normal then "" else "∙ε")
 and pp_opaque ppf me = Pp.fp ppf "⟨%a⟩" pp_me me
 and pp_bind ppf {name;expr} =
   match expr with
