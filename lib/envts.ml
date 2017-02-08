@@ -146,7 +146,7 @@ module Base = struct
         else
           find0 false level q  @@ restrict env m.signature
 
-  let find level path env=
+  let find ?edge:_ level path env=
     find0 false level path env
 
   let deps _env = Paths.P.Set.empty
@@ -202,7 +202,7 @@ module Open_world(Envt:extended_with_deps) = struct
       else
         Query.pure @@ Module.md @@ approx [name]
 
- let find level path env =
+ let find ?edge:_ level path env =
    (*   Format.printf "Open world looking for %a\n" Paths.S.pp path; *)
     try Envt.find level path env.core with
     | Not_found ->
@@ -343,7 +343,7 @@ module Layered = struct
         else
           find0 level q (restrict env m.signature)
 
-  let find level path env =
+  let find ?edge:_ level path env =
     if Name.Set.mem (List.hd path (* paths are not empty *)) env.local_units then
       Base.find level path env.local
     else
@@ -422,7 +422,7 @@ module Tracing(Envt:extended) = struct
               @@ restrict env m.signature
         end
 
-  let find level path env =
+  let find ?edge:_ level path env =
     find0 ~root:true ~require_top:false level path env
 
   let find_name root level name env =

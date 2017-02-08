@@ -15,7 +15,7 @@ type 'a query_result = { main:'a; msgs: (Fault.loc -> unit ) Fault.t list }
 module type envt = sig
   type t
   val is_exterior: Paths.Simple.t -> t -> bool
-  val find: Module.level -> Paths.Simple.t -> t ->
+  val find: ?edge:Edge.t -> Module.level -> Paths.Simple.t -> t ->
     Module.m query_result
   val (>>) : t -> Y.t -> t
   val add_unit: t -> Module.t -> t
@@ -52,8 +52,8 @@ module Make(Envt:envt)(Param:param) = struct
 
   let some x = Some x
 
-  let find loc level path env =
-    let {main; msgs} = Envt.find level path env in
+  let find ?edge loc level path env =
+    let {main; msgs} = Envt.find ?edge level path env in
     List.iter (fun msg -> fault msg loc) msgs;
     main
 
@@ -82,7 +82,7 @@ module Make(Envt:envt)(Param:param) = struct
     let value l v = match str state v with
       | Ok _ -> l
       | Error h -> h :: l in
-    let access n edge m = match find loc Module [n] state with
+    let access n edge m = match find ~edge loc Module [n] state with
       | _ -> m
       | exception Not_found -> Name.Map.add n edge m in
     let packed l p = match module_expr loc state p with
