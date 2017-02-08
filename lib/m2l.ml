@@ -9,6 +9,11 @@ module P = M.Partial
 
 type 'a bind = {name:Name.t; expr:'a}
 
+module Edge = struct
+  type t = Normal | Epsilon
+  let max x y = if x = Epsilon then Epsilon else y
+end
+
 type kind = Structure | Signature
 
 
@@ -32,7 +37,10 @@ type expression =
   | Extension_node of extension
   (** [[%ext …]] *)
 and annotation =
-  { access: Name.set (** [M.N.L.x] ⇒ access \{M\} *)
+  { access: Edge.t Name.map
+  (** [M.N.L.x] ⇒ access \{M = Normal \}
+      type t = A.t ⇒ access \{ M = ε \}
+  *)
   ; values: m2l list (** − [let open A in …] ⇒ [[ Open A; …  ]]
                          − [let module M = … ] ⇒ [[ Include A; … ]]
                      *)
@@ -91,7 +99,7 @@ and 'a fn = { arg: module_type Arg.t option; body:'a }
 
 type t = m2l
 
-let annot_empty = { access=Name.Set.empty; values = []; packed = [] }
+let annot_empty = { access=Name.Map.empty; values = []; packed = [] }
 
 
 
@@ -206,16 +214,25 @@ module More_sexp = struct
     sum [ defs; op_n; includ_ r; sig_include r; bind r; bind_sig r;
           bind_rec r; minor r; extension_node r ]
 
+  (** edge *)
+  let edge = sum [simple_constr "Normal" Edge.Normal;
+                  simple_constr "ε" Edge.Epsilon]
+
   (** Annotation *)
-  let access = R.( key Many "access" Name.Set.empty )
+  let access = R.( key Many "access" Name.Map.empty )
   let values = R.( key Many "values" [] )
   let packed = R.( key Many "packed" [] )
 
   let nameset = convr (list string) Name.Set.of_list Name.Set.elements
 
+  let namemap = convr
+      (list @@ major_minor string Edge.Normal edge)
+      (List.fold_left (fun m (k,e) -> Name.Map.add k e m) Name.Map.empty )
+      Name.Map.bindings
+
   let m2l r () = list @@ Loc.Sexp.ext @@ fix' r expr
   let annot r () =
-    let r = record R.[field access nameset;
+    let r = record R.[field access namemap;
              field values (list @@  fix r m2l);
              field packed (list @@ fix' r r.me)
             ] in
@@ -469,8 +486,8 @@ module Block = struct
       Mresult.Ok.fmap (fun data -> {Loc.loc;data}) @@ expr defs data
   and m2l defs code = first defs expr_loc code
   and minor defs m =
-    if Name.Set.cardinal m.access > 0 then
-      Ok (defs, Name.Set.choose m.access)
+    if Name.Map.cardinal m.access > 0 then
+      Ok (defs, fst @@ Name.Map.choose m.access)
     else
       either Mresult.Ok.(first defs m2l m.values >>| data) (first defs me) m.packed
 
@@ -506,10 +523,22 @@ module Annot = struct
   type t = annotation Loc.ext
   let empty = { data = annot_empty; loc = Nowhere }
   let is_empty x  = x.data = annot_empty
+
+  module Access = struct
+    type t = Edge.t Name.map
+    let merge = Name.Map.merge (fun k x y -> match x, y with
+        | Some x, Some y -> Some (Edge.max x y)
+        | None, (Some _ as x) | (Some _ as x), None -> x
+        | None, None -> None
+      )
+
+    let empty = Name.Map.empty
+  end
+
   let merge x y =
     let a1 = x.data and a2 = y.data in
     let data =
-    { access= Name.Set.union a1.access a2.access;
+    { access= Access.merge a1.access a2.access;
       values = a1.values @ a2.values;
       packed = a1.packed @ a2.packed
     } in
@@ -525,7 +554,13 @@ module Annot = struct
 
   let access name =
     Loc.create name.loc { annot_empty with
-                      access = Name.Set.singleton name.data }
+                          access = Name.Map.singleton name.data Edge.Normal }
+
+  let abbrev name =
+    Loc.create name.loc { annot_empty with
+                          access = Name.Map.singleton name.data Edge.Epsilon }
+
+
   let value v =
     let loc =
       let ext acc x = Loc.merge acc x.loc in
@@ -594,8 +629,10 @@ and pp_annot ppf {access;values; packed} =
     pp_access access
     Pp.(opt_list ~sep:(s " @,") ~pre:(s "@,values: ") pp) values
     Pp.(opt_list ~sep:(s " @,") ~pre:(s "packed: ") pp_opaque) packed
-and pp_access ppf s =  if Name.Set.cardinal s = 0 then () else
-    Pp.fp ppf "access:@[<hv>%a@]" Name.Set.pp s
+and pp_access ppf s =  if Name.Map.cardinal s = 0 then () else
+    Pp.fp ppf "access:@[<hv>{%a}@]" (Pp.list pp_access_elt) (Name.Map.bindings s)
+and pp_access_elt ppf (name,edge) =
+  Pp.fp ppf "%s%s" (if edge = Edge.Normal then "" else " -ε->") name
 and pp_opaque ppf me = Pp.fp ppf "⟨%a⟩" pp_me me
 and pp_bind ppf {name;expr} =
   match expr with

@@ -132,7 +132,8 @@ let lower lex =
 let to_upper_bound m2l =
   let lift (%) x y =
     Loc.{data = x.data % y.data; loc = merge x.loc y.loc } in
-  let add, union = Name.Set.(lift add, lift union) in
+  let add n = Name.Map.add n M2l.Edge.Normal in
+  let add, union = lift add, lift M2l.Annot.Access.merge in
 
   let open M2l in
   let open Loc in
@@ -145,7 +146,7 @@ let to_upper_bound m2l =
         | Bind {expr = Ident path; _}
         | Include (Ident path) -> add (locate @@ List.hd path) s
         | _ -> s
-      ) (Loc.nowhere Name.Set.empty) m2l in
+      ) (Loc.nowhere M2l.Annot.Access.empty) m2l in
   [Loc.fmap (fun access -> Minor { Annot.empty.data with access }) access]
 
 let lower_bound filename =

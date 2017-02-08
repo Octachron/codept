@@ -117,7 +117,7 @@ module Pattern = struct
 
   let open_ m { annot={ data = {values; packed; access}; loc } ; binds} =
     let values =
-      ( if Name.Set.cardinal access > 0 then
+      ( if Name.Map.cardinal access > 0 then
           M2l.[{ Loc.data = Minor {Annot.empty.data with access}; loc }]
         else
           []
@@ -130,7 +130,7 @@ module Pattern = struct
         (fun {Loc.data={name;expr};loc} ->
            Loc.create (Loc.merge m.loc loc) {name; expr = B.open_me [m.data] expr } )
         binds in
-    let access = Name.Set.empty in
+    let access = Annot.Access.empty in
     let loc = Loc.merge m.loc loc in
     { annot={ data = {values;access;packed}; loc } ; binds }
 

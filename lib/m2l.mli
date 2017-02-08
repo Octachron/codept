@@ -25,6 +25,14 @@
 
 *)
 
+(** Edge type for qualifying access *)
+module Edge: sig
+  type t =
+    | Normal (**standard dependency *)
+    | Epsilon (** immediate dependency *)
+  val max: t -> t -> t
+end
+
 (** {2 Main types } *)
 
 type 'a bind = { name: Name.t; expr:'a }
@@ -62,7 +70,10 @@ and expression =
     dependency tracking.
 *)
 and annotation =
-  { access: Name.set (** [M.N.L.x] ⇒ access \{M\} *)
+  { access: Edge.t Name.map
+  (** [M.N.L.x] ⇒ access \{M = Normal \}
+      type t = A.t ⇒ access \{ M = ε \}
+  *)
   ; values: m2l list (** − [let open A in …] ⇒ [[ Open A; …  ]]
                          − [let module M = … ] ⇒ [[ Include A; … ]]
                      *)
@@ -144,6 +155,12 @@ end
 module Annot : sig
   type t = annotation Loc.ext
 
+  module Access: sig
+    type t = Edge.t Name.map
+    val empty: t
+    val merge: t -> t -> t
+  end
+
   val empty: t
   val is_empty: t -> bool
 
@@ -156,6 +173,7 @@ module Annot : sig
   val union_map: ('a -> t) -> 'a list -> t
 
   val access: Name.t Loc.ext -> t
+  val abbrev: Name.t Loc.ext -> t
   val value: m2l list -> t
   val pack: module_expr list Loc.ext -> t
   val opt: ('a -> t) -> 'a option -> t
