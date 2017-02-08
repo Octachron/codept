@@ -51,7 +51,7 @@ let ok_only = function
 
 let normalize set =
   set
-  |> Deps.to_list
+  |> Deps.Forget.to_list
   |> List.map Pth.module_name
   |> List.sort compare
 
@@ -69,7 +69,7 @@ let simple_dep_test name list set =
 let (%) f g x = f (g x)
 
 let normalize_2 set =
-  let l = Deps.to_list set in
+  let l = Deps.Forget.to_list set in
   let is_inner =
     function { Pth.source = Local; _ } -> true | _ -> false in
   let is_lib =

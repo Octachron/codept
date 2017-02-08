@@ -35,7 +35,7 @@ let merge = P.Map.merge (fun _k x y -> match x, y with
 
 let (+) = merge
 
-let forget x = P.Map.fold (fun k _ s -> P.Set.add k s) x P.Set.empty
+
 
 let pp_elt ppf (path,edge) =
   Pp.fp ppf "%s%a" (if edge = Edge.Normal then "" else "ε∙") Paths.P.pp path
@@ -47,5 +47,8 @@ let pp ppf s =
 let of_list l =
   List.fold_left (fun m (k,x) -> Paths.P.Map.add k x m) empty l
 
-let to_list d =
-  List.map fst @@ Paths.P.Map.bindings d
+module Forget = struct
+  let to_set x = P.Map.fold (fun k _ s -> P.Set.add k s) x P.Set.empty
+  let to_list d =
+    List.map fst @@ Paths.P.Map.bindings d
+end

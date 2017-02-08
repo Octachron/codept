@@ -115,7 +115,7 @@ let modules ?filter _ _ =
 
 let pp_only_deps sort ?filter ppf u =
   let open Unit in
-  let elts = Deps.to_list u.dependencies in
+  let elts = Deps.Forget.to_list u.dependencies in
   let elts = sort elts in
   let elts = match filter with
     | Some f -> List.filter f elts
@@ -137,7 +137,7 @@ let local_dependencies sort unit =
   @@ List.filter
     (function {Pkg.source=Unknown; _ }
             | {Pkg.source=Special _ ; _ } -> false | _ -> true )
-  @@ Deps.to_list unit.Unit.dependencies
+  @@ Deps.Forget.to_list unit.Unit.dependencies
 
 
 let dot _ _ ppf param {Unit.mli; _ } =
@@ -153,7 +153,7 @@ let dot _ _ ppf param {Unit.mli; _ } =
 
 let local_deps x =
   let filter = function { Pkg.source = Local; _ } -> true | _ -> false in
-  x.Unit.dependencies |> Deps.forget |> Pkg.Set.filter filter
+  x.Unit.dependencies |> Deps.Forget.to_set |> Pkg.Set.filter filter
 
 
 let sort _ _ ppf _param (units: _ Unit.pair) =
