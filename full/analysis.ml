@@ -1,6 +1,7 @@
 module M = Module
 
 type param = {
+  epsilon_dependencies:bool;
   transparent_aliases: bool;
   transparent_extension_nodes: bool;
   policy: Fault.Policy.t;
@@ -112,11 +113,12 @@ let start_env io param libs signatures fileset =
 
 (** Solver step *)
 
-let lift { policy; transparent_extension_nodes; transparent_aliases; _ } =
+let lift p =
   (module struct
-    let policy = policy
-    let transparent_extension_nodes = transparent_extension_nodes
-    let transparent_aliases = transparent_aliases
+    let policy = p.policy
+    let epsilon_dependencies = p.epsilon_dependencies
+    let transparent_extension_nodes = p.transparent_extension_nodes
+    let transparent_aliases = p.transparent_aliases
   end
   : Interpreter.param )
 

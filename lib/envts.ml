@@ -208,7 +208,7 @@ module Open_world(Envt:extended_with_deps) = struct
 
  let find ?(edge=Edge.Normal) level path env =
    (*   Format.printf "Open world looking for %a\n" Paths.S.pp path; *)
-    try Envt.find level path env.core with
+    try Envt.find ~edge level path env.core with
     | Not_found ->
       let aliased, root = match resolve_alias path env with
         | Some root -> true, root
@@ -283,6 +283,8 @@ module Layered = struct
       (* we are not recording anything *)
       let transparent_extension_nodes = false
       (* extension nodes should not appear in cmi *)
+      let epsilon_dependencies = false
+      (* do no try epsilon dependencies yet *)
     end)
 
 

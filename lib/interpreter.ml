@@ -40,6 +40,7 @@ end
 
 module type param = sig
   val policy: Fault.Policy.t
+  val epsilon_dependencies: bool
   val transparent_extension_nodes: bool
   val transparent_aliases: bool
 end
@@ -53,6 +54,9 @@ module Make(Envt:envt)(Param:param) = struct
   let some x = Some x
 
   let find ?edge loc level path env =
+    let edge =
+      if not epsilon_dependencies then Some Deps.Edge.Normal
+      else edge in
     let {main; msgs} = Envt.find ?edge level path env in
     List.iter (fun msg -> fault msg loc) msgs;
     main

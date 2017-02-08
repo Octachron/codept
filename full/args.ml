@@ -39,6 +39,7 @@ let param0 = {
     synonyms;
 
     analyzer = {
+      epsilon_dependencies = false;
       transparent_aliases = false;
       transparent_extension_nodes = true;
       precomputed_libs = Name.Set.singleton "stdlib";
@@ -310,6 +311,10 @@ let args action param task fquery version =
     "-bytecode-filter", set_t bytecode,
     ": generate bytecode only dependencies.\n\n Fault options:\n";
 
+    "-expand-deps", set_t epsilon_dependencies,
+    "compute exact dependencies, rather \
+     than a subset of dependencies that is equivalent to the exact up to transitive \
+     closure";
     "-closed-world", set_t closed_world,
     ": require that all dependencies are provided";
     "-k", set_p policy Codept_policies.lax,

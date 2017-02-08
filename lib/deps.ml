@@ -1,7 +1,8 @@
 
 module Edge = struct
   type t = Normal | Epsilon
-  let max x y = if x = Epsilon then Epsilon else y
+  let max x y = if x = Epsilon then x else y
+  let min x y = if x = Normal then x else y
   let sexp = let open Sexp in
     sum [simple_constr "Normal" Normal;
          simple_constr "ε" Epsilon]

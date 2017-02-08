@@ -38,6 +38,7 @@ module L :
     val implicits : (t, bool) l
     val synonyms : (t, Common.synonyms) l
     val includes : (t, string list) l
+    val epsilon_dependencies: (t,bool) l
     val transparent_aliases : (t, bool) l
     val transparent_extension_nodes : (t, bool) l
     val precomputed_libs : (t, Name.set) l
