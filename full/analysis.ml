@@ -70,7 +70,7 @@ let load_file (io:Io.reader) policy sig_only opens (info,file) =
 
 
 let log_conflict policy proj (path, units) =
-  Fault.handle policy Codept_policies.module_conflict
+  Fault.handle policy Standard_faults.local_module_conflict
     (Paths.S.module_name path)
   @@ List.map proj units
 
@@ -142,7 +142,7 @@ let oracle policy load_file files =
     | [] -> None
     | [a] -> Some a
     | a :: _  ->
-      Fault.handle policy Codept_policies.module_conflict k
+      Fault.handle policy Standard_faults.local_module_conflict k
         @@ List.map (Paths.P.local % snd) l;
       Some a in
   let convert_p (k, p) = k, Unit.unimap (convert k) p
@@ -216,20 +216,20 @@ module Collisions = struct
       ) m units
 
   (** Print error message for a given collision map *)
-  let handle policy collisions =
+  let handle policy fault collisions =
     List.iter (fun (name,paths) ->
-        Fault.handle policy Codept_policies.module_conflict
+        Fault.handle policy fault
           name @@ Paths.P.Set.elements paths)
       (Name.Map.bindings collisions)
 
   (** Compute local/local collisions *)
-  let local collisions units =
+  let local units =
     let potential_collisions, set =
     List.fold_left
       (fun (collisions, name_set) (u:Unit.s) ->
          add u.name u.path collisions, Name.Set.add u.name name_set
       )
-      (collisions,Name.Set.empty) units in
+      (empty,Name.Set.empty) units in
     Name.Map.filter (fun _k s -> Paths.P.Set.cardinal s > 1) potential_collisions,
     set
 
@@ -241,17 +241,16 @@ end
 
 (** Analysis step *)
 let main_std io param (task:Common.task) =
+  let module F = Standard_faults in
   let units, signatures =
     organize io param.policy param.sig_only task.opens task.files in
-  let collisions =
-    if Fault.is_silent param.policy Codept_policies.module_conflict then
-      Collisions.empty
-    else
-      Collisions.libs task units.mli in
-  let collisions, file_set = Collisions.local collisions units.mli in
+  if not @@ Fault.is_silent param.policy F.module_conflict then
+    Collisions.libs task units.mli
+    |> Collisions.handle param.policy F.module_conflict;
+  let collisions, file_set = Collisions.local units.mli in
   let () =
-    (* warns if any module is defined twice *)
-    Collisions.handle param.policy collisions in
+    if not @@ Fault.is_silent param.policy F.local_module_conflict then
+      Collisions.handle param.policy F.local_module_conflict collisions in
   let e = start_env io param task.libs signatures file_set in
   let {Unit.ml; mli} = solve param e units in
   let ml = remove_units task.invisibles ml in

@@ -142,7 +142,7 @@ let main policy ppf synonyms param units =
       let g, err = Groups.R.flatten g in
       let log_error  = function
         | a :: _ as l ->
-          Fault.handle policy Codept_policies.module_conflict a.name @@
+          Fault.handle policy Standard_faults.module_conflict a.name @@
           List.map (fun u -> u.path) l
         | [] -> ()
       in

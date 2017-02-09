@@ -14,6 +14,9 @@ let default =
   |> set (["extension"],  Some "Extension node faults", warning)
   |> set_err (extension_ignored, warning)
   |> set_err (extension_traversed, notification)
+  |> set (["input"], Some "Input faults",  error)
+  |> set_err (module_conflict, Level.warning)
+  |> set_err (local_module_conflict, Level.error)
   |> set (["parsing"], Some "Parsing faults",  error)
   |> register_err syntaxerr
   |> set_err (discordant_approximation, warning)
@@ -25,6 +28,7 @@ let default =
   |> set_err (applied_unknown, notification)
   |> set_err (unknown_approximated, notification)
   |> set_err (ambiguous, warning)
+
 
 
 let strict =

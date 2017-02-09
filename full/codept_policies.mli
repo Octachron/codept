@@ -7,8 +7,6 @@ val unknown_extension: (string -> unit) Fault.t
 (** Solver error when trying to resolve dependencies *)
 val solver_error: (Solver.i list -> unit) Fault.t
 
-(** Module name conflicts: same module name for different compilation units *)
-val module_conflict: (Name.t -> Paths.P.t list -> unit) Fault.t
 
 (** Default policy *)
 val policy: Fault.Policy.t

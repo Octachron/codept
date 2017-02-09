@@ -9,12 +9,20 @@ val extension_traversed : (Fault.loc -> string -> unit) Fault.t
 val opened_first_class : (Fault.loc -> string -> unit) Fault.t
 val included_first_class : (Fault.loc -> unit) Fault.t
 
-(** {2 Typing fault} *)
+(** {2 Typing faults} *)
 val applied_structure : (Fault.loc -> Module.Partial.t -> unit) Fault.t
 val structure_expected : (Fault.loc -> Module.Partial.t -> unit) Fault.t
 val applied_unknown : (Fault.loc -> Module.Partial.t -> unit) Fault.t
 val unknown_approximated : (Paths.S.t -> Fault.loc -> unit) Fault.t
 val ambiguous : (Fault.loc -> Name.t -> Module.Divergence.t -> unit) Fault.t
+
+(** {2 Input faults} *)
+
+(** Module name conflicts: same module name for different compilation units *)
+val module_conflict: (Name.t -> Paths.P.t list -> unit) Fault.t
+
+(** Local module name conflicts: same module name for different compilation units *)
+val local_module_conflict: (Name.t -> Paths.P.t list -> unit) Fault.t
 
 
 (** {2 Parsing approximation faults} *)

@@ -18,22 +18,12 @@ let solver_error =
           )
   }
 
-let module_conflict =
-  { path = ["codept"; "input"; "module conflict" ];
-    expl = "A module name appears in multiple locations, only the first one will \
-            be used in the following analysis.";
-    log = (fun lvl name paths -> log lvl
-              "Module conflict,@; Module @{<m>%s@} is provided simultaneously by
-@[<hov> %a@]" name Pp.(list ~pre:(s "(") ~sep:(s", ") ~post:(s")") Paths.P.pp) paths
-          )
-  }
 
 let policy =
   let open Policy in
   policy
   |> set_err (unknown_extension, Level.warning)
   |> set_err (solver_error, Level.error)
-  |> set_err (module_conflict, Level.warning)
 
 
 let parsing_approx = let open Policy in
