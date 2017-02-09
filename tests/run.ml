@@ -15,7 +15,7 @@ let policy = Standard_policies.quiet
 let organize policy files =
   files
   |> Unit.unimap (List.map @@ fun (info,f) -> Unit.read_file policy info f)
-  |> Unit.Groups.Unit.(split % group)
+  |> Unit.Groups.Unit.(fst % split % group)
 
 
 module Envt = Envts.Tr
@@ -31,8 +31,8 @@ module Branch(Param:Interpreter.param) = struct
   module S = Solver.Make(Envt)(Param)
 
   let analyze pkgs files =
-    let units = organize policy files in
-    let fileset = units.Unit.mli
+    let units: _  Unit.pair = organize policy files in
+    let fileset = units.mli
                   |> List.map (fun (u:Unit.s) -> u.name)
                   |> Name.Set.of_list in
     let module Envt = Envts.Tr in

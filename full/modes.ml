@@ -157,8 +157,10 @@ let local_deps x =
 
 
 let sort _ _ ppf _param (units: _ Unit.pair) =
-  let gs = Unit.Groups.R.group units in
-  let extract_path _ g l = match g with
+  let module G = Unit.Groups.R in
+  let gs = G.group units in
+  let flat g = fst @@ G.flatten g (* errors should have handled earlier *) in
+  let extract_path _ g l = match flat g with
     | { Unit.ml = Some x; mli = _ }
     | { ml = None; mli = Some x }  -> x.Unit.path :: l
     | { ml = None; mli = None } -> l in
@@ -166,7 +168,7 @@ let sort _ _ ppf _param (units: _ Unit.pair) =
     Paths.S.Map.fold extract_path gs []  in
   let deps path =
     let key = path.Pkg.file in
-    match Unit.Groups.R.Map.find key gs with
+    match flat @@ G.Map.find key gs with
     | { ml = Some x; mli = Some y } ->
       if path = x.path then
         let (+) = Pkg.Set.union in

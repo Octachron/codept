@@ -49,9 +49,9 @@ val adder:  ('a->'b->'b) -> 'b pair -> M2l.kind * 'a -> 'b pair
 module type group =
 sig
   type elt
+  type set
   type ('a,'b) arrow
-  exception Collision of { previous:elt; collision:elt}
-  type t = elt option pair
+  type t = set pair
   type group = t
 
   val add_mli : elt -> group -> group
@@ -67,7 +67,8 @@ sig
   end
 
   val group : elt list pair -> group Pth.map
-  val split : group Pth.map -> elt list pair
+  val flatten: group -> elt option pair * elt list pair
+  val split : group Pth.map -> elt list pair * (Paths.S.t * elt list) list
 
 end
 

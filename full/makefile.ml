@@ -115,8 +115,8 @@ let regroup {Unit.ml;mli} =
   let add l m = List.fold_left (fun x y -> Unit.Groups.R.Map.add y x) m l in
   add mli @@ add ml @@ Pth.Map.empty
 
-let main polycy ppf synonyms param units =
-  let includes = expand_includes polycy synonyms param.includes in
+let main policy ppf synonyms param units =
+  let includes = expand_includes policy synonyms param.includes in
   let all = param.all in
   let if_all l = if all then l else [] in
   let print_deps = print_deps includes param in
@@ -139,6 +139,14 @@ let main polycy ppf synonyms param units =
     |  _ -> Pkg.cmo path in
   Pth.Map.iter (fun _k g ->
       let open Unit in
+      let g, err = Groups.R.flatten g in
+      let log_error  = function
+        | a :: _ as l ->
+          Fault.handle policy Codept_policies.module_conflict a.name @@
+          List.map (fun u -> u.path) l
+        | [] -> ()
+      in
+      log_error err.ml; log_error err.mli;
       match g with
       | { ml= Some impl ; mli = Some intf } ->
         let cmi = Pkg.cmi impl.path in

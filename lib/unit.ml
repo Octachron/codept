@@ -62,9 +62,9 @@ let adder add p = function
 module type group =
 sig
   type elt
+  type set
   type ('a,'b) arrow
-  exception Collision of { previous:elt; collision:elt}
-  type t = elt option pair
+  type t = set pair
   type group = t
 
   val add_mli : elt -> group -> group
@@ -80,7 +80,8 @@ sig
   end
 
   val group : elt list pair -> group Pth.map
-  val split : group Pth.map -> elt list pair
+  val flatten: group -> elt option pair * elt list pair
+  val split : group Pth.map -> elt list pair * (Paths.S.t * elt list) list
 
 end
 
@@ -97,21 +98,16 @@ module Groups = struct
   =
   struct
     include Core
-    type t = elt option pair
+    module S = Set.Make(struct type t = elt let compare = compare end)
+    type set = S.t
+    type t = set pair
     type group = t
 
-    exception Collision of { previous:elt; collision:elt}
     let add_mli mli x =
-      match x.mli with
-      | Some previous when mli = previous -> x
-      | Some previous -> raise @@ Collision {previous; collision=mli}
-      | None -> { x with mli = Some mli }
+      { x with mli = S.add mli x.mli }
 
     let add_ml ml x =
-      match x.ml with
-      | None -> { x with ml = Some ml }
-      | Some previous when ml = previous -> x
-      | Some previous -> raise @@ Collision {previous; collision=ml}
+      { x with ml = S.add ml x.ml }
 
     let raw_add extr elt x =
       match extr elt with
@@ -120,7 +116,7 @@ module Groups = struct
 
     let add = lift raw_add
 
-    let empty = { mli = None; ml = None }
+    let empty = { mli = S.empty; ml = S.empty }
 
     module Map = struct
       type t = group Paths.Simple.Map.t
@@ -147,14 +143,35 @@ module Groups = struct
         let mid = List.fold_left (add Structure) start ml in
         List.fold_left (add Signature) mid mli
 
+      let flatten grp =
+        let flat s =
+          let n = S.cardinal s in
+          if n = 0 then
+            None, []
+          else if n = 1 then
+            Some (S.choose s), []
+          else
+            Some (S.choose s), S.elements s in
+        let mli, mli_err = flat grp.mli in
+        let ml, ml_err = flat grp.ml in
+        { ml; mli }, { ml = ml_err; mli = mli_err }
 
-      let split map =
-        List.fold_left ( fun {ml; mli} (_name,grp) ->
-            match grp.ml, grp.mli with
-            | Some ml', Some mli' -> { ml = ml' :: ml; mli = mli' :: mli }
-            | None, None -> { ml; mli }
-            | Some m, None | None, Some m -> { ml; mli = m :: mli }
-          ) { ml = []; mli = [] }  (Pth.Map.bindings map)
+      let split (map: Map.t) =
+        List.fold_left ( fun ({ml; mli}, errors ) (name,grp) ->
+            let g, err = flatten grp in
+            let err = err.ml @ err.mli in
+            let errors = if err = [] then errors else
+                (name, err) :: errors in
+            begin match g with
+              | { ml = Some x; mli = None }
+              | { ml = None; mli = Some x } ->
+                { ml; mli = x :: mli }
+              | { ml = Some x ;mli = Some y} ->
+                { ml = x::ml; mli = y::mli}
+              | { ml = None; mli = None } -> {ml;mli}
+            end
+            ,  errors
+          ) ({ ml = []; mli = [] },[])  (Pth.Map.bindings map)
 
     end
 

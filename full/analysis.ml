@@ -69,10 +69,17 @@ let load_file (io:Io.reader) policy sig_only opens (info,file) =
   |> open_within opens
 
 
+let log_conflict policy proj (path, units) =
+  Fault.handle policy Codept_policies.module_conflict
+    (Paths.S.module_name path)
+  @@ List.map proj units
+
+
 let organize io policy sig_only opens files =
   let units, signatures = pre_organize io files in
   let units = List.map (load_file io policy sig_only opens) units in
-  let units = Unit.Groups.Unit.(split % group) @@ pair_split units in
+  let units, errs = Unit.Groups.Unit.(split % group) @@ pair_split units in
+  List.iter (log_conflict policy @@ fun (u:Unit.s) -> u.path ) errs;
   units, signatures
 
 
@@ -217,13 +224,14 @@ module Collisions = struct
 
   (** Compute local/local collisions *)
   let local collisions units =
+    let potential_collisions, set =
     List.fold_left
       (fun (collisions, name_set) (u:Unit.s) ->
-         if Name.Set.mem u.name name_set then
-           (add u.name u.path collisions, name_set)
-         else
-           (collisions, Name.Set.add u.name name_set)
-      ) (collisions,Name.Set.empty) units
+         add u.name u.path collisions, Name.Set.add u.name name_set
+      )
+      (collisions,Name.Set.empty) units in
+    Name.Map.filter (fun _k s -> Paths.P.Set.cardinal s > 1) potential_collisions,
+    set
 
 end
 
@@ -264,7 +272,9 @@ let main_seed io param (task:Common.task) =
       | Structure -> { pair with ml = u :: pair.ml }
       | Signature -> {pair with mli = u :: pair.mli }
     ) { ml=[]; mli=[]} units in
-  Unit.Groups.R.(split % group) units
+  let g, errs = Unit.Groups.R.(split % group) units in
+  List.iter (log_conflict param.policy @@ fun (u:Unit.r) -> u.path) errs;
+  g
 
 let main io param (task:Common.task) =
   match task.seeds with
