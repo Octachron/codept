@@ -221,7 +221,10 @@ let expand_epsilon resolved unit =
     | Some ancestor ->
       Paths.P.Map.fold (add_epsilon_dep edge) ancestor.dependencies deps in
   let deps = M.fold expand_dep unit.dependencies Deps.empty in
-  M.add unit.path { unit with dependencies = deps } resolved
+  { unit with dependencies = deps }
+
+let expand_and_add resolved (unit:Unit.r) =
+  Paths.P.Map.add unit.path (expand_epsilon resolved unit) resolved
 
 module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
   open Unit
@@ -272,7 +275,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       in
       let deps = Deps.merge unit.deps deps in
       let unit = Unit.lift sg deps unit.input in
-      { state with env; resolved = expand_epsilon state.resolved unit }
+      { state with env; resolved = expand_and_add state.resolved unit }
     | deps, Error code ->
       let deps = Deps.merge unit.deps deps in
       let unit = { unit with deps; code } in
@@ -299,7 +302,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
     match resolve_dependencies_main ~learn state with
     | Ok (env, res) ->
       let units' = List.map (eval_bounded env) state.postponed in
-      let res = List.fold_left expand_epsilon res units' in
+      let res = List.fold_left expand_and_add res units' in
       let units = List.map snd @@ Paths.P.Map.bindings res in
       Ok (env, units )
     | Error _ as e -> e
