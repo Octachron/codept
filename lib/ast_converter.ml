@@ -125,7 +125,7 @@ module Pattern = struct
       :: values in
     let op x = M2l.Open x in
     let values = List.map( List.cons (Loc.fmap op m) ) values in
-    let packed = List.map (B.open_me [m.data]) packed in
+    let packed = List.map (Loc.fmap @@ B.open_me [m.data]) packed in
     let binds = List.map
         (fun {Loc.data={name;expr};loc} ->
            Loc.create (Loc.merge m.loc loc) {name; expr = B.open_me [m.data] expr } )
@@ -339,7 +339,7 @@ and expr exp =
   | Pexp_pack me (* (module ME) *)
     ->  (*Warning.first_class_module (); *)
     (* todo: are all cases caught by the Module.approximation mechanism?  *)
-    Annot.pack @@ with_loc loc [module_expr me]
+    Annot.pack @@ with_loc loc [with_loc loc @@ module_expr me]
   | Pexp_open (_override_flag,name,e)
     (* M.(E), let open M in E, let! open M in E *)
     -> Annot.value [ do_open name @ [with_loc loc @@ Minor (data @@ expr e) ] ]

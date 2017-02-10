@@ -82,16 +82,16 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok def -> def
 
   type level = Module.level = Module | Module_type
-  let minor loc module_expr str state m =
+  let minor ((path,l) as loc) module_expr str state m =
     let value l v = match str state v with
       | Ok _ -> l
       | Error h -> h :: l in
-    let access n edge m = match find ~edge loc Module [n] state with
+    let access n (loc,edge) m = match find ~edge (path,loc) Module [n] state with
       | _ -> m
-      | exception Not_found -> Name.Map.add n edge m in
-    let packed l p = match module_expr loc state p with
+      | exception Not_found -> Name.Map.add n (loc,edge) m in
+    let packed l (p: _ Loc.ext) = match module_expr (path,p.loc) state p.data with
       | Ok _ -> l
-      | Error h -> h :: l in
+      | Error h -> (Loc.create p.loc h) :: l in
     let values = List.fold_left value [] m.values in
     let access = Name.Map.fold access m.access Annot.Access.empty in
     let packed = List.fold_left packed [] m.packed in

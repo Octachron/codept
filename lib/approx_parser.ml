@@ -130,11 +130,12 @@ let lower lex =
   r
 
 let to_upper_bound m2l =
-  let lift (%) x y =
-    Loc.{data = x.data % y.data; loc = merge x.loc y.loc } in
-  let add n = Name.Map.add n Deps.Edge.Normal in
-  let add, union = lift add, lift M2l.Annot.Access.merge in
-
+  let union x y =
+    Loc.{data = M2l.Annot.Access.merge x.data y.data; loc = merge x.loc y.loc } in
+  let add x s  =
+    Loc.{ data =
+            Name.Map.add x.data (x.loc, Deps.Edge.Normal) s.data;
+          loc = merge x.loc s.loc } in
   let open M2l in
   let open Loc in
   let access =
