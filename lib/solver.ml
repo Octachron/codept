@@ -333,7 +333,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
 
   type state = {
     gen: gen;
-    resolved: Unit.r list;
+    resolved: Unit.r Paths.P.map;
     learned: Name.set;
     not_ancestors: Name.set;
     pending: i list Name.map;
@@ -409,7 +409,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
           } in
       let state =
         { state with
-          resolved = Unit.lift sg deps i.input :: state.resolved;
+          resolved = expand_and_add state.resolved @@ Unit.lift sg deps i.input;
           not_ancestors = Name.Set.remove name state.not_ancestors
         } in
       Option.(more >>| eval_depth state >< Ok state )
@@ -460,7 +460,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       | Approx ->
         let r = eval_bounded Param.policy compute u in
         status, { state with
-          resolved = r :: state.resolved
+          resolved = expand_and_add state.resolved r
         }
       | Exact ->
         let state = add_pending (make u) state in
@@ -474,12 +474,12 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
     List.flatten @@ List.map snd @@ Name.Map.bindings state.pending
 
   let end_result state =
-    state.env, state.resolved
+    state.env, List.map snd @@ Paths.P.Map.bindings state.resolved
 
   let start gen env roots =
     {
       gen;
-      resolved = [] ;
+      resolved = Paths.P.Map.empty ;
       learned = Name.Set.empty;
       not_ancestors= Name.Set.empty;
       pending= Name.Map.empty;
