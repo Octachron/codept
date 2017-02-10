@@ -223,8 +223,16 @@ let expand_epsilon resolved unit =
   let deps = M.fold expand_dep unit.dependencies Deps.empty in
   { unit with dependencies = deps }
 
-let expand_and_add resolved (unit:Unit.r) =
-  Paths.P.Map.add unit.path (expand_epsilon resolved unit) resolved
+(* shortcut ε expansion when not needed *)
+let expand_and_add expand  =
+  if expand then
+    fun resolved (unit:Unit.r) ->
+      Paths.P.Map.add unit.path (expand_epsilon resolved unit) resolved
+  else
+    fun resolved (unit:Unit.r) ->
+      Paths.P.Map.add unit.path unit resolved
+
+
 
 module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
   open Unit
@@ -260,6 +268,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
     deps, result
 
 
+  let expand_and_add = expand_and_add Param.epsilon_dependencies
 
   let eval ?(learn=true) state unit =
     match compute_more state.env unit with
@@ -346,6 +355,8 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
     (* Invariant name ∈ state.pending, except when looking at a new seed *)
     List.hd @@ Name.Map.find name state.pending
 
+
+
   let remove name pending =
     match Name.Map.find name pending with
     | _ :: (b :: _ as q) -> Some b, Name.Map.add name q pending
@@ -390,6 +401,8 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
 
   let add_name state name =
     add_pair state @@ state.gen name
+
+  let expand_and_add = expand_and_add Param.epsilon_dependencies
 
   let rec eval_depth state i =
     let name, path = i.input.name, i.input.path in
