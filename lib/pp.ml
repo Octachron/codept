@@ -34,6 +34,18 @@ let opt_list_0 ?(pre=s "") ?(post=s "")  ?(sep= s ";@, ") pp ppf = function
   | [] -> ()
   | l -> fp ppf "%t%a%t" pre (list ~sep pp) l post
 
+
+let rec in_text_list pp_core ppf = function
+  | [] -> ()
+  | [a] -> pp_core ppf a
+  | [a;b] -> fp ppf "%a@ and@ %a" pp_core a pp_core b
+  | a :: q -> fp ppf "%a,@ %a" pp_core a (in_text_list pp_core) q
+
+let with_tag tag pp ppf x =
+  Format.pp_open_tag ppf tag;
+  pp ppf x;
+  Format.pp_close_tag ppf ()
+
 let string ppf = fp ppf "%s"
 let estring ppf = fp ppf {|"%s"|}
 

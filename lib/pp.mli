@@ -38,10 +38,17 @@ val opt_list_0 :
   ?sep:(Format.formatter -> unit) ->
   (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
 
+val in_text_list:
+  (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
+
 val decorate :
   string ->
   string ->
   (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
+
+val with_tag:
+  string -> (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
+
 
 val pair :
   ?sep:string ->
