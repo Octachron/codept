@@ -11,8 +11,9 @@ module Failure = struct
     | Depend_on of Name.t
     | Internal_error
 
+  type alias_resolver = Summary.t -> Paths.S.t -> Name.t
 
-  let track_status (sources: i list) =
+  let track_status resolve_alias (sources: i list) =
     let m = List.fold_left (fun m u -> Name.Map.add u.input.name (u, ref None) m )
         Name.Map.empty sources in
     let s = Name.Set.of_list @@ List.map (fun (x:i) -> x.input.name) @@ sources
@@ -22,9 +23,8 @@ module Failure = struct
       let update r = s, Name.Map.add u.input.name (u,r) map in
       match M2l.Block.m2l u.code with
       | None -> update (ref @@ Some Internal_error)
-      | Some { data = (_y,path); loc } ->
-        let name' = List.hd path
-        (* FIXME: this can be the wrong name in presence of module alias *) in
+      | Some { data = (y,path); loc } ->
+        let name' = resolve_alias y path in
         if not (Name.Map.mem name' map) then
          update (ref @@ Some (Extern name') )
         else
@@ -103,8 +103,8 @@ module Failure = struct
             map
       ) map Map.empty
 
-  let analyze sources =
-    let map = track_status sources in
+  let analyze resolver sources =
+    let map = track_status resolver sources in
     map, categorize map |> normalize map
 
 
@@ -147,8 +147,8 @@ module Failure = struct
     Pp.fp ppf "%a"
       Pp.(list ~sep:(s"\n@;") @@ pp_cat map ) (Map.bindings m)
 
-  let pp_cycle ppf sources =
-    let map, cmap = analyze sources in
+  let pp_cycle resolver ppf sources =
+    let map, cmap = analyze resolver sources in
     pp map ppf cmap
 
   let approx_cycle set (i:i) =
@@ -164,8 +164,8 @@ module Failure = struct
     in
     { i with code }
 
-    let approx_and_try_harder pending  =
-    let cmap, map = analyze pending in
+    let approx_and_try_harder resolver pending  =
+    let cmap, map = analyze resolver pending in
     let undo key x acc = match key with
       | Extern _ | Internal_error -> acc
       | Depend_on f ->
@@ -185,8 +185,8 @@ end
 let fault =
   Fault.{ path = ["solver"; "block" ];
     expl = "Solver fault: major errors during analysis.";
-    log = (fun lvl -> log lvl
-              "Solver failure@?@[@<2> @[<0>@;%a@]@]" Failure.pp_cycle
+    log = (fun lvl resolver -> log lvl
+              "Solver failure@?@[@<2> @[<0>@;%a@]@]" (Failure.pp_cycle resolver)
           )
   }
 
@@ -353,15 +353,23 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
       end
     | Error s -> Error (`Mli s)
 
+  let alias_resolver state y path =
+      let env = Envt.( state.env >> y ) in
+      match Envt.resolve_alias path env with
+      | Some x -> x
+      | None -> List.hd path
+
   let approx_and_try_harder state  =
-    { state with pending = Failure.approx_and_try_harder state.pending }
+
+    { state with pending = Failure.approx_and_try_harder
+                     (alias_resolver state) state.pending }
 
   let solve core (units: _ Unit.pair) =
     let rec solve_harder state =
       match resolve_dependencies ~learn:true state with
       | Ok (e,l) -> e, l
       | Error state ->
-        Fault.handle Param.policy fault state.pending;
+        Fault.handle Param.policy fault (alias_resolver state) state.pending;
         solve_harder @@ approx_and_try_harder state in
     let env, mli = solve_harder @@ start core units.mli in
     let _, ml = solve_harder @@ start env units.ml in
@@ -448,6 +456,11 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
   let expand_and_add = expand_and_add Param.epsilon_dependencies
 
 
+  let alias_resolver state y path =
+    let env' = Envt.( state.env >> y ) in
+    match Envt.resolve_alias path env' with
+    | None -> List.hd path
+    | Some name -> name
 
   let rec eval_depth state i =
     let name, path = i.input.name, i.input.path in
@@ -479,10 +492,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       | None ->
         assert false (* we failed to eval the m2l code due to something *)
       | Some { Loc.data = y, path; _ } ->
-        let env' = Envt.( state.env >> y ) in
-        let first_parent =
-        match Envt.resolve_alias path env' with
-        | None -> List.hd path | Some name -> name in
+        let first_parent = alias_resolver state y path in
         (* are we cycling? *)
         if Name.Set.mem first_parent state.not_ancestors then
           Error state
@@ -605,7 +615,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
   let approx_and_try_harder state =
     state
     |> wip
-    |> Failure.approx_and_try_harder
+    |> Failure.approx_and_try_harder (alias_resolver state)
     |> List.fold_left (flip add_pending)
       { state with pending = Name.Map.empty; not_ancestors = Name.Set.empty }
 
@@ -614,7 +624,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       match solve_once state with
       | Ok (e,l) -> e, l
       | Error s ->
-        Fault.handle Param.policy fault (wip s);
+        Fault.handle Param.policy fault  (alias_resolver state) (wip s);
         solve_harder @@ approx_and_try_harder s in
     solve_harder @@ start gen core seeds
 

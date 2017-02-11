@@ -56,7 +56,7 @@ module Branch(Param:Interpreter.param) = struct
       | Error state ->
         let units = state.pending in
         let module F = Solver.Failure in
-        let _, cmap = F.analyze units in
+        let _, cmap = F.analyze (S.alias_resolver state) units in
       let errs = F.Map.bindings cmap in
       let name unit = Solver.(unit.input.name) in
       let more_cycles = errs
@@ -475,7 +475,7 @@ let result =
           "sexp.mli", (["Name"],
                       [ "Format"], [] );
           "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";"Name";"Read";
-                          "Interpreter"; "Paths"],
+                          "Summary"; "Interpreter"; "Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
             ["Approx_parser"; "Deps"; "Summary"; "Interpreter"; "Loc";

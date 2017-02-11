@@ -22,8 +22,10 @@ module Failure :
       val find: key -> Set.t t -> Set.t
     end
 
+    type alias_resolver = Summary.t -> Paths.S.t -> string
+
     val analyze:
-      i list -> (i * status option ref) Name.map * Set.t Map.t
+      alias_resolver -> i list -> (i * status option ref) Name.map * Set.t Map.t
 
     val pp_circular :
       (i * 'a) Name.map ->
@@ -34,11 +36,12 @@ module Failure :
     val pp :
       (i * _) Name.map ->
       Format.formatter -> Set.t Map.t -> unit
-    val pp_cycle : Format.formatter -> i list -> unit
+    val pp_cycle : alias_resolver ->
+      Format.formatter -> i list -> unit
   end
 
 (** Solver error when trying to resolve dependencies *)
-val fault: (i list -> unit) Fault.t
+val fault: ((Summary.t -> Paths.S.t -> string) -> i list -> unit) Fault.t
 
 (** Create a solver using the environment module [Envt] for
     name resolution and dependendy tracking and
@@ -76,6 +79,10 @@ module Make(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
          | `Ml of (Unit.r list * state)]
         ) result
 
+
+      (** Resolve current aliases *)
+      val alias_resolver: state -> Failure.alias_resolver
+
       (** Add approximation to make cycle resolvable, possibly adding spurious
           dependencies. Drop intermediary units that are deemed non-resolvable *)
       val approx_and_try_harder: state -> state
@@ -94,10 +101,18 @@ sig
 
   type gen = Name.t -> Unit.s option Unit.pair
 
+  (** Resolve current aliases *)
+  val alias_resolver: state -> Failure.alias_resolver
+
+
+  (** Generate unit files when needed from a
+      loading function and a list of files *)
   val generator:
     ( (Read.kind * string) -> Unit.s )
     -> (Read.kind * string) list
     -> gen
+
+
   val start: gen -> Envt.t -> Name.t list ->
     state
 
