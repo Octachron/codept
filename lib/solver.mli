@@ -79,6 +79,10 @@ module Make(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
       (** Add approximation to make cycle resolvable, possibly adding spurious
           dependencies. Drop intermediary units that are deemed non-resolvable *)
       val approx_and_try_harder: state -> state
+
+      (** Solve **)
+       val solve: Envt.t -> Unit.s list Unit.pair -> Unit.r list Unit.pair
+
     end
 
 (** Alternative solver *)

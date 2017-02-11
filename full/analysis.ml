@@ -157,15 +157,7 @@ let oracle policy load_file files =
 
 let solve param (E((module Envt), core)) (units: _ Unit.pair) =
   let module S = Solver.Make(Envt)((val lift param)) in
-  let rec solve_harder state =
-    match S.resolve_dependencies ~learn:true state with
-    | Ok (e,l) -> e, l
-    | Error state ->
-      Fault.handle param.policy Solver.fault state.pending;
-      solve_harder @@ S.approx_and_try_harder state in
-  let env, mli = solve_harder @@ S.start core units.mli in
-  let _, ml = solve_harder @@ S.start env units.ml in
-  {Unit.ml;mli}
+  S.solve core units
 
 let solve_from_seeds seeds gen param (E((module Envt), core)) =
   let module S = Solver.Directed(Envt)((val lift param)) in

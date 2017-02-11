@@ -354,6 +354,17 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
   let approx_and_try_harder state  =
     { state with pending = Failure.approx_and_try_harder state.pending }
 
+  let solve core (units: _ Unit.pair) =
+    let rec solve_harder state =
+      match resolve_dependencies ~learn:true state with
+      | Ok (e,l) -> e, l
+      | Error state ->
+        Fault.handle Param.policy fault state.pending;
+        solve_harder @@ approx_and_try_harder state in
+    let env, mli = solve_harder @@ start core units.mli in
+    let _, ml = solve_harder @@ start env units.ml in
+    {Unit.ml;mli}
+
 end
 
 
