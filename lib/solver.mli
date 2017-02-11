@@ -28,12 +28,15 @@ module Failure :
       alias_resolver -> i list -> (i * status option ref) Name.map * Set.t Map.t
 
     val pp_circular :
+      alias_resolver ->
       (i * 'a) Name.map ->
       string -> bool -> Format.formatter -> Name.t -> unit
     val pp_cat :
+      alias_resolver ->
       (i * _) Name.map ->
       Format.formatter -> status * Set.t -> unit
     val pp :
+      alias_resolver ->
       (i * _) Name.map ->
       Format.formatter -> Set.t Map.t -> unit
     val pp_cycle : alias_resolver ->

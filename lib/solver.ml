@@ -73,15 +73,16 @@ module Failure = struct
       Map.add_elt Option.(!status >< Internal_error) unit
     ) m Map.empty
 
-  let rec kernel map cycle start =
+  let rec kernel resolver map cycle start =
     if Set.mem start cycle then cycle
     else
       let next_name = match M2l.Block.m2l start.code with
-        | Some { data = _, x :: _  ; _ } -> x (* FIXME *)
+        | Some { data =y, path ; _ } ->
+          resolver y path
         | _ -> assert false
       in
       let next = fst @@ Name.Map.find next_name map in
-      kernel map (Set.add start cycle) next
+      kernel resolver map (Set.add start cycle) next
 
   let rec ancestor_status name cmap =
     match !(snd @@ Name.Map.find name cmap) with
@@ -89,12 +90,12 @@ module Failure = struct
     | Some status -> status
     | None -> Internal_error
 
-  let normalize name_map map =
+  let normalize resolver name_map map =
     Map.fold (function
         | Internal_error | Extern _ | Depend_on _ as st -> Map.add_set st
         | Cycle {data=name; _ } as st -> fun set map ->
           let u = fst @@ Name.Map.find name name_map in
-          let k = kernel name_map Set.empty u in
+          let k = kernel resolver name_map Set.empty u in
           let map = Map.add st k map in
           let diff = Set.diff set k in
           if Set.cardinal diff > 0 then
@@ -105,21 +106,23 @@ module Failure = struct
 
   let analyze resolver sources =
     let map = track_status resolver sources in
-    map, categorize map |> normalize map
+    map, categorize map |> normalize resolver map
 
 
-  let rec pp_circular map start first ppf name =
+  let rec pp_circular resolver map start first ppf name =
     Pp.fp ppf "%s" name;
     if name <> start || first then
       let u = fst @@ Name.Map.find name map in
       match M2l.Block.m2l u.code with
-      | None | Some { data = _, []; _ } -> ()
-      | Some { data = _y, next :: _ ; loc }  -> begin
+      | None -> ()
+      | Some { data = y,path ; loc }  ->
+        let next = resolver y path in
+        begin
           Pp.fp ppf " −(%a)⟶@ " Fault.loc (u.input.path, loc);
-          pp_circular map start false ppf next
+          pp_circular resolver map start false ppf next
         end
 
-  let pp_cat map ppf (st, units) =
+  let pp_cat resolver map ppf (st, units) =
     let paths units = List.map (fun u -> u.input.path) @@ Set.elements units in
     let path_pp = Paths.P.pp in
     match st with
@@ -141,15 +144,15 @@ module Failure = struct
         Pp.(list ~sep:(s ",@ ") @@ Paths.P.pp ) (paths units)
         path_pp u.input.path
     | Cycle name ->  Pp.fp ppf "@[<hov 4> −Circular dependencies: @ @[%a@]@]"
-                        (pp_circular map name.data true) name.data
+                        (pp_circular resolver map name.data true) name.data
 
-  let pp map ppf m =
+  let pp resolver map ppf m =
     Pp.fp ppf "%a"
-      Pp.(list ~sep:(s"\n@;") @@ pp_cat map ) (Map.bindings m)
+      Pp.(list ~sep:(s"\n@;") @@ pp_cat resolver map ) (Map.bindings m)
 
   let pp_cycle resolver ppf sources =
     let map, cmap = analyze resolver sources in
-    pp map ppf cmap
+    pp resolver map ppf cmap
 
   let approx_cycle set (i:i) =
     let mock (unit: Unit.s) = Module.(md @@ mockup unit.name ~path:unit.path) in
