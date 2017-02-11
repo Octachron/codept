@@ -638,7 +638,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       match solve_once state with
       | Ok (e,l) -> e, l
       | Error s ->
-        Fault.handle Param.policy fault  (alias_resolver state) (wip s);
+        Fault.handle Param.policy fault  (alias_resolver s) (wip s);
         solve_harder (s :: ancestors) @@ approx_and_try_harder s in
     solve_harder [] @@ start gen core seeds
 
