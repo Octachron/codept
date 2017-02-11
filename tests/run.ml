@@ -388,6 +388,11 @@ let result =
       Sys.chdir "../2+2-cycles";
       Std.cycle_test [["A";"B"]; ["C";"D"]] [ "a.ml" ; "b.ml"; "c.ml"; "d.ml"]
     )
+    && (
+      Sys.chdir "../8-cycles";
+      Std.cycle_test [ ["A"; "H"; "G"; "F"; "E"]; ["A";"B";"C";"D"]]
+        [ "a.ml" ; "b.ml"; "c.ml"; "d.ml"; "e.ml"; "f.ml"; "g.ml"; "h.ml"]
+    )
     &&
     ( Sys.chdir "../../lib";
       Std.gen_deps_test (Std.ocamlfind "compiler-libs") Std.precise_deps_test
