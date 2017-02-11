@@ -368,14 +368,17 @@ module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
                      (alias_resolver state) state.pending }
 
   let solve core (units: _ Unit.pair) =
-    let rec solve_harder state =
+    let rec solve_harder ancestors state =
+      match ancestors with
+      | _ :: g :: _  when state = g -> exit 2
+      | _ ->
       match resolve_dependencies ~learn:true state with
       | Ok (e,l) -> e, l
       | Error state ->
         Fault.handle Param.policy fault (alias_resolver state) state.pending;
-        solve_harder @@ approx_and_try_harder state in
-    let env, mli = solve_harder @@ start core units.mli in
-    let _, ml = solve_harder @@ start env units.ml in
+        solve_harder (state :: ancestors) @@ approx_and_try_harder state in
+    let env, mli = solve_harder [] @@ start core units.mli in
+    let _, ml = solve_harder [] @@ start env units.ml in
     {Unit.ml;mli}
 
 end
@@ -594,6 +597,11 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       roots
     }
 
+  let eq st1 st2 =
+    st1.resolved = st2.resolved
+ (*   && st1.pending = st2.pending
+      && st1.env = st2.env *)
+
   let solve_once state =
     let rec solve_for_roots state = function
       | [] ->
@@ -623,13 +631,16 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       { state with pending = Name.Map.empty; not_ancestors = Name.Set.empty }
 
   let solve gen core seeds =
-    let rec solve_harder state =
+    let rec solve_harder ancestors state =
+      match ancestors with
+      | _ :: g :: _ when eq g state -> exit 2
+      | _ ->
       match solve_once state with
       | Ok (e,l) -> e, l
       | Error s ->
         Fault.handle Param.policy fault  (alias_resolver state) (wip s);
-        solve_harder @@ approx_and_try_harder s in
-    solve_harder @@ start gen core seeds
+        solve_harder (s :: ancestors) @@ approx_and_try_harder s in
+    solve_harder [] @@ start gen core seeds
 
 
 end
