@@ -1,12 +1,7 @@
-(** Codept fault polycies *)
+(** Codept fault policies *)
 
 (** {2 Codept specific fault} *)
-
 val unknown_extension: (string -> unit) Fault.t
-
-(** Solver error when trying to resolve dependencies *)
-val solver_error: (Solver.i list -> unit) Fault.t
-
 
 (** Default policy *)
 val policy: Fault.Policy.t

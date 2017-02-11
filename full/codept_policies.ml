@@ -9,21 +9,10 @@ let unknown_extension =
   }
 
 
-
-let solver_error =
-  { path = ["solver"; "block" ];
-    expl = "Solver fault: major errors during analysis.";
-    log = (fun lvl -> log lvl
-              "Solver failure@?@[@<2> @[<0>@;%a@]@]" Solver.Failure.pp_cycle
-          )
-  }
-
-
 let policy =
   let open Policy in
   policy
   |> set_err (unknown_extension, Level.warning)
-  |> set_err (solver_error, Level.error)
 
 
 let parsing_approx = let open Policy in

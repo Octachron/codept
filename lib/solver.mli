@@ -37,6 +37,9 @@ module Failure :
     val pp_cycle : Format.formatter -> i list -> unit
   end
 
+(** Solver error when trying to resolve dependencies *)
+val fault: (i list -> unit) Fault.t
+
 (** Create a solver using the environment module [Envt] for
     name resolution and dependendy tracking and
     the parameter module [Param] *)

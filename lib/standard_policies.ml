@@ -28,6 +28,7 @@ let default =
   |> set_err (applied_unknown, notification)
   |> set_err (unknown_approximated, notification)
   |> set_err (ambiguous, warning)
+  |> set_err (Solver.fault, Level.error)
 
 
 

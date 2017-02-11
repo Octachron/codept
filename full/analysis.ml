@@ -161,7 +161,7 @@ let solve param (E((module Envt), core)) (units: _ Unit.pair) =
     match S.resolve_dependencies ~learn:true state with
     | Ok (e,l) -> e, l
     | Error state ->
-      Fault.handle param.policy Codept_policies.solver_error state.pending;
+      Fault.handle param.policy Solver.fault state.pending;
       solve_harder @@ S.approx_and_try_harder state in
   let env, mli = solve_harder @@ S.start core units.mli in
   let _, ml = solve_harder @@ S.start env units.ml in
@@ -173,7 +173,7 @@ let solve_from_seeds seeds gen param (E((module Envt), core)) =
     match S.solve state with
     | Ok (e,l) -> e, l
     | Error s ->
-      Fault.handle param.policy Codept_policies.solver_error (S.wip s);
+      Fault.handle param.policy Solver.fault (S.wip s);
       solve_harder @@ S.approx_and_try_harder s in
   snd @@ solve_harder @@ S.start gen core seeds
 
