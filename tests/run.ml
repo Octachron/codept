@@ -175,6 +175,8 @@ module Eps = Branch(struct
   let transparent_extension_nodes = true
   end)
 
+let both x =
+  Std.deps_test x && Eps.deps_test x
 
 let result =
   Sys.chdir "tests/cases";
@@ -232,7 +234,7 @@ let result =
       ["broken3.ml", []];
   ]
   &&( Sys.chdir "../mixed";
-      Std.deps_test ["a.ml", ["D"];
+      both ["a.ml", ["D"];
                  "a.mli", ["D";"B"];
                  "b.ml", ["C"];
                  "c.mli", ["D"];
@@ -240,14 +242,14 @@ let result =
                 ]
     )
   && ( Sys.chdir "../aliases";
-       Std.deps_test [ "amap.ml", ["Long__B"];
+       both [ "amap.ml", ["Long__B"];
                    "user.ml", ["Amap"; "Long__A"];
                    "long__A.ml", [];
                    "long__B.ml", []
                  ]
      )
   && ( Sys.chdir "../aliases2";
-       Std.deps_test [ "a.ml", ["B"; "D" ];
+       both [ "a.ml", ["B"; "D" ];
                    "b.ml", [];
                    "c.ml", [];
                    "d.ml", [];
@@ -255,7 +257,7 @@ let result =
                  ]
      )
   && (Sys.chdir "../aliases_and_map";
-      Std.deps_test ["n__A.ml", ["M"];
+      both ["n__A.ml", ["M"];
                  "n__B.ml", ["M"];
                  "n__C.ml", ["M"; "N__A"];
                  "n__D.ml", ["M"; "N__B"];
@@ -269,29 +271,29 @@ let result =
      )
   &&
   ( Sys.chdir "../broken_network";
-    Std.deps_test [
+    both [
       "a.ml", ["Broken"; "B"; "C"];
       "broken.ml", ["B"];
       "c.ml", ["Extern"] ]
   )
   &&
   ( Sys.chdir "../network";
-  Std.deps_test ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ]
+  both ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ]
   )
   &&
   ( Sys.chdir "../collision";
-    Std.deps_test ["a.ml", ["B"; "Ext"];
+    both ["a.ml", ["B"; "Ext"];
                "b.ml", [];
                "c.ml", ["B"];
                "d.ml", ["B"] ]
   )
   &&
   ( Sys.chdir "../pair";
-  Std.deps_test ["a.ml", ["B"];  "b.ml", ["Extern"] ]
+  both ["a.ml", ["B"];  "b.ml", ["Extern"] ]
   )
   &&
   ( Sys.chdir "../namespaced";
-    Std.deps_test [ "NAME__a.ml", ["Main"; "NAME__b"];
+    both [ "NAME__a.ml", ["Main"; "NAME__b"];
                 "NAME__b.ml", ["Main"; "NAME__c"];
                 "NAME__c.ml", ["Main"];
                 "main.ml", []
@@ -299,7 +301,7 @@ let result =
   )
   &&
   ( Sys.chdir "../module_types";
-  Std.deps_test ["a.mli", ["E"];  "b.ml", ["A"] ]
+  both ["a.mli", ["E"];  "b.ml", ["A"] ]
   )
   &&
   (
@@ -332,11 +334,11 @@ let result =
         [ Printf.sprintf "m%03d.mli" k, [] ]
       else
         (Printf.sprintf "m%03d.mli" k, dep) :: (deps @@ k+1) in
-    Std.deps_test @@ deps 1
+    both @@ deps 1
   )
     &&
   ( Sys.chdir "../stops";
-    Std.deps_test ["a.ml", ["B"; "C"; "D"; "E"; "F"]
+    both ["a.ml", ["B"; "C"; "D"; "E"; "F"]
               ; "b.ml", ["Z"]
               ; "c.ml", ["Y"]
               ; "d.ml", ["X"]
