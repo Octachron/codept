@@ -103,7 +103,8 @@ sig
 
   val eval: state -> i -> (state,state) result
 
-  val solve: state -> (Envt.t * Unit.r list, state) result
+  val solve_once: state -> (Envt.t * Unit.r list, state) result
   val approx_and_try_harder: state -> state
+  val solve: gen -> Envt.t -> Name.t list -> Envt.t * Unit.r list
 
 end

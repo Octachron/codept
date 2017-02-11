@@ -136,14 +136,7 @@ let solve param (E((module Envt), core)) (units: _ Unit.pair) =
 let solve_from_seeds seeds loader files param (E((module Envt), core)) =
   let module S = Solver.Directed(Envt)((val lift param)) in
   let gen = S.generator loader files in
-  let rec solve_harder state =
-    match S.solve state with
-    | Ok (e,l) -> e, l
-    | Error s ->
-      Fault.handle param.policy Solver.fault (S.wip s);
-      solve_harder @@ S.approx_and_try_harder s in
-  snd @@ solve_harder @@ S.start gen core seeds
-
+  snd @@ S.solve gen core seeds
 
 let remove_units invisibles =
   List.filter @@ function

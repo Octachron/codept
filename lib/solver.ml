@@ -565,7 +565,7 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       roots
     }
 
-  let solve state =
+  let solve_once state =
     let rec solve_for_roots state = function
       | [] ->
         let ok, state = eval_post state in
@@ -592,5 +592,15 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
     |> Failure.approx_and_try_harder
     |> List.fold_left (flip add_pending)
       { state with pending = Name.Map.empty; not_ancestors = Name.Set.empty }
+
+  let solve gen core seeds =
+    let rec solve_harder state =
+      match solve_once state with
+      | Ok (e,l) -> e, l
+      | Error s ->
+        Fault.handle Param.policy fault (wip s);
+        solve_harder @@ approx_and_try_harder s in
+    solve_harder @@ start gen core seeds
+
 
 end
