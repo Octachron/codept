@@ -458,13 +458,13 @@ let result =
                       [ "Obj"; "Format";"List";"Map"; "Hashtbl"; "String"], [] );
           "sexp.mli", (["Name"],
                       [ "Format"], [] );
-          "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";"Name";
+          "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";"Name";"Read";
                           "Interpreter"; "Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
             ["Approx_parser"; "Deps"; "Summary"; "Interpreter"; "Loc";
-             "M2l"; "Module"; "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Unit";
-             "Fault"; "Standard_faults"],
+             "M2l"; "Module"; "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Read";
+             "Unit"; "Fault"; "Standard_faults"],
             ["List"; "Map"; "Set"],[]);
           "standard_faults.ml", (["Fault"; "Module"; "Paths"; "Pp"; "Loc" ],
                                  ["Format"; "Location"; "Syntaxerr"],[]);

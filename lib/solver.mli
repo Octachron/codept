@@ -94,6 +94,10 @@ sig
 
   type gen = Name.t -> Unit.s option Unit.pair
 
+  val generator:
+    ( (Read.kind * string) -> Unit.s )
+    -> (Read.kind * string) list
+    -> gen
   val start: gen -> Envt.t -> Name.t list ->
     state
 

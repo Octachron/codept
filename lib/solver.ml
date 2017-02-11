@@ -526,6 +526,33 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
   let end_result state =
     state.env, List.map snd @@ Paths.P.Map.bindings state.resolved
 
+
+  let generator load_file files =
+    let (++) = Unit.adder List.cons in
+    let add_g (k,x) g = g ++ (k.Read.kind, (k,x) ) in
+    let add m ((_,x) as f) =
+      let name =  Paths.P.( module_name @@ local x) in
+      let g = Option.default {Unit.ml = []; mli=[]} @@ Name.Map.find_opt name m in
+      Name.Map.add name (add_g f g) m in
+    let m = List.fold_left add Name.Map.empty files in
+    let convert k l =
+      match l with
+      | [] -> None
+      | [a] -> Some a
+      | a :: _  ->
+        Fault.handle Param.policy Standard_faults.local_module_conflict k
+        @@ List.map (fun x -> Paths.P.local @@ snd x) l;
+        Some a in
+    let convert_p (k, p) = k, Unit.unimap (convert k) p
+    in
+    let m = List.fold_left (fun acc (k,x) -> Name.Map.add k x acc) Name.Map.empty
+      @@ List.map convert_p @@ Name.Map.bindings m in
+    fun name ->
+      Name.Map.find_opt name m
+      |> Option.default {Unit.ml = None; mli = None}
+      |> Unit.unimap (Option.fmap load_file)
+
+
   let start gen env roots =
     {
       gen;

@@ -129,38 +129,13 @@ let lift p =
   end
   : Interpreter.param )
 
-let oracle policy load_file files =
-  let (++) = Unit.adder List.cons in
-  let add_g (k,x) g = g ++ (k.Read.kind, (k,x) ) in
-  let add (s,m) ((_,x) as f) =
-    let name =  Paths.P.( module_name @@ local x) in
-    let g = Option.default {Unit.ml = []; mli=[]} @@ Name.Map.find_opt name m in
-    Name.Set.add name s, Name.Map.add name (add_g f g) m in
-  let s, m = List.fold_left add Name.(Set.empty, Map.empty) files in
-  let convert k l =
-    match l with
-    | [] -> None
-    | [a] -> Some a
-    | a :: _  ->
-      Fault.handle policy Standard_faults.local_module_conflict k
-        @@ List.map (Paths.P.local % snd) l;
-      Some a in
-  let convert_p (k, p) = k, Unit.unimap (convert k) p
-  in
-  let m = List.fold_left (fun acc (k,x) -> Name.Map.add k x acc) Name.Map.empty
-    @@ List.map convert_p @@ Name.Map.bindings m in
-  s,
-  fun name ->
-    Name.Map.find_opt name m
-    |> Option.default {Unit.ml = None; mli = None}
-    |> Unit.unimap (Option.fmap load_file)
-
 let solve param (E((module Envt), core)) (units: _ Unit.pair) =
   let module S = Solver.Make(Envt)((val lift param)) in
   S.solve core units
 
-let solve_from_seeds seeds gen param (E((module Envt), core)) =
+let solve_from_seeds seeds loader files param (E((module Envt), core)) =
   let module S = Solver.Directed(Envt)((val lift param)) in
+  let gen = S.generator loader files in
   let rec solve_harder state =
     match S.solve state with
     | Ok (e,l) -> e, l
@@ -253,10 +228,12 @@ let main_std io param (task:Common.task) =
 let main_seed io param (task:Common.task) =
   let units, signatures =
     pre_organize io task.files in
-  let file_set, gen = oracle param.policy
-      (load_file io param.policy param.sig_only task.opens) units in
+  let file_set = List.fold_left (fun s x ->
+      Name.Set.add Paths.P.(module_name @@ local @@ snd x) s
+    ) Name.Set.empty units in
+  let load_file = load_file io param.policy param.sig_only task.opens in
   let e = start_env io param task.libs signatures file_set in
-  let units = solve_from_seeds task.seeds gen param e in
+  let units = solve_from_seeds task.seeds load_file units param e in
   let units = remove_units task.invisibles units in
   let units = List.fold_left (fun (pair: _ Unit.pair) (u:Unit.r)->
       match u.kind with
