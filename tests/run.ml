@@ -48,25 +48,36 @@ module Branch(Param:Interpreter.param) = struct
     S.solve core units,
     Option.fmap (fun roots -> snd @@ D.solve gen core roots) roots
 
+  module CSet = Set.Make(struct type t = string list let compare = compare end)
+
   let analyze_cycle files =
     let core, units = organize [] files in
-    let rec solve_and_collect_cycles ?(learn=false) cycles state =
-      match S.resolve_dependencies ~learn state with
-      | Ok (e,_) -> e, cycles
-      | Error state ->
-        let units = state.pending in
-        let module F = Solver.Failure in
-        let _, cmap = F.analyze (S.alias_resolver state) units in
-      let errs = F.Map.bindings cmap in
-      let name unit = Solver.(unit.input.name) in
-      let more_cycles = errs
-                   |> List.filter (function (F.Cycle _, _) -> true | _ -> false)
-                   |> List.map snd
-                   |> List.map (List.map name % Solver.Failure.Set.elements) in
-        solve_and_collect_cycles ~learn (more_cycles @ cycles)
-        @@ S.approx_and_try_harder state in
-    let env, c = solve_and_collect_cycles ~learn:true [] @@ S.start core units.mli in
-    snd @@ solve_and_collect_cycles c @@ S.start env units.ml
+    let rec solve_and_collect_cycles ancestors ?(learn=false) cycles state =
+      match ancestors with
+      | _ :: grand_father :: _ when grand_father = state -> core, cycles
+      | _ ->
+        match S.resolve_dependencies ~learn state with
+        | Ok (e,_) -> e, cycles
+        | Error state ->
+          let units = state.pending in
+          let module F = Solver.Failure in
+          let _, cmap = F.analyze (S.alias_resolver state) units in
+          let errs = F.Map.bindings cmap in
+          let name unit = Solver.(unit.input.name) in
+          let more_cycles =
+            errs
+            |> List.filter (function (F.Cycle _, _) -> true | _ -> false)
+            |> List.map snd
+            |> List.map (List.map name % Solver.Failure.Set.elements)
+            |> CSet.of_list
+          in
+          solve_and_collect_cycles (state::ancestors) ~learn
+            (CSet.union more_cycles cycles)
+          @@ S.approx_and_try_harder state in
+    let env, c =
+      solve_and_collect_cycles []  ~learn:true CSet.empty
+      @@ S.start core units.mli in
+    snd @@ solve_and_collect_cycles [] c @@ S.start env units.ml
 
 
 
@@ -172,7 +183,7 @@ module Branch(Param:Interpreter.param) = struct
     let files = List.fold_left add_file {Unit.ml=[]; mli=[]} l in
     let cycles = analyze_cycle files in
       let expected = List.map (List.sort compare) expected in
-      let cycles = List.map (List.sort compare) cycles in
+      let cycles = List.map (List.sort compare) (CSet.elements cycles) in
       let r = cycles = expected in
       if not r then
         ( Pp.fp Pp.std "Failure: expected %a, got %a\n"
@@ -404,8 +415,13 @@ let result =
     )
     && (
       Sys.chdir "../8-cycles";
-      Std.cycle_test [ ["A"; "H"; "G"; "F"; "E"]; ["A";"B";"C";"D"]]
+      Std.cycle_test [ ["A";"B";"C";"D"]; ["A"; "H"; "G"; "F"; "E"]]
         [ "a.ml" ; "b.ml"; "c.ml"; "d.ml"; "e.ml"; "f.ml"; "g.ml"; "h.ml"]
+    )
+    && (
+      Sys.chdir "../aliased_cycle";
+      Std.cycle_test [ ["A"; "B"; "C"]]
+        [ "a.ml" ; "b.ml"; "c.ml"; "atlas.ml"]
     )
     &&
     ( Sys.chdir "../../lib";
