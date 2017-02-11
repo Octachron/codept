@@ -30,20 +30,45 @@ let start_env includes fileset =
 module Branch(Param:Interpreter.param) = struct
   module S = Solver.Make(Envt)(Param)
 
-  let analyze pkgs files =
+  let organize pkgs files =
     let units: _  Unit.pair = organize policy files in
     let fileset = units.mli
                   |> List.map (fun (u:Unit.s) -> u.name)
                   |> Name.Set.of_list in
-    let module Envt = Envts.Tr in
-    let core = start_env pkgs fileset in
-    S.resolve_split_dependencies core units
+    let env = start_env pkgs fileset in
+    env, units
+
+  let analyze_k pkgs files =
+    let core, units = organize pkgs files in
+    S.solve core units
+
+  let analyze_cycle files =
+    let core, units = organize [] files in
+    let rec solve_and_collect_cycles ?(learn=false) cycles state =
+      match S.resolve_dependencies ~learn state with
+      | Ok (e,_) -> e, cycles
+      | Error state ->
+        let units = state.pending in
+        let module F = Solver.Failure in
+        let _, cmap = F.analyze units in
+      let errs = F.Map.bindings cmap in
+      let name unit = Solver.(unit.input.name) in
+      let more_cycles = errs
+                   |> List.filter (function (F.Cycle _, _) -> true | _ -> false)
+                   |> List.map snd
+                   |> List.map (List.map name % Solver.Failure.Set.elements) in
+        solve_and_collect_cycles ~learn (more_cycles @ cycles)
+        @@ S.approx_and_try_harder state in
+    let env, c = solve_and_collect_cycles ~learn:true [] @@ S.start core units.mli in
+    snd @@ solve_and_collect_cycles c @@ S.start env units.ml
 
 
-  let ok_only = function
+
+(*  let ok_only = function
     | Ok l -> l
     | Error (`Ml (_, state) | `Mli state)  ->
       Fault.Log.critical "%a" Solver.Failure.pp_cycle state.S.pending
+*)
 
   let normalize set =
     set
@@ -114,7 +139,7 @@ module Branch(Param:Interpreter.param) = struct
     let exp = M.union' (build ml) (build mli) in
     let sel (k,f,_) = k, f in
     let files = Unit.unimap (List.map sel) {ml;mli} in
-    let {Unit.ml; mli} = ok_only @@ analyze libs files in
+    let {Unit.ml; mli} = analyze_k libs files in
     let (=?) expect files = List.for_all (fun u ->
         let path = u.Unit.path.Pth.file in
         let expected =
@@ -137,18 +162,7 @@ module Branch(Param:Interpreter.param) = struct
 
   let cycle_test expected l =
     let files = List.fold_left add_file {Unit.ml=[]; mli=[]} l in
-    match analyze [] files with
-    | Ok _ -> false
-    | Error( `Mli state | `Ml (_, state) )->
-      let open Solver.Failure in
-      let units = state.pending in
-      let _, cmap = analyze units in
-      let errs = Map.bindings cmap in
-      let name unit = Solver.(unit.input.name) in
-      let cycles = errs
-                   |> List.filter (function (Cycle _, _) -> true | _ -> false)
-                   |> List.map snd
-                   |> List.map (List.map name % Solver.Failure.Set.elements) in
+    let cycles = analyze_cycle files in
       let expected = List.map (List.sort compare) expected in
       let cycles = List.map (List.sort compare) cycles in
       let r = cycles = expected in
