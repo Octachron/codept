@@ -12,9 +12,12 @@ let classify filename =  match Filename.extension filename with
 
 let policy = Standard_policies.quiet
 
+let read policy (info,f) =
+  Unit.read_file policy info f
+
 let organize policy files =
   files
-  |> Unit.unimap (List.map @@ fun (info,f) -> Unit.read_file policy info f)
+  |> Unit.unimap (List.map @@ read policy)
   |> Unit.Groups.Unit.(fst % split % group)
 
 
@@ -29,6 +32,7 @@ let start_env includes fileset =
 
 module Branch(Param:Interpreter.param) = struct
   module S = Solver.Make(Envt)(Param)
+  module D = Solver.Directed(Envt)(Param)
 
   let organize pkgs files =
     let units: _  Unit.pair = organize policy files in
@@ -38,9 +42,11 @@ module Branch(Param:Interpreter.param) = struct
     let env = start_env pkgs fileset in
     env, units
 
-  let analyze_k pkgs files =
+  let analyze_k pkgs files roots =
     let core, units = organize pkgs files in
-    S.solve core units
+    let gen = D.generator (read policy) (files.ml @ files.mli) in
+    S.solve core units,
+    Option.fmap (fun roots -> snd @@ D.solve gen core roots) roots
 
   let analyze_cycle files =
     let core, units = organize [] files in
@@ -130,7 +136,7 @@ module Branch(Param:Interpreter.param) = struct
     | M2l.Structure -> { Unit.ml = (k,file) :: ml; mli }
     | M2l.Signature -> { Unit.mli = (k,file) :: mli; ml }
 
-  let gen_deps_test libs inner_test l =
+  let gen_deps_test libs inner_test roots l =
     let {Unit.ml;mli} = List.fold_left add_info {Unit.ml=[]; mli=[]} l in
     let module M = Paths.S.Map in
     let build exp = List.fold_left (fun m (_,x,l) ->
@@ -139,7 +145,7 @@ module Branch(Param:Interpreter.param) = struct
     let exp = M.union' (build ml) (build mli) in
     let sel (k,f,_) = k, f in
     let files = Unit.unimap (List.map sel) {ml;mli} in
-    let {Unit.ml; mli} = analyze_k libs files in
+    let (u, u' : _ Unit.pair * _ )  = analyze_k libs files roots in
     let (=?) expect files = List.for_all (fun u ->
         let path = u.Unit.path.Pth.file in
         let expected =
@@ -147,10 +153,12 @@ module Branch(Param:Interpreter.param) = struct
         in
         inner_test u.path expected u.dependencies
       ) files in
-    exp =? ml && exp =? mli
+    exp =? u.ml && exp =? u.mli && Option.( u' >>| (=?) exp >< true )
 
-  let deps_test l =
-    gen_deps_test [] simple_dep_test l
+  let deps_test (roots,l) =
+    gen_deps_test [] simple_dep_test roots l
+
+  let deps_test_single l = deps_test (None,l)
 
   let ocamlfind name =
     let cmd = "ocamlfind query " ^ name in
@@ -189,12 +197,12 @@ module Eps = Branch(struct
   let transparent_extension_nodes = true
   end)
 
-let both x =
-  Std.deps_test x && Eps.deps_test x
+let both root x =
+  Std.deps_test (Some root, x) && Eps.deps_test (Some root, x)
 
 let result =
   Sys.chdir "tests/cases";
-  List.for_all Std.deps_test [
+  List.for_all Std.deps_test_single [
     ["abstract_module_type.ml", []];
     ["alias_map.ml", ["Aliased__B"; "Aliased__C"] ];
     ["apply.ml", ["F"; "X"]];
@@ -240,15 +248,15 @@ let result =
   ]
   (* Note the inferred dependencies is wrong, but there is not much
      (or far too much ) to do here *)
-  && Std.deps_test  [ "riddle.ml", ["M5"] ]
+  && Std.deps_test_single  [ "riddle.ml", ["M5"] ]
   &&
-  List.for_all Std.deps_test [
+  List.for_all Std.deps_test_single [
     ["broken.ml", ["Ext"; "Ext2"; "Ext3"; "Ext4"; "Ext5" ] ];
     ["broken2.ml", ["A"; "Ext"; "Ext2" ]];
       ["broken3.ml", []];
   ]
   &&( Sys.chdir "../mixed";
-      both ["a.ml", ["D"];
+      both ["A"] ["a.ml", ["D"];
                  "a.mli", ["D";"B"];
                  "b.ml", ["C"];
                  "c.mli", ["D"];
@@ -256,14 +264,14 @@ let result =
                 ]
     )
   && ( Sys.chdir "../aliases";
-       both [ "amap.ml", ["Long__B"];
+       both ["User"] [ "amap.ml", ["Long__B"];
                    "user.ml", ["Amap"; "Long__A"];
                    "long__A.ml", [];
                    "long__B.ml", []
                  ]
      )
   && ( Sys.chdir "../aliases2";
-       both [ "a.ml", ["B"; "D" ];
+       both ["A";"C";"E"] [ "a.ml", ["B"; "D" ];
                    "b.ml", [];
                    "c.ml", [];
                    "d.ml", [];
@@ -271,7 +279,7 @@ let result =
                  ]
      )
   && (Sys.chdir "../aliases_and_map";
-      both ["n__A.ml", ["M"];
+      both ["n__C"; "n__D"] ["n__A.ml", ["M"];
                  "n__B.ml", ["M"];
                  "n__C.ml", ["M"; "N__A"];
                  "n__D.ml", ["M"; "N__B"];
@@ -285,29 +293,30 @@ let result =
      )
   &&
   ( Sys.chdir "../broken_network";
-    both [
+    both ["A"] [
       "a.ml", ["Broken"; "B"; "C"];
       "broken.ml", ["B"];
       "c.ml", ["Extern"] ]
   )
   &&
   ( Sys.chdir "../network";
-  both ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ]
+  both ["C"] ["a.ml", ["B"; "Extern"]; "b.ml", []; "c.ml", ["A"] ]
   )
   &&
   ( Sys.chdir "../collision";
-    both ["a.ml", ["B"; "Ext"];
-               "b.ml", [];
-               "c.ml", ["B"];
-               "d.ml", ["B"] ]
+    both ["A";"C";"D"]
+      ["a.ml", ["B"; "Ext"];
+       "b.ml", [];
+       "c.ml", ["B"];
+       "d.ml", ["B"] ]
   )
   &&
   ( Sys.chdir "../pair";
-  both ["a.ml", ["B"];  "b.ml", ["Extern"] ]
+  both ["A"] ["a.ml", ["B"];  "b.ml", ["Extern"] ]
   )
   &&
   ( Sys.chdir "../namespaced";
-    both [ "NAME__a.ml", ["Main"; "NAME__b"];
+    both ["NAME__a"; "NAME__c"] [ "NAME__a.ml", ["Main"; "NAME__b"];
                 "NAME__b.ml", ["Main"; "NAME__c"];
                 "NAME__c.ml", ["Main"];
                 "main.ml", []
@@ -315,28 +324,33 @@ let result =
   )
   &&
   ( Sys.chdir "../module_types";
-  both ["a.mli", ["E"];  "b.ml", ["A"] ]
+  both ["B"] ["a.mli", ["E"];  "b.ml", ["A"] ]
   )
   &&
   (
     Sys.chdir "../5624";
-    Eps.deps_test [ "a.mli", [];
-                "b.mli", ["A"];
-                "c.ml", ["A"; "B"]
-              ]
+    Eps.deps_test
+      (Some ["C"],
+       [ "a.mli", [];
+         "b.mli", ["A"];
+         "c.ml", ["A"; "B"]
+       ]
+      )
   )
   &&
   (
     Sys.chdir "../deep-eps";
-    Eps.deps_test [
-      "a.mli", ["W";"Z"; "K"];
-      "b.mli", ["A"; "W"; "Z"];
-      "c.ml", ["A"; "B"; "W"; "Z"];
-      "k.ml", ["W"; "Z"];
-      "y.mli", [];
-      "w.mli", ["Y"];
-      "z.mli", ["W"]
-    ]
+    Eps.deps_test
+      (Some ["C"] ,
+       [
+         "a.mli", ["W";"Z"; "K"];
+         "b.mli", ["A"; "W"; "Z"];
+         "c.ml", ["A"; "B"; "W"; "Z"];
+         "k.ml", ["W"; "Z"];
+         "y.mli", [];
+         "w.mli", ["Y"];
+         "z.mli", ["W"]
+       ]
   )
   && (
     let n = 100 in
@@ -348,11 +362,11 @@ let result =
         [ Printf.sprintf "m%03d.mli" k, [] ]
       else
         (Printf.sprintf "m%03d.mli" k, dep) :: (deps @@ k+1) in
-    both @@ deps 1
+    both ["M001"] @@ deps 1
   )
     &&
   ( Sys.chdir "../stops";
-    both ["a.ml", ["B"; "C"; "D"; "E"; "F"]
+    both ["A"] ["a.ml", ["B"; "C"; "D"; "E"; "F"]
               ; "b.ml", ["Z"]
               ; "c.ml", ["Y"]
               ; "d.ml", ["X"]
@@ -396,6 +410,7 @@ let result =
     &&
     ( Sys.chdir "../../lib";
       Std.gen_deps_test (Std.ocamlfind "compiler-libs") Std.precise_deps_test
+        (Some ["Solver"; "Standard_policies"])
         [
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
           "ast_converter.ml", ( ["Loc"; "M2l"; "Name"; "Option"; "Module";
@@ -418,7 +433,8 @@ let result =
              "Module"; "Name"; "Paths";"Standard_faults";"Standard_policies"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
-          "interpreter.mli", (["Deps"; "Fault"; "Module";"Paths";"M2l";"Summary"],
+          "interpreter.mli", (["Deps"; "Fault"; "Module"; "Name"; "Paths";"M2l";
+                               "Summary"],
                               [],[]);
           "interpreter.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths";
@@ -480,7 +496,9 @@ let result =
             [ "List"; "Set"],
             []);
         ]
+      )
     )
+
 let () =
   if result then
     Format.printf "Success.\n"

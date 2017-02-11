@@ -9,8 +9,6 @@ sig
   val top: t -> t
   (** Return to toplevel definitions *)
 
-  val resolve_alias: Paths.Simple.t -> t -> Name.t option
-
   val find_name : ?edge:Deps.Edge.t -> bool -> Module.level -> string -> t
     -> Module.t Interpreter.query_result
 (** [find_name is_root level name env] find if there is a module [name]

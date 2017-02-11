@@ -10,6 +10,7 @@ module type envt = sig
   val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t -> t ->
     Module.m query_result
   val (>>) : t -> Summary.t -> t
+  val resolve_alias: Paths.Simple.t -> t -> Name.t option
   val add_unit: t -> Module.t -> t
 end
 

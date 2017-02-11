@@ -203,7 +203,7 @@ end
    dependencies that need to be resolved before any interpreter can make
    progress evaluating a given code block *)
 module Block: sig
-  val m2l: m2l -> Name.t Loc.ext option
+  val m2l: m2l -> (Summary.t * Paths.S.t) Loc.ext option
 end
 
 (** {!Normalize} computes the normal form of a given m2l code fragment.

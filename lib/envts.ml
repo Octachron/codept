@@ -26,7 +26,6 @@ end
 module type extended = sig
   include Interpreter.envt
   val top: t -> t
-  val resolve_alias: Paths.Simple.t -> t -> Name.t option
   val find_name: ?edge:Edge.t -> bool -> M.level -> Name.t -> t -> Module.t Query.t
   val restrict: t -> M.signature -> t
 end
@@ -295,7 +294,8 @@ module Layered = struct
       | Error code ->
         begin match M2l.Block.m2l code with
           | None -> assert false
-          | Some { data = name'; _ } ->
+          | Some { data = _y, bl_path ; _ } ->
+            let name' = List.hd bl_path in
             let path' = Name.Map.find name' source.cmis in
             let code' = Cmi.m2l @@ P.filename path' in
             track source ( (name', path', code') :: (name, path, code) :: q )

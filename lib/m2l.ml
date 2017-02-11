@@ -434,7 +434,7 @@ module Block = struct
     let ok name = Ok(defs, name) in
     function
     | Resolved _ -> err
-    | Ident n -> ok (List.hd n)
+    | Ident n -> ok n
     | Apply {f; x} -> either (me defs f) (me defs)  x
     | Fun fn ->
       either
@@ -445,14 +445,14 @@ module Block = struct
     | Str code -> Mresult.Ok.fmap data @@ m2l defs code
     | Val _ | Extension_node _ | Abstract | Unpacked -> err
     | Open_me {opens = []; expr; _ } -> me defs expr
-    | Open_me {opens = a::_ ; _ } -> ok (List.hd a)
+    | Open_me {opens = a::_ ; _ } -> ok a
   and mt defs =
     let err = Error defs in
     let ok x = Ok(defs, x) in
     function
     | Resolved _ -> err
-    | Alias n -> ok (List.hd n)
-    | Ident e ->  ok (Paths.Expr.prefix e)
+    | Alias n -> ok n
+    | Ident e ->  ok (List.hd @@ Paths.Expr.multiples e)
     | Sig code -> Mresult.Ok.fmap data @@ m2l defs code
     | Fun fn ->
       either Mresult.Ok.( (lift defs fn.arg) >>= fun (defs, {Arg.signature;_}) ->
@@ -466,7 +466,7 @@ module Block = struct
     let err = Error defs and ok name = Ok(defs, name) in
     function
     | Defs d -> Error ( defs +| d )
-    | Open p -> ok ( List.hd p)
+    | Open p -> ok p
     | Include e -> me defs e
     | SigInclude t -> mt defs t
     | Bind {expr;_} -> me defs expr
@@ -480,7 +480,7 @@ module Block = struct
   and m2l defs code = first defs expr_loc code
   and minor defs m =
     if Name.Map.cardinal m.access > 0 then
-      Ok (defs, fst @@ Name.Map.choose m.access)
+      Ok (defs, [fst @@ Name.Map.choose m.access])
     else
       either Mresult.Ok.(first defs m2l m.values >>| data)
         (first defs @@ fun s x -> me s x.Loc.data)
@@ -507,9 +507,12 @@ module Block = struct
   let m2l code =
     match m2l Summary.empty code with
     | Error _ -> None
-    | Ok x -> let defs, n = x.data in
-      Some { x with data = resolve_alias (find defs) n }
+    | Ok x -> Some x
 
+  (*
+  let defs, n = x.data in
+      Some { x with data = resolve_alias (find defs) n }
+*)
 
 end
 

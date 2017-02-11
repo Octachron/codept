@@ -22,7 +22,9 @@ module Failure = struct
       let update r = s, Name.Map.add u.input.name (u,r) map in
       match M2l.Block.m2l u.code with
       | None -> update (ref @@ Some Internal_error)
-      | Some { data = name'; loc } ->
+      | Some { data = (_y,path); loc } ->
+        let name' = List.hd path
+        (* FIXME: this can be the wrong name in presence of module alias *) in
         if not (Name.Map.mem name' map) then
          update (ref @@ Some (Extern name') )
         else
@@ -75,8 +77,8 @@ module Failure = struct
     if Set.mem start cycle then cycle
     else
       let next_name = match M2l.Block.m2l start.code with
-        | Some { data = x; _ } -> x
-        | None -> assert false
+        | Some { data = _, x :: _  ; _ } -> x (* FIXME *)
+        | _ -> assert false
       in
       let next = fst @@ Name.Map.find next_name map in
       kernel map (Set.add start cycle) next
@@ -111,10 +113,10 @@ module Failure = struct
     if name <> start || first then
       let u = fst @@ Name.Map.find name map in
       match M2l.Block.m2l u.code with
-      | None -> ()
-      | Some next -> begin
-          Pp.fp ppf " −(%a)⟶@ " Fault.loc (u.input.path, next.loc);
-          pp_circular map start false ppf next.data
+      | None | Some { data = _, []; _ } -> ()
+      | Some { data = _y, next :: _ ; loc }  -> begin
+          Pp.fp ppf " −(%a)⟶@ " Fault.loc (u.input.path, loc);
+          pp_circular map start false ppf next
         end
 
   let pp_cat map ppf (st, units) =
@@ -398,6 +400,10 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
     match Name.Map.find name pending with
     | _ :: (b :: _ as q) -> Some b, Name.Map.add name q pending
     | [_]| [] -> None, Name.Map.remove name pending
+    | exception Not_found ->
+      (* happens when trying to remove itself due to
+         a second round the same unit after encoutering an approximated module *)
+      None, pending
 
   let add_pending i state =
     let l = Option.default [] @@ Name.Map.find_opt i.input.name state.pending in
@@ -441,6 +447,8 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
 
   let expand_and_add = expand_and_add Param.epsilon_dependencies
 
+
+
   let rec eval_depth state i =
     let name, path = i.input.name, i.input.path in
     let not_ancestors = Name.Set.add name state.not_ancestors in
@@ -470,8 +478,12 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
       match M2l.Block.m2l m2l with
       | None ->
         assert false (* we failed to eval the m2l code due to something *)
-      | Some { Loc.data = first_parent; _ } ->
-      (* are we cycling? *)
+      | Some { Loc.data = y, path; _ } ->
+        let env' = Envt.( state.env >> y ) in
+        let first_parent =
+        match Envt.resolve_alias path env' with
+        | None -> List.hd path | Some name -> name in
+        (* are we cycling? *)
         if Name.Set.mem first_parent state.not_ancestors then
           Error state
         else
@@ -486,7 +498,11 @@ module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = stru
             match state.gen first_parent with
             | {mli=None; ml = None} -> Error state
             | ({ mli = Some u; _ } | { ml = Some u; mli = None } as pair) ->
-              go_on (add_pair state pair) (make u)
+              let state = add_pair state pair in
+              if u.precision = Exact then
+                go_on state (make u)
+              else
+                go_on state i
 
   let rec eval state i=
     let open Mresult.Ok in
