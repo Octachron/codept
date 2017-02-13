@@ -1,20 +1,35 @@
 OPTS= -use-ocamlfind
+BUILD=build
+OCAMLBUILD := $(shell ocamlbuild -v 2> /dev/null)
+S=$(abspath .)
 
-all: codept codept-client codept-server test
+all: alt-codept alt-codept-client alt-codept-server alt2-tests
+
+ifdef OCAMLBUILD
+all:codept_ocamlbuild
+endif
 
 alternative: lib/*.ml lib/*.mli full/*.ml full/*.mli precomputed/*.ml tests/*.ml
-	cd build && make -j
+	make -C $(BUILD) -j
 
 alt-%:
-	cd build && make -j $*
+	make -C build -j $S/$*
+
+alt2-%:
+	make -C build -j $*
+
+
 codept: lib/*.ml lib/*.mli full/*.ml full/*.mli precomputed/*.ml
 	ocamlbuild $(OPTS) codept.native\
 		&& mv codept.native codept
 
+codept_ocamlbuild: ocamlbuild_plugin/*.ml
+	ocamlbuild $(OPTS) codept_ocamlbuild.otarget
+
 clean:
 	ocamlbuild -clean && cd build && make clean
 
-test: tests/**/*.ml test-run test-serialization codept
+tests: tests/**/*.ml test-run test-serialization codept
 	./test-run && ./test-serialization
 
 test-%: tests/%.ml codept
@@ -30,7 +45,7 @@ codept-client: codept_client.native
 	mv codept_client.native codept-client
 
 doc: codept
-	ocamlbuild -verbose 8 $(OPTS) -docflags -charset,utf-8 codept.docdir/index.html
+	ocamlbuild $(OPTS) -docflags -charset,utf-8 codept.docdir/index.html
 
 self_test:
 	ln -s ocamlbuild/myocamlbuild_cs.ml myocamlbuild.ml; \

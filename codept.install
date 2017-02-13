@@ -1,2 +1,7 @@
 bin: ["codept" "codept-client" "codept-server"]
-lib: ["META"]
+lib: ["META"
+     "?codept_ocamlbuild.cma"
+     "?codept_ocamlbuild.cmxa"
+     "?codept_ocamlbuild.cmi"
+     "?codept_ocamlbuild.cmti"
+     ]

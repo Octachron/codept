@@ -59,8 +59,8 @@ clean:
 $(ODOC):docs/%.odoc: $S/lib/%.mli
 	ocamldoc -I lib -I +compiler-libs $< -dump $@
 
-doc: docs/index.html
-docs/index.html: $(ODOC)
-	ocamldoc $(addprefix -load , $(ODOC)) -html -charset utf-8 -d docs
+docs: $S/docs/index.html
+$S/docs/index.html: $(ODOC)
+	ocamldoc $(addprefix -load , $(ODOC)) -html -charset utf-8 -d $S/docs
 
 include codept.sort codept_server.sort codept_client.sort run.sort serialization.sort .depends

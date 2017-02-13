@@ -6,9 +6,9 @@ true: safe_string
 true: short_paths
 true: strict_formats
 true: thread
-<lib> or <full> or <precomputed> or <tests> or <lib/sexp> :  include
+<lib> or <full> or <precomputed> or <tests> or <lib/sexp> or <ocamlbuild_plugin>: include
 <**/*.ml> or <**/*.mli>: package(compiler-libs.common), package(threads)
 <full/*.native> or "tests/run.native": package(compiler-libs.common), package(unix), package(threads)
 "tests/run.ml" or "full/findlib.ml" : package(unix)
-
-<ocamlbuild> or <build> or <tests>: -traverse
+<ocamlbuild_plugin/*>: package(ocamlbuild)
+<ocamlbuild> or <build> or <tests/*>: -traverse

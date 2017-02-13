@@ -2,3 +2,13 @@ name="codept"
 description="Alternative dependencies solver for OCaml project"
 version="0.1"
 executable="codept"
+requires = "compiler-libs.common"
+
+package "ocamlbuild" (
+  requires = "ocamlbuild"
+  version = "0.1"
+  description = "Ocamlbuild for codept"
+  archive(byte) = "codept_ocamlbuild.cma"
+  archive(native) = "codept_ocamlbuild.cmxa"
+  exists_if = "codept_ocamlbuild.cma"
+)

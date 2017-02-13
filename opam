@@ -2,16 +2,19 @@ opam-version: "1.2"
 name: "codept"
 version: "0.1"
 author: "octachron <octa@polychoron.fr>"
+maintainer: "octachron <octa@polychoron.fr>"
+homepage: "https://github.com/Octachron/codept"
 bug-reports: "https://github.com/Octachron/codept/issues"
 license: "gpl-3"
 dev-repo: "https://github.com/Octachron/codept"
 build: [
-  [make "alternative"]
+  [make "all"]
 ]
 build-test: [
-  [make "alt-tests"]
+  [make "alt2-tests"]
 ]
 build-doc: [
-  [make "alt-doc"]
+  [make "alt2-docs"]
 ]
+depopts:["ocamlbuild"]
 depends: []
