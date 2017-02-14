@@ -5,3 +5,5 @@ lib: ["META"
      "?codept_ocamlbuild.cmi"
      "?codept_ocamlbuild.cmti"
      ]
+
+man:[docs/codept1]	
