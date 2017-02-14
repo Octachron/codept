@@ -190,7 +190,7 @@ extensively:
 
   * `-fault-doc` lists all possible fault messages
 
-  * `-fault path.name=level` sets the level of the fault from
+  * `-fault path.name=level` set the level of the fault from
             `info`, `notification`, `warning`, `error` to `critical`.
 
   * `-verbosity level` selects the minimal level of displayed fault messages.
