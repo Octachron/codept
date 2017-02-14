@@ -325,14 +325,16 @@ let args action param task fquery version =
     ": fail rather than approximate anything";
     "-quiet", set_p policy Codept_policies.quiet,
     ": ignore and silent all recoverable errors and keep going";
+
+    "-fatal", String (exit_level param),
+    "<level>: exit for fault at level <level> and beyond.";
     "-fault", String (fault param),
     "<fault.path=level>: update fault policy for the given fault.";
     "-fault-doc", Unit (print_policy param), ": show fault policy documentation";
     "-verbosity", String (silent_level param),
     "<level>: only print fault beyond level <level>, \
-     with level ∈{info,notification,warning,error,critical}";
-    "-exit-fault-level", String (exit_level param),
-    "<level>: exit for fault at level <level> and beyond.\n\n Misc options:\n";
+     with level ∈{info,notification,warning,error,critical}"
+    ^ "\n\n Misc options:\n";
 
     "-no-implicits", set_f implicits,
     ": do not implicitly search for a mli \

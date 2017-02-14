@@ -137,7 +137,7 @@ Some new options modify the behavior of either the solver or the outliner
      the module `modulename`. Note that the module name is somewhat noramized to
      avoid some discomfort.
 
-   * `-transparent-extension-node bool` decides what to do with extension node,
+   * `-transparent-extension-node bool` decides what to do with extension nodes,
    if `bool` is true, extension node are considered as transparent and analyzed,
    otherwise they are left alone. Note that ocaml built-in extension nodes
    (i.e. `[%extension_constructor … ]` nodes)  are always analyzed and are not
@@ -148,7 +148,7 @@ Some new options modify the behavior of either the solver or the outliner
   signatures
 
 
-All options available in `ocamlfind ocamldep` are also available for `codept`, in particular:
+All options available with `ocamlfind ocamldep` are also available for `codept`, in particular:
 
   * `-pkg <module_name>` or `package <module_name> ` is equivalent to
    `-L $(ocamlfind query module_name)`

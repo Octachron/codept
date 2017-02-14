@@ -250,6 +250,10 @@ fail rather than approximate anything
 ignore and silent all recoverable errors and keep going
 
 .TP
+.BI -fatal \ level
+exit for fault at level \fIlevel\fR and beyond.
+
+.TP
 .BI -fault \ fault.path=level
 update fault policy for the given fault.
 
@@ -261,9 +265,6 @@ show fault policy documentation
 .BI -verbosity \ level
 only print fault beyond level \fIlevel\fR, with \fIlevel\fR ∈{whisper,notification,warning,error,critical}
 
-.TP
-.BI -exit-fault-level \ level
-exit for fault at level \fIlevel\fR and beyond.
 
 .SH "Misc options"
 
