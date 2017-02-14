@@ -108,12 +108,12 @@ let unknown_approximated =
 
 
 let module_conflict =
-  { path = ["input"; "module_conflict" ];
+  { path = ["input"; "module_conflict"; "global" ];
     expl = "A module name is provided by multiple sources, only the first one will \
             be used in the following analysis.";
     log = (fun lvl name paths -> log lvl
-              "Module conflict,@; Module @{<m>%s@} is provided simultaneously by \
-               %a" name
+              "Global module conflict,@; Module @{<m>%s@} is provided \
+               simultaneously by %a" name
               Pp.(in_text_list @@ with_tag "m" Paths.P.pp) paths
           )
   }
@@ -126,7 +126,7 @@ let local_module_conflict =
     expl = "A module is provided by multiple input files, only the first one will \
             be used in the following analysis.";
     log = (fun lvl name paths -> log lvl
-              "Module conflict,@; Module @{<m>%s@} is provided simultaneously by \
+              "Local module conflict,@; Module @{<m>%s@} is provided simultaneously by \
                %a" name
               Pp.(in_text_list @@ with_tag "m" Paths.P.pp) paths
           )
