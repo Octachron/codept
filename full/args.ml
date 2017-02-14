@@ -1,7 +1,5 @@
 open Params
 module Cmd = Arg
-module Pkg = Paths.Pkg
-module Pth = Paths.Simple
 
 type action = {
   modes:  (string * Modes.t)  list;
@@ -59,12 +57,7 @@ let task0 : Common.task = {
     libs = [];
     opens = [];
   }
-
 let findlib_query0 =  Findlib.empty
-
-let makefile_eval ppf param task =
-  Makefile.main L.(param.[policy]) ppf param.synonyms param.makefile task
-
 
 let makefile_c action () =
   action :=
