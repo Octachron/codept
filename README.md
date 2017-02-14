@@ -9,12 +9,12 @@ Both ocamldep and codept computes an over-approximation of the dependencies grap
 
 Consequently, bugs notwithstanding, codept computes an exact dependency graph in any situation that does not involve first class modules, and is still reliable in some standard use cases of first class modules (see this [riddle](tests/case/riddle.ml) as an illustration of why first class modules can be problematic).
 
-Moreover, codept will emit warning messages any time it encounters a source of potential inaccuracies in the dependency graph might be introduced. And if no warnings are emitted by codept, the computed dependencies are exact
+Moreover, codept will emit warning messages any time it encounters a source of potential inaccuracies in the dependency graph might be introduced: if no warnings are emitted by codept, the computed dependencies are exact.
 
 Another important point is that codept's whole project analysis feature make it possible to handle uniformly the delayed dependency aspect of module aliases introduced by the `-no-alias-deps` option.
 
 A last point, if dependencies up to transitive closure are not precise
-enough, the "-expand-deps" option can track more precisely type aliases induced
+enough, the `-expand-deps` option can track more precisely type aliases induced
 dependencies, making it easier to track all cmi files required to compile a given
 files for instance..
 
@@ -185,10 +185,12 @@ Other new options explore codept possibilities and intermediary representations
 Warning and error messages, referred together as fault messages can be controled
 extensively:
 
-        * `-fault-doc` lists all possible fault messages
-        * `-fault path.name=level` sets the level of the fault from
-        `info`, `notification`, `warning`, `error` to `critical`?
-        * `-verbosity level` selects the minimal level of displayed fault messages.
+  * `-fault-doc` lists all possible fault messages
+
+  * `-fault path.name=level` sets the level of the fault from
+            `info`, `notification`, `warning`, `error` to `critical`?
+
+  * `-verbosity level` selects the minimal level of displayed fault messages.
 
 
 For a more exhaustive list of options, see the codept's man page.
