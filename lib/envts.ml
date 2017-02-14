@@ -14,7 +14,6 @@ module Query = struct
   let (++) (query:_ t) fault = { query with msgs = fault :: query.msgs }
   let create main msgs : _ t = {main; msgs}
   let fmap f (q: _ t) : _ t = { q with main = f q.main }
-  let (>>|) x f = fmap f x
   let (>>=) (x: _ t) f: _ t =
     let {main;msgs}: _ t = f x.main in
     { main; msgs = msgs @ x.msgs }
