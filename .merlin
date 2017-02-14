@@ -1,4 +1,5 @@
 B _build/**
+B build/**
 S lib
 S full
 S precomputed
