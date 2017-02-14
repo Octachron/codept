@@ -3,14 +3,14 @@
 (** Extended environment for composition *)
 module type extended =
 sig
-  open Interpreter
+  open Outliner
   include envt
 
   val top: t -> t
   (** Return to toplevel definitions *)
 
   val find_name : ?edge:Deps.Edge.t -> bool -> Module.level -> string -> t
-    -> Module.t Interpreter.query_result
+    -> Module.t Outliner.query_result
 (** [find_name is_root level name env] find if there is a module [name]
     at [level] in the environment [env]. The first argument indicates
     if we are looking for a toplevel module, this is useful for both
@@ -28,7 +28,7 @@ module type extended_with_deps =
 sig
   type t
   include extended with type t:=t
-  include Interpreter.with_deps with type t := t
+  include Outliner.with_deps with type t := t
 end
 
 (** Basic environment *)

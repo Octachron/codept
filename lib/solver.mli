@@ -49,7 +49,7 @@ val fault: ((Summary.t -> Paths.S.t -> string) -> i list -> unit) Fault.t
 (** Create a solver using the environment module [Envt] for
     name resolution and dependendy tracking and
     the parameter module [Param] *)
-module Make(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
+module Make(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
   sig
 
     type state = { resolved: Unit.r Paths.P.map;
@@ -96,7 +96,7 @@ module Make(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
     end
 
 (** Alternative solver *)
-module Directed(Envt:Interpreter.envt_with_deps)(Param : Interpreter.param):
+module Directed(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
 sig
   type state
   val wip: state -> i list

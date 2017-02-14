@@ -52,7 +52,7 @@ and expression =
   (** [module rec A = … and B = … and …] *)
   | Minor of annotation
   (** value level expression.
-      Invariant: for any pure interpreter [f], [ f (Minor m :: q ) ≡ f q ],
+      Invariant: for any pure outliner [f], [ f (Minor m :: q ) ≡ f q ],
       i.e, this expression constructor is only meaningful for dependencies
       tracking.
  *)
@@ -200,7 +200,7 @@ end
 
 (**
    The Block module gathers functions that aims to compute the first
-   dependencies that need to be resolved before any interpreter can make
+   dependencies that need to be resolved before any outliner can make
    progress evaluating a given code block *)
 module Block: sig
   val m2l: m2l -> (Summary.t * Paths.S.t) Loc.ext option

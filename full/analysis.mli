@@ -12,7 +12,7 @@ type param = {
 
 
 (** Lift parameter to a module parameter *)
-val lift: param -> (module Interpreter.param)
+val lift: param -> (module Outliner.param)
 
 (** [main param task] performs dependency analysis
     with parameters [param] on the given task *)

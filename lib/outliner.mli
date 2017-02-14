@@ -1,4 +1,4 @@
-(** Monotonic interpreter for m2l ast *)
+(** Monotonic outliner for m2l ast *)
 
 (** Input fault type *)
 type 'a query_result = { main:'a; msgs: (Fault.loc -> unit ) Fault.t list }
@@ -42,6 +42,6 @@ sig
   val m2l : Paths.P.t -> envt -> M2l.t -> (envt * Module.Sig.t, M2l.t) result
 end
 
-(** Create an interpreter adapted for the environment type *)
+(** Create an outliner adapted for the environment type *)
 module Make :
   functor (Envt : envt) (Param : param) -> s with type envt := Envt.t

@@ -100,7 +100,7 @@ let base_env io signatures =
   List.fold_left (++) Module.Def.empty signatures
   ++ io.Io.env
 (** Environment *)
-type 'a envt_kind = (module Interpreter.envt_with_deps with type t = 'a)
+type 'a envt_kind = (module Outliner.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
 let start_env io param libs signatures fileset =
@@ -111,10 +111,10 @@ let start_env io param libs signatures fileset =
   let layered = Envts.Layered.create libs fileset base in
   let traced = Envts.Trl.extend layered in
   if not param.closed_world then
-    E ((module Envts.Tr: Interpreter.envt_with_deps with type t = Envts.Tr.t ) ,
+    E ((module Envts.Tr: Outliner.envt_with_deps with type t = Envts.Tr.t ) ,
        Envts.Tr.start traced fileset )
   else
-    E ( (module Envts.Trl: Interpreter.envt_with_deps with type t = Envts.Trl.t),
+    E ( (module Envts.Trl: Outliner.envt_with_deps with type t = Envts.Trl.t),
         traced
       )
 
@@ -127,7 +127,7 @@ let lift p =
     let transparent_extension_nodes = p.transparent_extension_nodes
     let transparent_aliases = p.transparent_aliases
   end
-  : Interpreter.param )
+  : Outliner.param )
 
 let solve param (E((module Envt), core)) (units: _ Unit.pair) =
   let module S = Solver.Make(Envt)((val lift param)) in

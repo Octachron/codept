@@ -9,8 +9,8 @@ module SDef = Summary.Def
 
 module Query = struct
 
-  type 'a t = 'a Interpreter.query_result
-  let pure main = { Interpreter.main; msgs = [] }
+  type 'a t = 'a Outliner.query_result
+  let pure main = { Outliner.main; msgs = [] }
   let (++) (query:_ t) fault = { query with msgs = fault :: query.msgs }
   let create main msgs : _ t = {main; msgs}
   let fmap f (q: _ t) : _ t = { q with main = f q.main }
@@ -24,7 +24,7 @@ end
 
 
 module type extended = sig
-  include Interpreter.envt
+  include Outliner.envt
   val top: t -> t
   val find_name: ?edge:Edge.t -> bool -> M.level -> Name.t -> t -> Module.t Query.t
   val restrict: t -> M.signature -> t
@@ -34,7 +34,7 @@ module type extended_with_deps =
 sig
   type t
   include extended with type t:=t
-  include Interpreter.with_deps with type t := t
+  include Outliner.with_deps with type t := t
 end
 
 (* compute if the level of the root of the path is
@@ -276,7 +276,7 @@ module Layered = struct
   let create includes units env =
     { local = env; local_units = units; pkgs = List.map read_dir includes }
 
-  module I = Interpreter.Make(Envt)(struct
+  module I = Outliner.Make(Envt)(struct
       let policy = Standard_policies.quiet
       let transparent_aliases = false
       (* we are not recording anything *)

@@ -34,10 +34,10 @@ In more details, `codept` works by combining together three main ingredients:
 - an AST, called M2l, specialized to handle only module level constructions
   (see [M2l](lib/m2l.mli) )
 
-- an interruptible interpreter which given an environment and a
+- an interruptible outliner which given an environment and a
   `m2l` Ast computes either the signature represented by the m2l ast, or in
   presence of non-resolved dependencies, a simplified m2l ast.
-  (see [Interpreter](lib/interpreter.mli))
+  (see [Outliner](lib/outliner.mli))
 
 - a family of environment modules that can for instance track dependencies on the
   fly, search for signature of included library toplevel modules, or approximate

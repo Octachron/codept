@@ -30,7 +30,7 @@ let start_env includes fileset =
   Envt.start traced fileset
 
 
-module Branch(Param:Interpreter.param) = struct
+module Branch(Param:Outliner.param) = struct
   module S = Solver.Make(Envt)(Param)
   module D = Solver.Directed(Envt)(Param)
 
@@ -443,16 +443,16 @@ let result =
           "deps.ml", (["Option"; "Paths"; "Pp"; "Sexp"],["List"],[]);
           "summary.mli", (["Module"], ["Format"], []);
           "summary.ml", (["Module"; "Name"; "Pp"; "Mresult"], ["List"], []);
-          "envts.mli", (["Deps"; "Module";"Name"; "Interpreter"; "Paths"], [], []);
+          "envts.mli", (["Deps"; "Module";"Name"; "Outliner"; "Paths"], [], []);
           "envts.ml", (
-            ["Cmi"; "Deps"; "Summary"; "Interpreter"; "M2l"; "Fault";
+            ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
              "Module"; "Name"; "Paths";"Standard_faults";"Standard_policies"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
-          "interpreter.mli", (["Deps"; "Fault"; "Module"; "Name"; "Paths";"M2l";
+          "outliner.mli", (["Deps"; "Fault"; "Module"; "Name"; "Paths";"M2l";
                                "Summary"],
                               [],[]);
-          "interpreter.ml", (
+          "outliner.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths";
              "Mresult"; "Fault"; "Standard_faults"; "Deps"]
           ,["List"],[]);
@@ -491,10 +491,10 @@ let result =
           "sexp.mli", (["Name"],
                       [ "Format"], [] );
           "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";"Name";"Read";
-                          "Summary"; "Interpreter"; "Paths"],
+                          "Summary"; "Outliner"; "Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
-            ["Approx_parser"; "Deps"; "Summary"; "Interpreter"; "Loc";
+            ["Approx_parser"; "Deps"; "Summary"; "Outliner"; "Loc";
              "M2l"; "Module"; "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Read";
              "Unit"; "Fault"; "Standard_faults"],
             ["List"; "Map"; "Set"],[]);

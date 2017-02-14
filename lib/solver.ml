@@ -245,8 +245,8 @@ let expand_and_add expand  =
     fun resolved (unit:Unit.r) ->
       Paths.P.Map.add unit.path unit resolved
 
-module type s = functor (Envt : Interpreter.envt_with_deps)
-  (Param : Interpreter.param) ->
+module type s = functor (Envt : Outliner.envt_with_deps)
+  (Param : Outliner.param) ->
   sig
     type state
     val start : Envt.t -> Unit.s list -> state
@@ -265,10 +265,10 @@ module type s = functor (Envt : Interpreter.envt_with_deps)
     val approx_and_try_harder : state -> state
   end
 
-module Make(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
+module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
   open Unit
 
-  module Eval = Interpreter.Make(Envt)(Param)
+  module Eval = Outliner.Make(Envt)(Param)
 
 
   type state = { resolved: Unit.r Paths.P.map;
@@ -385,10 +385,10 @@ end
 
 
 
-module Directed(Envt:Interpreter.envt_with_deps)(Param:Interpreter.param) = struct
+module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
   open Unit
 
-  module Eval = Interpreter.Make(Envt)(Param)
+  module Eval = Outliner.Make(Envt)(Param)
 
 
   type gen = Name.t -> Unit.s option Unit.pair
