@@ -111,3 +111,12 @@ rule "m2l → ml.depends"
         approximate dependencies."
   (codept_dep "%.m2l" "%.ml.approx.depends"
      [fdeps, "%.ml.depends"] )
+
+let handler = function
+  | After_rules -> init()
+  | _ -> ()
+
+let expand_dispatch f =
+  dispatch @@ fun x -> (handler x; f x)
+
+let dispatch () = dispatch handler
