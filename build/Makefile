@@ -2,7 +2,7 @@ include Makefile.common
 
 all: dirs tests $S/codept-server $S/codept-client $S/codept
 
-dirs: lib/ lib/sexp/ full/ tests/ docs/ precomputed/
+dirs:
 	mkdir -p lib/sexp full tests docs precomputed
 
 $S/codept: $(OBJ) full/codept.cmx
