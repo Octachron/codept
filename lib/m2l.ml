@@ -2,7 +2,6 @@
 module M = Module
 
 module Arg = M.Arg
-module Sm = Summary
 module Def = Summary.Def
 
 module P = M.Partial
@@ -679,8 +678,6 @@ and pp_expression_with_loc ppf e = Pp.fp ppf "%a(%a)"
 module Normalize = struct
 
   let halt l = false, l
-  let continue l = true, l
-
 
   let (+:) x (more,l) =
     more, x :: l
@@ -717,7 +714,6 @@ module Sig_only = struct
 
   let (|||) (b,x) (b',y) = b || b', (x,y)
   let (@::) a (b,l) = (b, a :: l)
-  let (@:::) (b,a) (b',l) = (b || b', a :: l)
 
   let map f (b, x) = (b, f x)
 
