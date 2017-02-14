@@ -46,7 +46,7 @@ let codept_dep ?(approx=false) arg deps outs env build =
   let arg = env arg  and deps = env deps in
   let tags = tags_of_pathname arg in
   let approx_deps = string_list_of_file deps in
-  (**eliminate self-dependency *)
+  (*eliminate self-dependency *)
   let approx_deps =
     List.filter (fun x -> x <> module_name_of_pathname arg) approx_deps in
   let include_dirs = Pathname.(include_dirs_of @@ dirname arg ) in
