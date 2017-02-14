@@ -33,8 +33,6 @@ let from_loc l =
     Loc.Multiline { start=s; stop = e }
 
 let with_loc l data = { Loc.loc = from_loc l; data}
-let (|?) data l = List.map (with_loc l) data
-
 
 module H = struct
   let epath x = from_lid @@ txt x
@@ -100,14 +98,12 @@ module Pattern = struct
   let of_annot annot = { empty with annot }
 
   let to_annot e = e.annot
-  let to_m2l e = Loc.fmap (fun x -> Minor x) (to_annot e)
 
   let merge e1 e2 = {annot = Annot.( e1.annot ++ e2.annot);
                      binds = e1.binds @ e2.binds }
 
   let (++) = merge
 
-  let union = List.fold_left merge empty
   let union_map f = List.fold_left (fun p x -> p ++ f x) empty
 
   let opt f x = Option.( x >>| f >< empty )
