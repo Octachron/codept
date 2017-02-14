@@ -3,7 +3,7 @@ Codept intends to be a dependency solver for OCaml project and an alternative to
 * whole project analysis
 * exhaustive warning and error messages
 * uniform handling of delayed alias dependencies
-* full dependencies, when dependencies up to transitive closure are not enough
+* (experimental) full dependencies, when dependencies up to transitive closure are not enough
 
 Both ocamldep and codept computes an over-approximation of the dependencies graph of OCaml project. However, codept uses whole project analysis to reduce the number of fictitious dependencies inferred at the project scale, whereas ocamldep is, by design, limited to local file analysis.
 
