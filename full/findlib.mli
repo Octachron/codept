@@ -9,7 +9,7 @@ type query =
   }
 
 type result = { libs: string list; ppxs: string list; pp: string option }
-
+val pp: Format.formatter -> result -> unit
 
 val empty: query
 
