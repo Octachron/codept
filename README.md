@@ -108,7 +108,7 @@ the analysis goes on by ignoring the submodule structure of cycle when inside th
 
 Some new options modify the behavior of either the solver or the outliner
 
-  * `-closed-world` stops the analysis as soon as a non-resolvable module is
+  * `-closed-world` stop the analysis as soon as a non-resolvable module is
     identified. Contrarily, codept default mode assumes that non-resolvable
     module have for signature `sig end` (this approximation can only
     lead to an over-approximation of dependencies).
@@ -121,23 +121,24 @@ Some new options modify the behavior of either the solver or the outliner
   * `-k`
     ignore most recoverable errors and keep going
 
-  * `-L <dir>` tells codept to use the cmi files in directory `<dir>` to
+  * `-L <dir>` tell codept to use the cmi files in directory `<dir>` to
     resolve unknown module names during the analysis.
 
-  * `-no-alias-deps` delays alias dependency up to the use point of the alias.
+  * `-no-alias-deps` delay alias dependency up to the use point of the alias.
     For instance, in the code fragment `module M = A open M` the `A`
     dependency is recorded only when the module `M` is opened in `open M`
     not during the definition of the alias.
 
 
-   * `-o filename` set the output file for the subsequent mode. Multiple outputs
+   * `-o filename` set the output file for the subsequent modes. Multiple outputs
      can be specified for the same invocation of codept.
 
    * `-only-ancestors-of modulename` only analyze files which are an ancestor of
-     the module `modulename`. Note that the module name is somewhat noramized to
-     avoid some discomfort.
+     the module `modulename`.Note that the input name is capitalized and extension
+     are removed to avoid some discomfort.
 
-   * `-transparent-extension-node bool` decides what to do with extension nodes,
+
+   * `-transparent-extension-node bool` decide what to do with extension nodes,
    if `bool` is true, extension node are considered as transparent and analyzed,
    otherwise they are left alone. Note that ocaml built-in extension nodes
    (i.e. `[%extension_constructor … ]` nodes)  are always analyzed and are not
@@ -185,10 +186,12 @@ Other new options explore codept possibilities and intermediary representations
 Warning and error messages, referred together as fault messages can be controled
 extensively:
 
+  * `-fatal level` set the fatal level for faults.
+
   * `-fault-doc` lists all possible fault messages
 
   * `-fault path.name=level` sets the level of the fault from
-            `info`, `notification`, `warning`, `error` to `critical`?
+            `info`, `notification`, `warning`, `error` to `critical`.
 
   * `-verbosity level` selects the minimal level of displayed fault messages.
 

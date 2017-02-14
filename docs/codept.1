@@ -31,7 +31,8 @@ dependencies.
 
 .TP
 .BR \-allow-approx
-fall back to approximated parser in presence of syntax errors.
+use a new experimental heuristic for parsing syntactically
+invalid file that might be more precise − or brittle. More tests are needed.
 
 .TP
 .BI \-as-map \ file
@@ -110,6 +111,14 @@ print version number
 These options modify the behavior of either the outliner or the solver.
 
 .TP
+.B -closed-world
+stops the analysis as soon as a non-resolvable module is
+identified. Contrarily, \fBcodept\fR default mode assumes that non-resolvable
+module have for outline `sig end` (this approximation can only
+lead to an over-approximation of dependencies).
+
+
+.TP
 .B -expand-deps
 compute exact dependencies, rather than a subset of dependencies that is equivalent to the exact dependency set up to transitive closure
 
@@ -119,23 +128,34 @@ ignore most recoverable errors and keep going
 
 .TP
 .BI -L \ dir
-use all cmi files in \fIdir\fR in the analysis
+use the cmi files in directory \fIdir\fR to resolve unknown module names during
+the analysis.
 
 .TP
 .B -no-alias-deps
-delay aliases dependencies
+delay alias dependency up to the use point of the alias.
+For instance, in the code fragment `module M = A open M` the `A`
+dependency is recorded only when the module `M` is opened in `open M`
+not during the definition of the alias.
 
 .TP
 .BI -o \ filename
-set subsequent mode output file
+set the output file for the subsequent modes. Multiple outputs
+can be specified for the same invocation of \fBcodept\fR.
 
 .TP
 .BI -only-ancestors-of \ modulename
-        only analyze files which are an ancestor of \fImodulename\fR
+only analyze files which are an ancestor of \fImodulename\fR
+Note that the input name is capitalized and extension are removed to avoid
+some discomfort.
 
 .TP
 .BI -transparent-extension-node \ bool
-inspect unknown extension nodes
+decide what to do with extension nodes,
+if `bool` is true, extension node are considered as transparent and analyzed,
+otherwise they are left alone. Note that ocaml built-in extension nodes
+(i.e. `[%extension_constructor … ]` nodes)  are always analyzed and are not
+affected by this option.
 
 
 .SH "Codept only modes"
@@ -195,10 +215,14 @@ print new-line separated raw dependencies
 
 .TP
 .B -extern-modules
-print raw extern dependencies
+print raw external dependencies: external modules are modules discovered due to
+either the \fB-pkg\fR or \fB-L\fR options or precomputed package
+(like the standard library)
+
 .TP
 .B -inner-modules
-print raw inner dependencies
+print raw inner dependencies: inner modules are the one provided to
+.BR codept directly through the command line
 .TP
 .B -unknown-modules
 print raw unresolved dependencies
@@ -238,10 +262,6 @@ generate bytecode only dependencies.
 These options modify the handling of warning and error messages.
 
 .TP
-.B -closed-world
-require that all dependencies are provided
-
-.TP
 .B -strict
 fail rather than approximate anything
 
@@ -251,11 +271,13 @@ ignore and silent all recoverable errors and keep going
 
 .TP
 .BI -fatal \ level
-exit for fault at level \fIlevel\fR and beyond.
+set the fatal \fIlevel\fR for faults: \fBcodept\fR will exit as soon a fault
+at level \fIlevel\fR or beyond is emitted.
 
 .TP
 .BI -fault \ fault.path=level
-update fault policy for the given fault.
+update fault policy for the given fault. See \fB-fault-doc\fR for a list of
+potential faults.
 
 .TP
 .B -fault-doc
@@ -263,7 +285,8 @@ show fault policy documentation
 
 .TP
 .BI -verbosity \ level
-only print fault beyond level \fIlevel\fR, with \fIlevel\fR ∈{whisper,notification,warning,error,critical}
+only print faults beyond level \fIlevel\fR,
+with \fIlevel\fR ∈{info,notification,warning,error,critical}
 
 
 .SH "Misc options"
