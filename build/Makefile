@@ -5,14 +5,14 @@ all: dirs tests $S/codept-server $S/codept-client $S/codept
 dirs:
 	mkdir -p lib/sexp full tests docs precomputed
 
-$S/codept: $(OBJ) full/codept.cmx
+$S/codept: $(OBJ) full/codept.cmx dirs
 	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codeptSORT)) -o $S/codept
 
-$S/codept-client: $(OBJ) full/codept_client.cmx
+$S/codept-client: $(OBJ) full/codept_client.cmx dirs
 	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codept_clientSORT)) -o $S/codept-client
 
 
-$S/codept-server: $(OBJ) full/codept_server.cmx
+$S/codept-server: $(OBJ) full/codept_server.cmx dirs
 	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codept_serverSORT)) -o $S/codept-server
 
 
@@ -23,7 +23,7 @@ $S/test-run: $(OBJ) tests/run.cmx
 $S/test-serialize: $(OBJ) tests/serialization.cmx
 	@$(OCAMLOPT) $(LKS) $(call tocmx, $(serializationSORT) ) -o $S/test-serialize
 
-tests: $S/test-run $S/test-serialize
+tests: $S/test-run $S/test-serialize dirs
 	@cd $S && ./test-run && ./test-serialize
 
 
@@ -59,7 +59,7 @@ clean:
 $(ODOC):docs/%.odoc: $S/lib/%.mli
 	@ocamldoc -I lib -I +compiler-libs $< -dump $@
 
-docs: $S/docs/index.html
+docs: $S/docs/index.html dirs
 $S/docs/index.html: $(ODOC)
 	@ocamldoc $(addprefix -load , $(ODOC)) -html -charset utf-8 -d $S/docs
 
