@@ -7,7 +7,7 @@ sig
   val of_string: string -> t
   val of_int: int -> t
 
-  val whisper : t
+  val info : t
   (** Minor fault that should not deserve attention in standard setting *)
 
   val notification : t
@@ -61,7 +61,7 @@ sig
     ('a, Format.formatter, unit, unit, unit, unit) format6 -> 'a
   val notification :
     ('a, Format.formatter, unit, unit, unit, unit) format6 -> 'a
-  val whisper :
+  val info :
     ('a, Format.formatter, unit, unit, unit, unit) format6 -> 'a
 end
 

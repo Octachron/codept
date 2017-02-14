@@ -1,14 +1,14 @@
 
 module Level = struct
 type t = int
-let whisper = 0
+let info = 0
 let notification = 1
 let warning = 2
 let error = 3
 let critical = 4
 
-let of_int n = if n < whisper then
-    whisper
+let of_int n = if n < info then
+    info
   else if n > critical then
     critical
   else
@@ -16,21 +16,21 @@ let of_int n = if n < whisper then
 
 let of_string =
   function
-  | "whisper" | "0" -> whisper
+  | "info" | "0" -> info
   | "notification" | "1" -> notification
   | "warning" | "2" -> warning
   | "error" | "3" -> error
   | "critical" | "4" -> critical
-  | _ -> whisper
+  | _ -> info
 
 let to_string =
   function
-  | 0 -> "whisper"
+  | 0 -> "info"
   | 1 -> "notification"
   | 2 -> "warning"
   | 3 -> "error"
   | 4 -> "critical"
-  | _ -> "whisper"
+  | _ -> "info"
 
 let mark_open_tag tag =
   let b = "\x1b[1m" in
@@ -81,21 +81,21 @@ module Log = struct
       (if k = Ok then "Notification" else "Fatal notification")
 
 
-  let kwhisper k fmt = kf k
-    ("@[[@{<whisper>%s@}]: " ^^ fmt ^^"@]@.")
+  let kinfo k fmt = kf k
+    ("@[[@{<info>%s@}]: " ^^ fmt ^^"@]@.")
     (if k = Ok then "Miscellaneous" else "Fatal accident")
 
   let critical fmt = kcritical Fail fmt
   let error fmt = kerror Ok fmt
   let warning fmt = kwarning Ok fmt
   let notification fmt = kwarning Ok fmt
-  let whisper fmt = kwhisper Ok fmt
+  let info fmt = kinfo Ok fmt
 
 end
 
 type log_info = { silent:Level.t; level:Level.t; exit:Level.t}
 let log i fmt =
-  let fns = Log.[| kwhisper; knotification; kwarning; kerror; kcritical |] in
+  let fns = Log.[| kinfo; knotification; kwarning; kerror; kcritical |] in
   if i.level < i.silent then
     Format.ifprintf Format.err_formatter fmt
   else if i.level >= Level.critical then

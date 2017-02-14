@@ -30,7 +30,7 @@ let add_seed _param task seed =
 let rec add_file ~prefix ~cycle_guard ~policy param task name0 =
   let name = String.concat "/" (prefix @ [name0]) in
   let lax = let open Fault in
-    Policy.set_err (Codept_policies.unknown_extension, Level.whisper)
+    Policy.set_err (Codept_policies.unknown_extension, Level.info)
       L.(!param.[policy]) in
   if Sys.file_exists name then
     match Common.classify lax L.(!param.[synonyms]) name with

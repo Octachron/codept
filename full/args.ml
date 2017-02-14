@@ -329,7 +329,8 @@ let args action param task fquery version =
     "<fault.path=level>: update fault policy for the given fault.";
     "-fault-doc", Unit (print_policy param), ": show fault policy documentation";
     "-verbosity", String (silent_level param),
-    "<level>: only print fault beyond level <level>, with level ∈{whisper,notification,warning,error,critical}";
+    "<level>: only print fault beyond level <level>, \
+     with level ∈{info,notification,warning,error,critical}";
     "-exit-fault-level", String (exit_level param),
     "<level>: exit for fault at level <level> and beyond.\n\n Misc options:\n";
 

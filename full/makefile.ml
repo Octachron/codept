@@ -55,7 +55,7 @@ let expand_includes policy synonyms includes =
       Array.fold_left (fun m x ->
           let policy =
             let open Fault in
-            Policy.set_err (Codept_policies.unknown_extension, Level.whisper)
+            Policy.set_err (Codept_policies.unknown_extension, Level.info)
               policy in
           match Common.classify policy synonyms x with
           | None | Some { Common.kind = Signature; _ } -> m
