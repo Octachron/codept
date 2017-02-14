@@ -185,10 +185,7 @@ module Filter = struct
     | { Pkg.source = Local; _ } -> true
     |  _ -> false
 
-  let dep = function
-    | { Pkg.source = (Unknown|Local); _ } -> true
-    |  _ -> false
-
+  let dep = fun _ -> true
 
   let extern = function
     | { Pkg.source = Unknown; _ } -> true
