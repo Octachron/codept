@@ -246,7 +246,7 @@ let args action param task fquery version =
     "-bytecode", set_t bytecode, ": generate bytecode only dependencies";
 
     "-one-line", set_f one_line,
-    ": output makefile dependencies on a single line foreach target";
+    ": output makefile dependencies on a single line for each target";
     "-open", taskc add_open, "<name>: open module <name> at the start of \
                              all compilation units \n\
                              (except units whose name is <name>).";
