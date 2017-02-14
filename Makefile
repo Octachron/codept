@@ -3,7 +3,7 @@ BUILD=build
 OCAMLBUILD := $(shell ocamlbuild -v 2> /dev/null)
 S=$(abspath .)
 
-all: alt-codept alt-codept-client alt-codept-server alt2-tests
+all: alt-codept
 
 ifdef OCAMLBUILD
 all:codept_ocamlbuild
