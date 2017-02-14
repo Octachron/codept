@@ -276,7 +276,6 @@ let args action param task fquery version =
     "<bool>: inspect unknown extension nodes\n"
     ^ "\n\n Codept only modes:\n";
 
-    "-aliases", Unit (mode Modes.Aliases), ": print aliases";
     "-info", Unit (mode Modes.Info), ": print detailed information";
     "-export", Unit (mode Modes.Export), ": export resolved modules signature";
 
