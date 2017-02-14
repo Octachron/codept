@@ -90,7 +90,6 @@ let aliases _ _ ppf param {Unit.mli; _ } =
       Pp.( list ~sep:(s" ") Name.pp ) (mk_aliases u) in
   List.iter pp_m mli
 
-let id x = x
 let mname x = Pkg.module_name x
 let upath x = mname @@ x.Unit.path
 
