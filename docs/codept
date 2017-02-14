@@ -111,7 +111,7 @@ These options modify the behavior of either the outliner or the solver.
 
 .TP
 .B -expand-deps
-compute exact dependencies, rather than a subset of dependencies that is equivalent to the exact up to transitive closure
+compute exact dependencies, rather than a subset of dependencies that is equivalent to the exact dependency set up to transitive closure
 
 .TP
 .B -k
