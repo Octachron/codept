@@ -548,6 +548,29 @@ let major_minor major default minor =
       List [ any a; any @@ minor.embed b ] in
   {parse; embed; kind = Many }
 
+let pair_and_minor left right default minor =
+  let parse = function
+    | List [] -> None
+    | List [a;b] ->
+      any_parse left a >>= fun a ->
+      any_parse right b >>| fun b ->
+      (a,b,default)
+    | List [a; b; c] ->
+      any_parse left a >>= fun a ->
+      any_parse right b >>= fun b ->
+      any_parse minor c >>| fun c ->
+      (a,b,c)
+    | List _ -> None
+  in
+  let embed (a,b,m)  =
+    let a = left.embed a in
+    let b = right.embed b in
+    if m = default then
+      List [ any a; any b ]
+    else
+      List [ any a; any b; any @@ minor.embed m ] in
+  {parse; embed; kind = Many }
+
 let singleton impl =
   let parse = function
     | List [a] -> any_parse impl a >>| fun x -> [x]

@@ -96,7 +96,14 @@ val tetra': ('a, atomic) impl -> ('b,'k2) impl -> ('c, 'k3) impl -> ('d,'k4) imp
   -> ('a * 'b * 'c * ' d, one_and_many) impl
 
 
+(** Pair of a main value and a minor value with a probable default value *)
 val major_minor: ('a,'k) impl -> 'b -> ('b,'k2) impl -> ('a * 'b, many) impl
+
+(** Triple of a pair of principal values and a minor value with a probable
+    deault value *)
+val pair_and_minor: ('a,'k) impl -> ('b,'k2) impl ->
+  'm -> ('m,'k3) impl -> ('a * 'b * 'm, many) impl
+
 
 val cons: ('a,'k) impl -> ('a list,many) impl -> ('a list, many) impl
 
