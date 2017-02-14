@@ -13,7 +13,6 @@ type param = {
 
 
 (** Basic files reading *)
-let local = Paths.Pkg.local
 let (%) f g x = f @@ g x
 
 let open_within opens unit =
@@ -99,6 +98,7 @@ let base_env io signatures =
   Envts.Base.start @@
   List.fold_left (++) Module.Def.empty signatures
   ++ io.Io.env
+
 (** Environment *)
 type 'a envt_kind = (module Outliner.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
