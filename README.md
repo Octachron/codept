@@ -1,14 +1,24 @@
-Codept intends to be a dependency solver for OCaml project and an alternative to ocamldep.
+Codept intends to be a dependency solver for OCaml project and an alternative to ocamldep. Compared to ocamldep, codept major features are:
+
+* whole project analysis
+* exhaustive warning and error messages
+* delayed alias dependencies
+* expanded dependencies
 
 Both ocamldep and codept computes an over-approximation of the dependencies graph of OCaml project. However, codept uses whole project analysis to reduce the number of fictitious dependencies inferred at the project scale, whereas ocamldep is, by design, limited to local file analysis.
 
 Consequently, bugs notwithstanding, codept computes an exact dependency graph in any situation that does not involve first class modules, and is still reliable in some standard use cases of first class modules (see this [riddle](tests/case/riddle.ml) as an illustration of why first class modules can be problematic).
 
-Moreover, codept will emit warning messages any time it encounters a source of potential inaccuracies in the dependency graph might be introduced.
+Moreover, codept will emit warning messages any time it encounters a source of potential inaccuracies in the dependency graph might be introduced. And if no warnings are emitted by codept, the computed dependencies are exact
 
-A last important point is that codept's whole project analysis feature make it possible to handle uniformly the delayed dependency aspect of module aliases introduced by the `-no-alias-deps` option.
+Another important point is that codept's whole project analysis feature make it possible to handle uniformly the delayed dependency aspect of module aliases introduced by the `-no-alias-deps` option.
 
-## Limitations
+At last point, if dependencies up to transitive closure are not precise
+enough, the "-expand-deps" option can track more precisely type aliases induced
+dependencies, making it easier to track all cmi files required to compile a given
+files for instance..
+
+### Limitations
 More precisely, codept starts to fail to compute exact dependencies if a first class module whom signature can not be locally inferred at the point of binding is opened or included. Then subsequent access to submodules of this first class module will generate fictitious dependency. For instance, for a file `a.ml` such as
 ```OCaml
 (* a.ml *)
