@@ -83,7 +83,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok def -> def
 
   type level = Module.level = Module | Module_type
-  let minor ((path,l) as loc) module_expr str state m =
+  let minor (path,_) module_expr str state m =
     let value l v = match str state v with
       | Ok _ -> l
       | Error h -> h :: l in
