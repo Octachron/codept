@@ -486,34 +486,10 @@ module Block = struct
         (first defs @@ fun s x -> me s x.Loc.data)
         m.packed
 
-  let resolve_alias find name =
-    match (find name: Module.t) with
-    | Alias {path = name :: _ ; _ } -> name
-    | _ -> name
-    | exception Not_found -> name
-
-  let find y name =
-    let defined = y.Summary.defined in
-    let rec find defs name =
-      match defs with
-      | Module.Blank -> raise Not_found
-      | Module.Exact d -> Name.Map.find name d.Module.modules
-      | Module.Divergence d ->
-        match Name.Map.find name d.after.modules with
-        | x -> x
-        | exception Not_found -> find d.before name in
-    find defined name
-
   let m2l code =
     match m2l Summary.empty code with
     | Error _ -> None
     | Ok x -> Some x
-
-  (*
-  let defs, n = x.data in
-      Some { x with data = resolve_alias (find defs) n }
-*)
-
 end
 
 module Annot = struct
