@@ -33,20 +33,8 @@ let rec pp: type any. Format.formatter -> any t -> unit =
     Pp.( decorate "(" ")" @@ list ~sep:(s " ") @@ pp_any ) ppf (Any (Atom a) :: l)
 and pp_any ppf (Any s) = pp ppf s
 
-let parse_atom: type any. any t -> string option =
-  function
-  | List _ -> None
-  | Keyed_list _ -> None
-  | Atom s -> Some s
-
 let extract_atom (Atom s) = s
 let atom s = Atom s
-
-let parse_list: type some. some t -> any list option = function
-  | Keyed_list (a,l) -> Some ( Any(Atom a) :: l )
-  | List l -> Some l
-  | Atom _ -> None
-
 
 let extract_list: type k. (k * n) t -> any list =
   function
@@ -86,7 +74,6 @@ let embed impl x = impl.embed x
 
 open Option
 let (%) f g x = f (g x)
-let (%>) f g x = g (f x)
 
 
 let reforge_kl m =
@@ -169,13 +156,6 @@ module Record = struct
     | M.T -> Some elt.value
     | _ -> None
 
-    let extract_mapper (type a b) (key: (a,b) key ) (M m): (a,b) impl option =
-      let module M = (val key) in
-      let module K = (val m.key) in
-      match K.T with
-      | M.T ->  Some m.value
-      | _ -> None
-
     module I =Map.Make(struct type t = string let compare = compare end)
     type t = elt I.t
     type m = mapper I.t
@@ -191,11 +171,6 @@ module Record = struct
       match I.find (name key) m with
       | exception Not_found -> default key
       | x -> extract key x
-
-    let find_mapper key m =
-      match I.find (name key) m with
-      | exception Not_found -> None
-      | x -> extract_mapper key x
 
     let add key value (m:t): t =
       I.add (name key) (E { key=witness key; value}) m
@@ -572,15 +547,6 @@ let major_minor major default minor =
     else
       List [ any a; any @@ minor.embed b ] in
   {parse; embed; kind = Many }
-
-
-let empty =
-  let parse = function
-    | List [] -> Some []
-    | List (_ :: _) -> None in
-  let embed _ =
-    List [] in
-  {parse; embed; kind = Many}
 
 let singleton impl =
   let parse = function
