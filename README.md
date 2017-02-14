@@ -13,7 +13,7 @@ Moreover, codept will emit warning messages any time it encounters a source of p
 
 Another important point is that codept's whole project analysis feature make it possible to handle uniformly the delayed dependency aspect of module aliases introduced by the `-no-alias-deps` option.
 
-At last point, if dependencies up to transitive closure are not precise
+A last point, if dependencies up to transitive closure are not precise
 enough, the "-expand-deps" option can track more precisely type aliases induced
 dependencies, making it easier to track all cmi files required to compile a given
 files for instance..
@@ -106,7 +106,63 @@ the analysis goes on by ignoring the submodule structure of cycle when inside th
 
 ##Codept-only options
 
-Some new options explore codept possibilities and intermediary representations
+Some new options modify the behavior of either the solver or the outliner
+
+  * `-closed-world` stops the analysis as soon as a non-resolvable module is
+    identified. Contrarily, codept default mode assumes that non-resolvable
+    module have for signature `sig end` (this approximation can only
+    lead to an over-approximation of dependencies).
+
+
+  * `-expand-deps`
+    compute exact dependencies, rather than a subset of dependencies  that
+    is equivalent to the exact dependency set up to transitive closure
+
+  * `-k`
+    ignore most recoverable errors and keep going
+
+  * `-L <dir>` tells codept to use the cmi files in directory `<dir>` to
+    resolve unknown module names during the analysis.
+
+  * `-no-alias-deps` delays alias dependency up to the use point of the alias.
+    For instance, in the code fragment `module M = A open M` the `A`
+    dependency is recorded only when the module `M` is opened in `open M`
+    not during the definition of the alias.
+
+
+   * `-o filename` set the output file for the subsequent mode. Multiple outputs
+     can be specified for the same invocation of codept.
+
+   * `-only-ancestors-of modulename` only analyze files which are an ancestor of
+     the module `modulename`. Note that the module name is somewhat noramized to
+     avoid some discomfort.
+
+   * `-transparent-extension-node bool` decides what to do with extension node,
+   if `bool` is true, extension node are considered as transparent and analyzed,
+   otherwise they are left alone. Note that ocaml built-in extension nodes
+   (i.e. `[%extension_constructor … ]` nodes)  are always analyzed and are not
+   affected by this option.
+
+
+  * `-sig-only` deletes the information that are not necessary for computing
+  signatures
+
+
+All options available in `ocamlfind ocamldep` are also available for `codept`, in particular:
+
+  * `-pkg <module_name>` or `package <module_name> ` is equivalent to
+   `-L $(ocamlfind query module_name)`
+
+Some new options enables to serialize files in s-expression format for ulterior
+uses by codept:
+
+  * `-sig` exports the inferred module signatures in a sexp format that can
+  be read directly by codept
+
+  * `-m2l-sexp` exports the m2l ast in sexp format (that can be parsed by codept)
+
+
+Other new options explore codept possibilities and intermediary representations
 
   * ` -m2l` prints the `m2l` intermediary representation of the source files
     rather than their dependencies
@@ -115,10 +171,6 @@ Some new options explore codept possibilities and intermediary representations
 
   * `-dot` export the dependency graph in the graphviz format
 
-  * `-L <dir>` tells codept to use the cmi files in directory `<dir>` to
-    resolve unknown module names during the analysis.
-
-  * `-pkg <module_name>` is equivalent to `-L $(ocamlfind query module_name)`
 
   * `-inner-modules`, `-unknown-modules` and `-extern-modules`
     refine the `-modules` option by splitting the list of dependencies
@@ -129,27 +181,17 @@ Some new options explore codept possibilities and intermediary representations
          or `-L` options or precomputed package (like the standard library),
       *  unknown modules are the one that could not be resolved.
 
-  * `-no-alias-deps` delays alias dependency up to the use point of the alias.
-    For instance, in the code fragment `module M = A open M` the `A`
-    dependency is recorded only when the module `M` is opened in `open M`
-    not during the definition of the alias.
 
-  * `-closed-world` stops the analysis as soon as a non-resolvable module is
-    identified. Contrarily, codept default mode assumes that non-resolvable
-    module have for signature `sig end` (this approximation can only
-    lead to an over-approximation of dependencies).
+Warning and error messages, referred together as fault messages can be controled
+extensively:
 
-  * `-k` keep-going after most recoverable errors, supersedes `-allow-approx`
+        * `-fault-doc` lists all possible fault messages
+        * `-fault path.name=level` sets the level of the fault from
+        `info`, `notification`, `warning`, `error` to `critical`?
+        * `-verbosity level` selects the minimal level of displayed fault messages.
 
-  * `-sig` exports the inferred module signatures in a sexp format that can
-  be read directly by codept
 
-  * `-m2l-sexp` exports the m2l ast in sexp format (that can be parsed by codept)
-
-  * `-sig-only` deletes the information that are not necessary for computing
-  signatures
-
-For a more exhaustive list of options, see `codept -help`.
+For a more exhaustive list of options, see the codept's man page.
 
 # Installation
 
@@ -160,9 +202,19 @@ For a more exhaustive list of options, see `codept -help`.
 Like `ocamldep`, codept can be used to generate `.depends` file for integration
 with a makefile based infrastructure.
 
-Combining `codept` with `ocamlbuild` currently requires more efforts. An example
-of `myocamlbuild.ml` providing accurate dependencies using codept and ocamlbuild
-is available in `ocamlbuild/myocamlbuild.ml`.
+Combining `codept` with `ocamlbuild` currently requires more efforts.
+A library is provided by the`codept.ocamlbuild` subpackage to ease
+such integration. Depending on the constraints, `codept` can be enabled
+by writing the following simple ocamlbuild file
+```OCaml
+(*myocamlbuild.ml*)
+Codept_ocamlbuild.dispatch ()
+```
+and adding the `-plugin-tag "package(codept.ocamlbuild)"` option to ocamlbuild
+command line:
+```
+ocamlbuild -plugin-tag "package(codept.ocamlbuild)"  …
+```
 
 Better integration with existing tools is still a work in progress.
 
@@ -258,10 +310,6 @@ let g x =
 # To do
 
 - Improved exterior API for integration in build tools
-
-- Parallelized version:
-  - ast parsing
-  - solver
 
 - Portability
 
