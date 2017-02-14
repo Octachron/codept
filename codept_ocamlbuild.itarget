@@ -1,0 +1,2 @@
+ocamlbuild_plugin/codept_ocamlbuild.cma
+ocamlbuild_plugin/codept_ocamlbuild.cmxa

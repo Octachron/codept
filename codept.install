@@ -2,8 +2,10 @@ bin: ["codept" "codept-client" "codept-server"]
 lib: ["META"
      "?codept_ocamlbuild.cma"
      "?codept_ocamlbuild.cmxa"
-     "?codept_ocamlbuild.cmi"
-     "?codept_ocamlbuild.cmti"
-     ]
+     "?_build/ocamlbuild_plugin/codept_ocamlbuild.cmx"
+     "?_build/ocamlbuild_plugin/codept_ocamlbuild.cmi"
+     "?_build/ocamlbuild_plugin/codept_ocamlbuild.cmti"
+     "?_build/ocamlbuild_plugin/codept_ocamlbuild.a"
+]
 
 man:["docs/codept.1"]	
