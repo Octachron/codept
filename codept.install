@@ -1,4 +1,4 @@
-bin: ["codept" "codept-client" "codept-server"]
+bin: ["codept"]
 lib: ["META"
      "?codept_ocamlbuild.cma"
      "?codept_ocamlbuild.cmxa"
