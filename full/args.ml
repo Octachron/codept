@@ -258,9 +258,23 @@ let args action param task fquery version =
     "-sort", Unit(mode Modes.Sort),": sort files according to their dependencies";
     "-version", Cmd.Unit (print_version version),
     ": print human-friendly version description";
-    "-vnum", Cmd.Unit (print_vnum version), ": print version number\
-                                             \n\n Codept only modes:\n";
+    "-vnum", Cmd.Unit (print_vnum version),
+    ": print version number\n\n Major options:\n";
 
+    "-expand-deps", set_t epsilon_dependencies,
+    "compute exact dependencies, rather than a subset of dependencies that is \
+     equivalent to the exact dependency set up to transitive closure";
+    "-k", set_p policy Codept_policies.lax,
+    ": ignore most recoverable errors and keep going";
+    "-L", taskc lib,
+    "<dir>: use all cmi files in <dir> in the analysis";
+    "-no-alias-deps", set_t transparent_aliases, ": delay aliases dependencies";
+    "-o", Cmd.String ( (:=) output ), "<filename>: mode current output file";
+    "-only-ancestors-of", task_p Task.add_seed,
+    "<module name>: only analyze files which are an ancestor of <module name>";
+    "-transparent-extension-node", Cmd.Bool (use_p transparent_extension_nodes),
+    "<bool>: inspect unknown extension nodes\n"
+    ^ "\n\n Codept only modes:\n";
 
     "-aliases", Unit (mode Modes.Aliases), ": print aliases";
     "-info", Unit (mode Modes.Info), ": print detailed information";
@@ -305,14 +319,8 @@ let args action param task fquery version =
     "-bytecode-filter", set_t bytecode,
     ": generate bytecode only dependencies.\n\n Fault options:\n";
 
-    "-expand-deps", set_t epsilon_dependencies,
-    "compute exact dependencies, rather \
-     than a subset of dependencies that is equivalent to the exact up to transitive \
-     closure";
     "-closed-world", set_t closed_world,
     ": require that all dependencies are provided";
-    "-k", set_p policy Codept_policies.lax,
-    ": ignore most recoverable errors and keep going";
     "-strict", set_p policy Codept_policies.strict,
     ": fail rather than approximate anything";
     "-quiet", set_p policy Codept_policies.quiet,
@@ -325,12 +333,6 @@ let args action param task fquery version =
     "-exit-fault-level", String (exit_level param),
     "<level>: exit for fault at level <level> and beyond.\n\n Misc options:\n";
 
-    "-only-ancestors-of", task_p Task.add_seed,
-    "<module name>: only analyze files which are an ancestor of <module name>";
-    "-L", taskc lib, "<dir>: use all cmi files in <dir> \
-                       in the analysis";
-    "-no-alias-deps", set_t transparent_aliases, ": delay aliases dependencies";
-    "-o", Cmd.String ( (:=) output ), "<filename>: mode current output file";
     "-no-implicits", set_f implicits,
     ": do not implicitly search for a mli \
      file when given a ml file input";
@@ -340,8 +342,6 @@ let args action param task fquery version =
     "<signature>: add signature to the base environment";
     "-see", task_p add_invisible_file,
     "<file>: use <file> in dependencies computation but do not display it.";
-    "-transparent-extension-node", Cmd.Bool (use_p transparent_extension_nodes),
-    "<bool>: inspect unknown extension nodes\n"
   ]
 
 
