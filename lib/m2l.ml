@@ -219,9 +219,9 @@ module More_sexp = struct
   let nameset = convr (list string) Name.Set.of_list Name.Set.elements
 
   let namemap = convr
-      (list @@ pair string @@ major_minor Loc.Sexp.t Deps.Edge.Normal Deps.Edge.sexp)
-      (List.fold_left (fun m (k, e) -> Name.Map.add k e m) Name.Map.empty )
-      Name.Map.bindings
+      (list @@ pair_and_minor string Loc.Sexp.t Deps.Edge.Normal Deps.Edge.sexp)
+      (List.fold_left (fun m (k, l, e) -> Name.Map.add k (l,e) m) Name.Map.empty )
+      (fun m -> List.map (fun (x,(y,z)) -> x,y,z) @@ Name.Map.bindings m)
 
   let m2l r () = list @@ Loc.Sexp.ext @@ fix' r expr
   let annot r () =
