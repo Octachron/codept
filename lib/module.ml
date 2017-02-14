@@ -257,10 +257,6 @@ let pp_level ppf lvl =  Pp.fp ppf "%s" (match lvl with
     | Module_type -> "module type"
   )
 
-let reflect_level ppf = function
-    | Module -> Pp.string ppf "Module"
-    | Module_type -> Pp.string ppf "Module type"
-
 let reflect_phantom ppf = function
   | None -> Pp.fp ppf "None"
   | Some x -> Pp.fp ppf "Some(%a)" Divergence.reflect x
