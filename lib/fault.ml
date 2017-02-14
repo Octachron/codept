@@ -32,13 +32,6 @@ let to_string =
   | 4 -> "critical"
   | _ -> "whisper"
 
-let to_decorator = function
-  | 4 -> "\x1b[91m"
-  | 3 -> "\x1b[31m"
-  | 2 -> "\x1b[35m"
-  | 1 -> "\x1b[36m"
-  | _ -> ""
-
 let mark_open_tag tag =
   let b = "\x1b[1m" in
   match of_string tag with
