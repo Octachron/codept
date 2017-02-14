@@ -6,4 +6,4 @@ lib: ["META"
      "?codept_ocamlbuild.cmti"
      ]
 
-man:[docs/codept1]	
+man:["docs/codept.1"]	
