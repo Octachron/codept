@@ -18,3 +18,4 @@ build-doc: [
 ]
 depopts:["ocamlbuild"]
 depends: []
+available: [ ocaml-version >= "4.04.0" ]
