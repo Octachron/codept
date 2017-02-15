@@ -16,7 +16,9 @@ Another important point is that codept's whole project analysis feature make it 
 A last point, if dependencies up to transitive closure are not precise
 enough, the `-expand-deps` option can track more precisely type aliases induced
 dependencies, making it easier to track all cmi files required to compile a given
-files for instance..
+files for instance.
+
+Preliminary perfomance measure indicates that the average time increase when compared to ocamldep ranges between 10% to 50%.
 
 ### Limitations
 More precisely, codept starts to fail to compute exact dependencies if a first class module whom signature can not be locally inferred at the point of binding is opened or included. Then subsequent access to submodules of this first class module will generate fictitious dependency. For instance, for a file `a.ml` such as
