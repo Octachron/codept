@@ -1,6 +1,6 @@
 OPTS= -use-ocamlfind
 BUILD=build
-OCAMLBUILD := $(shell ocamlbuild -v 2> /dev/null)
+OCAMLBUILD := $(shell ocamlbuild -where 2> /dev/null)
 S=$(abspath .)
 
 all: alt-codept
@@ -24,7 +24,7 @@ codept: lib/*.ml lib/*.mli full/*.ml full/*.mli precomputed/*.ml
 		&& mv codept.native codept
 
 codept_ocamlbuild: ocamlbuild_plugin/*.ml
-	ocamlbuild $(OPTS) codept_ocamlbuild.otarget
+	ocamlbuild -no-ocamlfind -cflags -I,$(OCAMLBUILD) codept_ocamlbuild.otarget
 
 clean:
 	ocamlbuild -clean && cd build && make clean
