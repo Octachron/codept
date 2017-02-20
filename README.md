@@ -1,27 +1,27 @@
-Codept intends to be a dependency solver for OCaml project and an alternative to ocamldep. Compared to ocamldep, codept major features are:
+Codept intends to be a dependency solver for OCaml projects and an alternative to ocamldep. Compared to ocamldep, codept major features are:
 
 * whole project analysis
-* exhaustive warning and error messages
+* extensive warning and error messages
 * uniform handling of delayed alias dependencies
 * (experimental) full dependencies, when dependencies up to transitive closure are not enough
 
-Both ocamldep and codept computes an over-approximation of the dependencies graph of OCaml project. However, codept uses whole project analysis to reduce the number of fictitious dependencies inferred at the project scale, whereas ocamldep is, by design, limited to local file analysis.
+Both ocamldep and codept compute an over-approximation of the dependency graph of OCaml projects. However, codept uses whole project analysis to reduce the number of fictitious dependencies inferred at the project scale, whereas ocamldep is, by design, limited to local file analysis.
 
-Consequently, bugs notwithstanding, codept computes an exact dependency graph in any situation that does not involve first class modules, and is still reliable in some standard use cases of first class modules (see this [riddle](tests/case/riddle.ml) as an illustration of why first class modules can be problematic).
+Consequently, bugs notwithstanding, codept computes an exact dependency graph in any situation that does not involve unknown external modules or first class modules, and is still reliable in some standard use cases of first class modules (see this [riddle](tests/cases/riddle.ml) as an illustration of why first class modules can be problematic).
 
-Moreover, codept will emit warning messages any time it encounters a source of potential inaccuracies in the dependency graph might be introduced: if no warnings are emitted by codept, the computed dependencies are exact.
+Moreover, codept will emit warning messages any time it encounters a source of potential inaccuracies in the dependency graph. In other words, if no warnings are emitted by codept, the computed dependencies are ensured to be exact.
 
-Another important point is that codept's whole project analysis feature make it possible to handle uniformly the delayed dependency aspect of module aliases introduced by the `-no-alias-deps` option.
 
-A last point, if dependencies up to transitive closure are not precise
-enough, the `-expand-deps` option can track more precisely type aliases induced
-dependencies, making it easier to track all cmi files required to compile a given
-files for instance.
+Another important point is that codept's whole project analysis feature makes it possible to handle uniformly the delayed dependency aspect of module aliases introduced by the compiler `-no-alias-deps` option.
 
-Preliminary perfomance measure indicates that the average time increase when compared to ocamldep ranges between 10% to 50%.
+At last, in situation where dependencies up to transitive closure are not precise enough, codept's experimental "-expand-deps" option can track more precisely type aliases induced dependencies, making it easier to track all cmi files required to compile a given file for instance.
 
-### Limitations
-More precisely, codept starts to fail to compute exact dependencies if a first class module whom signature can not be locally inferred at the point of binding is opened or included. Then subsequent access to submodules of this first class module will generate fictitious dependency. For instance, for a file `a.ml` such as
+Basic performance measures indicate that the average time increase when compared to ocamldepranges between 10% to 50%.
+
+
+### First class module limitations
+In presence of first class modules, codept may infer fictitious dependencies.
+More precisely, if a first class module whose signature cannot be locally inferred at the point of binding is opened or included, then subsequent access to submodules of this first class module will generate fictitious dependencies. For instance, for a file `a.ml` such as
 ```OCaml
 (* a.ml *)
 module type S = sig module B: sig end end
@@ -33,7 +33,7 @@ let g x =
   ()
 
 ```
-`codept a.ml` generate a fictitious `B` dependency and a warning
+`codept a.ml` generates a fictitious `B` dependency and one warning
 ```
 [Warning]: a.ml:l6.11−12,
   First-class module M was opened while its signature was unknown.
@@ -55,8 +55,7 @@ In more details, `codept` works by combining together three main ingredients:
   fly, search for signature of included library toplevel modules, or approximate
   unknowable modules (see [Envts](lib/envts.mli)).
 
-Currently, these three elements are then used in one of the basic solvers
-(see [Solver](lib/solver.mli)). Given a list of ".ml" and ".mli" files and a starting environment, the default solver iterates over the list of unresolved files and try to compute their signature.
+Currently, these three elements are then used in one of the two basic solvers implemented (see [Solver](lib/solver.mli)). Given a list of ".ml" and ".mli" files and a starting environment, the default solver iterates over the list of unresolved files and try to compute their signature.
 
 If the computation is successful, the resulting signature is added to the current environment and the current file is removed from the list of unresolved files. Otherwise the solver continues its iteration.
 
@@ -66,7 +65,7 @@ Cycles and non-resolvable dependencies are detected when the solver does not mak
 
 Codept can be used as a drop-in replacement for ocamldep, on Linux at least.
 More tests are needed on other platforms. Unfortunately, most of OCaml build systems
-are built around ocamldep limitation and would not benefit directly from replacing ocamldep by codept.
+are built around ocamldep limitations and would not benefit directly from replacing ocamldep by codept.
 
 A possible exception is self-cycle detection: invoking codept
 on the following "a.ml" file
@@ -98,81 +97,79 @@ However, some of the ocamldep options are slightly reinterpreted:
   * `-open <module>` does not open the module `<module>` when analyzing the
     `<module.ml>` or `<module.mli>`
 
-  * `-allow-approx` use a new experimental heuristic for parsing syntactically
+  * `-allow-approx` uses a new experimental heuristic for parsing syntactically
     invalid file that might be more precise − or brittle. More tests are needed.
     See also the more generic `-k` option.
 
 Another possible difference between codept and ocamldep output is codept built-in detection of dependency cycles. With default options, cycles triggers a fatal error message within codept and stops the current analysis. If the option `-k` is specified,
-the analysis goes on by ignoring the submodule structure of cycle when inside the cycle.
+the analysis try to go on by ignoring the submodule structure of cycle when inside the cycle.
 
 
 ##Codept-only options
 
-Some new options modify the behavior of either the solver or the outliner
+Some new options modify the behavior of either the solver or the outliner used
+by codept
 
-  * `-closed-world` stop the analysis as soon as a non-resolvable module is
-    identified. Contrarily, codept default mode assumes that non-resolvable
-    module have for signature `sig end` (this approximation can only
-    lead to an over-approximation of dependencies).
+  * `-closed-world`
+    stop the analysis as soon as a non-resolvable module is identified. Contrarily, codept default mode assumes that non-resolvable module have for signature `sig end` (this approximation can only lead to an over-approximation of dependencies).
 
 
   * `-expand-deps`
-    compute exact dependencies, rather than a subset of dependencies  that
-    is equivalent to the exact dependency set up to transitive closure
+    computes exact dependencies, rather than a subset of dependencies  that is equivalent to the exact dependency set up to transitive closure
 
   * `-k`
     ignore most recoverable errors and keep going
 
-  * `-L <dir>` tell codept to use the cmi files in directory `<dir>` to
-    resolve unknown module names during the analysis.
+  * `-L <dir>`
+    use cmi files in directory `<dir>` to resolve unknown module names during the analysis.
 
-  * `-no-alias-deps` delay alias dependency up to the use point of the alias.
-    For instance, in the code fragment `module M = A open M` the `A`
-    dependency is recorded only when the module `M` is opened in `open M`
-    not during the definition of the alias.
-
-
-   * `-o filename` set the output file for the subsequent modes. Multiple outputs
-     can be specified for the same invocation of codept.
-
-   * `-only-ancestors-of modulename` only analyze files which are an ancestor of
-     the module `modulename`.Note that the input name is capitalized and extension
-     are removed to avoid some discomfort.
+  * `-no-alias-deps`
+    delay alias dependency up to the use point of the alias.
+    For instance, in the code fragment `module M = A open M` the `A` dependency is recorded only when the module `M` is opened in `open M` not during the definition of the alias.
 
 
-   * `-transparent-extension-node bool` decide what to do with extension nodes,
-   if `bool` is true, extension node are considered as transparent and analyzed,
-   otherwise they are left alone. Note that ocaml built-in extension nodes
-   (i.e. `[%extension_constructor … ]` nodes)  are always analyzed and are not
-   affected by this option.
+   * `-o filename`
+     set the output file for the subsequent modes. Multiple outputs can be specified for the same invocation of codept.
+
+   * `-only-ancestors-of modulename`
+     only analyze files which are an ancestor of the module `modulename`.Note that the input name is capitalized and extension are removed to avoid some discomfort.
 
 
-  * `-sig-only` deletes the information that are not necessary for computing
-  signatures
+   * `-transparent-extension-node bool`
+   decide what to do with extension nodes, if `bool` is true, extension node are considered as transparent and analyzed, otherwise they are left alone. Note that ocaml built-in extension nodes (i.e. `[%extension_constructor … ]` nodes)  are always analyzed and are not affected by this option.
+
+
+  * `-sig-only`
+  delete the information that are not necessary for computing signatures
 
 
 All options available with `ocamlfind ocamldep` are also available for `codept`, in particular:
 
-  * `-pkg <module_name>` or `package <module_name> ` is equivalent to
-   `-L $(ocamlfind query module_name)`
+  * `-pkg <module_name>` or `package <module_name> `
+    equivalent to `-L $(ocamlfind query module_name)`
 
 Some new options enables to serialize files in s-expression format for ulterior
 uses by codept:
 
-  * `-sig` exports the inferred module signatures in a sexp format that can
+  * `-sig`
+  export the inferred module signatures in a sexp format that can
   be read directly by codept
 
-  * `-m2l-sexp` exports the m2l ast in sexp format (that can be parsed by codept)
+  * `-m2l-sexp`
+  export the m2l ast in sexp format (that can be parsed by codept)
 
 
 Other new options explore codept possibilities and intermediary representations
 
-  * ` -m2l` prints the `m2l` intermediary representation of the source files
+  * ` -m2l`
+    print the `m2l` intermediary representation of the source files
     rather than their dependencies
 
-  * `-info` prints a textual representation of the result of codept analysis.
+  * `-info`
+    print a textual representation of the result of codept analysis.
 
-  * `-dot` export the dependency graph in the graphviz format
+  * `-dot`
+    export the dependency graph in the graphviz format
 
 
   * `-inner-modules`, `-unknown-modules` and `-extern-modules`
@@ -202,7 +199,10 @@ For a more exhaustive list of options, see the codept's man page.
 
 # Installation
 
+For the dev version:
 `opam pin add codept https://github.com/Octachron/codept.git`
+
+Version 0.9 is currently avaliable on opam.
 
 # Integration with build tools
 
@@ -298,7 +298,7 @@ and emits a warning (and a notification)
 [Warning]: a.ml:l6.11−12,
 first-class module M was opened while its signature was unknown.
 [Notification]: a.ml:l7.11−12,
-a non-resolvable module, ⟨B⟩, has been replaced by an approximation
+a non-resolvable module, B, has been replaced by an approximation
 ```
 To avoid this situation, a possible fix is to add back a signature annotation:
 
@@ -316,12 +316,9 @@ let g x =
 
 # To do
 
-- Improved exterior API for integration in build tools
-
-- Portability
-
-- Bugs tracking
-
-- Proper library documentation
-
-- Improved library packaging
+* Uniformize fault messages
+* Improved exterior API for integration in build tools
+* Portability
+* Bugs tracking
+* Proper library documentation
+* Improved library packaging
