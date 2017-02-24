@@ -75,6 +75,8 @@ module Pkg :
     val o : path -> path
     val cmi : path -> path
     val cmx : path -> path
+    val cmxs : path -> path
+
 
     val mk_dep : bool -> bool -> path -> path
     (** [mk_dep all native path] generates either

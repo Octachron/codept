@@ -35,6 +35,7 @@ module L :
     val abs_path : (t, bool) l
     val slash : (t, string) l
     val one_line : (t, bool) l
+    val shared : (t, bool) l
     val implicits : (t, bool) l
     val synonyms : (t, Common.synonyms) l
     val includes : (t, string list) l

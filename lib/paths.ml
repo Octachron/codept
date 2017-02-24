@@ -224,6 +224,7 @@ module Pkg = struct
   let o = change_extension ".o"
   let cmi = change_extension ".cmi"
   let cmx = change_extension ".cmx"
+  let cmxs = change_extension ".cmx"
 
   let mk_dep all native = update_extension @@ function
     | "mli" | "m2li" -> ".cmi"

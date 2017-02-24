@@ -31,6 +31,7 @@ let param0 = {
       slash = Filename.dir_sep;
       implicits = true;
       one_line = true;
+      shared = false;
       includes = [];
     };
 
@@ -254,6 +255,9 @@ let args action param task fquery version =
     "<cmd>: pipe sources through preprocessor <cmd>";
     "-ppx", Cmd.String add_ppx,
     "<cmd>: pipe abstract syntax trees through ppx preprocessor <cmd>";
+    "-shared", set_t shared,
+    ": generate dependencies for native plugin files (.cmxs) in addition to \
+     native object files (.cmx).";
     "-slash", set_p slash "/", ": use forward slash as directory separator";
     "-sort", Unit(mode Modes.Sort),": sort files according to their dependencies";
     "-version", Cmd.Unit (print_version version),

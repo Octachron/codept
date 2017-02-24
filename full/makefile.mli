@@ -9,6 +9,7 @@ type param =
     slash:string;
     one_line:bool;
     implicits: bool;
+    shared: bool;
     includes: string list;
   }
 

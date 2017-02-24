@@ -47,6 +47,9 @@ module L = struct
   let one_line = makefile % create (fun x-> x.one_line)
                 (fun x y -> { x with one_line = y })
 
+  let shared = makefile %
+               create (fun x-> x.shared) (fun x y -> { x with shared = y })
+
   let implicits = makefile % create (fun x-> x.implicits)
       (fun x y -> { x with implicits = y })
   let synonyms = create

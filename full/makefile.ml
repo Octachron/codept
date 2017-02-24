@@ -10,6 +10,7 @@ type param =
     slash:string;
     one_line: bool;
     implicits: bool;
+    shared:bool;
     includes: string list;
   }
 
@@ -153,10 +154,14 @@ let main policy ppf synonyms param units =
         if not param.native then
           print_deps order (Pkg.cmo) cmo_or_cmi ppf
             (impl, [], [cmi] @ if_all [impl.path] );
-        if not param.bytecode then
+        if not param.bytecode then begin
           print_deps order (Pkg.cmx) (cmi_or Pkg.cmx) ppf
             (impl, if_all [Pkg.o impl.path], [cmi] @ if_all [impl.path] );
-        print_deps order Pkg.cmi (Pkg.mk_dep all param.native)  ppf
+            if param.shared then
+              print_deps order (Pkg.cmxs) (cmi_or Pkg.cmxs) ppf
+                (impl, if_all [Pkg.o impl.path], [cmi] @ if_all [impl.path] )
+        end;
+          print_deps order Pkg.cmi (Pkg.mk_dep all param.native)  ppf
           (intf,[], [] )
       | { ml = Some impl; mli = None } ->
         begin
