@@ -1,0 +1,22 @@
+diff --git a/lib/ast_converter.ml b/lib/ast_converter.ml
+index f2646ab..bf9ca52 100644
+--- a/lib/ast_converter.ml
++++ b/lib/ast_converter.ml
+@@ -321,8 +321,6 @@ and expr exp =
+     Annot.value [[ with_loc loc @@ Bind( module_binding (m,me) );
+                    with_loc e.pexp_loc @@ Minor( data @@ expr e )
+                  ]]
+-  | Pexp_letexception (_c, e) (* let exception C in E *) ->
+-    expr e
+   | Pexp_send (e, _) (*  E # m *)
+   | Pexp_assert e (* assert E *)
+   | Pexp_newtype (_ ,e) (* fun (type t) -> E *)
+@@ -398,8 +396,6 @@ and pattern pat =
+        Note: (module P : S) is represented as
+        Ppat_constraint(Ppat_unpack, Ptyp_package)
+   *)
+-  | Ppat_open (m,p) (* M.(P) *) ->
+-    Pattern.open_ (with_loc loc @@ H.npath m) @@ pattern p
+ 
+ and type_declaration td: M2l.Annot.t  =
+   Annot.union_map (fun (_,t,_) -> core_type t) td.ptype_cstrs
