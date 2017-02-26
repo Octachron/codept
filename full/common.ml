@@ -55,13 +55,9 @@ let is_stdlib_pkg = function
   | "dynlink" -> true
   | _ -> false
 
-let extension name =
-  let n = String.length name in
-  let r = try String.rindex name '.' with Not_found -> n-1 in
-  String.sub name (r+1) (n-r-1)
 
 let classify policy synonyms f =
-  let ext = extension f in
+  let ext = Support.extension f in
   match Name.Map.find ext synonyms with
   | x -> Some x
   | exception Not_found ->

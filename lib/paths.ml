@@ -37,7 +37,7 @@ struct
   let prefix = List.hd
 
   let extension a =
-    let ext = Filename.extension a in
+    let ext = Support.extension a in
     if not (ext = "") && ext.[0] = '.' then
       String.sub ext 1 (String.length ext - 1)
     else
@@ -61,7 +61,7 @@ struct
     | a :: q -> a :: chop_extension q
 
   let parse_filename name =
-    let l = String.split_on_char (String.get (Filename.dir_sep) 0) name in
+    let l = Support.split_on_char (String.get (Filename.dir_sep) 0) name in
     match List.rev l with
     | "" :: q -> List.rev q
     | l -> List.rev l

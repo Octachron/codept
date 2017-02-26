@@ -141,10 +141,10 @@ let print_vnum version ()= Format.printf "%.2f@." version
 let print_version version ()= Format.printf "codept, version %.2f@." version
 
 let fault param s =
-  match String.split_on_char '=' s with
+  match Support.split_on_char '=' s with
   | [] | [_]| _ :: _ :: _ :: _ -> ()
   | [a;b] ->
-    let path= List.map String.trim @@ String.split_on_char '.' a in
+    let path= List.map String.trim @@ Support.split_on_char '.' a in
     let level = Fault.Level.of_string b in
     let open L in
     let policy = !param.[policy] in
@@ -189,7 +189,7 @@ let pkg param findlib_query =
       param.[precomputed_libs] <- Name.Set.add s !param.[precomputed_libs]
     else
       findlib_query := Findlib.pkg !findlib_query s in
-  Cmd.String( fun s -> List.iter add @@ String.split_on_char ',' s )
+  Cmd.String( fun s -> List.iter add @@ Support.split_on_char ',' s )
 
 let no_stdlib param =
   Cmd.Unit( fun () ->

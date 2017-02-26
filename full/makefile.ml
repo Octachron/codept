@@ -33,7 +33,7 @@ let implicit_dep synonyms path =
   (* implicitely looks for interface/implementation files.
      TODO: allow separated pair of .ml/.mli
   *)
-  let exists ext =  Sys.file_exists @@ Filename.remove_extension
+  let exists ext =  Sys.file_exists @@ Support.remove_extension
       (Pkg.filename path) ^ "." ^ ext in
   Name.Map.fold (fun ext (info:Common.info) (found:bool Unit.pair) ->
       match info.kind with
