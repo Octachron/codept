@@ -25,12 +25,11 @@ let source_file kind filename =
       match kind with
       | M2l.Structure ->
         Ast_converter.structure @@
-        Pparse.file Format.err_formatter ~tool_name:"codept" input_file
-          Parse.implementation Pparse.Structure
+        Pparse.parse_implementation Format.err_formatter ~tool_name:"codept"
+          input_file
       | M2l.Signature ->
         Ast_converter.signature @@
-        Pparse.file Format.err_formatter ~tool_name:"codept" input_file
-          Parse.interface Pparse.Signature
+        Pparse.parse_interface Format.err_formatter ~tool_name:"codept" input_file
     with Syntaxerr.Error msg ->
       Error (Ocaml msg)
   in
