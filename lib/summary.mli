@@ -1,14 +1,29 @@
 (** Short summary of visible and defined modules at an AST node *)
 
-type t = { defined : Module.signature; visible: Module.signature; }
-type summary = t
+module Namespace: sig
+  type t = Paths.S.t
+  type tree =
+    | Node of tree Name.map
+    | Leaf of Module.definition
+end
+
 (** Invariant: defined ⊂ visible *)
+type t = {
+  defined: Module.signature;
+  visible:Module.signature;
+  namespaces:Namespace.tree Name.map
+}
+type summary = t
 
 val pp : Format.formatter -> summary -> unit
 (** pretty printer *)
 
+val sexp: (t, Sexp.many) Sexp.impl
+
 val empty : summary
 (** Empty summary *)
+
+val defined: summary -> Module.signature
 
 val only_visible : summary -> Module.signature
 (** List modules that are visibles and not defined *)
@@ -18,6 +33,8 @@ val sg_bind : Module.signature -> summary
 
 val sg_see : Module.signature -> summary
 (** make visible the given signature *)
+
+val in_namespace: Namespace.t -> summary -> summary 
 
 val clear_visible : summary -> summary
 (** forget visible but not defined modules *)
@@ -45,6 +62,7 @@ module Def :
     val ( +@ ) : Module.signature -> Module.signature -> Module.signature
     (** merge signatures *)
 
+    val merge: summary -> summary -> summary
     val ( +| ) : summary -> summary -> summary
     (** merge summaries *)
 
@@ -52,20 +70,24 @@ module Def :
 
 (** {2 Basic summary extension} *)
 
-val bind : Module.t -> summary -> summary
+val bind : ?namespace:Namespace.t -> Module.t -> summary -> summary
 (** [bind m def] binds the module m in [def] *)
 
-val see : Module.t -> summary -> summary
-(** [bind m def] makes the module [m] visible in [def] *)
+val see : ?namespace:Namespace.t -> Module.t -> summary -> summary
+(** [see m def] makes the module [m] visible in [def] *)
 
-val bind_sg : Module.t -> summary -> summary
-(** [bind s def] makes the module type [m] visible in [def] *)
+val bind_sg : ?namespace:Namespace.t -> Module.t -> summary -> summary
+(** [bind_sg s def] makes the module type [m] visible in [def] *)
 
-val bind_gen : Module.level -> Module.t -> summary -> summary
-(** [bind level m def] binds the module [m] at [level] in [def] *)
+val bind_gen :
+  ?namespace:Namespace.t -> Module.level -> Module.t -> summary
+  -> summary
+(** [bind_gen level m def] binds the module [m] at [level] in [def] *)
 
-val binds : (Module.level * Module.t) list -> summary
-(** [bind [level,m;…] def] binds the modules [m] at [level] in [def] *)
+val binds : (Module.level * Namespace.t * Module.t) list -> summary
+(** [binds [level,m;…] def] binds the modules [m] at [level] 
+    in [def] *)
 
-val of_partial : Module.Partial.t -> (summary,summary) result
+val of_partial : ?namespace:Namespace.t -> Module.Partial.t
+  -> (summary,summary) result
 (** Create a summary from a partial module *)

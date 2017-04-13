@@ -3,7 +3,7 @@ module S = Module.Sig
 module Edge = Deps.Edge
 module Origin = M.Origin
 module SDef = Summary.Def
-
+module Nms = Namespaced
 
 
 
@@ -170,7 +170,8 @@ module Open_world(Envt:extended_with_deps) = struct
 
 
   module P = Paths.Pkg
-  type t = { core: Envt.t; world: Name.set; externs: Edge.t P.map ref }
+  type t = { core: Envt.t; world: Nms.Set.t;
+             externs: Edge.t P.map ref }
 
   let is_exterior path env = Envt.is_exterior path env.core
   let top env = { env with core = Envt.top env.core }
@@ -199,7 +200,8 @@ module Open_world(Envt:extended_with_deps) = struct
  let find_name ?edge root level name env =
     try Envt.find_name ?edge root level name env.core with
     | Not_found ->
-      if root && Name.Set.mem name env.world then
+      if root && Nms.Set.mem (Nms.make name)
+           env.world then
         raise Not_found
       else
         Query.pure @@ Module.md @@ approx [name]
@@ -210,17 +212,18 @@ module Open_world(Envt:extended_with_deps) = struct
     | Not_found ->
       let aliased, root = match resolve_alias path env with
         | Some root -> true, root
-        | None -> false, List.hd path in
+        | None -> false, Namespaced.make @@ List.hd path in
       (* Format.printf "aliased:%b, true name:%s\n" aliased root; *)
       let undefined =
         aliased ||
-        match Envt.find Module [root] env.core with
+        match Envt.find Module (Nms.flatten root) env.core with
         | exception Not_found -> true
         | _ -> false in
-      if Name.Set.mem root env.world
-      && record_level level path (* module types never come from files *)
-      && undefined (* is root defined to be something else than
-                           the unit root? *)
+      if Namespaced.Set.mem root env.world
+      (* module types never come from files *)
+      && record_level level path
+      (* is root defined to be something else than the unit root? *)
+      && undefined
       then
         raise Not_found
       else if undefined then
@@ -228,7 +231,8 @@ module Open_world(Envt:extended_with_deps) = struct
           if record_level level path then
             begin
               env.externs := Deps.update
-                  { P.file = [root]; source = Unknown } edge !(env.externs)
+                  { P.file = Nms.flatten root;
+                    source = Unknown } edge !(env.externs)
             end;
           Query.( pure (approx path) ++ fault path )
         )

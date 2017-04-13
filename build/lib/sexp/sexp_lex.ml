@@ -1,4 +1,4 @@
-# 1 "/home/ombre/Projets/Ocaml/codept/lib/sexp/sexp_lex.mll"
+# 1 "/home/akh/ocaml/codept/lib/sexp/sexp_lex.mll"
   open Sexp_parse 
 # 4 "lib/sexp/sexp_lex.ml"
 let __ocaml_lex_tables = {
@@ -95,32 +95,32 @@ let rec main lexbuf =
 and __ocaml_lex_main_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 7 "/home/ombre/Projets/Ocaml/codept/lib/sexp/sexp_lex.mll"
+# 7 "/home/akh/ocaml/codept/lib/sexp/sexp_lex.mll"
         (L)
 # 101 "lib/sexp/sexp_lex.ml"
 
   | 1 ->
-# 8 "/home/ombre/Projets/Ocaml/codept/lib/sexp/sexp_lex.mll"
+# 8 "/home/akh/ocaml/codept/lib/sexp/sexp_lex.mll"
         (R)
 # 106 "lib/sexp/sexp_lex.ml"
 
   | 2 ->
-# 9 "/home/ombre/Projets/Ocaml/codept/lib/sexp/sexp_lex.mll"
+# 9 "/home/akh/ocaml/codept/lib/sexp/sexp_lex.mll"
            ( main lexbuf )
 # 111 "lib/sexp/sexp_lex.ml"
 
   | 3 ->
 let
-# 10 "/home/ombre/Projets/Ocaml/codept/lib/sexp/sexp_lex.mll"
+# 10 "/home/akh/ocaml/codept/lib/sexp/sexp_lex.mll"
              t
 # 117 "lib/sexp/sexp_lex.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 10 "/home/ombre/Projets/Ocaml/codept/lib/sexp/sexp_lex.mll"
+# 10 "/home/akh/ocaml/codept/lib/sexp/sexp_lex.mll"
                ( ATOM t )
 # 121 "lib/sexp/sexp_lex.ml"
 
   | 4 ->
-# 11 "/home/ombre/Projets/Ocaml/codept/lib/sexp/sexp_lex.mll"
+# 11 "/home/akh/ocaml/codept/lib/sexp/sexp_lex.mll"
         (EOF)
 # 126 "lib/sexp/sexp_lex.ml"
 

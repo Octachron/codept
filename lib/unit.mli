@@ -1,23 +1,27 @@
 (** Functions for handling unit (aka .ml/.mli) files *)
 
+(** Module abbreviations *)
 module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 
+(** Precision of the inferred module-level signature *)
 type precision =
   | Exact
   | Approx
 
+(** Input type *)
 type s = {
-  name: Name.t;
-  path: Pkg.t;
+  path: Namespaced.t; (** module path of the compilation unit *)
+  src: Pkg.t; (** source file of the compilation unit *) 
   kind: M2l.kind;
   precision: precision;
   code: M2l.t;
 }
 
+(** Output type *)
 type r = {
-  name: Name.t;
-  path: Pkg.t;
+  path: Namespaced.t;
+  src: Pkg.t;
   kind: M2l.kind;
   precision: precision;
   code: M2l.t;
@@ -26,20 +30,22 @@ type r = {
 }
 type u = r
 
+(** Conversion function between input and output types *)
 val lift: Module.signature -> Deps.t -> s -> r
 val proj: r -> s
 
-val read_file : Fault.Policy.t -> Read.kind -> string -> s
-(** [read_file polycy kind filename] reads the file [filename],
-    extracting the corresponding m2l ast. If the file is not synctatically
-    valid Ocaml and syntax errors are not set to critical level in [polycy],
-    the approximative parser is used.
+val read_file : Fault.Policy.t -> Read.kind -> (Pth.t * string) -> s
+(** [read_file polycy kind (filename,pth)] reads the file [filename],
+    extracting the corresponding m2l ast. If the file is not 
+    synctatically valid Ocaml and syntax errors are not set to 
+    critical level in [polycy], the approximative parser is used.
 *)
 
+(** Pretty-printing function *)
 val pp : Format.formatter -> r -> unit
 val pp_input : Format.formatter -> s -> unit
 
-
+(** Pair of implementation/interface units *)
 type 'a pair = { ml : 'a; mli : 'a; }
 val map: ('a -> 'b) pair -> 'a pair -> 'b pair
 val unimap: ('a -> 'b) -> 'a pair -> 'b pair
@@ -82,7 +88,8 @@ end
 module Groups: sig
 
   module Make(Base: group_core):
-    group with type elt = Base.elt and type ('a,'b) arrow = ('a,'b) Base.arrow
+    group with type elt = Base.elt
+           and type ('a,'b) arrow = ('a,'b) Base.arrow
 
     module Filename: group with
     type elt = string and type ('a,'b) arrow = 'a -> 'b
@@ -95,5 +102,5 @@ module Groups: sig
 
 end
 
-
+(** Unit sets *)
 module Set : Set.S with type elt = u

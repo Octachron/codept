@@ -51,8 +51,8 @@ module Origin: sig
     | Arg (** module created for functor application *)
     | Phantom of bool * Divergence.t
     (** Module with an ambiguous signature due to a divergence.
-        In particular, it submodule structure should not be trusted and
-        is kept around only to handle delayed alias dependencies.
+        In particular, its submodule structure should not be trusted
+        and is kept around only to handle delayed alias dependencies
     *)
 
   val at_most : t -> t -> t
@@ -78,8 +78,8 @@ type m = {
 (** Core module or alias *)
 and t =
   | M of m
-  | Alias of { name:Name.t; path: Paths.S.t; phantom: Divergence.t option }
-
+  | Alias of
+      { name:Name.t; path: Paths.S.t; phantom: Divergence.t option }
 and definition = { modules : mdict; module_types : mdict }
 and signature =
   | Blank
@@ -134,7 +134,6 @@ val sexp: (modul_,Sexp.one_and_many) Sexp.impl
 
 (** Helper functions for definitions *)
 module Def: sig
-
   val empty : definition
 
   val add : definition -> t ->  definition
@@ -143,6 +142,7 @@ module Def: sig
 
   val merge: definition -> definition -> definition
 
+  val pp: Format.formatter -> definition -> unit
   val sexp: (definition,Sexp.many) Sexp.impl
   type t = definition
 end

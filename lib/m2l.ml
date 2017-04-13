@@ -127,7 +127,7 @@ module More_sexp = struct
     name= "Defs";
     proj = (function Defs d -> Some d | _ -> None);
     inj = (fun x -> Defs x);
-    impl = definition;
+    impl = Summary.sexp;
     default = Some Summary.empty
   }
 
@@ -300,10 +300,13 @@ module More_sexp = struct
   let open_me r =
     C{ name="Open_me";
        proj = (function
-           | Open_me {resolved; opens; expr} -> Some( resolved,(opens,expr))
+           | Open_me {resolved; opens; expr} ->
+             Some( resolved,opens,expr)
            | _ -> None );
-       inj= (fun (a, (b,c)) -> Open_me {resolved=a; opens = b ; expr = c} );
-       impl = pair definition (pair (list Paths.Simple.sexp) (fix' r r.me) );
+       inj= (fun (a, b,c) ->
+           Open_me {resolved=a; opens = b ; expr = c} );
+       impl = triple Summary.sexp (list Paths.Simple.sexp)
+           (fix' r r.me);
        default = None;
      }
 

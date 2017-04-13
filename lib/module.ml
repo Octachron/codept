@@ -420,7 +420,8 @@ module Def = struct
     | Module -> add
     | Module_type -> add_type
 
-
+  let pp = pp_definition
+  
   let sexp =
     let open Sexp in
     let open Sexp_core in

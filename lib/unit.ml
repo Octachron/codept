@@ -7,16 +7,16 @@ type precision =
   | Approx
 
 type s = {
-  name: string;
-  path: Pkg.t;
+  path: Namespaced.t;
+  src: Pkg.t;
   kind: M2l.kind;
   precision: precision;
   code: M2l.t;
 }
 
 type r = {
-  name: string;
-  path: Pkg.t;
+  path: Namespaced.t;
+  src: Pkg.t;
   kind: M2l.kind;
   precision: precision;
   code: M2l.t;
@@ -25,14 +25,14 @@ type r = {
 }
 type u = r
 
-let lift signature dependencies ({name;path;kind;precision;code}:s) =
-  {signature;dependencies; name;path;kind;precision;code}
+let lift signature dependencies ({src;path;kind;precision;code}:s) =
+  {signature;dependencies;src;path;kind;precision;code}
 
-let proj {name;path;kind;precision;code; _ }: s=
-  {name;path;kind;precision;code}
+let proj {src;path;kind;precision;code; _ }: s=
+  {src;path;kind;precision;code}
 
 
-let read_file polycy kind filename : s =
+let read_file polycy kind (namespace,filename) : s =
   let name, code = Read.file kind filename in
   let precision, code = match code with
     | Ok c -> Exact, c
@@ -43,10 +43,10 @@ let read_file polycy kind filename : s =
       Fault.handle polycy Standard_faults.syntaxerr msg;
       Approx, Approx_parser.lower_bound filename
   in
-      { name;
+      { path = { namespace; name };
         kind = kind.kind;
         precision;
-        path = Pkg.local filename;
+        src = Pkg.local filename;
         code
       }
 
@@ -186,14 +186,14 @@ module Groups = struct
         type elt = s
         type ('a,'b) arrow = 'b
         let lift f = f (fun (u:elt) -> u.kind)
-        let key (unit:elt) = Paths.S.chop_extension unit.path.file
+        let key (unit:elt) = Paths.S.chop_extension unit.src.file
       end)
 
     module R = Make(struct
         type elt = r
         type ('a,'b) arrow = 'b
         let lift f = f (fun (u:elt) -> u.kind)
-        let key (unit:elt) = Paths.S.chop_extension unit.path.file
+        let key (unit:elt) = Paths.S.chop_extension unit.src.file
       end)
 
 end
@@ -201,23 +201,23 @@ end
 
 
 let pp ppf unit =
-  Pp.fp ppf "@[<hov2>[ name=%s; @, path=%a; @;\
+  Pp.fp ppf "@[<hov2>[ path=%a; @, path=%a; @;\
              m2l = @[%a@]; @;\
              signature=[ @[%a@] ];\
              dependencies=@[%a@] @;\
              ] @] @."
-    unit.name
-    Pkg.pp_simple unit.path
+    Namespaced.pp unit.path
+    Pkg.pp_simple unit.src
     M2l.pp unit.code
     Module.pp_signature unit.signature
     Deps.pp unit.dependencies
 
 let pp_input ppf (unit:s) =
-  Pp.fp ppf "@[<hov2>[ name=%s; @, path=%a; @;\
+  Pp.fp ppf "@[<hov2>[ name=%a; @, path=%a; @;\
              m2l = @[%a@]; @;\
              ] @] @."
-    unit.name
-    Pkg.pp_simple unit.path
+    Namespaced.pp unit.path
+    Pkg.pp_simple unit.src
     M2l.pp unit.code
 
 module Set = Set.Make(struct type t = u let compare = compare end)

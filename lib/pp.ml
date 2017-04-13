@@ -1,3 +1,4 @@
+type 'a t = Format.formatter -> 'a -> unit
 let fp = Format.fprintf
 
 let s st ppf = fp ppf st
