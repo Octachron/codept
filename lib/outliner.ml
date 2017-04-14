@@ -2,7 +2,6 @@ open M2l
 open Mresult
 
 module Y = Summary
-module Def = Summary.Def
 module P = Module.Partial
 
 module M = Module
@@ -10,7 +9,8 @@ module Arg = M.Arg
 module S = Module.Sig
 module Faults = Standard_faults
 
-type 'a query_result = { main:'a; msgs: (Fault.loc -> unit ) Fault.t list }
+type 'a query_result =
+  { main:'a; msgs: (Fault.loc -> unit ) Fault.t list }
 
 module type envt = sig
   type t
@@ -133,12 +133,13 @@ module Make(Envt:envt)(Param:param) = struct
         | Phantom (_,d) -> d.origin
         | Submodule | Arg -> Divergence.External  (*FIXME?*) in
       let point = { Divergence.root = x.name; origin=kind; loc } in
-      Y.sg_see @@ S.merge
+      Y.View.see @@ Y.View.make @@ S.merge
             (Divergence
                { before = S.empty; point; after = Module.Def.empty}
             )
             x.signature
-    | _, Divergence _ | _, Exact _ -> Y.sg_see x.signature
+    | _, Divergence _ | _, Exact _ ->
+      Y.View.see @@ Y.View.make @@ x.signature
 
 
   let open_ loc state path =
@@ -164,7 +165,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Error h -> Error ( Bind {name; expr = h} )
     | Ok d ->
       let m = M.M( P.to_module ~origin:Submodule name d ) in
-      Ok (Some(Def.md m))
+      Ok (Some(Y.define [m]))
 
   let bind state module_expr (b: M2l.module_expr bind) =
     if not transparent_aliases then
@@ -174,7 +175,7 @@ module Make(Envt:envt)(Param:param) = struct
       | (Ident p:M2l.module_expr)
       | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
         let m = Module.Alias { name = b.name; path = p; phantom = None } in
-        Ok ( Some (Def.md m) )
+        Ok ( Some (Y.define [m]) )
       | _ -> bind state module_expr b
 
   let bind_sig state module_type {name;expr} =
@@ -182,7 +183,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Error h -> Error ( Bind_sig {name; expr = h} )
     | Ok d ->
       let m = P.to_module ~origin:Submodule name d in
-      Ok (Some(Def.sg (M.M m)))
+      Ok (Some(Y.define ~level:M.Module_type [M.M m]))
 
 
   let bind_rec state module_expr module_type bs =
@@ -191,7 +192,8 @@ module Make(Envt:envt)(Param:param) = struct
     (* first we try to compute the signature of each argument using
        approximative signature *)
     let mockup ({name;_}:_ M2l.bind) = M.md @@ M.mockup name in
-    let add_mockup defs arg = Envt.(>>) defs @@ Def.md @@ mockup arg in
+    let add_mockup defs arg =
+      Envt.(>>) defs @@ Y.define [mockup arg] in
     let state' = List.fold_left add_mockup state bs in
     let mapper {name;expr} =
       match expr with
@@ -208,8 +210,9 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok defs ->
       (* if we did obtain the argument signature, we go on
          and try to resolve the whole recursive binding *)
-      let add_arg defs (name, _me, arg) = Envt.(>>) defs @@ Def.md @@
-        M.M (P.to_module ~origin:Arg name arg) in
+      let add_arg defs (name, _me, arg) =
+        Envt.(>>) defs
+        @@ Y.define [M.M (P.to_module ~origin:Arg name arg)] in
       let state' = List.fold_left add_arg state defs in
       let mapper {name;expr} =
         expr |> module_expr state' |> fmap (pair name) (pair name) in
@@ -240,7 +243,8 @@ module Make(Envt:envt)(Param:param) = struct
     match ex_arg with
     | Error me -> Error (fn @@ List.fold_left demote {arg=me;body} args )
     | Ok arg ->
-      let sg = Option.( arg >>| (fun m -> Def.md (M.M m) ) >< Y.empty ) in
+      let sg =
+        Option.( arg >>| (fun m -> Y.define [M.M m] ) >< Y.empty ) in
       let state =  Envt.( state >> sg ) in
       match body_type state body with
       | Ok p  -> Ok { p with P.args = arg :: p.P.args }
@@ -277,7 +281,7 @@ module Make(Envt:envt)(Param:param) = struct
       functor_expr (module_type loc) (module_expr loc, Build.fn, Build.demote_str)
         state [] arg body
     | Str [] -> Ok P.empty
-    | Str[{data=Defs d;_ }] -> Ok (P.no_arg @@ Y.defined d)
+    | Str[{data=Defs d;_ }] -> Ok (P.no_arg @@ Y.local @@ Y.defined d)
     | Resolved d -> Ok d
     | Str str -> Mresult.fmap (fun s -> Str s) P.no_arg @@
       drop_state @@ m2l (filename loc) state str
@@ -291,7 +295,7 @@ module Make(Envt:envt)(Param:param) = struct
         | exception Not_found -> Error me
         | x ->
           let seen = open_diverge loc x in
-          let resolved = Def.( resolved +| seen ) in
+          let resolved = Y.( resolved +| seen ) in
           module_expr loc state @@ Open_me {opens = q; resolved; expr }
       end
     | Extension_node n ->
@@ -311,7 +315,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   and module_type loc state = function
     | Sig [] -> Ok P.empty
-    | Sig [{data=Defs d;_}] -> Ok (P.no_arg @@ Y.defined d)
+    | Sig [{data=Defs d;_}] -> Ok (P.no_arg @@ Y.local @@ Y.defined d)
     | Sig s -> Mresult.fmap (fun s -> Sig s) P.no_arg @@
       drop_state @@ signature (filename loc) state s
     | Resolved d -> Ok d
@@ -363,7 +367,8 @@ module Make(Envt:envt)(Param:param) = struct
       match expr filename state a with
       | Ok (Some defs)  ->
         begin match m2l filename Envt.( state >> defs ) q with
-          | Ok (state,sg) ->  Ok (state, S.merge (Y.defined defs) sg)
+          | Ok (state,sg) ->
+            Ok (state, S.merge (Y.local @@ Y.defined defs) sg)
           | Error q' -> Error ( snd @@ Normalize.all @@
                                 Loc.nowhere (Defs defs) :: q')
         end

@@ -114,7 +114,7 @@ sig
       loading function and a list of files *)
   val generator:
     ( (Read.kind * Namespaced.t) -> Unit.s )
-    -> (Read.kind * Namespaced.p * string) list
+    -> (Read.kind * Namespaced.t) list
     -> gen
 
 

@@ -1,5 +1,13 @@
 (** Different environment implementations *)
 
+type context =
+  | In_namespace of Summary.Namespace.tree Name.Map.t
+  | Signature of Module.signature
+
+type query =
+  | Context of context
+  | Module of Module.t
+
 (** Extended environment for composition *)
 module type extended =
 sig
@@ -9,17 +17,17 @@ sig
   val top: t -> t
   (** Return to toplevel definitions *)
 
-  val find_name : ?edge:Deps.Edge.t -> bool -> Module.level -> string -> t
-    -> Module.t Outliner.query_result
+  val find_name : ?edge:Deps.Edge.t -> root:bool -> Module.level
+    -> Name.t -> t -> query Outliner.query_result
 (** [find_name is_root level name env] find if there is a module [name]
     at [level] in the environment [env]. The first argument indicates
     if we are looking for a toplevel module, this is useful for both
     dependency tracking and when using external dependency.
 *)
 
-  val restrict : t -> Module.signature -> t
-(** [restrict env sign] results in the environment restricted to
-    the identifiers visible from [sign]
+  val restrict : t -> context -> t
+(** [restrict env context] results in the environment restricted to
+    the identifiers visible from [context]
 *)
 
 end
@@ -34,7 +42,7 @@ end
 (** Basic environment *)
 module Base :
 sig
-  type t = { top: Module.definition; current: Module.signature }
+  type t = { top: Summary.view; current: Summary.view }
   include extended_with_deps with type t := t
   val empty: t
   val start: Module.definition -> t
@@ -45,11 +53,11 @@ module Open_world :
   functor (Envt : extended_with_deps ) ->
   sig
     type t ={ core : Envt.t;
-              world : Name.set;
+              world : Namespaced.Set.t;
               externs : Deps.t ref; }
 
     include extended_with_deps with type t := t
-    val start: Envt.t -> Name.set -> t
+    val start: Envt.t -> Namespaced.Set.t -> t
 end
 
 
@@ -62,9 +70,11 @@ sig
     mutable resolved: Envt.t;
     cmis: Paths.Pkg.t Name.map
   }
-  type t = { local : Base.t; local_units:Name.set; pkgs : source list; }
+  type t = { local : Base.t;
+             local_units:Namespaced.Set.t;
+             pkgs : source list; }
 
-  val create : string list -> Name.set -> Base.t -> t
+  val create : string list -> Namespaced.Set.t -> Base.t -> t
   include extended with type t := t
 
 end

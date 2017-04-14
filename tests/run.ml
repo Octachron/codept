@@ -3,6 +3,7 @@ module Pth = Paths.Pkg
 let local = Pth.local
 
 let (%) f g x = f (g x)
+let (~:) = List.map Namespaced.make
 
 let classify filename =  match Filename.extension filename with
   | ".ml" -> { Read.format= Src; kind  = M2l.Structure }
@@ -15,9 +16,12 @@ let policy = Standard_policies.quiet
 let read policy (info,f) =
   Unit.read_file policy info f
 
+let read_simple policy (info,f) =
+  read policy (info, Namespaced.make f)
+
 let organize policy files =
   files
-  |> Unit.unimap (List.map @@ read policy)
+  |> Unit.unimap (List.map @@ read_simple policy)
   |> Unit.Groups.Unit.(fst % split % group)
 
 
@@ -29,6 +33,9 @@ let start_env includes fileset =
   let traced = Envts.Trl.extend layered in
   Envt.start traced fileset
 
+let nms_files = List.map (fun (k,f) -> k, Namespaced.make f)
+let simplify_files = List.map (fun (k,f) -> k, f.Namespaced.name)
+
 
 module Branch(Param:Outliner.param) = struct
   module S = Solver.Make(Envt)(Param)
@@ -37,24 +44,31 @@ module Branch(Param:Outliner.param) = struct
   let organize pkgs files =
     let units: _  Unit.pair = organize policy files in
     let fileset = units.mli
-                  |> List.map (fun (u:Unit.s) -> u.name)
-                  |> Name.Set.of_list in
+                  |> List.map (fun (u:Unit.s) -> u.path)
+                  |> Namespaced.Set.of_list in
     let env = start_env pkgs fileset in
     env, units
 
   let analyze_k pkgs files roots =
     let core, units = organize pkgs files in
-    let gen = D.generator (read policy) (files.ml @ files.mli) in
+    let gen = D.generator (read policy)
+        ( nms_files @@ files.ml @ files.mli) in
     S.solve core units,
     Option.fmap (fun roots -> snd @@ D.solve gen core roots) roots
 
-  module CSet = Set.Make(struct type t = string list let compare = compare end)
+  module CSet =
+    Set.Make(struct
+      type t = Name.t list
+      let compare = compare
+    end)
 
   let analyze_cycle files =
     let core, units = organize [] files in
-    let rec solve_and_collect_cycles ancestors ?(learn=false) cycles state =
+    let rec solve_and_collect_cycles
+        ancestors ?(learn=false) cycles state =
       match ancestors with
-      | _ :: grand_father :: _ when grand_father = state -> core, cycles
+      | _ :: grand_father :: _ when grand_father = state ->
+        core, cycles
       | _ ->
         match S.resolve_dependencies ~learn state with
         | Ok (e,_) -> e, cycles
@@ -63,12 +77,14 @@ module Branch(Param:Outliner.param) = struct
           let module F = Solver.Failure in
           let _, cmap = F.analyze (S.alias_resolver state) units in
           let errs = F.Map.bindings cmap in
-          let name unit = Solver.(unit.input.name) in
+          let name unit = Solver.(unit.input.path) in
           let more_cycles =
             errs
             |> List.filter (function (F.Cycle _, _) -> true | _ -> false)
             |> List.map snd
             |> List.map (List.map name % Solver.Failure.Set.elements)
+            |> (* FIXME*)
+            List.map (List.map (fun x -> x.Namespaced.name))
             |> CSet.of_list
           in
           solve_and_collect_cycles (state::ancestors) ~learn
@@ -102,7 +118,6 @@ module Branch(Param:Outliner.param) = struct
         Pp.(list estring) (List.sort compare list)
         Pp.(list estring) (normalize set);
     r
-
 
   let (%) f g x = f (g x)
 
@@ -148,26 +163,29 @@ module Branch(Param:Outliner.param) = struct
     | M2l.Signature -> { Unit.mli = (k,file) :: mli; ml }
 
   let gen_deps_test libs inner_test roots l =
-    let {Unit.ml;mli} = List.fold_left add_info {Unit.ml=[]; mli=[]} l in
+    let {Unit.ml;mli} =
+      List.fold_left add_info {Unit.ml=[]; mli=[]} l in
     let module M = Paths.S.Map in
     let build exp = List.fold_left (fun m (_,x,l) ->
         M.add (Paths.S.parse_filename x) l m)
         M.empty exp in
     let exp = M.union' (build ml) (build mli) in
-    let sel (k,f,_) = k, f in
+    let sel (k,f,_) = k, Namespaced.make f in
     let files = Unit.unimap (List.map sel) {ml;mli} in
-    let (u, u' : _ Unit.pair * _ )  = analyze_k libs files roots in
+    let (u, u' : _ Unit.pair * _ )  =
+      analyze_k libs (Unit.unimap simplify_files files) roots in
     let (=?) expect files = List.for_all (fun u ->
-        let path = u.Unit.path.Pth.file in
+        let path = u.Unit.src.Pth.file in
         let expected =
           Paths.S.Map.find path expect
         in
-        inner_test u.path expected u.dependencies
+        inner_test u.src expected u.dependencies
       ) files in
     exp =? u.ml && exp =? u.mli && Option.( u' >>| (=?) exp >< true )
 
   let deps_test (roots,l) =
-    gen_deps_test [] simple_dep_test roots l
+    gen_deps_test [] simple_dep_test
+      (Option.fmap (~:) roots) l
 
   let deps_test_single l = deps_test (None,l)
 
@@ -426,7 +444,7 @@ let result =
     &&
     ( Sys.chdir "../../lib";
       Std.gen_deps_test (Std.ocamlfind "compiler-libs") Std.precise_deps_test
-        (Some ["Solver"; "Standard_policies"])
+        (Some ~:["Solver"; "Standard_policies"])
         [
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
           "ast_converter.ml", ( ["Loc"; "M2l"; "Name"; "Option"; "Module";
@@ -441,20 +459,30 @@ let result =
           "cmi.ml", (["Loc"; "M2l";"Module"; "Option"; "Paths"],
                      ["Cmi_format"; "List"; "Path";"Types"], []);
           "deps.ml", (["Option"; "Paths"; "Pp"; "Sexp"],["List"],[]);
-          "summary.mli", (["Module"], ["Format"], []);
-          "summary.ml", (["Module"; "Name"; "Pp"; "Mresult"], ["List"], []);
-          "envts.mli", (["Deps"; "Module";"Name"; "Outliner"; "Paths"], [], []);
+          "summary.mli", (
+            ["Module";"Name";"Paths";"Sexp"],
+            ["Format"],
+            [] );
+          "summary.ml", (
+            ["Module"; "Name"; "Paths"; "Pp"; "Mresult"; "Sexp"],
+            ["List"], []);
+          "envts.mli", (
+            ["Deps"; "Module";"Name"; "Namespaced"; "Outliner";
+             "Paths"; "Summary"], [], []);
           "envts.ml", (
             ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
-             "Module"; "Name"; "Paths";"Standard_faults";"Standard_policies"],
+             "Module"; "Name"; "Namespaced"; "Paths";
+             "Standard_faults";"Standard_policies"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
-          "outliner.mli", (["Deps"; "Fault"; "Module"; "Name"; "Paths";"M2l";
-                               "Summary"],
-                              [],[]);
+          "outliner.mli", (
+            ["Deps"; "Fault"; "Module"; "Namespaced";
+             "Paths";"M2l"; "Summary"],
+            [],[]);
           "outliner.ml", (
-            ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths";
-             "Mresult"; "Fault"; "Standard_faults"; "Deps"]
+            ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Namespaced";
+             "Option"; "Paths"; "Mresult"; "Fault"; "Standard_faults";
+             "Deps"]
           ,["List"],[]);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";"Sexp" ],
                       ["Format"],[]);
@@ -470,6 +498,10 @@ let result =
           "module.ml", ( ["Loc";"Paths";"Name"; "Pp"; "Sexp" ], ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map"], [] );
+          "namespaced.mli", ( ["Name";"Paths"; "Pp"],
+                              ["Set";"Map"], [] );
+          "namespaced.ml", ( ["Name"; "Paths"; "Pp"],
+                             ["List"; "Set";"Map"], [] );
           "loc.mli", ( ["Sexp"], ["Format"], []);
           "loc.ml", ( ["Pp";"Sexp"], ["List"], []);
           "option.mli", ([],[],[]);
@@ -490,25 +522,31 @@ let result =
                       [ "Obj"; "Format";"List";"Map"; "Hashtbl"; "String"], [] );
           "sexp.mli", (["Name"],
                       [ "Format"], [] );
-          "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";"Name";"Read";
+          "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";
+                          "Namespaced"; "Read";
                           "Summary"; "Outliner"; "Paths"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
             ["Approx_parser"; "Deps"; "Summary"; "Outliner"; "Loc";
-             "M2l"; "Module"; "Mresult"; "Name"; "Option"; "Pp"; "Paths"; "Read";
-             "Unit"; "Fault"; "Standard_faults"],
+             "M2l"; "Module"; "Mresult"; "Namespaced";
+             "Option"; "Pp"; "Paths"; "Read"; "Unit"; "Fault";
+             "Standard_faults"],
             ["List"; "Map"; "Set"],[]);
-          "standard_faults.ml", (["Fault"; "Module"; "Paths"; "Pp"; "Loc" ],
-                                 ["Format"; "Location"; "Syntaxerr"],[]);
-          "standard_faults.mli", (["Fault"; "Name"; "Module"; "Paths" ],
-                                  ["Syntaxerr"],[]);
+          "standard_faults.ml", (
+            ["Fault"; "Module"; "Namespaced"; "Paths"; "Pp"; "Loc" ],
+            ["Format"; "Location"; "Syntaxerr"],[]);
+          "standard_faults.mli", (
+            ["Fault"; "Name"; "Namespaced"; "Module"; "Paths" ],
+            ["Syntaxerr"],[]);
           "standard_policies.ml", (["Fault"; "Standard_faults"; "Solver"],[],[]);
           "standard_policies.mli", (["Fault"],[],[]);
-          "unit.mli", (["Deps";"Paths"; "M2l"; "Module"; "Name"; "Fault"; "Read"],
+          "unit.mli", (["Deps";"Paths"; "M2l"; "Module"; "Namespaced";
+                        "Fault"; "Read"],
                        ["Format";"Set"],[]);
           "unit.ml", (
-            ["Approx_parser"; "Deps"; "M2l"; "Module"; "Fault";
-             "Option"; "Paths"; "Pp"; "Read"; "Standard_faults"],
+            ["Approx_parser"; "Deps"; "M2l"; "Module"; "Namespaced";
+             "Fault"; "Option"; "Paths"; "Pp"; "Read";
+             "Standard_faults"],
             [ "List"; "Set"],
             []);
         ]

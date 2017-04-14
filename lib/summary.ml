@@ -10,7 +10,7 @@ module Namespace = struct
     | Leaf of Module.signature
   type map = tree Name.map
   let empty = Name.Map.empty
-                
+
   let rec map_tree f = function
     | Leaf m -> Leaf (f m)
     | Node m -> Node (map f m)
@@ -29,13 +29,8 @@ type t = {
 type summary = t
 
 module View = struct
-  let empty = { local = Module.Sig.empty; namespace= Namespace.empty }
 
-  (*  let local v = v.local
-  let map f v = { local= f v.local;
-                  namespace=Namespace.map f v.namespace}
-*)
-              
+  let empty = { local = Module.Sig.empty; namespace= Namespace.empty }
   let is_empty v =
     Module.Sig.empty = v.local && v.namespace = Namespace.empty
 
@@ -44,7 +39,7 @@ module View = struct
     | [a] -> Name.Map.singleton a (Namespace.Leaf sign)
     | a :: q ->
       Name.Map.singleton a @@ Namespace.Node(make_namespace sign q)
-  
+
   let make ?(namespace=[]) local =
     match namespace with
     | [] -> { local; namespace = Namespace.empty }
@@ -53,7 +48,7 @@ module View = struct
         namespace = make_namespace local l
       }
 
-  
+
   let merge s1 s2 =
     let rec tree_merge x y = match x, y with
       | Namespace.Leaf _, _ | _, Namespace.Leaf _ ->
@@ -66,7 +61,7 @@ module View = struct
       | Some a, Some b -> Some (tree_merge a b)
       | Some a, None | _, Some a -> Some a
       | None, None -> None in
-    { local = Module.Sig.merge s1.local s2.local; 
+    { local = Module.Sig.merge s1.local s2.local;
       namespace = map_merge s1.namespace s2.namespace }
 
   let see v = { visible = v; defined = empty }
@@ -76,6 +71,7 @@ end
 
 let empty = { defined = View.empty; visible = View.empty }
 let defined s = s.defined
+let local v = v.local
 
 let only_visible s = s.visible
 
@@ -126,7 +122,7 @@ module Sexp = struct
 
   let of_list = List.fold_left (fun m (k,x) -> Name.Map.add k x m)
       Namespace.empty
-      
+
   let rec node () = C {
       name = "Node";
       proj = (function Namespace.Node m -> Some m | _ -> None);
@@ -161,7 +157,7 @@ module Sexp = struct
       (pair view view)
       (fun (a,b) -> {visible=b;defined=a})
       (fun d -> d.defined, d.visible)
-  
+
 end
 let sexp = Sexp.summary
 
@@ -184,7 +180,7 @@ let (+|) = merge
 let add create view ?(namespace=[]) md summary =
   merge summary @@ view @@
   View.make ~namespace @@ create md
- 
+
 let bind_md = add S.create View.define
 let see = add S.create View.see
 
@@ -200,6 +196,6 @@ let binds l =
       bind ~namespace ~level md summary) empty l
 
 let of_partial ?(namespace=[]) fsummary =
-  let bind x = View.define @@ View.make ~namespace x in 
+  let bind x = View.define @@ View.make ~namespace x in
   Mresult.fmap bind bind
   @@ M.Partial.to_sign fsummary

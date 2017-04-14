@@ -30,11 +30,13 @@ let info _ _ ppf _param {Unit.ml; mli} =
   print ml; print mli
 
 let export _ _ ppf _param {Unit.mli; _} =
+  (* TODO: prefixed unit *)
   let sign (u:Unit.r)= u.signature in
   let md (unit:Unit.r) =
     Module.M {Module.
-      name = unit.name
-    ; origin = Unit { source=Pkg.Special "exported"; file = [unit.name] }
+      name = unit.path.name
+    ; origin =
+        Unit { source=Pkg.Special "exported"; file = [unit.path.name] }
     ; args = []
     ; signature = sign unit
     } in
@@ -49,10 +51,11 @@ let export _ _ ppf _param {Unit.mli; _} =
              @]@." Module.reflect_signature s
 
 let signature filename writer ppf _param {Unit.mli; _} =
-  let md {Unit.signature; name; path; _  } =
+  (* TODO: prefixed unit *)
+  let md {Unit.signature; src; path; _  } =
     Module.M ( Module.create ~args:[]
-      ~origin:(Unit path)
-      name signature
+      ~origin:(Unit src)
+      path.name signature
              )
   in
   let mds = List.map md mli in
@@ -73,7 +76,7 @@ let dependencies ?filter sort (u:Unit.r) =
 let pp_module {Makefile.abs_path;slash; _ } proj ppf (u:Unit.r) =
   let pp_pkg = Pkg.pp_gen slash in
   let elts = proj u in
-  Pp.fp ppf "%a: %a\n" pp_pkg (Common.make_abs abs_path u.path)
+  Pp.fp ppf "%a: %a\n" pp_pkg (Common.make_abs abs_path u.src)
     Pp.( list ~sep:(s" ") Name.pp )
     elts
 
@@ -82,7 +85,7 @@ let aliases _ _ ppf param {Unit.mli; _ } =
   let param = param.makefile in
   let pp_pkg = Pkg.pp_gen param.slash in
   let pp_m (u:Unit.r) =
-    let path = u.path in
+    let path = u.src in
     let path' = Pkg.update_extension
         (function "m2l" -> ".ml" | "m2li" -> ".mli" | s -> s ) path in
     let f = Common.make_abs param.abs_path path' in
@@ -90,8 +93,8 @@ let aliases _ _ ppf param {Unit.mli; _ } =
       Pp.( list ~sep:(s" ") Name.pp ) (mk_aliases u) in
   List.iter pp_m mli
 
-let mname x = Pkg.module_name x
-let upath x = mname @@ x.Unit.path
+let mname x = Namespaced.make @@ Pkg.module_name x
+let upath x = mname @@ x.Unit.src
 
 module Hidden = struct
 let sort proj _param mli =
@@ -145,7 +148,8 @@ let dot _ _ ppf param {Unit.mli; _ } =
   Pp.fp ppf "digraph G {\n";
   List.iter (fun u ->
       List.iter (fun p ->
-          Pp.fp ppf "%s -> %s \n" u.name @@ Pkg.module_name p)
+          Pp.fp ppf "%a -> %s \n"
+            Namespaced.pp u.path @@ Pkg.module_name p)
         (local_dependencies sort u)
     ) mli;
   Pp.fp ppf "}\n"
@@ -158,10 +162,11 @@ let local_deps x =
 let sort _ _ ppf _param (units: _ Unit.pair) =
   let module G = Unit.Groups.R in
   let gs = G.group units in
-  let flat g = fst @@ G.flatten g (* errors should have handled earlier *) in
+  let flat g = fst @@ G.flatten g
+  (* errors should have handled earlier *) in
   let extract_path _ g l = match flat g with
     | { Unit.ml = Some x; mli = _ }
-    | { ml = None; mli = Some x }  -> x.Unit.path :: l
+    | { ml = None; mli = Some x }  -> x.Unit.src :: l
     | { ml = None; mli = None } -> l in
   let paths =
     Paths.S.Map.fold extract_path gs []  in
@@ -169,9 +174,9 @@ let sort _ _ ppf _param (units: _ Unit.pair) =
     let key = path.Pkg.file in
     match flat @@ G.Map.find key gs with
     | { ml = Some x; mli = Some y } ->
-      if path = x.path then
+      if path = x.src then
         let (+) = Pkg.Set.union in
-        (local_deps x) + (local_deps y) + (Pkg.Set.singleton y.path)
+        (local_deps x) + (local_deps y) + (Pkg.Set.singleton y.src)
       else
         local_deps y
     | { ml = Some x; mli = None } | { mli= Some x; ml =None } -> local_deps x

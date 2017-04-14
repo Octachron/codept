@@ -39,6 +39,7 @@ val empty : summary
 (** Empty summary *)
 
 val defined : summary -> view
+val local: view -> Module.signature
 
 val only_visible : summary -> view
 (** List modules that are visibles and not defined *)

@@ -27,12 +27,13 @@ let sign filename =
 
 let m2l polycy k filename =
   let cached = Sh.get cache in
-  match Name.Map.find_opt filename cached.m2l with
+  let filename' = filename.Namespaced.name in
+  match Name.Map.find_opt filename' cached.m2l with
   | Some u -> u
   | None ->
     let u = Unit.read_file polycy k filename in
     Sh.map (fun (cached:Cache.t) ->
-        let map = Name.Map.add filename u cached.m2l in
+        let map = Name.Map.add filename' u cached.m2l in
         { cached with m2l = map }
       ) cache;
     u
@@ -68,10 +69,11 @@ let io = {
     m2l = begin
       fun (kind,filename) ppf m2l ->
         Sh.map (fun (cached:Cache.t) ->
-            let path = Paths.P.local filename in
-            let name = Paths.P.module_name path in
+            let src = Paths.P.local filename in
+            let path = Namespaced.make @@ Paths.P.module_name src in
             let u: Unit.s =
-              { precision = Exact; code = m2l; name; path; kind = kind.kind } in
+              { precision = Exact; code = m2l;
+                path; src; kind = kind.kind } in
             let m2l = Name.Map.add filename u cached.m2l in
             { cached with m2l }
           ) cache;

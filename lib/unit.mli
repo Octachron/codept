@@ -34,7 +34,7 @@ type u = r
 val lift: Module.signature -> Deps.t -> s -> r
 val proj: r -> s
 
-val read_file : Fault.Policy.t -> Read.kind -> (Pth.t * string) -> s
+val read_file : Fault.Policy.t -> Read.kind -> Namespaced.t -> s
 (** [read_file polycy kind (filename,pth)] reads the file [filename],
     extracting the corresponding m2l ast. If the file is not 
     synctatically valid Ocaml and syntax errors are not set to 

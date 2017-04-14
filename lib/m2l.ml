@@ -115,12 +115,12 @@ module More_sexp = struct
 
   (** Expression *)
 
-  let definition =
+(*  let definition =
     let open Summary in
     convr
       (pair Module.Sig.sexp Module.Sig.sexp)
       (fun (a,b) -> {visible=b;defined=a})
-      (fun d -> d.defined, d.visible )
+                      (fun d -> d.defined, d.visible ) *)
 
   let defs = C {
     name= "Defs";
@@ -409,7 +409,7 @@ let sexp = More_sexp.m2l
     before any interpreter can make progress evaluating a given code block *)
 module Block = struct
 
-  let (+|) = Summary.Def.(+|)
+  let (+|) = Summary.(+|)
   let either x f y =
     Mresult.Error.bind ( fun def ->
         Mresult.fmap
@@ -688,7 +688,7 @@ module Normalize = struct
 
   let rec all : m2l -> bool * m2l  = function
     | {data=Defs d1;_} :: {data=Defs d2; _ } :: q ->
-      all @@ (Loc.nowhere @@ Defs Def.(  d1 +| d2)) :: q
+      all @@ (Loc.nowhere @@ Defs Summary.(  d1 +| d2)) :: q
     | {data = Defs _; _ } as e :: q ->
       let more, q = all q in more, e :: q
     | { data = Minor m; loc } :: q ->

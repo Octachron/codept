@@ -580,11 +580,10 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
 
   let generator load_file files =
     let (++) = Unit.adder List.cons in
-    let add_g (k,nms,x) g =
-      g ++ (k.Read.kind, (k, {Namespaced.name=x;namespace=nms}) ) in
-    let add m ((_,nms,x) as f) =
-      let name = Paths.P.( module_name @@ local x) in
-      let path = { Namespaced.name; namespace = nms } in
+    let add_g (k,x) g =
+      g ++ (k.Read.kind, (k, x) ) in
+    let add m ((_, x ) as f) =
+      let path = Namespaced.of_filename x in
       let g = Option.default {Unit.ml = []; mli=[]}
         @@ Mp.find_opt path m in
       Mp.add path (add_g f g) m in
@@ -595,8 +594,7 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
       | [a] -> Some a
       | a :: _  ->
         Fault.handle Param.policy
-          Standard_faults.local_module_conflict k.Namespaced.name
-        (* wrong *)
+          Standard_faults.local_module_conflict k
         @@ List.map
           (fun x -> Paths.P.local @@ (snd x).Namespaced.name) l; 
         Some a in

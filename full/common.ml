@@ -16,8 +16,8 @@ type synonyms =info Name.Map.t
 
 type task =
   {
-    files: (info * string) list;
-    seeds: Name.t list;
+    files: (info * Namespaced.t) list;
+    seeds: Namespaced.t list;
     invisibles: Paths.S.set;
     libs: string list;
     opens: Paths.S.t list

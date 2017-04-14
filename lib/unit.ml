@@ -32,7 +32,8 @@ let proj {src;path;kind;precision;code; _ }: s=
   {src;path;kind;precision;code}
 
 
-let read_file polycy kind (namespace,filename) : s =
+let read_file polycy kind nms : s =
+  let filename = nms.Namespaced.name in
   let name, code = Read.file kind filename in
   let precision, code = match code with
     | Ok c -> Exact, c
@@ -43,7 +44,7 @@ let read_file polycy kind (namespace,filename) : s =
       Fault.handle polycy Standard_faults.syntaxerr msg;
       Approx, Approx_parser.lower_bound filename
   in
-      { path = { namespace; name };
+      { path = { nms with name };
         kind = kind.kind;
         precision;
         src = Pkg.local filename;
