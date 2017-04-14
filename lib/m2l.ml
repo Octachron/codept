@@ -2,7 +2,6 @@
 module M = Module
 
 module Arg = M.Arg
-module Def = Summary.Def
 
 module P = M.Partial
 

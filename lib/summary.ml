@@ -3,28 +3,11 @@
 module M = Module
 module S = Module.Sig
 
-module Local = struct
-
-  type t = { defined : Module.signature; visible: Module.signature; }
-  let empty = { defined = S.empty; visible = S.empty }
-
-  let clear_visible summary =
-    { summary with visible = summary.defined }
-
-  
-  let merge d1 d2 =
-   { defined = S.merge d1.defined d2.defined;
-      visible = S.merge d1.visible d2.visible }
-  
-end
-type local = Local.t =
-  { defined : Module.signature; visible: Module.signature; }
-
 module Namespace = struct
   type t = Paths.S.t
   type tree =
     | Node of tree Name.map
-    | Leaf of Module.definition
+    | Leaf of Module.signature
   type map = tree Name.map
   let empty = Name.Map.empty
                 
@@ -36,141 +19,40 @@ module Namespace = struct
      Name.Map.fold
        (fun key value -> Name.Map.add key @@ map_tree f value )
        m Name.Map.empty
-end
+ end
 
-type t = { local:local; namespaces:Namespace.map }
+type view = { local: Module.signature; namespace: Namespace.map }
+type t = {
+  defined: view; (** modules and module types defined in scope *)
+  visible: view; (** in scope but not defined *)
+}
 type summary = t
 
-let empty = { local = Local.empty; namespaces = Namespace.empty }
-let active s = s.local
-let defined s = s.local.defined
+module View = struct
+  let empty = { local = Module.Sig.empty; namespace= Namespace.empty }
 
-let only_visible_defs (defs:Local.t) =
-  let diff = Name.Map.merge (fun _k x y ->
-      match x, y with
-      | Some _, (None|Some _) -> None
-      | None , Some y -> Some y
-      | None, None -> None ) in
-  let d = S.flatten defs.defined and v = S.flatten defs.visible in
-  M.Exact { Module.modules = diff d.modules v.modules;
-            module_types = diff d.module_types v.module_types
-          }
-let pp_defs ppf (x:Local.t) = Pp.fp ppf "@[[@,%a@,]@]"
-    Module.pp_signature x.defined;
-  let v = only_visible_defs x in
-  if S.card v > 0 then
-    Pp.fp ppf "@, visible:@[@,[%a@,]@]"
-      Module.pp_signature v
-  else ()
+  (*  let local v = v.local
+  let map f v = { local= f v.local;
+                  namespace=Namespace.map f v.namespace}
+*)
+              
+  let is_empty v =
+    Module.Sig.empty = v.local && v.namespace = Namespace.empty
 
-let rec pp_nms ppf (n,t) = match t with
-  | Namespace.Leaf defs -> Pp.fp ppf "@[%s:@;%a@]" n Module.Def.pp defs
-  | Node m -> Pp.fp ppf "@[<v 2>%s:@;%a@]"
-                n (Pp.list pp_nms) (Name.Map.bindings m)
-
-let pp ppf summary =
-  pp_defs ppf summary.local;
-  if Name.Map.cardinal summary.namespaces > 0 then
-    Pp.fp ppf "@;@[<v 2>%a@]" (Pp.list pp_nms)
-      (Name.Map.bindings summary.namespaces)
-
-module Sexp = struct
-  open Sexp
-  let def =
-    convr
-      (pair Module.Sig.sexp Module.Sig.sexp)
-      (fun (a,b) -> {visible=b;defined=a})
-      (fun d -> d.defined, d.visible)
-
-  let leaf = C {
-      name = "Leaf";
-      proj = (function Namespace.Leaf l -> Some l | _ -> None);
-      inj = (fun x -> Leaf x);
-      impl = Module.Def.sexp;
-      default = Some Module.Def.empty
-    }
-
-  let of_list = List.fold_left (fun m (k,x) -> Name.Map.add k x m)
-      Name.Map.empty
-      
-  let rec node () = C {
-      name = "Node";
-      proj = (function Namespace.Node m -> Some m | _ -> None);
-      inj = (fun x -> Namespace.Node x);
-      impl = fix bmap;
-      default = Some Name.Map.empty;
-    }
-  and tree () = sum [node (); leaf]
-  and bmap () =
-    convr
-      (list @@ pair string @@ fix' tree)
-      of_list
-      Name.Map.bindings
-
-  let local = Record.key Many "local" Local.empty
-  let namespaces = Record.key Many "namespaces" Name.Map.empty
-
-  let summary =
-    let fr r = let open Record in
-      create [ local := r.local; namespaces := r.namespaces ] in
-    let f x = { local = Record.get local x;
-                namespaces = Record.get namespaces x
-              } in
-    let record =
-      let open Record in
-      record [ field local def; field namespaces @@ fix bmap ] in
-    conv {f;fr} record
+  let rec make_namespace sign = function
+    | [] -> assert false
+    | [a] -> Name.Map.singleton a (Namespace.Leaf sign)
+    | a :: q ->
+      Name.Map.singleton a @@ Namespace.Node(make_namespace sign q)
   
-end
-let sexp = Sexp.summary
+  let make ?(namespace=[]) local =
+    match namespace with
+    | [] -> { local; namespace = Namespace.empty }
+    | _ :: _ as l ->
+      { local = Module.Sig.empty;
+        namespace = make_namespace local l
+      }
 
-let local local = { empty with local }
-
-let def_bind sign = { Local.defined = sign; visible = sign }
-let sg_bind sign = local @@ def_bind sign
-    
-let def_see sign = { Local.empty with visible = sign }
-let sg_see sign = local @@ def_see sign
-
-let map_local f summary = 
-  { summary with local = f summary.local }
-
-let only_visible s = only_visible_defs @@ active s 
-
-let rec in_namespace namespace s =
-  match namespace with
-  | [] -> { empty with local = s }
-  | a :: q ->
-    { local = Local.empty;
-      namespaces =
-        map_in_namespace q @@ Name.Map.singleton a (Namespace.Leaf s)
-    }
-and
-  map_in_namespace l m = match l with
-  | [] -> m
-  | a :: q -> map_in_namespace q @@
-    Name.Map.add a (Namespace.Node m) Name.Map.empty
-  
-let clear_visible = map_local Local.clear_visible 
-
-module Def = struct
-  let md m =
-    sg_bind @@ S.create m
-
-  let mods ms =
-    sg_bind @@ S.of_list ms
-
-  let sg m =
-    sg_bind @@ S.create_type m
-
-  let sgs ms =
-    sg_bind @@ S.of_list_type ms
-
-  let gen lvl = match lvl with
-    | M.Module -> md
-    | M.Module_type -> sg
-
-  let (+@) = S.merge
   
   let merge s1 s2 =
     let rec tree_merge x y = match x, y with
@@ -184,33 +66,140 @@ module Def = struct
       | Some a, Some b -> Some (tree_merge a b)
       | Some a, None | _, Some a -> Some a
       | None, None -> None in
-    { local = Local.merge s1.local s2.local; 
-      namespaces = map_merge s1.namespaces s2.namespaces }
+    { local = Module.Sig.merge s1.local s2.local; 
+      namespace = map_merge s1.namespace s2.namespace }
 
-  let (+|) = merge
+  let see v = { visible = v; defined = empty }
+  let define v = { visible = empty; defined = v }
+
 end
 
-let bind ?(namespace=[]) md summary =
-  Def.merge summary @@ in_namespace namespace
-  @@ def_bind @@ S.create md
+let empty = { defined = View.empty; visible = View.empty }
+let defined s = s.defined
 
-let see ?(namespace=[]) md summary =
-  Def.merge summary @@ in_namespace namespace
-  @@ def_see @@ S.create md
+let only_visible s = s.visible
 
-let bind_sg ?(namespace=[]) md summary =
-  Def.merge summary @@ in_namespace namespace
-  @@ def_bind @@ S.create_type md
+(* REMOVE ME *)
+(*
+  let diff = Name.Map.merge (fun _k x y ->
+      match x, y with
+      | Some _, (None|Some _) -> None
+      | None , Some y -> Some y
+      | None, None -> None ) in
+  let d = S.flatten defs.defined and v = S.flatten defs.visible in
+  M.Exact { Module.modules = diff d.modules v.modules;
+            module_types = diff d.module_types v.module_types
+          }
+*)
 
-let bind_gen ?(namespace=[]) level = match level with
-  | M.Module -> bind ~namespace
+
+let rec pp_nms ppf (n,t) = match t with
+  | Namespace.Leaf defs ->
+    Pp.fp ppf "@[%s:@;%a@]" n Module.Sig.pp defs
+  | Node m -> Pp.fp ppf "@[<v 2>%s:@;%a@]"
+                n (Pp.list pp_nms) (Name.Map.bindings m)
+
+let pp_view ppf view =
+  Module.Sig.pp ppf view.local;
+  if Name.Map.cardinal view.namespace > 0 then
+    Pp.fp ppf "@;@[<v 2>%a@]" (Pp.list pp_nms)
+      (Name.Map.bindings view.namespace)
+
+let pp ppf x = Pp.fp ppf "@[[@,%a@,]@]"
+    pp_view x.defined;
+  if not @@ View.is_empty x.visible then
+    Pp.fp ppf "@, in scope:@[@,[%a@,]@]"
+      pp_view x.visible
+  else ()
+
+
+module Sexp = struct
+  open Sexp
+
+  let leaf = C {
+      name = "Leaf";
+      proj = (function Namespace.Leaf l -> Some l | _ -> None);
+      inj = (fun x -> Leaf x);
+      impl = Module.Sig.sexp;
+      default = Some Module.Sig.empty
+    }
+
+  let of_list = List.fold_left (fun m (k,x) -> Name.Map.add k x m)
+      Namespace.empty
+      
+  let rec node () = C {
+      name = "Node";
+      proj = (function Namespace.Node m -> Some m | _ -> None);
+      inj = (fun x -> Namespace.Node x);
+      impl = fix bmap;
+      default = Some Namespace.empty;
+    }
+  and tree () = sum [node (); leaf]
+  and bmap () =
+    convr
+      (list @@ pair string @@ fix' tree)
+      of_list
+      Name.Map.bindings
+
+  let local = Record.key Many "local" Module.Sig.empty
+  let namespace = Record.key Many "namespaces" Namespace.empty
+
+  let view =
+    let fr r = let open Record in
+      create [ local := r.local; namespace := r.namespace ] in
+    let f x = { local = Record.get local x;
+                namespace = Record.get namespace x
+              } in
+    let record =
+      let open Record in
+      record [ field local Module.Sig.sexp;
+               field namespace @@ fix bmap ] in
+    conv {f;fr} record
+
+    let summary =
+    convr
+      (pair view view)
+      (fun (a,b) -> {visible=b;defined=a})
+      (fun d -> d.defined, d.visible)
+  
+end
+let sexp = Sexp.summary
+
+let clear_visible v = { v with visible =  View.empty }
+
+let define ?(level=M.Module)  l =
+  let open View in
+  define @@ make @@
+  match level with
+  | M.Module -> S.of_list l
+  | M.Module_type -> S.of_list_type l
+
+let merge s1 s2 = {
+  visible = View.merge s1.visible s2.visible;
+  defined = View.merge s1.defined s2.defined
+}
+
+let (+|) = merge
+
+let add create view ?(namespace=[]) md summary =
+  merge summary @@ view @@
+  View.make ~namespace @@ create md
+ 
+let bind_md = add S.create View.define
+let see = add S.create View.see
+
+let bind_sg = add S.create_type View.define
+
+
+let bind ?(namespace=[]) ?(level=M.Module) = match level with
+  | M.Module -> bind_md ~namespace
   | M.Module_type -> bind_sg ~namespace
 
 let binds l =
   List.fold_left (fun summary (level,namespace,md) ->
-      bind_gen ~namespace level md summary) empty l
+      bind ~namespace ~level md summary) empty l
 
 let of_partial ?(namespace=[]) fsummary =
-  let bind x = in_namespace namespace @@ def_bind x in 
+  let bind x = View.define @@ View.make ~namespace x in 
   Mresult.fmap bind bind
   @@ M.Partial.to_sign fsummary
