@@ -201,7 +201,7 @@ end
 
 
 let pp ppf unit =
-  Pp.fp ppf "@[<hov2>[ path=%a; @, path=%a; @;\
+  Pp.fp ppf "@[<hov2>[ path=%a; @, source=%a; @;\
              m2l = @[%a@]; @;\
              signature=[ @[%a@] ];\
              dependencies=@[%a@] @;\
@@ -213,7 +213,7 @@ let pp ppf unit =
     Deps.pp unit.dependencies
 
 let pp_input ppf (unit:s) =
-  Pp.fp ppf "@[<hov2>[ name=%a; @, path=%a; @;\
+  Pp.fp ppf "@[<hov2>[ path=%a; @, source=%a; @;\
              m2l = @[%a@]; @;\
              ] @] @."
     Namespaced.pp unit.path
