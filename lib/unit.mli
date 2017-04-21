@@ -34,11 +34,17 @@ type u = r
 val lift: Module.signature -> Deps.t -> s -> r
 val proj: r -> s
 
-val read_file : Fault.Policy.t -> Read.kind -> Namespaced.t -> s
-(** [read_file polycy kind (filename,pth)] reads the file [filename],
-    extracting the corresponding m2l ast. If the file is not 
-    synctatically valid Ocaml and syntax errors are not set to 
-    critical level in [polycy], the approximative parser is used.
+val read_file :
+     Fault.Policy.t
+  -> Read.kind
+  -> string
+  -> Namespaced.t
+  -> s
+(** [read_file polycy kind filename pth] reads the file [filename],
+    extracting the corresponding m2l ast and associating it to the
+    path [pth]. If the file is not  synctatically valid Ocaml and
+    syntax errors are not set to critical level in [polycy], the
+    approximative parser is used.
 *)
 
 (** Pretty-printing function *)

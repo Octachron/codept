@@ -17,7 +17,7 @@ let add_invi task name =
 let add_file kind format task name =
   let k = { Common.kind ; format } in
   let files = (!task).files in
-  task := { !task with files = (k, Namespaced.make name) :: files }
+  task := { !task with files = (k, name, None) :: files }
 
 let add_impl = add_file Implementation
 let add_intf = add_file Interface

@@ -113,8 +113,8 @@ sig
   (** Generate unit files when needed from a
       loading function and a list of files *)
   val generator:
-    ( (Read.kind * Namespaced.t) -> Unit.s )
-    -> (Read.kind * Namespaced.t) list
+    ( (Read.kind * string * Namespaced.t) -> Unit.s )
+    -> (Read.kind * string * Namespaced.t) list
     -> gen
 
 

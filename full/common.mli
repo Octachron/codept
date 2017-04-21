@@ -1,4 +1,5 @@
 (** File types for codept *)
+
 type kind = Interface | Implementation | Signature
 type info = { format: Read.format; kind : kind }
 
@@ -15,7 +16,8 @@ type synonyms =  info Name.Map.t
 (** Task types *)
 type task =
   {
-    files: (info * Namespaced.t) list; (** files to be analyzed *)
+    files: (info * string * Namespaced.t option) list;
+    (** files to be analyzed *)
     seeds: Namespaced.t list;
     (** modules of which ancestors needs to be resolved *)
     invisibles: Paths.S.set; (** files to be analyzed, quietly *)

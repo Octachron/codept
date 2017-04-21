@@ -25,15 +25,14 @@ let sign filename =
     end;
     s
 
-let m2l polycy k filename =
+let m2l polycy k filename path =
   let cached = Sh.get cache in
-  let filename' = filename.Namespaced.name in
-  match Name.Map.find_opt filename' cached.m2l with
+  match Name.Map.find_opt filename cached.m2l with
   | Some u -> u
   | None ->
-    let u = Unit.read_file polycy k filename in
+    let u = Unit.read_file polycy k filename path in
     Sh.map (fun (cached:Cache.t) ->
-        let map = Name.Map.add filename' u cached.m2l in
+        let map = Name.Map.add filename u cached.m2l in
         { cached with m2l = map }
       ) cache;
     u

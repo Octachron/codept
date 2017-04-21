@@ -15,9 +15,9 @@ let of_path l =
   let p, name = split [] l in
   { namespace = List.rev p; name }
 
-let of_filename n =
-  { namespace = n.namespace;
-    name = Paths.S.( module_name @@  parse_filename n.name )
+let of_filename ?(nms=[]) filename =
+  { namespace = nms;
+    name = Paths.S.( module_name @@ parse_filename filename )
   }
 
 

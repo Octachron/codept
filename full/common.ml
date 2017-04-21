@@ -16,7 +16,7 @@ type synonyms =info Name.Map.t
 
 type task =
   {
-    files: (info * Namespaced.t) list;
+    files: (info * string * Namespaced.t option) list;
     seeds: Namespaced.t list;
     invisibles: Paths.S.set;
     libs: string list;
@@ -34,7 +34,8 @@ let compiler_dir =
 
 let expand_dir dir =
     if dir <> "" && dir.[0] = '+' then
-      Lazy.force compiler_dir ^ String.sub dir 1 (String.length dir - 1)
+      Lazy.force compiler_dir
+      ^ String.sub dir 1 (String.length dir - 1)
     else dir
 
 let local_dependencies unit =

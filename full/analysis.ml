@@ -40,13 +40,16 @@ let split either =
   in
   split either ([],[])
 
+let default_path f =
+  Option.default (Namespaced.of_filename f)
+
 
 let info_split (io:Io.reader) = function
-  | {Common.kind=Signature; _ }, f -> Right (io.sign f.Nms.name)
-  | {Common.kind=Implementation;format}, f ->
-    Left ({ Read.kind = Structure; format}, f )
-  | {Common.kind=Interface;format}, f ->
-    Left ({ Read.kind=Signature;format}, f )
+  | {Common.kind=Signature; _ }, f, _ -> Right (io.sign f)
+  | {Common.kind=Implementation;format}, f, n ->
+    Left ({ Read.kind = Structure; format}, f, default_path f n )
+  | {Common.kind=Interface;format}, f, n ->
+    Left ({ Read.kind=Signature;format}, f, default_path f n )
 
 let pair_split l =
   let folder (pair: _ Unit.pair) (x:Unit.s) =
@@ -62,13 +65,12 @@ let pre_organize io files =
     List.flatten @@ Option.List'.filter signatures in
   units, signatures
 
-let load_file (io:Io.reader) policy sig_only opens (info,file) =
+let load_file (io:Io.reader) policy sig_only opens (info,file,n) =
   let filter_m2l (u: Unit.s) = if sig_only then
       { u with Unit.code = M2l.Sig_only.filter u.code }
     else
       u in
-  file
-  |> io.m2l policy info
+  io.m2l policy info file n
   |> filter_m2l
   |> open_within opens
 
@@ -231,8 +233,8 @@ let main_std io param (task:Common.task) =
 let main_seed io param (task:Common.task) =
   let units, signatures =
     pre_organize io task.files in
-  let file_set = List.fold_left (fun s (_k,x) ->
-      Namespaced.Set.add (Namespaced.of_filename x) s
+  let file_set = List.fold_left (fun s (_k,x,p) ->
+      Namespaced.Set.add p s
     ) Namespaced.Set.empty units in
   let load_file =
     load_file io param.policy param.sig_only task.opens in
