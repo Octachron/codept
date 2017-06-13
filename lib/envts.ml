@@ -365,7 +365,8 @@ module Layered = struct
             let name' = List.hd bl_path in
             let path' = Name.Map.find name' source.cmis in
             let code' = Cmi.m2l @@ P.filename path' in
-            track source ( (name', path', code') :: (name, path, code) :: q )
+            track source @@
+            (name', path', code') :: (name, path, code) :: q
         end
       | Ok (_, sg) ->
         let md = M.create
