@@ -6,4 +6,4 @@ tests/star/m*.mli
 *.cmt
 *.cmti
 *.o
-docs/
+docs/*.html
