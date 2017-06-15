@@ -9,6 +9,19 @@ let classify filename =  match Support.extension filename with
   | "mli" -> { Read.format = Src; kind = M2l.Signature }
   | ext -> raise (Invalid_argument ("unknown extension: "^ext))
 
+module Version = struct
+  type t = {major:int; minor:int}
+  let v =
+    Scanf.sscanf Sys.ocaml_version "%1d.%02d"
+    (fun k l -> {major=k;minor=l} )
+
+  let (<=) v v2 =
+  v.major < v2.major
+  || (v.major = v2.major && v.minor <= v2.minor)
+
+  let v_4_04 = { minor = 4; major = 4}
+end
+
 
 let policy = Standard_policies.quiet
 
@@ -20,6 +33,7 @@ let organize policy files =
   |> Unit.unimap (List.map @@ read policy)
   |> Unit.Groups.Unit.(fst % split % group)
 
+let version = Sys.ocaml_version
 
 module Envt = Envts.Tr
 
@@ -242,7 +256,6 @@ let result =
     ["nothing.ml", [] ];
     ["unknown_arg.ml", ["Ext"] ];
     ["opens.ml", ["A";"B"] ];
-    ["pattern_open.ml", ["A'";"E1"; "E2"; "E3";"E4"] ];
     ["phantom_maze.ml", ["External"; "B"; "C";"D"; "E"; "X"; "Y" ] ];
     ["phantom_maze_2.ml", ["E"; "D"]];
     ["phantom_maze_3.ml", ["B"; "X"] ];
@@ -257,8 +270,9 @@ let result =
 
 
   ]
-  (* Note the inferred dependencies is wrong, but there is not much
-     (or far too much ) to do here *)
+
+  && ( Version.( v < v_4_04) ||
+       Std.deps_test_single ["pattern_open.ml", ["A'";"E1"; "E2"; "E3";"E4"]] )
   && Std.deps_test_single  [ "riddle.ml", ["M5"] ]
   &&
   List.for_all Std.deps_test_single [
