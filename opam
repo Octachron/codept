@@ -6,9 +6,9 @@ maintainer: "octachron <octa@polychoron.fr>"
 homepage: "https://github.com/Octachron/codept"
 bug-reports: "https://github.com/Octachron/codept/issues"
 license: "gpl-3"
-dev-repo: "https://github.com/Octachron/codept"
+dev-repo: "https://github.com/Octachron/codept.git"
 build: [
-  ["./configure.sh"]
+  ["./configure"]
   [make "all"]
 ]
 build-test: [
