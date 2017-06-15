@@ -12,7 +12,7 @@ simplify () {
 copy () {
 for dir in lib full; do 
 	if [ -d "$1/${dir}" ]; then
-		cp -R $1/${dir}/ .; 
+		cp -R $1/${dir}/*.ml ${dir}/;
 	fi done
 }
 
