@@ -48,7 +48,8 @@ lib/sexp/sexp_lex.cmi: lib/sexp/sexp_lex.ml lib/sexp/sexp_parse.cmi
 
 
 clean:
-	@rm lib/*.cm[iox] ; rm full/*.cm[iox]; rm precomputed/*.cm[iox]; rm lib/sexp/*cm[iox] || true
+	@rm lib/*.cm[iox] lib/*.cmt lib/*.cmti lib/sexp/*.cm[iox];\
+	rm -R full; rm -R precomputed
 
 
 %.cmi: %.mli

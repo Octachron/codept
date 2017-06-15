@@ -19,12 +19,12 @@ full/analysis.cmi : lib/unit.cmi lib/outliner.cmi lib/name.cmi full/io.cmi \
     lib/fault.cmi full/common.cmi
 full/args.cmo : full/task.cmi lib/support.cmi full/single.cmi lib/pp.cmi \
     lib/paths.cmi full/params.cmi lib/option.cmi lib/name.cmi full/modes.cmi \
-    full/makefile.cmi full/findlib.cmi lib/fault.cmi full/common.cmi \
-    full/codept_policies.cmi full/args.cmi
+    full/makefile.cmi full/findlib.cmi lib/fault.cmi full/extended_args.cmi \
+    full/common.cmi full/codept_policies.cmi full/args.cmi
 full/args.cmx : full/task.cmx lib/support.cmx full/single.cmx lib/pp.cmx \
     lib/paths.cmx full/params.cmx lib/option.cmx lib/name.cmx full/modes.cmx \
-    full/makefile.cmx full/findlib.cmx lib/fault.cmx full/common.cmx \
-    full/codept_policies.cmx full/args.cmi
+    full/makefile.cmx full/findlib.cmx lib/fault.cmx full/extended_args.cmx \
+    full/common.cmx full/codept_policies.cmx full/args.cmi
 full/args.cmi : lib/unit.cmi full/single.cmi full/params.cmi full/modes.cmi \
     full/io.cmi full/findlib.cmi full/common.cmi
 full/cache.cmo : lib/unit.cmi lib/name.cmi lib/module.cmi full/findlib.cmi \
@@ -58,6 +58,9 @@ full/common.cmx : lib/unit.cmx lib/support.cmx lib/read.cmx lib/paths.cmx \
     full/codept_policies.cmx full/common.cmi
 full/common.cmi : lib/unit.cmi lib/read.cmi lib/paths.cmi lib/name.cmi \
     lib/fault.cmi
+full/extended_args.cmo : full/extended_args.cmi
+full/extended_args.cmx : full/extended_args.cmi
+full/extended_args.cmi :
 full/findlib.cmo : lib/support.cmi lib/pp.cmi lib/option.cmi lib/name.cmi \
     full/findlib.cmi
 full/findlib.cmx : lib/support.cmx lib/pp.cmx lib/option.cmx lib/name.cmx \
