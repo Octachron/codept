@@ -39,7 +39,7 @@ let g x =
   First-class module M was opened while its signature was unknown.
 ```
 
-#Codept overview
+# Codept overview
 
 In more details, `codept` works by combining together three main ingredients:
 
@@ -61,7 +61,7 @@ If the computation is successful, the resulting signature is added to the curren
 
 Cycles and non-resolvable dependencies are detected when the solver does not make any progress after one cycle of iterations over unresolved files.
 
-#Usage
+# Usage
 
 Codept can be used as a drop-in replacement for ocamldep, on Linux at least.
 More tests are needed on other platforms. Unfortunately, most of OCaml build systems
@@ -85,7 +85,7 @@ See the [integration](#integration) section for a better overview
 on how to use codept with ocaml build tools.
 
 
-##Compatibility with ocamldep
+## Compatibility with ocamldep
 Most of the ocamldep options are also supported by codept.
 
 However, some of the ocamldep options are slightly reinterpreted:
@@ -105,7 +105,7 @@ Another possible difference between codept and ocamldep output is codept built-i
 the analysis try to go on by ignoring the submodule structure of cycle when inside the cycle.
 
 
-##Codept-only options
+## Codept-only options
 
 Some new options modify the behavior of either the solver or the outliner used
 by codept
@@ -226,7 +226,7 @@ ocamlbuild -plugin-tag "package(codept.ocamlbuild)"  …
 Better integration with existing tools is still a work in progress.
 
 
-#Comparison between ocamldep and codept
+# Comparison between ocamldep and codept
 
 To precise the difference between ocamldep and codept, ocamldep introduces fictional dependencies when opening foreign submodules within a given unit. For instance, if we have two files, `a.ml`
 ```OCaml
