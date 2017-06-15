@@ -8,6 +8,7 @@ bug-reports: "https://github.com/Octachron/codept/issues"
 license: "gpl-3"
 dev-repo: "https://github.com/Octachron/codept"
 build: [
+  [./configure]
   [make "all"]
 ]
 build-test: [
@@ -18,4 +19,4 @@ build-doc: [
 ]
 depopts:["ocamlbuild"]
 depends: []
-available: [ ocaml-version >= "4.04.0" ]
+available: [ ocaml-version >= "4.03.0" ]

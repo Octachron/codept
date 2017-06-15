@@ -4,10 +4,10 @@ let local = Pth.local
 
 let (%) f g x = f (g x)
 
-let classify filename =  match Filename.extension filename with
-  | ".ml" -> { Read.format= Src; kind  = M2l.Structure }
-  | ".mli" -> { Read.format = Src; kind = M2l.Signature }
-  | _ -> raise (Invalid_argument "unknown extension")
+let classify filename =  match Support.extension filename with
+  | "ml" -> { Read.format= Src; kind  = M2l.Structure }
+  | "mli" -> { Read.format = Src; kind = M2l.Signature }
+  | ext -> raise (Invalid_argument ("unknown extension: "^ext))
 
 
 let policy = Standard_policies.quiet
@@ -133,7 +133,7 @@ module Branch(Param:Outliner.param) = struct
       r in
     test "local" inner inner'
     && test "lib" lib lib'
-    && test "unknwon" unkw unkw'
+    && test "unknown" unkw unkw'
 
   let add_info {Unit.ml; mli} (f, info) =
     let k = classify f in
@@ -475,13 +475,13 @@ let result =
           "option.mli", ([],[],[]);
           "option.ml", ([],["List"],[]);
           "paths.mli", (["Name"; "Sexp"], ["Map";"Set";"Format"],[]);
-          "paths.ml", (["Name"; "Pp"; "Sexp" ],
+          "paths.ml", (["Name"; "Pp"; "Sexp"; "Support" ],
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
           "read.mli", (["M2l"; "Name"],["Syntaxerr"],[]);
           "read.ml", (["Ast_converter"; "Cmi"; "M2l"],
-                      ["Filename"; "Format"; "Lexing"; "Location"; "Parse";
+                      ["Filename"; "Format"; "Lexing"; "Location";
                        "Parsing"; "Pparse"; "String"; "Syntaxerr"],
                       ["Sexp_parse"; "Sexp_lex"]);
           "mresult.mli", ([],[],[]);
@@ -511,6 +511,8 @@ let result =
              "Option"; "Paths"; "Pp"; "Read"; "Standard_faults"],
             [ "List"; "Set"],
             []);
+          "support.ml", ([],["String"],[]);
+          "support.mli", ([],[],[]);
         ]
       )
     )

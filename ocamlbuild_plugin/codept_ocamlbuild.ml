@@ -8,9 +8,8 @@ let o = A "-o"
 
 let is_pflag_included root s =
   let predicate t =
-    match String.split_on_char '(' t with
-    | a :: _ -> a = root
-    | _ -> false in
+    try String.sub t 0 (String.index t '(') = root with
+    Not_found -> false in
   List.exists predicate @@ Tags.elements s
 
 

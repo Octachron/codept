@@ -10,12 +10,13 @@ let addr port = Unix.( ADDR_INET (inet_addr_loopback, port) )
 
 
 let try_connect sock addr =
-  try Unix.connect sock addr; true with
-  | Unix.(Unix_error((ECONNREFUSED|ENOENT),_,_)) -> false
+  let open Unix in
+  try connect sock addr; true with
+  | Unix_error((ECONNREFUSED|ENOENT),_,_) -> false
 
 let rec retry_connect msg timeout time sock addr =
   try Unix.connect sock addr; true with
-  | Unix.(Unix_error((ECONNREFUSED|ENOENT),_,_)) ->
+  | Unix.Unix_error((Unix.ECONNREFUSED|Unix.ENOENT),_,_) ->
     let time' = Unix.time () in
     if time' -. time > timeout then
       begin

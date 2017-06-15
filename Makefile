@@ -23,11 +23,14 @@ codept: lib/*.ml lib/*.mli full/*.ml full/*.mli precomputed/*.ml
 	ocamlbuild $(OPTS) codept.native\
 		&& mv codept.native codept
 
-codept_ocamlbuild: ocamlbuild_plugin/*.ml
-	ocamlbuild -no-ocamlfind -cflags -I,$(OCAMLBUILD) codept_ocamlbuild.otarget
+codept_ocamlbuild: ocamlbuild_plugin/codept_ocamlbuild.ml
+	cd ocamlbuild_plugin \
+	&& ocamlbuild -no-ocamlfind -cflags -I,$(OCAMLBUILD) \
+	codept_ocamlbuild.otarget
 
 clean:
-	ocamlbuild -clean && cd build && make clean
+	ocamlbuild -clean; cd build; make clean; cd ..; rm codept; rm codept-client; \
+		rm codept-server || true
 
 tests: tests/**/*.ml test-run test-serialization codept
 	./test-run && ./test-serialization

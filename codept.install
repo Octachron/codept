@@ -1,11 +1,11 @@
 bin: ["codept"]
 lib: ["META"
-     "?codept_ocamlbuild.cma"
-     "?codept_ocamlbuild.cmxa"
-     "?_build/ocamlbuild_plugin/codept_ocamlbuild.cmx"
-     "?_build/ocamlbuild_plugin/codept_ocamlbuild.cmi"
-     "?_build/ocamlbuild_plugin/codept_ocamlbuild.cmti"
-     "?_build/ocamlbuild_plugin/codept_ocamlbuild.a"
+     "?ocamlbuild_plugin/codept_ocamlbuild.cma"
+     "?ocamlbuild_plugin/codept_ocamlbuild.cmxa"
+     "?ocamlbuild_plugin/_build/codept_ocamlbuild.cmx"
+     "?ocamlbuild_plugin/_build/codept_ocamlbuild.cmi"
+     "?ocamlbuild_plugin/_build/codept_ocamlbuild.cmti"
+     "?ocamlbuild_plugin/_build/codept_ocamlbuild.a"
 ]
 
 man:["docs/codept.1"]	

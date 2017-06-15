@@ -30,30 +30,29 @@ tests: $S/test-run $S/test-serialize dirs
 print-%  : ; @echo $* = $($*)
 
 $(SRC:%.mli=%.cmi):%.cmi: $S/%.mli
-	@$(OCAMLC) -c $< -o $@
+	@$(OCAMLC) -c $< && mv $S/$@ $@ && mv $S/$*.cmti $*.cmti
 
 %.cmo: $S/%.ml %.cmi
-	@$(OCAMLC) -c $< -o $@
+	@$(OCAMLC) -c $< && mv $S/$@ $@ && mv $S/$*.cmt $*.cmt
 
 $(OBJ):%.cmx: $S/%.ml
-	@$(OCAMLOPT) -c $< -o $@
-
+	@$(OCAMLOPT) -c $< && mv $S/$@ $@ && mv $S/$*.o $*.o && mv $S/$*.cmt $*.cmt && (mv $S/$*.cmi $*.cmi 2> /dev/null ||true)
 $(BGENS:=.cmx):%.cmx: %.ml %.cmi
-	@$(OCAMLOPT) -c $< -o $@
+	@$(OCAMLOPT) -c $<
 
 lib/sexp/sexp_parse.cmi: lib/sexp/sexp_parse.mli
-	@$(OCAMLC) -c $< -o $@
+	@$(OCAMLC) -c $<
 
 lib/sexp/sexp_lex.cmi: lib/sexp/sexp_lex.ml lib/sexp/sexp_parse.cmi
-	@$(OCAMLC) -c $< -o $@
+	@$(OCAMLC) -c $<
 
 
 clean:
-	@rm lib/*.cm[iox]; rm full/*.cm[iox]; rm precomputed/*.cm[iox]; rm lib/sexp/*cm[iox]
+	@rm lib/*.cm[iox] ; rm full/*.cm[iox]; rm precomputed/*.cm[iox]; rm lib/sexp/*cm[iox] || true
 
 
 %.cmi: %.mli
-	@$(OCAMLC) -c $< -o $@
+	@$(OCAMLC) -c $< && mv $S/$@ $@
 
 
 $(ODOC):docs/%.odoc: $S/lib/%.mli
