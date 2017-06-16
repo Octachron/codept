@@ -3,16 +3,16 @@ include Makefile.common
 all: dirs tests $S/codept-server $S/codept-client $S/codept
 
 dirs:
-	mkdir -p lib/sexp full tests docs precomputed
+	mkdir -p full lib/sexp tests docs precomputed
 
-$S/codept: $(OBJ) full/codept.cmx dirs
+$S/codept: $(OBJ) full/codept.cmx | dirs
 	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codeptSORT)) -o $S/codept
 
-$S/codept-client: $(OBJ) full/codept_client.cmx dirs
+$S/codept-client: $(OBJ) full/codept_client.cmx | dirs
 	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codept_clientSORT)) -o $S/codept-client
 
 
-$S/codept-server: $(OBJ) full/codept_server.cmx dirs
+$S/codept-server: $(OBJ) full/codept_server.cmx | dirs
 	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codept_serverSORT)) -o $S/codept-server
 
 
@@ -23,19 +23,19 @@ $S/test-run: $(OBJ) tests/run.cmx
 $S/test-serialize: $(OBJ) tests/serialization.cmx
 	@$(OCAMLOPT) $(LKS) $(call tocmx, $(serializationSORT) ) -o $S/test-serialize
 
-tests: $S/test-run $S/test-serialize dirs
+test: $S/test-run $S/test-serialize
 	@cd $S && ./test-run && ./test-serialize
 
 
 print-%  : ; @echo $* = $($*)
 
-$(SRC:%.mli=%.cmi):%.cmi: $S/%.mli
+$(SRC:%.mli=%.cmi):%.cmi: $S/%.mli | dirs
 	@$(OCAMLC) -c $< && mv $S/$@ $@ && mv $S/$*.cmti $*.cmti
 
-%.cmo: $S/%.ml %.cmi
+%.cmo: $S/%.ml %.cmi | dirs
 	@$(OCAMLC) -c $< && mv $S/$@ $@ && mv $S/$*.cmt $*.cmt
 
-$(OBJ):%.cmx: $S/%.ml
+$(OBJ):%.cmx: $S/%.ml | dirs
 	@$(OCAMLOPT) -c $< && mv $S/$@ $@ && mv $S/$*.o $*.o && mv $S/$*.cmt $*.cmt && (mv $S/$*.cmi $*.cmi 2> /dev/null ||true)
 $(BGENS:=.cmx):%.cmx: %.ml %.cmi
 	@$(OCAMLOPT) -c $<
@@ -52,14 +52,14 @@ clean:
 	rm -R full; rm -R precomputed
 
 
-%.cmi: %.mli
+%.cmi: %.mli | dirs
 	@$(OCAMLC) -c $< && mv $S/$@ $@
 
 
-$(ODOC):docs/%.odoc: $S/lib/%.mli
+$(ODOC):docs/%.odoc: $S/lib/%.mli | dirs
 	@ocamldoc -I lib -I +compiler-libs $< -dump $@
 
-docs: $S/docs/index.html dirs
+docs: $S/docs/index.html | dirs
 $S/docs/index.html: $(ODOC)
 	@ocamldoc $(addprefix -load , $(ODOC)) -html -charset utf-8 -d $S/docs
 
