@@ -3,7 +3,7 @@ S = $(abspath  ..)
 OPTS= -no-alias-deps -bin-annot -strict-sequence -safe-string -short-paths -strict-formats -w +A@8-4-6-30-40..42-48-44-45 -I lib -I full -I lib/sexp -I precomputed -I tests
 
 DEPS= compiler-libs
-PKGS= -I +compiler-libs -I +unix
+PKGS= -I +compiler-libs
 
 LKS = unix.cmxa threads.cmxa ocamlcommon.cmxa
 
