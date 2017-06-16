@@ -1,11 +1,12 @@
 OPTS= -use-ocamlfind
 BUILD=build
-OCAMLBUILD := $(shell ocamlbuild -where 2> /dev/null)
+include Makefile.config
 S=$(abspath .)
 
 all: alt-codept
 
-ifdef OCAMLBUILD
+ifeq ($(OCAMLBUILD), enabled)
+OCAMLBUILD=`ocamlbuild -where`
 all:codept_ocamlbuild
 endif
 

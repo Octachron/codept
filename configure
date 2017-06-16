@@ -1,5 +1,18 @@
 #!/usr/bin/env sh
 
+case $1 in
+	"--enable-ocamlbuild")
+		echo "OCAMLBUILD=enabled" > Makefile.config
+		;;
+	"--disable-ocamlbuild") 
+		echo "OCAMLBUILD=disabled" > Makefile.config
+		;;
+	*) 
+		echo "OCAMLBUILD=auto" > Makefile.config
+		;;
+
+esac
+
 simplify () {
   local name=$1
   local ifs=$IFS

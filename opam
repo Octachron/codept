@@ -8,7 +8,7 @@ bug-reports: "https://github.com/Octachron/codept/issues"
 license: "gpl-3"
 dev-repo: "https://github.com/Octachron/codept.git"
 build: [
-  ["./configure"]
+  ["./configure" "--%{ocamlbuild:enable}%-ocamlbuild"]
   [make "all"]
 ]
 build-test: [
