@@ -47,9 +47,9 @@ open D
 ```OCaml
 (* d.ml *)
 2;
-3
+3;
 4;;
-open D
+open A
 ```
 codept yields:
 
