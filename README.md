@@ -18,6 +18,58 @@ At last, in situation where dependencies up to transitive closure are not precis
 
 Basic performance measures indicate that the average time increase when compared to ocamldepranges between 10% to 50%.
 
+### Cycle detection
+
+As an illustration of codept error messages, in presence of a cycle in the
+dependency graph, `codept` will emit a warning message detailing both the cycle
+and where the cycles was introduced in the source tree.
+
+For instance, on the following set of four files `a.ml`, `b.ml`, `c.ml` and
+`d.ml`
+```Ocaml
+(* a.ml *)
+open B
+```
+```OCaml
+(* b.ml *)
+2;;
+open C
+```
+
+```OCaml
+(* c.ml *)
+2;
+3;;
+open D
+```
+
+
+```OCaml
+(* d.ml *)
+2;
+3
+4;;
+open D
+```
+codept yields:
+
+```bash
+$ codept a.ml b.ml c.ml d.ml
+[Fatal error]: Solver failure
+   −Circular dependencies:
+      A −(a.ml:l2.5−6)⟶
+      B −(b.ml:l3.5−6)⟶
+      C −(c.ml:l4.5−6)⟶
+      D −(d.ml:l5.5−6)⟶ A
+```
+
+By default, this error is a fatal error and codept stops here.
+When prototyping, it can be useful to ignore this setback and compute approximate
+dependencies even in presence of cycle. This can be achieved using
+the `-k` option that sets up `codept` to ignore any somehow recoverable errors.
+Note that the cycle approximation is not yet specified ans is especially unwieldy combined with the `-no-alias-deps` option.
+
+
 
 ### First class module limitations
 In presence of first class modules, codept may infer fictitious dependencies.
