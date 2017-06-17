@@ -7,6 +7,7 @@ val pp: t Pp.t
 val make: ?nms:p -> Name.t -> t
 val flatten: t -> p
 val of_path: p -> t
+val head: t -> Name.t
 
 val of_filename: ?nms:p -> string -> t
 

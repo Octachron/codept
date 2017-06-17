@@ -1,1 +1,1 @@
- serializationSORT = lib/pp.ml lib/name.ml lib/option.ml lib/sexp.ml lib/sexp/sexp_parse.mli lib/sexp/sexp_lex.ml lib/paths.ml lib/deps.ml lib/loc.ml lib/module.ml lib/mresult.ml lib/summary.ml lib/m2l.ml tests/serialization.ml
+ serializationSORT = lib/pp.ml lib/name.ml lib/option.ml lib/sexp.ml lib/sexp/sexp_parse.mli lib/sexp/sexp_lex.ml lib/paths.ml lib/deps.ml lib/loc.ml lib/namespaced.ml lib/module.ml lib/mresult.ml lib/summary.ml lib/m2l.ml tests/serialization.ml

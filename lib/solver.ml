@@ -163,9 +163,7 @@ module Failure = struct
       Module.(md @@ mockup unit.path.name ~path:unit.src) in
     let add_set def =
       Set.fold
-        (fun n acc ->
-           Summary.see ~namespace:n.input.path.namespace
-             (mock n.input) acc) set def in
+        (fun n acc -> Summary.see (mock n.input) acc) set def in
     let code =
       match i.code with
       | { data = M2l.Defs def; loc } :: q ->
@@ -582,7 +580,7 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
     let (++) = Unit.adder List.cons in
     let add_g (k,x,n) g =
       g ++ (k.Read.kind, (k, x, n) ) in
-    let add m ((_, x, path ) as f) =
+    let add m ((_, _x, path ) as f) =
       let g = Option.default {Unit.ml = []; mli=[]}
         @@ Mp.find_opt path m in
       Mp.add path (add_g f g) m in

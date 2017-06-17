@@ -61,7 +61,7 @@ let io = {
   Io.reader = {
     Io.sign;
     m2l;
-    env = Module.Def.empty;
+    env = Module.Dict.empty;
     findlib;
   };
   writer = {

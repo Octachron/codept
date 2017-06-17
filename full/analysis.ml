@@ -90,29 +90,30 @@ let organize io policy sig_only opens files =
 
 
 let stdlib_pkg s l = match s with
-  | "stdlib" -> Stdlib.signature :: l
-  | "unix" -> Std_unix.signature :: l
-  | "bigarray" -> Std_bigarray.signature :: l
-  | "dynlink" -> Std_dynlink.signature :: l
-  | "graph" -> Std_graph.signature :: l
-  | "num" -> Std_num.signature :: l
-  | "threads" -> Std_threads.signature :: l
+  | "stdlib" -> Stdlib.modules :: l
+  | "unix" -> Std_unix.modules :: l
+  | "bigarray" -> Std_bigarray.modules :: l
+  | "dynlink" -> Std_dynlink.modules :: l
+  | "graph" -> Std_graph.modules :: l
+  | "num" -> Std_num.modules :: l
+  | "threads" -> Std_threads.modules :: l
   | _ -> l
 
 
 let base_env io signatures =
-  let (++) = Module.Def.merge in
+  let (++) dict m = Name.Map.add (Module.name m) m dict in
   Envts.Base.start @@
-  List.fold_left (++) Module.Def.empty signatures
-  ++ io.Io.env
+  let m = List.fold_left (++) Name.Map.empty signatures in
+  Name.Map.union' m io.Io.env
 
 (** Environment *)
 type 'a envt_kind = (module Outliner.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
 let start_env io param libs signatures fileset =
-  let signs = List.map Module.Sig.flatten
-    @@ Name.Set.fold stdlib_pkg param.precomputed_libs [] in
+  let signs = Name.Set.fold stdlib_pkg param.precomputed_libs [] in
+  let signs = List.flatten
+    @@ List.map( fun x -> List.map snd @@ Name.Map.bindings x) signs in
   let base = base_env io signs in
   let add u env = Envts.Base.add_unit u env in
   let base = List.fold_left add base signatures in
@@ -172,15 +173,15 @@ module Collisions = struct
     let module E = Envts.Layered in
     let env =
       let base = Envts.Base.empty in
-      E.create task.libs Namespaced.Set.empty base in
+      E.create task.libs Name.Set.empty base in
     let m = Namespaced.Map.empty in
     List.fold_left (fun m (u:Unit.s) ->
         match E.find M.Module (Namespaced.flatten u.path) env with
         | exception Not_found -> m
-        | { main = { M.origin = Unit p; _ }; msgs= [] } ->
+        | { main = M { M.origin = Unit p; _ }; msgs= [] } ->
           (add u.path p @@ add u.path u.src m)
         | { msgs = _ :: _ ; _ }
-        | { main = { M.origin =
+        | { main = Namespace _ | M { M.origin =
                        (Phantom _ |Arg|Submodule|First_class); _ }; _ }
           -> m
 
@@ -199,9 +200,9 @@ module Collisions = struct
     List.fold_left
       (fun (collisions, name_set) (u:Unit.s) ->
          add u.path u.src collisions,
-         Namespaced.Set.add u.path name_set
+         Name.Set.add (Namespaced.head u.path) name_set
       )
-      (empty,Namespaced.Set.empty) units in
+      (empty,Name.Set.empty) units in
     Namespaced.Map.filter (fun _k s -> Paths.P.Set.cardinal s > 1)
       potential_collisions, set
 
@@ -233,9 +234,9 @@ let main_std io param (task:Common.task) =
 let main_seed io param (task:Common.task) =
   let units, signatures =
     pre_organize io task.files in
-  let file_set = List.fold_left (fun s (_k,x,p) ->
-      Namespaced.Set.add p s
-    ) Namespaced.Set.empty units in
+  let file_set = List.fold_left (fun s (_k,_x,p) ->
+      Name.Set.add (Namespaced.head p) s
+    ) Name.Set.empty units in
   let load_file =
     load_file io param.policy param.sig_only task.opens in
   let e = start_env io param task.libs signatures file_set in

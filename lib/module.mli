@@ -80,13 +80,14 @@ type m = {
 and t =
   | M of m
   | Alias of
-      { name:Name.t; path: Paths.S.t; phantom: Divergence.t option }
-and definition = { modules : mdict; module_types : mdict }
+        { name:Name.t; path: Namespaced.t; phantom: Divergence.t option }
+  | Namespace of {name: Name.t; modules:dict}
+and definition = { modules : dict; module_types : dict }
 and signature =
   | Blank
   | Exact of definition
   | Divergence of { point: Divergence.t; before:signature; after:definition}
-and mdict = t Name.map
+and dict = t Name.map
 
 type arg = definition Arg.t
 type level = Module | Module_type
@@ -98,6 +99,12 @@ val of_arg : arg -> m
 val is_functor : t -> bool
 val name: t -> Name.t
 
+module Dict: sig
+  type t = dict
+  val empty: t
+  val of_list: modul_ list -> t
+end
+
 val spirit_away: Divergence.t -> t -> t
 (** transform to a ghost module *)
 
@@ -107,8 +114,10 @@ val empty : 'a Name.map
 val create :
   ?args:m option list ->
   ?origin:origin -> Name.t -> signature -> m
+val namespace: Paths.S.t -> t -> t
 
-val aliases: t -> Name.t list
+
+val aliases: t -> Namespaced.t list
 
 (** Create a mockup module with empty signature *)
 val mockup: ?origin:Origin.t -> ?path:Paths.P.t -> Name.t -> m
@@ -120,12 +129,12 @@ val reflect : Format.formatter -> t -> unit
 
 val pp_signature : Format.formatter -> signature -> unit
 val reflect_signature : Format.formatter -> signature -> unit
-
+val reflect_modules:  Format.formatter -> dict -> unit
 
 
 val pp_alias : Format.formatter -> Paths.Expr.t option -> unit
 val pp_level : Format.formatter -> level -> unit
-val pp_mdict : Format.formatter -> mdict -> unit
+val pp_mdict : Format.formatter -> dict -> unit
 val pp_pair : Format.formatter -> string * t -> unit
 val pp_arg : Format.formatter -> m option -> unit
 val pp_args : Format.formatter -> m option list -> unit
@@ -136,6 +145,7 @@ val sexp: (modul_,Sexp.one_and_many) Sexp.impl
 (** Helper functions for definitions *)
 module Def: sig
   val empty : definition
+  val modules: dict -> definition
 
   val add : definition -> t ->  definition
   val add_type : definition -> t -> definition

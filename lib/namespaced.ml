@@ -19,7 +19,9 @@ let of_filename ?(nms=[]) filename =
   { namespace = nms;
     name = Paths.S.( module_name @@ parse_filename filename )
   }
-
+let head = function
+  | {namespace=a :: _ ; _ } -> a
+  | {namespace=[]; name } -> name
 
 module Ordered = struct
   type nonrec t = t

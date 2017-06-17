@@ -12,11 +12,15 @@ module Faults = Standard_faults
 type 'a query_result =
   { main:'a; msgs: (Fault.loc -> unit ) Fault.t list }
 
+type answer =
+  | M of Module.m
+  | Namespace of { name:Name.t; modules:Module.dict }
+
 module type envt = sig
   type t
   val is_exterior: Paths.Simple.t -> t -> bool
   val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t -> t ->
-    Module.m query_result
+    answer query_result
   val (>>) : t -> Y.t -> t
   val resolve_alias: Paths.Simple.t -> t -> Namespaced.t option
   val add_unit: t -> ?namespace:Paths.Simple.t -> Module.t -> t
@@ -105,8 +109,9 @@ module Make(Envt:envt)(Param:param) = struct
 
   let mt_ident loc level state id =
     begin match find loc level id state with
-    | x -> Ok(P.of_module x)
-    | exception Not_found -> Error id
+      | M x -> Ok(P.of_module x)
+      | Namespace _ -> (* FIXME *) Error id
+      | exception Not_found -> Error id
   end
 
   let epath loc state path =
@@ -122,7 +127,7 @@ module Make(Envt:envt)(Param:param) = struct
       Ok x
     | _ -> Error path
 
-  let open_diverge loc x = let open Module in
+  let open_diverge_module loc x = let open Module in
     match x.origin, x.signature with
     | _, Blank | Phantom _, _ ->
       let kind =
@@ -141,11 +146,14 @@ module Make(Envt:envt)(Param:param) = struct
     | _, Divergence _ | _, Exact _ ->
       Y.View.see @@ Y.View.make @@ x.signature
 
+  let open_diverge loc = function
+    | M x -> open_diverge_module loc x
+    | Namespace {modules;_} -> (* FIXME: type error *)
+      Y.View.(see @@ make @@ M.Exact { M.Def.empty with modules })
 
   let open_ loc state path =
     match find loc Module path state with
-    | x ->
-      Ok(open_diverge loc x)
+    | x -> Ok(open_diverge loc x)
     | exception Not_found -> Error (Open path)
 
   let gen_include loc unbox box i = match unbox i with
@@ -174,7 +182,8 @@ module Make(Envt:envt)(Param:param) = struct
       match b.expr with
       | (Ident p:M2l.module_expr)
       | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
-        let m = Module.Alias { name = b.name; path = p; phantom = None } in
+        let m = Module.Alias
+            { name = b.name; path = Namespaced.of_path p; phantom = None } in
         Ok ( Some (Y.define [m]) )
       | _ -> bind state module_expr b
 
@@ -267,7 +276,8 @@ module Make(Envt:envt)(Param:param) = struct
       end  (* todo : check warning *)
     | Ident i ->
       begin match find loc Module i state with
-        | x -> Ok (P.of_module x)
+        | M x -> Ok (P.of_module x)
+        | Namespace _ -> (* FIXME: type error *) Error (Ident i: module_expr)
         | exception Not_found -> Error (Ident i: module_expr)
       end
     | Apply {f;x} ->
@@ -281,7 +291,7 @@ module Make(Envt:envt)(Param:param) = struct
       functor_expr (module_type loc) (module_expr loc, Build.fn, Build.demote_str)
         state [] arg body
     | Str [] -> Ok P.empty
-    | Str[{data=Defs d;_ }] -> Ok (P.no_arg @@ Y.local @@ Y.defined d)
+    | Str[{data=Defs d;_ }] -> Ok (P.no_arg @@ Y.peek @@ Y.defined d)
     | Resolved d -> Ok d
     | Str str -> Mresult.fmap (fun s -> Str s) P.no_arg @@
       drop_state @@ m2l (filename loc) state str
@@ -315,7 +325,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   and module_type loc state = function
     | Sig [] -> Ok P.empty
-    | Sig [{data=Defs d;_}] -> Ok (P.no_arg @@ Y.local @@ Y.defined d)
+    | Sig [{data=Defs d;_}] -> Ok (P.no_arg @@ Y.peek @@ Y.defined d)
     | Sig s -> Mresult.fmap (fun s -> Sig s) P.no_arg @@
       drop_state @@ signature (filename loc) state s
     | Resolved d -> Ok d
@@ -326,7 +336,9 @@ module Make(Envt:envt)(Param:param) = struct
       end
     | Alias i ->
       begin match find loc Module i state with
-        | x -> Ok (P.of_module x)
+        | M x -> Ok (P.of_module x)
+        | Namespace _ -> (* FIXME: type error *)
+          Error(Alias i)
         | exception Not_found -> Error (Alias i)
       end
     | With w ->
@@ -368,7 +380,7 @@ module Make(Envt:envt)(Param:param) = struct
       | Ok (Some defs)  ->
         begin match m2l filename Envt.( state >> defs ) q with
           | Ok (state,sg) ->
-            Ok (state, S.merge (Y.local @@ Y.defined defs) sg)
+            Ok (state, S.merge (Y.peek @@ Y.defined defs) sg)
           | Error q' -> Error ( snd @@ Normalize.all @@
                                 Loc.nowhere (Defs defs) :: q')
         end

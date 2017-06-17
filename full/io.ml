@@ -4,7 +4,7 @@ type reader = {
   sign: string -> Module.t list option;
   m2l: Fault.Policy.t -> Read.kind -> string -> Namespaced.t -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
-  env: Module.Def.t
+  env: Module.dict
 }
 
 type writer = {
@@ -51,7 +51,7 @@ let direct = {
   reader = {
     sign = read_sigfile;
     m2l = Unit.read_file;
-    env = Module.Def.empty;
+    env = Name.Map.empty;
     findlib = Findlib.expand
   };
   writer = {

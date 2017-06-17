@@ -28,7 +28,7 @@ let organize policy files =
 module Envt = Envts.Tr
 
 let start_env includes fileset =
-  let base = Envts.Base.start @@ Module.Sig.flatten Stdlib.signature in
+  let base = Envts.Base.start Stdlib.modules in
   let layered = Envts.Layered.create includes fileset base in
   let traced = Envts.Trl.extend layered in
   Envt.start traced fileset
@@ -41,8 +41,8 @@ module Branch(Param:Outliner.param) = struct
   let organize pkgs files =
     let units: _  Unit.pair = organize policy files in
     let fileset = units.mli
-                  |> List.map (fun (u:Unit.s) -> u.path)
-                  |> Namespaced.Set.of_list in
+                  |> List.map (fun (u:Unit.s) -> Namespaced.head u.path)
+                  |> Name.Set.of_list in
     let env = start_env pkgs fileset in
     env, units
 
@@ -164,7 +164,7 @@ module Branch(Param:Outliner.param) = struct
     let {Unit.ml;mli} =
       List.fold_left add_info {Unit.ml=[]; mli=[]} l in
     let module M = Paths.P.Map in
-    let build exp = List.fold_left (fun m (_,f,n,l) ->
+    let build exp = List.fold_left (fun m (_,f,_n,l) ->
         M.add (Paths.P.local f) l m)
         M.empty exp in
     let exp = M.union (fun _ x _ -> Some x) (build ml) (build mli) in
@@ -313,10 +313,10 @@ let result =
      )
   && (Sys.chdir "../aliases_and_map";
       both ["n__C"; "n__D"]
-        ["n__A.ml", l["m.mli"];
-         "n__B.ml", l["m.mli"];
-         "n__C.ml", l["m.mli"; "n__A.mli"];
-         "n__D.ml", l["m.mli"; "n__B.mli"];
+        ["n__A.ml", l["m.ml"];
+         "n__B.ml", l["m.ml"];
+         "n__C.ml", l["m.ml"; "n__A.ml"];
+         "n__D.ml", l["m.ml"; "n__B.ml"];
          "m.ml", [];
          "n__A.mli", l["m.mli"];
          "n__B.mli", l["m.mli"];
@@ -467,15 +467,15 @@ let result =
                      ["Cmi_format"; "List"; "Path";"Types"], []);
           "deps.ml", (["Option"; "Paths"; "Pp"; "Sexp"],["List"],[]);
           "summary.mli", (
-            ["Module";"Name";"Paths";"Sexp"],
+            ["Module";"Paths";"Sexp"],
             ["Format"],
             [] );
           "summary.ml", (
-            ["Module"; "Name"; "Paths"; "Pp"; "Mresult"; "Sexp"],
+            ["Module"; "Pp"; "Mresult"; "Sexp"],
             ["List"], []);
           "envts.mli", (
-            ["Deps"; "Module";"Name"; "Namespaced"; "Outliner";
-             "Paths"; "Summary"], [], []);
+            ["Deps"; "Module";"Name"; "Outliner";
+             "Paths"], [], []);
           "envts.ml", (
             ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
              "Module"; "Name"; "Namespaced"; "Paths";
@@ -483,7 +483,7 @@ let result =
             ["Array"; "Filename"; "List";"Sys"],
             []);
           "outliner.mli", (
-            ["Deps"; "Fault"; "Module"; "Namespaced";
+            ["Deps"; "Fault"; "Module"; "Namespaced";  "Name";
              "Paths";"M2l"; "Summary"],
             [],[]);
           "outliner.ml", (
@@ -501,8 +501,10 @@ let result =
           "fault.mli", (["Loc"; "Paths"; "Name"],
                           ["Format"],[]);
 
-          "module.mli", ( ["Loc";"Paths";"Name"; "Sexp"], ["Format"], [] );
-          "module.ml", ( ["Loc";"Paths";"Name"; "Pp"; "Sexp" ], ["List"], [] );
+          "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Sexp"],
+                          ["Format"], [] );
+          "module.ml", ( ["Loc";"Paths";"Name"; "Namespaced"; "Pp"; "Sexp" ],
+                         ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map"], [] );
           "namespaced.mli", ( ["Name";"Paths"; "Pp"],

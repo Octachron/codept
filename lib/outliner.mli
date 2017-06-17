@@ -2,13 +2,16 @@
 
 (** Input fault type *)
 type 'a query_result = { main:'a; msgs: (Fault.loc -> unit ) Fault.t list }
+type answer =
+  | M of Module.m
+  | Namespace of { name:Name.t; modules:Module.dict }
 
 (** Input type *)
 module type envt = sig
   type t
   val is_exterior: Paths.Simple.t -> t -> bool
   val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t -> t ->
-    Module.m query_result
+    answer query_result
   val (>>) : t -> Summary.t -> t
   val resolve_alias: Paths.Simple.t -> t -> Namespaced.t option
   val add_unit: t -> ?namespace:Paths.S.t -> Module.t -> t

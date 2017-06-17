@@ -41,14 +41,13 @@ let export _ _ ppf _param {Unit.mli; _} =
     ; signature = sign unit
     } in
   let s =
-    let open Module.Sig in
-    List.fold_left (fun sg u -> merge sg @@ create @@ md u) empty mli
+    List.fold_left (fun sg u -> Name.Map.union' sg @@ Module.Dict.of_list[md u])
+      Module.Dict.empty mli
   in
-  Pp.fp ppf "@[<hov>let signature=@;\
+  Pp.fp ppf "@[<hov>let modules=@;\
              let open Module in @;\
              let open Sig in @;\
-             %a\
-             @]@." Module.reflect_signature s
+             %a @]@." Module.reflect_modules s
 
 let signature filename writer ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
@@ -90,7 +89,7 @@ let aliases _ _ ppf param {Unit.mli; _ } =
         (function "m2l" -> ".ml" | "m2li" -> ".mli" | s -> s ) path in
     let f = Common.make_abs param.abs_path path' in
     Pp.fp ppf "%a: %a\n" pp_pkg f
-      Pp.( list ~sep:(s" ") Name.pp ) (mk_aliases u) in
+      Pp.( list ~sep:(s" ") Namespaced.pp ) (mk_aliases u) in
   List.iter pp_m mli
 
 let mname x = Namespaced.make @@ Pkg.module_name x
