@@ -78,15 +78,45 @@ type m = {
 
 (** Core module or alias *)
 and t =
-  | M of m
+  | M of m (** Classic module *)
   | Alias of
-        { name:Name.t; path: Namespaced.t; phantom: Divergence.t option }
+      {
+        name:Name.t; (** module Name = … *)
+        path: Namespaced.t; (** … = Path.To.Target *)
+        phantom: Divergence.t option;
+        (** Track potential delayed dependencies
+            after divergent accident:
+            [
+              module M = A  (* Alias { name = M; path = [A] } *)
+              open Unknownable (* <- divergence *)
+              open M (* Alias{ phantom = Some divergence } *)
+            ]
+            In the example above, [M] could be the local module
+            [.M], triggering the delayed alias dependency [A]. Or it could
+            be a submodule [Unknownable.M] . Without sufficient information,
+            codept defaults to computing an upper bound of dependencies,
+            and therefore considers that [M] is [.M], and the inferred
+            dependencies for the above code snipet is {A,Unknowable} .
+        *)
+        weak:bool (** Weak alias are used as placehoder in namespace *)
+      }
   | Namespace of {name: Name.t; modules:dict}
+  (** Namespace support: Namespace are bundles of modules, used for
+      packs or as an higher-level views of the alias atlas idiom *)
+
 and definition = { modules : dict; module_types : dict }
 and signature =
-  | Blank
+  | Blank (** Unknown signature, used as for extern module, placeholder, … *)
   | Exact of definition
   | Divergence of { point: Divergence.t; before:signature; after:definition}
+  (** A divergent signature happens when a signature inference is disturbed
+      by opening or including an unknowable module:
+      [ module A = …
+         include Extern (* <- divergence *)
+        module B = A (* <- which A is this: .A or Extern.A ?*)
+      ]
+  *)
+
 and dict = t Name.map
 
 type arg = definition Arg.t
