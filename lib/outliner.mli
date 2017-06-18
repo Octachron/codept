@@ -15,6 +15,7 @@ module type envt = sig
   val (>>) : t -> Summary.t -> t
   val resolve_alias: Paths.Simple.t -> t -> Namespaced.t option
   val add_unit: t -> ?namespace:Paths.S.t -> Module.t -> t
+  val add_namespace: t -> Paths.S.t -> t
 end
 
 module type with_deps = sig

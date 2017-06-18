@@ -287,7 +287,9 @@ module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
   let start env (units:Unit.s list) =
     List.fold_left (fun state (u:Unit.s) ->
         match u.precision with
-        | Exact -> { state with pending = make u :: state.pending }
+        | Exact ->
+          let env = Envt.add_namespace state.env u.path.namespace in
+          { state with pending = make u :: state.pending; env }
         | Approx ->
           let mock = Module.mockup u.path.name ~path:u.src in
           let env = Envt.add_unit state.env
@@ -300,6 +302,8 @@ module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
         resolved = Paths.P.Map.empty } units
 
   let compute_more env (u:i) =
+    Pp.(fp err) "Evaluating {%a}@." Namespaced.pp u.input.path;
+    Pp.(fp err) "==============@.";
     let result = Eval.m2l u.input.src env u.code in
     let deps = Envt.deps env in
     Envt.reset_deps env;

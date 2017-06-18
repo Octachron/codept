@@ -191,6 +191,18 @@ module Dict = struct
   type t = dict
   let empty = Name.Map.empty
   let of_list = List.fold_left (fun x m -> Name.Map.add (name m) m x) empty
+
+  let union =
+    let rec merge k x y = match x, y with
+      | Namespace n, Namespace n' ->
+        Some (
+          Namespace { name = n.name;
+                      modules = Name.Map.union merge n.modules n'.modules
+                    }
+        )
+      | _, r -> Some r in
+    Name.Map.union merge
+
 end
 
 
@@ -227,7 +239,7 @@ let spirit_away b =  spirit_away b true
 
 let sig_merge (s1:definition) (s2:definition) =
   { module_types = Name.Map.union' s1.module_types s2.module_types;
-    modules = Name.Map.union' s1.modules s2.modules }
+    modules = Dict.union s1.modules s2.modules }
 
 let empty = Name.Map.empty
 let empty_sig = {modules = empty; module_types = empty }
@@ -332,7 +344,7 @@ let rec pp ppf = function
     Pp.fp ppf "%s≡%s%a" name (if phantom=None then "" else "(👻)" )
       Namespaced.pp path
   | M m -> pp_m ppf m
-  | Namespace n -> Pp.fp ppf "Namespace %s=@[%a@]" n.name
+  | Namespace n -> Pp.fp ppf "Namespace %s=@[[%a]@]" n.name
                      pp_mdict n.modules
 and pp_m ppf {name;args;origin;signature;_} =
   Pp.fp ppf "%s%a:%a@[<hv>[@,%a@,]@]"
@@ -379,13 +391,17 @@ let create
     ?(origin=Origin.Submodule) name signature =
   { name; origin; args; signature}
 
-let rec namespace nms module'=
+let rec namespace = function
+  | [] -> raise (Invalid_argument "Module.namespace: empty path")
+  | [name] -> Namespace { name; modules = Dict.empty }
+  | name :: q -> Namespace {name; modules = Dict.of_list [namespace q] }
+
+let rec with_namespace nms module'=
   match nms with
   | [] -> module'
   | a :: q ->
-    let sub = namespace q module' in
-    Namespace { name = a;
-                modules = Name.Map.add a sub Name.Map.empty }
+    let sub = with_namespace q module' in
+    Namespace { name = a; modules = Dict.of_list [sub] }
 
 let signature_of_lists ms mts =
   let e = Name.Map.empty in

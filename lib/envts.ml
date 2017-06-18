@@ -70,16 +70,22 @@ module Base = struct
   type t = { top: M.dict; current: context }
 
   let empty = { top = Name.Map.empty; current = In_namespace M.empty }
-  let start s = { top = s;
-                  current = Signature (Exact (M.Def.modules s) )}
-  let top env = { env with current = In_namespace env.top }
+  let start s =
+    { top = s; current = Signature (Exact (M.Def.modules s) )}
+
+  let top env = { env with current = Signature (Exact (M.Def.modules env.top) ) }
 
   let proj lvl def = match lvl with
     | M.Module -> def.M.modules
     | M.Module_type -> def.module_types
 
+  let pp_context ppf = function
+    | In_namespace modules ->
+      Pp.fp ppf "namespace [%a]@." Module.pp_mdict modules
+    | Signature sg -> Pp.fp ppf "[%a]@." Module.pp_signature sg
 
   let rec find_name level name current =
+    Pp.(fp err) "@[<v 2> Base: searching for %s@; in %a@." name pp_context current;
     match current with
     | Signature Module.Blank ->
       (* If we have no information on the current signature,
@@ -102,8 +108,10 @@ module Base = struct
            the found module, after marking it as a phantom module. *)
         create (Module.spirit_away d.point q) [ambiguity name d.point]
       end
-    | In_namespace modules -> Query.pure @@ Name.Map.find name modules
-
+    | In_namespace modules ->
+      try
+        Query.pure @@ Name.Map.find name modules
+      with Not_found -> Pp.(fp err) "Not_found %s@." name; raise Not_found
   let find_name ?edge:_ ~root:_ level name env = find_name level name env.current
 
   let restrict env context = { env with current = context }
@@ -144,6 +152,8 @@ module Base = struct
 
 
   let rec find0 ?edge require_root level path env =
+    Pp.(fp err) "[@<v 2>Searching for %a@; %a@]@." Paths.S.pp path
+    pp_context env.current;
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
@@ -181,9 +191,19 @@ module Base = struct
     Signature (Y.extend (to_sign env.current) def)
 
   let add_unit env ?(namespace=[]) x =
-    let m: Module.t = M.namespace namespace x in
+    let m: Module.t = M.with_namespace namespace x in
     let top = Name.Map.add  (M.name m)  m env.top in
     start top
+
+  let add_namespace env nms =
+    Pp.(fp err) "@[<v 2>Adding %a@; to %a@]@." Paths.S.pp nms pp_context
+      env.current;
+    if nms = [] then env else
+    let top = M.Dict.( union env.top @@ of_list [Module.namespace nms] ) in
+    let e = start top in
+    Pp.(fp err) "@[result: %a@]@." pp_context e.current;
+    e
+
 end
 
 
@@ -267,6 +287,7 @@ module Open_world(Envt:extended_with_deps) = struct
   let (>>) env sg = { env with core = Envt.( env.core >> sg ) }
   let add_unit env ?namespace m =
     { env with core = Envt.add_unit env.core ?namespace m }
+  let add_namespace env n = { env with core = Envt.add_namespace env.core n }
   let restrict env m = { env with core = Envt.restrict env.core m }
 
 end
@@ -392,6 +413,8 @@ module Layered = struct
   let (>>) e1 sg = { e1 with local = Base.( e1.local >> sg) }
   let add_unit e ?namespace m =
     { e with local = Base.add_unit e.local ?namespace m }
+  let add_namespace env n =
+    { env with local = Base.add_namespace env.local n }
 
 end
 
@@ -430,6 +453,7 @@ module Tracing(Envt:extended) = struct
     | _ -> []
 
   let rec find0 ?(edge=Edge.Normal) ~root ~require_top level path env =
+    Pp.(fp err) "Searching for [%a]@." Paths.S.pp path;
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
@@ -453,6 +477,7 @@ module Tracing(Envt:extended) = struct
           find0 ~root:true ~require_top:true
             level (Namespaced.flatten path @ q) (top env)
       | M.M m ->
+        Pp.(fp err) "Found %s@." m.name;
         if require_top && not (is_unit m) then
           raise Not_found
         else begin
@@ -488,6 +513,7 @@ module Tracing(Envt:extended) = struct
 
 
   let add_unit e ?namespace m = { e with env = Envt.add_unit e.env ?namespace m }
+  let add_namespace env n = { env with env = Envt.add_namespace env.env n }
 
   let deps env = !(env.deps)
   let reset_deps env =  env.deps := Paths.P.Map.empty

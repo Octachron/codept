@@ -103,6 +103,7 @@ module Dict: sig
   type t = dict
   val empty: t
   val of_list: modul_ list -> t
+  val union: t -> t -> t
 end
 
 val spirit_away: Divergence.t -> t -> t
@@ -114,7 +115,9 @@ val empty : 'a Name.map
 val create :
   ?args:m option list ->
   ?origin:origin -> Name.t -> signature -> m
-val namespace: Paths.S.t -> t -> t
+
+val with_namespace: Paths.S.t -> t -> t
+val namespace: Paths.S.t -> t
 
 
 val aliases: t -> Namespaced.t list

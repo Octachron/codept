@@ -15,7 +15,7 @@ module View = struct
   let empty = Module.Sig.empty
   let is_empty v = v = empty
 
-  let make_top ?(namespace=[]) x = S.create (M.namespace namespace x)
+  let make_top ?(namespace=[]) x = S.create (M.with_namespace namespace x)
   let make sign = sign
 
   let merge s1 s2 =
@@ -89,9 +89,9 @@ let merge s1 s2 = {
 
 let (+|) = merge
 
-let add ?namespace create view md summary =
+let add create view md summary =
   merge summary @@ view @@
-  View.make_top ?namespace md
+  create md
 
 let bind_md = add S.create View.define
 let see = add S.create View.see
