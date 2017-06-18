@@ -162,7 +162,10 @@ type m = {
 and t =
   | M of m
   | Alias of
-        { name:Name.t; path: Namespaced.t; phantom: Divergence.t option }
+      { name:Name.t;
+        path:Namespaced.t;
+        phantom: Divergence.t option;
+        weak:bool }
   | Namespace of {name: Name.t; modules: dict}
 and definition = { modules : dict; module_types : dict }
 and signature =
@@ -193,7 +196,9 @@ module Dict = struct
   let of_list = List.fold_left (fun x m -> Name.Map.add (name m) m x) empty
 
   let union =
-    let rec merge k x y = match x, y with
+    let rec merge _k x y = match x, y with
+      | Alias {weak=true; _ }, x
+      | x, Alias {weak=true; _ } -> Some x
       | Namespace n, Namespace n' ->
         Some (
           Namespace { name = n.name;
@@ -205,7 +210,7 @@ module Dict = struct
 
 end
 
-
+(* TODO: Behavior with weak aliases *)
 let rec spirit_away breakpoint root = function
   | Alias a as al ->
     if not root then
@@ -292,11 +297,12 @@ let rec reflect ppf = function
   | Namespace {name; modules} ->
     Pp.fp ppf "Namespace {name=%a; modules=%a}"
       Pp.estring name reflect_mdict modules
-  |  Alias {name;path;phantom} ->
-    Pp.fp ppf "Alias {name=%a;path=[%a];phantom=%a}"
+  |  Alias {name;path;phantom;weak} ->
+    Pp.fp ppf "Alias {name=%a;path=[%a];phantom=%a;weak=%b}"
       Pp.estring name
       reflect_namespaced path
       reflect_phantom phantom
+      weak
 and reflect_namespaced ppf nd =
   if nd.namespace = [] then
     Pp.fp ppf "Namespaced.make %a"
@@ -340,7 +346,7 @@ let reflect_modules ppf dict =
     (Name.Map.bindings dict)
 
 let rec pp ppf = function
-  | Alias {name;path;phantom} ->
+  | Alias {name;path;phantom;weak=_} ->
     Pp.fp ppf "%s≡%s%a" name (if phantom=None then "" else "(👻)" )
       Namespaced.pp path
   | M m -> pp_m ppf m
@@ -391,10 +397,15 @@ let create
     ?(origin=Origin.Submodule) name signature =
   { name; origin; args; signature}
 
-let rec namespace = function
-  | [] -> raise (Invalid_argument "Module.namespace: empty path")
-  | [name] -> Namespace { name; modules = Dict.empty }
-  | name :: q -> Namespace {name; modules = Dict.of_list [namespace q] }
+let rec namespace (path:Namespaced.t) = match path.namespace with
+  | [] -> raise (Invalid_argument "Module.namespace: empty namespace")
+  | [name] ->
+    let placeholder =
+      Alias { name= path.name; path; phantom = None; weak = true } in
+    Namespace { name; modules = Dict.of_list[placeholder] }
+  | name :: nms ->
+    let path = Namespaced.make ~nms path.name in
+    Namespace {name; modules = Dict.of_list [namespace path] }
 
 let rec with_namespace nms module'=
   match nms with
@@ -452,7 +463,10 @@ module Sexp_core = struct
                  | Alias a -> Some(a.name, Namespaced.flatten a.path)
                  | _ -> None);
              inj = (fun (name,path) ->
-                 Alias {name;path=Namespaced.of_path path;phantom=None} );
+                 Alias {name;
+                        path=Namespaced.of_path path;
+                        phantom=None;
+                        weak=false} );
              impl = key_list string Paths.S.sexp;
            } in
     let mc =

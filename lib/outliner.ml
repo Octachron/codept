@@ -24,7 +24,7 @@ module type envt = sig
   val (>>) : t -> Y.t -> t
   val resolve_alias: Paths.Simple.t -> t -> Namespaced.t option
   val add_unit: t -> ?namespace:Paths.Simple.t -> Module.t -> t
-  val add_namespace: t -> Paths.S.t -> t
+  val add_namespace: t -> Namespaced.t -> t
 end
 
 module type with_deps = sig
@@ -184,7 +184,8 @@ module Make(Envt:envt)(Param:param) = struct
       | (Ident p:M2l.module_expr)
       | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
         let m = Module.Alias
-            { name = b.name; path = Namespaced.of_path p; phantom = None } in
+            { name = b.name; path = Namespaced.of_path p;
+              weak=false; phantom = None } in
         Ok ( Some (Y.define [m]) )
       | _ -> bind state module_expr b
 

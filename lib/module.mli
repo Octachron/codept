@@ -147,7 +147,7 @@ val create :
   ?origin:origin -> Name.t -> signature -> m
 
 val with_namespace: Paths.S.t -> t -> t
-val namespace: Paths.S.t -> t
+val namespace: Namespaced.t -> t
 
 
 val aliases: t -> Namespaced.t list

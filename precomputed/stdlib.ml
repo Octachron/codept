@@ -122,10 +122,10 @@ Dict.of_list [M {name="Arg"; origin=Unit {source=Special "stdlib"; file=["Arg"]}
           M {name="Snapshot"; origin=Submodule; args=[]; signature=empty}]}; 
         M {name="Stack"; origin=Unit {source=Special "stdlib"; file=["Stack"]}; args=[]; signature=empty}; 
         M {name="StdLabels"; origin=Unit {source=Special "stdlib"; file=["StdLabels"]}; args=[]; signature=of_list 
-          [Alias {name="Array";path=Namespaced.make "ArrayLabels";phantom=None}; 
-          Alias {name="Bytes";path=Namespaced.make"BytesLabels";phantom=None}; 
-          Alias {name="List";path=Namespaced.make"ListLabels";phantom=None}; 
-          Alias {name="String";path=Namespaced.make"StringLabels";phantom=None}]}; 
+          [Alias {name="Array";path=Namespaced.make "ArrayLabels";phantom=None;weak=false}; 
+          Alias {name="Bytes";path=Namespaced.make"BytesLabels";phantom=None;weak=false}; 
+          Alias {name="List";path=Namespaced.make"ListLabels";phantom=None;weak=false}; 
+          Alias {name="String";path=Namespaced.make"StringLabels";phantom=None;weak=false}]}; 
         M {name="Stream"; origin=Unit {source=Special "stdlib"; file=["Stream"]}; args=[]; signature=empty}; 
         M {name="String"; origin=Unit {source=Special "stdlib"; file=["String"]}; args=[]; signature=empty}; 
         M {name="StringLabels"; origin=Unit {source=Special "stdlib"; file=["StringLabels"]}; args=[]; signature=empty}; 

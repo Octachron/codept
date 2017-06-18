@@ -121,7 +121,8 @@ module Base = struct
     | [] -> None
     | a :: q ->
       match Name.Map.find a def with
-      | M.Alias {path; _ } -> Some path
+      | M.Alias {path; weak = false; _ } -> Some path
+      | M.Alias { weak = true; _ } -> None
       | M m -> resolve_alias_sign q m.signature
       | Namespace n -> resolve_alias_md q n.modules
       | exception Not_found -> None
@@ -160,7 +161,8 @@ module Base = struct
       let open Query in
       find_name ?edge ~root:false (adjust_level level q) a env >>=
       function
-      | M.Alias {path; _ } ->
+      | M.Alias { weak = true; _ } -> raise Not_found
+      | M.Alias {path; weak = false; _ } ->
         if require_root then
           raise Not_found
         else
@@ -187,18 +189,19 @@ module Base = struct
     | In_namespace modules ->
       M.Exact { M.Def.empty with modules }
 
-  let (>>) env def = restrict env @@
-    Signature (Y.extend (to_sign env.current) def)
+  let (>>) env def =
+    restrict env @@
+    Signature (Y.extend (to_sign env.current) (Y.strenghen def))
 
   let add_unit env ?(namespace=[]) x =
     let m: Module.t = M.with_namespace namespace x in
     let top = Name.Map.add  (M.name m)  m env.top in
     start top
 
-  let add_namespace env nms =
-    Pp.(fp err) "@[<v 2>Adding %a@; to %a@]@." Paths.S.pp nms pp_context
+  let add_namespace env (nms:Namespaced.t) =
+    Pp.(fp err) "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
       env.current;
-    if nms = [] then env else
+    if nms.namespace = [] then env else
     let top = M.Dict.( union env.top @@ of_list [Module.namespace nms] ) in
     let e = start top in
     Pp.(fp err) "@[result: %a@]@." pp_context e.current;
@@ -394,7 +397,9 @@ module Layered = struct
       let open Query in
       find_name false (adjust_level level q) a env >>=
       function
-      | Alias {path; _ } -> find0 level (Namespaced.flatten path @ q ) (top env)
+      | Alias { weak = true; _ } -> raise Not_found
+      | Alias {path; weak= false; _ } ->
+        find0 level (Namespaced.flatten path @ q ) (top env)
       | M.M m ->
         if q = [] then pure (M m)
         else
@@ -460,7 +465,8 @@ module Tracing(Envt:extended) = struct
       let open Query in
       Envt.find_name root (adjust_level level q) a env.env >>=
       function
-      | Alias {path; phantom; name } ->
+      | Alias { weak = true; _ } -> raise Not_found
+      | Alias {path; phantom; name; weak= false } ->
         let msgs =
           match phantom with
           | None -> []

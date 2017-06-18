@@ -288,7 +288,7 @@ module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
     List.fold_left (fun state (u:Unit.s) ->
         match u.precision with
         | Exact ->
-          let env = Envt.add_namespace state.env u.path.namespace in
+          let env = Envt.add_namespace state.env u.path in
           { state with pending = make u :: state.pending; env }
         | Approx ->
           let mock = Module.mockup u.path.name ~path:u.src in

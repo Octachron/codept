@@ -34,6 +34,10 @@ val empty : summary
 
 val defined : summary -> view
 val extend: Module.signature -> summary -> Module.signature
+
+(** transform top level weak aliases to normal aliases *)
+val strenghen: summary -> summary
+
 val peek: view -> Module.signature
 
 val only_visible : summary -> view
