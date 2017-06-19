@@ -7,15 +7,17 @@ val join : 'a option option -> 'a option
 
 
 val either : ('a -> 'b) -> 'b -> 'a option -> 'b
+val lazy_default: 'a Lazy.t -> 'a option -> 'a
 val default : 'a -> 'a option -> 'a
 
 (** Monadic operators *)
 val ( >>| ) : 'a option -> ('a -> 'b) -> 'b option
 val ( >>= ) : 'a option -> ('a -> 'b option) -> 'b option
 val ( >> ) : 'a option -> 'b option -> 'b option
-
+val (|||): 'a option -> 'a option Lazy.t -> 'a option
 
 val ( >< ) : 'a option -> 'a -> 'a
+
 
 val ( && ) : 'a option -> 'b option -> ('a * 'b) option
 

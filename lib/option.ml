@@ -18,6 +18,14 @@ let default value = function
   | None -> value
   | Some x -> x
 
+let lazy_default suspended = function
+  | None -> Lazy.force suspended
+  | Some x -> x
+
+let (|||) x y = match x with
+  | None -> Lazy.force y
+  | Some _ as x -> x
+
 let join  = function
   | Some x -> x
   | None -> None
