@@ -25,18 +25,13 @@ let organize policy files =
   |> Unit.Groups.Unit.(fst % split % group)
 
 
-module Envt = Envts.Tr
-
 let start_env includes fileset =
-  let base = Envts.Base.start Stdlib.modules in
-  let layered = Envts.Layered.create includes fileset base in
-  let traced = Envts.Trl.extend layered in
-  Envt.start traced fileset
+  Envt.start ~open_approximation:true fileset includes Stdlib.modules
 
 
 module Branch(Param:Outliner.param) = struct
-  module S = Solver.Make(Envt)(Param)
-  module D = Solver.Directed(Envt)(Param)
+  module S = Solver.Make(Envt.Core)(Param)
+  module D = Solver.Directed(Envt.Core)(Param)
 
   let organize pkgs files =
     let units: _  Unit.pair = organize policy files in

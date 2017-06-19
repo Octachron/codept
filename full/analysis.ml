@@ -100,9 +100,8 @@ let stdlib_pkg s l = match s with
   | _ -> l
 
 
-let base_env io signatures =
+let base_sign io signatures =
   let (++) dict m = Name.Map.add (Module.name m) m dict in
-  Envts.Base.start @@
   let m = List.fold_left (++) Name.Map.empty signatures in
   Name.Map.union' m io.Io.env
 
@@ -114,18 +113,14 @@ let start_env io param libs signatures fileset =
   let signs = Name.Set.fold stdlib_pkg param.precomputed_libs [] in
   let signs = List.flatten
     @@ List.map( fun x -> List.map snd @@ Name.Map.bindings x) signs in
-  let base = base_env io signs in
-  let add u env = Envts.Base.add_unit u env in
-  let base = List.fold_left add base signatures in
-  let layered = Envts.Layered.create libs fileset base in
-  let traced = Envts.Trl.extend layered in
-  if not param.closed_world then
-    E ((module Envts.Tr: Outliner.envt_with_deps with type t = Envts.Tr.t ) ,
-       Envts.Tr.start traced fileset )
-  else
-    E ( (module Envts.Trl: Outliner.envt_with_deps with type t = Envts.Trl.t),
-        traced
-      )
+  let base_sign = base_sign io signs in
+  let env =
+    Envt.start ~open_approximation:(not param.closed_world)
+      fileset libs base_sign in
+  let add u env = Envt.Core.add_unit u env in
+  let env = List.fold_left add env signatures in
+    E ((module Envt.Core: Outliner.envt_with_deps with type t = Envt.Core.t ) ,
+       env )
 
 (** Solver step *)
 

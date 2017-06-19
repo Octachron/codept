@@ -4,6 +4,9 @@ module P = Paths.Pkg
 module Out = Outliner
 module Y = Summary
 
+let debug fmt =
+  Pp.(fp err) ("Debug:" ^^ fmt ^^ "@.")
+
 type answer = Out.answer =
   | M of Module.m
   | Namespace of { name:Name.t; modules:Module.dict }
@@ -77,14 +80,15 @@ module Core = struct
   end open D
 
   let request name env =
+    debug "asking auxiliary definition sources for %s" name;
     let rec request name  = function
-      | [] -> None
+      | [] -> debug "end of auxiliary sources"; None
       | f :: q ->
+        debug "new aux source";
         match f name with
         | Ok q -> Some q
         | Error Negative -> None
-        | Error Not_found ->
-          request name q in
+        | Error Not_found -> request name q in
     request name env.providers
 
 
@@ -110,7 +114,8 @@ module Core = struct
     | _ -> false
 
   let restrict env context = { env with current = context }
-  let top env = { env with current = Signature (Exact (M.Def.modules env.top) ) }
+  let top env =
+    { env with current = Signature (Exact (M.Def.modules env.top) ) }
 
   let find_opt name m =
     match Name.Map.find name m with
@@ -140,7 +145,8 @@ module Core = struct
      we add a new message to the message stack, and return
      the found module, after marking it as a phantom module. *)
 
-  let rec find ?(edge=Edge.Normal) ~root  level path env =
+  let rec find ?(edge=Edge.Normal) ~root level path env =
+    debug "looking for %a" Paths.S.pp path;
     match path with
     | [] ->
       raise (Invalid_argument "Envt.find cannot find empty path")
@@ -165,7 +171,7 @@ module Core = struct
           >>| Query.add_msg msgs
         )
       | M.M m ->
-        Pp.(fp err) "Found %s@." m.name;
+        debug "found module %s" m.name;
         begin
           let faults = record edge root env m in
           if q = [] then
@@ -190,8 +196,8 @@ module Core = struct
     | None -> raise Not_found
     | Some x -> x
 
-    let deps _env = Paths.P.Map.empty
-    let reset_deps = ignore
+    let deps env = !(env.deps)
+    let reset_deps env = env.deps := P.Map.empty
 
   let to_sign = function
     | Signature s -> s
@@ -204,8 +210,8 @@ module Core = struct
 
   let add_unit env ?(namespace=[]) x =
     let m: Module.t = M.with_namespace namespace x in
-    let top = Name.Map.add  (M.name m)  m env.top in
-    start top
+    let t = Name.Map.add  (M.name m)  m env.top in
+    top { env with top = t }
 
   let pp_context ppf = function
     | In_namespace modules ->
@@ -216,10 +222,9 @@ module Core = struct
     Pp.(fp err) "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
       env.current;
     if nms.namespace = [] then env else
-    let top = M.Dict.( union env.top @@ of_list [Module.namespace nms] ) in
-    let e = start top in
-    Pp.(fp err) "@[result: %a@]@." pp_context e.current;
-    e
+    let t = M.Dict.( union env.top @@ of_list [Module.namespace nms] ) in
+    debug "result: %a" pp_context env.current;
+    top { env with top = t }
 
   let rec resolve_alias_md path def =
     match path with
@@ -262,6 +267,7 @@ module Core = struct
 end
 
 let mask fileset request =
+   debug "masked file %s:%b" request (Name.Set.mem request fileset);
   if Name.Set.mem request fileset then
     Error Negative
   else
@@ -272,6 +278,7 @@ let approx name =
   Module.mockup name ~path:{Paths.P.source=Unknown; file=[name]}
 
 let open_world request =
+  debug "open world: requesting %s" request;
   Ok (Query.pure @@ M.M(approx request))
 
 module Libraries = struct
@@ -353,7 +360,8 @@ module Libraries = struct
   let provider libs =
     let pkgs = create libs in
     fun name ->
-    match pkgs_find name pkgs with
+      debug "library layer: requesting %s" name;
+      match pkgs_find name pkgs with
       | exception Not_found -> Error Not_found
       | q -> Ok (Query.pure q)
 end
