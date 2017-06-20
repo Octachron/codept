@@ -434,6 +434,8 @@ let result =
       ; "z.ml", l[]
       ]
   )
+
+    (**Namespace related tests *)
     && ( Sys.chdir "../uncoupled";
          both ["A";"C"]
            [
@@ -442,6 +444,20 @@ let result =
             d"c.ml", l ["b.ml"]
            ]
        )
+
+    && begin Sys.chdir "../any_m";
+        both ["M.F"; "M.D"]
+        [
+          "A"/"a/m.ml", l["b/m.ml"];
+          "B"/"b/m.ml", l["d/m.ml";"e/m.ml"];
+          "C"/"c/m.ml", l["d/m.ml"] @ u["Ext"];
+          "D"/"d/m.ml", [];
+          "E"/"e/m.ml", l["d/m.ml"];
+          "F"/"f/m.ml", l["a/m.ml"]
+        ]
+    end
+
+    (** Cycle tests *)
     && (
       Sys.chdir "../cases";
       Std.cycle_test [["Self_cycle"]] ["self_cycle.ml"]
