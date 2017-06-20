@@ -3,7 +3,11 @@ type t = { namespace: p; name: Name.t }
 type namespaced = t
 
 
-let pp ppf n = Pp.fp ppf "%a.%s" Paths.S.pp n.namespace n.name
+let pp ppf n =
+  if n.namespace = [] then
+    Pp.string ppf n.name
+  else
+    Pp.fp ppf "%a.%s" Paths.S.pp n.namespace n.name
 let make ?(nms=[]) name = { namespace = nms; name }
 let flatten n = n.namespace @ [n.name]
 let of_path l =

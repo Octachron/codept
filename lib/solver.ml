@@ -283,6 +283,9 @@ module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
                  pending: i list;
                  postponed: Unit.s list
                }
+  let eq x y =
+    x.resolved = y.resolved && x.pending = y.pending
+    && x.postponed = y.postponed && Envt.eq x.env y.env
 
   let start env (units:Unit.s list) =
     List.fold_left (fun state (u:Unit.s) ->
@@ -302,8 +305,6 @@ module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
         resolved = Paths.P.Map.empty } units
 
   let compute_more env (u:i) =
-    Pp.(fp err) "Evaluating {%a}@." Namespaced.pp u.input.path;
-    Pp.(fp err) "==============@.";
     let result = Eval.m2l u.input.src env u.code in
     let deps = Envt.deps env in
     Envt.reset_deps env;
@@ -384,7 +385,7 @@ module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
   let solve core (units: _ Unit.pair) =
     let rec solve_harder ancestors state =
       match ancestors with
-      | _ :: g :: _  when state = g -> exit 2
+      | _ :: g :: _  when eq state g -> exit 2
       | _ ->
       match resolve_dependencies ~learn:true state with
       | Ok (e,l) -> e, l

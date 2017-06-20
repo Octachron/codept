@@ -68,7 +68,7 @@ let ambiguity name breakpoint =
 
 module Base = struct
   type t = { top: M.dict; current: context }
-
+  let eq x y = x.top = y.top
   let empty = { top = Name.Map.empty; current = In_namespace M.empty }
   let start s =
     { top = s; current = Signature (Exact (M.Def.modules s) )}
@@ -79,13 +79,7 @@ module Base = struct
     | M.Module -> def.M.modules
     | M.Module_type -> def.module_types
 
-  let pp_context ppf = function
-    | In_namespace modules ->
-      Pp.fp ppf "namespace [%a]@." Module.pp_mdict modules
-    | Signature sg -> Pp.fp ppf "[%a]@." Module.pp_signature sg
-
   let rec find_name level name current =
-    Pp.(fp err) "@[<v 2> Base: searching for %s@; in %a@." name pp_context current;
     match current with
     | Signature Module.Blank ->
       (* If we have no information on the current signature,
@@ -102,16 +96,16 @@ module Base = struct
         (* We then try to find the searched name in the signature
            before the divergence *)
         let open Query in
-        find_name level name (Signature d.before) >>= fun q ->
+        ( find_name level name (Signature d.before) >>= fun q ->
         (* If we found the expected name before the divergence,
            we add a new message to the message stack, and return
            the found module, after marking it as a phantom module. *)
-        create (Module.spirit_away d.point q) [ambiguity name d.point]
+          create (Module.spirit_away d.point q) [ambiguity name d.point] )
       end
     | In_namespace modules ->
       try
         Query.pure @@ Name.Map.find name modules
-      with Not_found -> Pp.(fp err) "Not_found %s@." name; raise Not_found
+      with Not_found -> raise Not_found
   let find_name ?edge:_ ~root:_ level name env = find_name level name env.current
 
   let restrict env context = { env with current = context }
@@ -153,8 +147,6 @@ module Base = struct
 
 
   let rec find0 ?edge require_root level path env =
-    Pp.(fp err) "[@<v 2>Searching for %a@; %a@]@." Paths.S.pp path
-    pp_context env.current;
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
@@ -199,13 +191,9 @@ module Base = struct
     start top
 
   let add_namespace env (nms:Namespaced.t) =
-    Pp.(fp err) "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
-      env.current;
     if nms.namespace = [] then env else
     let top = M.Dict.( union env.top @@ of_list [Module.namespace nms] ) in
-    let e = start top in
-    Pp.(fp err) "@[result: %a@]@." pp_context e.current;
-    e
+    start top
 
 end
 
@@ -221,6 +209,7 @@ module Open_world(Envt:extended_with_deps) = struct
   type t = { core: Envt.t; world: Name.Set.t;
              externs: Edge.t P.map ref }
 
+  let eq x y = Envt.eq x.core y.core
   let is_exterior path env = Envt.is_exterior path env.core
   let top env = { env with core = Envt.top env.core }
 
@@ -321,7 +310,7 @@ module Layered = struct
 
   type t = { local: Base.t; local_units: Name.Set.t; pkgs: source list }
 
-
+  let eq x y = Base.eq x.local y.local
   let is_exterior path env = Base.is_exterior path env.local
   let resolve_alias name env = Base.resolve_alias name env.local
   let top env = { env with local = Base.top env.local }
@@ -432,6 +421,7 @@ module Tracing(Envt:extended) = struct
            }
 
 
+  let eq x y= Envt.eq x.env y.env
   let is_exterior path env = Envt.is_exterior path env.env
   let resolve_alias name env = Envt.resolve_alias name env.env
   let top env = { env with env = Envt.top env.env }
@@ -458,7 +448,6 @@ module Tracing(Envt:extended) = struct
     | _ -> []
 
   let rec find0 ?(edge=Edge.Normal) ~root ~require_top level path env =
-    Pp.(fp err) "Searching for [%a]@." Paths.S.pp path;
     match path with
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
@@ -483,7 +472,6 @@ module Tracing(Envt:extended) = struct
           find0 ~root:true ~require_top:true
             level (Namespaced.flatten path @ q) (top env)
       | M.M m ->
-        Pp.(fp err) "Found %s@." m.name;
         if require_top && not (is_unit m) then
           raise Not_found
         else begin

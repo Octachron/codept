@@ -61,8 +61,9 @@ let structure_expected =
 
 let applied_unknown =
   { path = ["typing"; "apply"; "unknown"];
-    log = (fun lvl l -> log lvl "%a, @ only functor can be applied, hopefully the \
-                                 unknown module (%a) is a functor"
+    log = (fun lvl l -> log lvl
+              "%a, @ only functor can be applied, hopefully the \
+               unknown module (%a) is a functor"
               loc l
               Module.Partial.pp);
     expl = "Signature fault: an unknown module was applied like a functor.";
@@ -99,8 +100,8 @@ let unknown_approximated =
         log lvl "%a,@ a non-resolvable module, @{<m>%a@}, has been \
                  replaced by an approximation"
           loc l Paths.S.pp path);
-    expl = "Signature fault: an unknown module was approximated, possibly yielding \
-            to an over-approximation of dependencies";
+    expl = "Signature fault: an unknown module was approximated, possibly \
+            leading to an over-approximation of dependencies";
   }
 
 

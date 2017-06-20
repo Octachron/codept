@@ -59,7 +59,7 @@ module Branch(Param:Outliner.param) = struct
     let rec solve_and_collect_cycles
         ancestors ?(learn=false) cycles state =
       match ancestors with
-      | _ :: grand_father :: _ when grand_father = state ->
+      | _ :: grand_father :: _ when S.eq grand_father state ->
         core, cycles
       | _ ->
         match S.resolve_dependencies ~learn state with
@@ -466,7 +466,7 @@ let result =
             ["Format"],
             [] );
           "summary.ml", (
-            ["Module"; "Pp"; "Mresult"; "Sexp"],
+            ["Module"; "Pp"; "Mresult"; "Name"; "Sexp"],
             ["List"], []);
           "envts.mli", (
             ["Deps"; "Module";"Name"; "Outliner";
@@ -508,8 +508,8 @@ let result =
                              ["List"; "Set";"Map"], [] );
           "loc.mli", ( ["Sexp"], ["Format"], []);
           "loc.ml", ( ["Pp";"Sexp"], ["List"], []);
-          "option.mli", ([],[],[]);
-          "option.ml", ([],["List"],[]);
+          "option.mli", ([],["Lazy"],[]);
+          "option.ml", ([],["List"; "Lazy"],[]);
           "paths.mli", (["Name"; "Sexp"], ["Map";"Set";"Format"],[]);
           "paths.ml", (["Name"; "Pp"; "Sexp" ],
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);

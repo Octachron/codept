@@ -4,8 +4,7 @@ module P = Paths.Pkg
 module Out = Outliner
 module Y = Summary
 
-let debug fmt =
-  Pp.(fp err) ("Debug:" ^^ fmt ^^ "@.")
+let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
 type answer = Out.answer =
   | M of Module.m
@@ -38,6 +37,7 @@ end
 
 type negative_membership = Not_found | Negative
 type module_provider = Name.t -> (Module.t Query.t, negative_membership) result
+let last l = List.hd @@ List.rev l
 
 let to_context s = Signature (Exact (M.Def.modules s) )
 
@@ -50,6 +50,7 @@ module Core = struct
     providers: module_provider list;
   }
 
+  let eq x y= x.top = y.top
   let start s =
     { top = s; current = to_context s;
       deps = ref P.Map.empty;
@@ -79,17 +80,17 @@ module Core = struct
       | _ -> []
   end open D
 
-  let request name env =
-    debug "asking auxiliary definition sources for %s" name;
+  let request lvl name env =
     let rec request name  = function
-      | [] -> debug "end of auxiliary sources"; None
+      | [] -> None
       | f :: q ->
-        debug "new aux source";
         match f name with
         | Ok q -> Some q
         | Error Negative -> None
         | Error Not_found -> request name q in
-    request name env.providers
+    if lvl = M.Module then
+      request name env.providers
+    else None
 
 
   let proj lvl def = match lvl with
@@ -124,7 +125,8 @@ module Core = struct
 
   let rec find_name level name current =
     match current with
-    | Signature Module.Blank -> None
+    | Signature Module.Blank ->
+      Some (Query.pure @@ M.md @@ M.mockup name)
     | In_namespace modules ->
       if level = M.Module_type then None
       else Option.fmap Query.pure @@ find_opt name modules
@@ -137,13 +139,25 @@ module Core = struct
       | Some x -> Some(Query.pure x)
       | None ->
         let open Query in
+        let (|||) = Option.(|||) in
+
         (* We then try to find the searched name in the signature
            before the divergence *)
-        find_name level name (Signature d.before) >>? fun q ->
-        Some (Query.create (Module.spirit_away d.point q) [ambiguity name d.point])
-  (* If we found the expected name before the divergence,
-     we add a new message to the message stack, and return
-     the found module, after marking it as a phantom module. *)
+        begin find_name level name (Signature d.before) >>? fun q ->
+          Some (Query.create
+                  (Module.spirit_away d.point q)
+                  [ambiguity name d.point])
+          (* If we found the expected name before the divergence,
+              we add a new message to the message stack, and return
+              the found module, after marking it as a phantom module. *)
+
+        end
+        (* If we did not find anything and were looking for a module type,
+           we return a mockup module type *)
+        ||| lazy (if level = Module_type then
+                    Some(pure @@ M.md @@ M.mockup name)
+                  else None)
+
 
   let rec find ?(edge=Edge.Normal) ~root level path env =
     debug "looking for %a" Paths.S.pp path;
@@ -151,12 +165,21 @@ module Core = struct
     | [] ->
       raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
+      let lvl = adjust_level level q in
       let open Query in
-      Option.(find_name (adjust_level level q) a env.current
-              ||| lazy (request a env))
-      >>? function
+      let r =
+        match find_name lvl a env.current with
+        | None when not root || lvl = Module_type ->
+          begin
+            debug "approximate %s" (last path);
+            Some (pure @@ M.M(M.mockup @@ last path))
+          end
+        | None -> request lvl a env
+        | Some _ as x -> x in
+      r >>? function
       | Alias { weak = true; _ } -> None
       | Alias {path; phantom; name; weak= false } ->
+        debug "alias to %a" Namespaced.pp path;
         let msgs =
           match phantom with
           | None -> []
@@ -219,7 +242,7 @@ module Core = struct
     | Signature sg -> Pp.fp ppf "[%a]@." Module.pp_signature sg
 
   let add_namespace env (nms:Namespaced.t) =
-    Pp.(fp err) "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
+    debug "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
       env.current;
     if nms.namespace = [] then env else
     let t = M.Dict.( union env.top @@ of_list [Module.namespace nms] ) in
@@ -231,7 +254,9 @@ module Core = struct
     | [] -> None
     | a :: q ->
       match Name.Map.find a def with
-      | M.Alias {path; weak = false; _ } -> Some path
+      | M.Alias {path; weak = false; _ } ->
+        debug "resolved to %a" Namespaced.pp path;
+        Some path
       | M.Alias { weak = true; _ } -> None
       | M m -> resolve_alias_sign q m.signature
       | Namespace n -> resolve_alias_md q n.modules
@@ -247,6 +272,7 @@ module Core = struct
         resolve_alias_sign path d.before
 
   let resolve_alias path env =
+    debug "resolving %a" Paths.S.pp path;
     match env.current with
     | In_namespace md -> resolve_alias_md path md
     | Signature sg -> resolve_alias_sign path sg
@@ -256,12 +282,12 @@ module Core = struct
     | [] -> false (* should not happen *)
     | a :: _ ->
       match find_name Module a envt.current with
-      | None -> false
+      | None -> true
       | Some m ->
         match m.main with
+        | Namespace _ -> true
         | M { origin = Unit _; _ } -> true
         | M.Alias _ -> false
-        | exception Not_found -> true
         | _ -> false
 
 end
@@ -272,7 +298,6 @@ let mask fileset request =
     Error Negative
   else
     Error Not_found
-
 
 let approx name =
   Module.mockup name ~path:{Paths.P.source=Unknown; file=[name]}
@@ -369,6 +394,8 @@ end
 let start ?(open_approximation=true) root_sets libs predefs =
   let core = Core.start predefs in
   let providers =
-    [ mask root_sets; Libraries.provider libs] @
-    (if open_approximation  then [open_world] else [] ) in
+    (if not (libs = []) then [Libraries.provider libs] else [])
+    @ (if open_approximation  then [open_world] else [] ) in
+  let providers = if providers = [] then [] else
+      mask root_sets :: providers in
   { core with providers }

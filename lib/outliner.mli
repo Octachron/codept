@@ -9,6 +9,7 @@ type answer =
 (** Input type *)
 module type envt = sig
   type t
+  val eq: t -> t -> bool
   val is_exterior: Paths.Simple.t -> t -> bool
   val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t -> t ->
     answer query_result

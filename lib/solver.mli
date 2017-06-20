@@ -92,6 +92,10 @@ module Make(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
           dependencies. Drop intermediary units that are deemed non-resolvable *)
       val approx_and_try_harder: state -> state
 
+      (** Compare if two states would lead to the same result for the solver
+          (weak equality?). *)
+      val eq: state -> state -> bool
+
       (** Solve **)
        val solve: Envt.t -> Unit.s list Unit.pair -> Unit.r list Unit.pair
 
@@ -101,6 +105,11 @@ module Make(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
 module Directed(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
 sig
   type state
+
+  (** Compare if two states would lead to the same result for the solver
+      (weak equality?). *)
+  val eq: state -> state -> bool
+
   val wip: state -> i list
   val end_result: state -> Envt.t * Unit.r list
 
