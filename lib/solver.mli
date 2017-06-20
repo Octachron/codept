@@ -10,9 +10,9 @@ type i = { input: Unit.s; code: M2l.t; deps: Deps.t }
 module Failure :
   sig
     type status =
-      | Cycle of Name.t Loc.ext
-      | Extern of Name.t
-      | Depend_on of Name.t
+      | Cycle of Namespaced.t Loc.ext
+      | Extern of Namespaced.t
+      | Depend_on of Namespaced.t
       | Internal_error
 
     module Set: Set.S with type elt = i
@@ -22,29 +22,31 @@ module Failure :
       val find: key -> Set.t t -> Set.t
     end
 
-    type alias_resolver = Summary.t -> Paths.S.t -> string
+    type alias_resolver = Summary.t -> Paths.S.t -> Namespaced.t
 
     val analyze:
-      alias_resolver -> i list -> (i * status option ref) Name.map * Set.t Map.t
+      alias_resolver -> i list ->
+      (i * status option ref) Namespaced.Map.t * Set.t Map.t
 
     val pp_circular :
       alias_resolver ->
-      (i * 'a) Name.map ->
-      string -> bool -> Format.formatter -> Name.t -> unit
+      (i * 'a) Namespaced.Map.t ->
+      Namespaced.t -> bool -> Format.formatter -> Namespaced.t -> unit
     val pp_cat :
       alias_resolver ->
-      (i * _) Name.map ->
+      (i * _) Namespaced.Map.t ->
       Format.formatter -> status * Set.t -> unit
     val pp :
       alias_resolver ->
-      (i * _) Name.map ->
+      (i * _) Namespaced.Map.t ->
       Format.formatter -> Set.t Map.t -> unit
     val pp_cycle : alias_resolver ->
       Format.formatter -> i list -> unit
   end
 
 (** Solver error when trying to resolve dependencies *)
-val fault: ((Summary.t -> Paths.S.t -> string) -> i list -> unit) Fault.t
+val fault:
+  (Failure.alias_resolver -> i list -> unit) Fault.t
 
 (** Create a solver using the environment module [Envt] for
     name resolution and dependendy tracking and
@@ -90,6 +92,10 @@ module Make(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
           dependencies. Drop intermediary units that are deemed non-resolvable *)
       val approx_and_try_harder: state -> state
 
+      (** Compare if two states would lead to the same result for the solver
+          (weak equality?). *)
+      val eq: state -> state -> bool
+
       (** Solve **)
        val solve: Envt.t -> Unit.s list Unit.pair -> Unit.r list Unit.pair
 
@@ -99,10 +105,15 @@ module Make(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
 module Directed(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
 sig
   type state
+
+  (** Compare if two states would lead to the same result for the solver
+      (weak equality?). *)
+  val eq: state -> state -> bool
+
   val wip: state -> i list
   val end_result: state -> Envt.t * Unit.r list
 
-  type gen = Name.t -> Unit.s option Unit.pair
+  type gen = Namespaced.t -> Unit.s option Unit.pair
 
   (** Resolve current aliases *)
   val alias_resolver: state -> Failure.alias_resolver
@@ -111,18 +122,19 @@ sig
   (** Generate unit files when needed from a
       loading function and a list of files *)
   val generator:
-    ( (Read.kind * string) -> Unit.s )
-    -> (Read.kind * string) list
+    ( (Read.kind * string * Namespaced.t) -> Unit.s )
+    -> (Read.kind * string * Namespaced.t) list
     -> gen
 
 
-  val start: gen -> Envt.t -> Name.t list ->
+  val start: gen -> Envt.t -> Namespaced.t list ->
     state
 
   val eval: state -> i -> (state,state) result
 
   val solve_once: state -> (Envt.t * Unit.r list, state) result
   val approx_and_try_harder: state -> state
-  val solve: gen -> Envt.t -> Name.t list -> Envt.t * Unit.r list
+  val solve: gen -> Envt.t -> Namespaced.t list
+    -> Envt.t * Unit.r list
 
 end

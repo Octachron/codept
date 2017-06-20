@@ -56,7 +56,8 @@ let expand_includes policy synonyms includes =
       Array.fold_left (fun m x ->
           let policy =
             let open Fault in
-            Policy.set_err (Codept_policies.unknown_extension, Level.info)
+            Policy.set_err
+              (Codept_policies.unknown_extension, Level.info)
               policy in
           match Common.classify policy synonyms x with
           | None | Some { Common.kind = Signature; _ } -> m
@@ -71,23 +72,22 @@ let expand_includes policy synonyms includes =
   List.fold_left read_dir Name.Map.empty includes
 
 
-let tokenize_deps includes param order input dep (unit,imore,dmore) =
+let tokenize_deps includes param input dep (unit,imore,dmore) =
   let unit = preprocess_deps includes unit in
   let make_abs = Common.make_abs param.abs_path in
   let pkg_pp = Pkg.pp_gen param.slash in
-  let _sort = Sorting.toposort order Paths.Pkg.module_name in
   let open Unit in
   let dep x= make_abs @@ dep x in
   let tok f x = Format.asprintf "%a" f x in
+  let compare x y = compare (Pkg.module_name y) (Pkg.module_name x) in
   let tokens l = List.map (tok pkg_pp)
       (List.map make_abs l) in
-  tok pkg_pp ( make_abs @@ input unit.path)
+  tok pkg_pp ( make_abs @@ input unit.src)
   :: tokens imore
   @ ":"
     ::  tokens
-
       (
-        List.sort (fun x y -> compare (Pkg.module_name y) (Pkg.module_name x))
+        List.sort compare
         @@ List.rev_map dep @@ Common.local_dependencies unit
       )
   @ tokens dmore
@@ -108,8 +108,8 @@ let render param ppf l =
       render pos q in
   render 0 l
 
-let print_deps includes param order input dep ppf more =
-  tokenize_deps includes param order input dep more
+let print_deps includes param input dep ppf more =
+  tokenize_deps includes param input dep more
   |> render param ppf
 
 let regroup {Unit.ml;mli} =
@@ -121,7 +121,6 @@ let main policy ppf synonyms param units =
   let all = param.all in
   let if_all l = if all then l else [] in
   let print_deps = print_deps includes param in
-  let order = Sorting.remember_order units.Unit.mli in
   let m =regroup units in
   let cmi_or or_ path =
     let open Unit in
@@ -143,30 +142,33 @@ let main policy ppf synonyms param units =
       let g, err = Groups.R.flatten g in
       let log_error  = function
         | a :: _ as l ->
-          Fault.handle policy Standard_faults.module_conflict a.name @@
-          List.map (fun u -> u.path) l
+          Fault.handle
+            policy Standard_faults.module_conflict a.path @@
+          List.map (fun u -> u.src) l
         | [] -> ()
       in
       log_error err.ml; log_error err.mli;
       match g with
       | { ml= Some impl ; mli = Some intf } ->
-        let cmi = Pkg.cmi impl.path in
+        let cmi = Pkg.cmi impl.src in
         if not param.native then
-          print_deps order (Pkg.cmo) cmo_or_cmi ppf
-            (impl, [], [cmi] @ if_all [impl.path] );
+          print_deps (Pkg.cmo) cmo_or_cmi ppf
+            (impl, [], [cmi] @ if_all [impl.src] );
         if not param.bytecode then begin
-          print_deps order (Pkg.cmx) (cmi_or Pkg.cmx) ppf
-            (impl, if_all [Pkg.o impl.path], [cmi] @ if_all [impl.path] );
+          print_deps (Pkg.cmx) (cmi_or Pkg.cmx) ppf
+            (impl, if_all [Pkg.o impl.src],
+             [cmi] @ if_all [impl.src] );
             if param.shared then
-              print_deps order (Pkg.cmxs) (cmi_or Pkg.cmxs) ppf
-                (impl, if_all [Pkg.o impl.path], [cmi] @ if_all [impl.path] )
+              print_deps (Pkg.cmxs) (cmi_or Pkg.cmxs) ppf
+                (impl, if_all [Pkg.o impl.src],
+                 [cmi] @ if_all [impl.src] )
         end;
-          print_deps order Pkg.cmi (Pkg.mk_dep all param.native)  ppf
+          print_deps Pkg.cmi (Pkg.mk_dep all param.native)  ppf
           (intf,[], [] )
       | { ml = Some impl; mli = None } ->
         begin
-          let implicit = implicit_dep synonyms impl.path in
-          let cmi = Pkg.cmi impl.path in
+          let implicit = implicit_dep synonyms impl.src in
+          let cmi = Pkg.cmi impl.src in
           let imli =  param.implicits
                       && implicit.mli in
           let cmi_dep, cmi_adep =
@@ -175,17 +177,17 @@ let main policy ppf synonyms param units =
               else [], [cmi] ) in
           if not param.native then
             begin
-              print_deps order Pkg.cmo cmo_or_cmi ppf
-                (impl, if_all cmi_adep, if_all [impl.path] @ cmi_dep)
+              print_deps Pkg.cmo cmo_or_cmi ppf
+                (impl, if_all cmi_adep, if_all [impl.src] @ cmi_dep)
             end;
           if not param.bytecode then
-            print_deps order Pkg.cmx (cmi_or Pkg.cmx) ppf
+            print_deps Pkg.cmx (cmi_or Pkg.cmx) ppf
               (impl,
-               if_all ([Pkg.o impl.path] @ cmi_adep),
-               if_all [impl.path] @ cmi_dep )
+               if_all ([Pkg.o impl.src] @ cmi_adep),
+               if_all [impl.src] @ cmi_dep )
         end
       | { ml = None; mli = Some intf } ->
-        print_deps order Pkg.cmi (Pkg.mk_dep all param.native) ppf
+        print_deps Pkg.cmi (Pkg.mk_dep all param.native) ppf
           (intf,[],[])
       | { ml = None; mli = None } -> ()
     ) m

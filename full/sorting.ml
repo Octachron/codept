@@ -33,12 +33,12 @@ let full_topological_sort deps paths =
 
 let remember_order units =
   let open Unit in
-  let compute (i,m) u = i+1, Name.Map.add u.Unit.name i m in
-  snd @@ List.fold_left compute (0,Name.Map.empty)
-  @@ List.rev @@ List.filter (fun u -> Pkg.is_known u.path) @@ units
+  let compute (i,m) u = i+1, Namespaced.Map.add u.Unit.path i m in
+  snd @@ List.fold_left compute (0,Namespaced.Map.empty)
+  @@ List.rev @@ List.filter (fun u -> Pkg.is_known u.src) @@ units
 
 let topos_compare order x y =
-  let get x=Name.Map.find_opt x order in
+  let get x=Namespaced.Map.find_opt x order in
   match get x, get y with
   | Some k , Some l -> compare k l
   | None, Some _ -> -1

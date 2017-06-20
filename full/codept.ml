@@ -7,7 +7,6 @@ let std = Format.std_formatter
 
 let io = Io.direct
 let out = Pp.std
-
 let () =
   Fault.enable_colors Pp.err;
   Fault.enable_colors Pp.std;

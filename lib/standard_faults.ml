@@ -61,8 +61,9 @@ let structure_expected =
 
 let applied_unknown =
   { path = ["typing"; "apply"; "unknown"];
-    log = (fun lvl l -> log lvl "%a, @ only functor can be applied, hopefully the \
-                                 unknown module (%a) is a functor"
+    log = (fun lvl l -> log lvl
+              "%a, @ only functor can be applied, hopefully the \
+               unknown module (%a) is a functor"
               loc l
               Module.Partial.pp);
     expl = "Signature fault: an unknown module was applied like a functor.";
@@ -99,8 +100,8 @@ let unknown_approximated =
         log lvl "%a,@ a non-resolvable module, @{<m>%a@}, has been \
                  replaced by an approximation"
           loc l Paths.S.pp path);
-    expl = "Signature fault: an unknown module was approximated, possibly yielding \
-            to an over-approximation of dependencies";
+    expl = "Signature fault: an unknown module was approximated, possibly \
+            leading to an over-approximation of dependencies";
   }
 
 
@@ -109,11 +110,12 @@ let unknown_approximated =
 
 let module_conflict =
   { path = ["input"; "module_conflict"; "global" ];
-    expl = "A module name is provided by multiple sources, only the first one will \
-            be used in the following analysis.";
+    expl = "A module path is provided by multiple sources, \
+            only the first one will be used in the following \
+            analysis.";
     log = (fun lvl name paths -> log lvl
-              "Global module conflict,@; Module @{<m>%s@} is provided \
-               simultaneously by %a" name
+              "Global module conflict,@; Module @{<m>%a@} is provided \
+               simultaneously by %a" Namespaced.pp name
               Pp.(in_text_list @@ with_tag "m" Paths.P.pp) paths
           )
   }
@@ -123,11 +125,12 @@ let module_conflict =
 
 let local_module_conflict =
   { path = ["input"; "module_conflict"; "local" ];
-    expl = "A module is provided by multiple input files, only the first one will \
-            be used in the following analysis.";
+    expl = "A module is provided by multiple input files, \
+            only the first one will be used in the following \
+            analysis.";
     log = (fun lvl name paths -> log lvl
-              "Local module conflict,@; Module @{<m>%s@} is provided simultaneously by \
-               %a" name
+              "Local module conflict,@; Module @{<m>%a@} is provided \
+               simultaneously by %a" Namespaced.pp name
               Pp.(in_text_list @@ with_tag "m" Paths.P.pp) paths
           )
   }

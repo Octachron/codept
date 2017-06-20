@@ -3,13 +3,60 @@
 module M = Module
 module S = Module.Sig
 
-type t = { defined: Module.signature; visible: Module.signature }
+type view = Module.signature
+type t = {
+  defined: view; (** modules and module types defined in scope *)
+  visible: view; (** in scope but not defined *)
+}
 type summary = t
 
-let empty = { defined = S.empty; visible = S.empty }
+module View = struct
+
+  let empty = Module.Sig.empty
+  let is_empty v = v = empty
+
+  let make_top ?(namespace=[]) x = S.create (M.with_namespace namespace x)
+  let make sign = sign
+
+  let merge s1 s2 =
+    Module.Sig.merge s1 s2
+
+  let strong_alias = function
+    | M.Alias ({weak=true; _} as a) -> M.Alias { a with weak = false}
+    | x -> x
+
+  let rec strenghen = function
+    | M.Blank -> M.Blank
+    | Divergence ({before; after; _ } as d) ->
+      Divergence { d with
+                   after = str_def after;
+                   before = strenghen before
+                 }
+    | Exact def -> Exact (str_def def)
+  and str_def def =
+    {def with modules = Name.Map.map strong_alias def.modules }
 
 
-let only_visible defs =
+  let see v = { visible = v; defined = empty }
+  let define v = { visible = empty; defined = v }
+
+end
+
+let empty = { defined = View.empty; visible = View.empty }
+let strenghen v =
+  { defined = View.strenghen v.defined;
+    visible = View.strenghen v.visible
+  }
+
+let defined s = s.defined
+let peek x = x
+let extend s y =
+  S.merge (S.merge s y.defined) y.visible
+
+let only_visible s = s.visible
+
+(* REMOVE ME *)
+(*
   let diff = Name.Map.merge (fun _k x y ->
       match x, y with
       | Some _, (None|Some _) -> None
@@ -17,65 +64,71 @@ let only_visible defs =
       | None, None -> None ) in
   let d = S.flatten defs.defined and v = S.flatten defs.visible in
   M.Exact { Module.modules = diff d.modules v.modules;
-    module_types = diff d.module_types v.module_types
-  }
+            module_types = diff d.module_types v.module_types
+          }
+*)
+
+
+let pp_view ppf view =
+  Module.Sig.pp ppf view
 
 let pp ppf x = Pp.fp ppf "@[[@,%a@,]@]"
-    Module.pp_signature x.defined;
-  let v = only_visible x in
-  if S.card v > 0 then
-    Pp.fp ppf "@, visible:@[@,[%a@,]@]"
-      Module.pp_signature v
+    pp_view x.defined;
+  if not @@ View.is_empty x.visible then
+    Pp.fp ppf "@, in scope:@[@,[%a@,]@]"
+      pp_view x.visible
   else ()
 
 
-let sg_bind sign = { defined = sign; visible = sign }
-let sg_see sign = { empty with visible = sign }
+module Sexp = struct
+  open Sexp
 
-let clear_visible summary = { summary with visible = summary.defined }
+  let view = Module.Sig.sexp
 
+    let summary =
+    convr
+      (pair view view)
+      (fun (a,b) -> {visible=b;defined=a})
+      (fun d -> d.defined, d.visible)
 
-module Def = struct
-  let md m =
-    sg_bind @@ S.create m
-
-  let mods ms =
-    sg_bind @@ S.of_list ms
-
-  let sg m =
-    sg_bind @@ S.create_type m
-
-  let sgs ms =
-    sg_bind @@ S.of_list_type ms
-
-  let gen lvl = match lvl with
-    | M.Module -> md
-    | M.Module_type -> sg
-
-  let (+@) = S.merge
-  let ( +| ) d1 d2 =
-   { defined =  d1.defined +@ d2.defined;
-      visible = d1.visible +@ d2.visible }
 end
+let sexp = Sexp.summary
 
-let bind md summary =
-  { visible = S.add summary.visible md;
-    defined = S.add summary.defined md;
-  }
+let clear_visible v = { v with visible =  View.empty }
 
-let see md summary =
-  { summary with
-    visible = S.add summary.visible md }
+let define ?(level=M.Module)  l =
+  let open View in
+  define @@ make @@
+  match level with
+  | M.Module -> S.of_list l
+  | M.Module_type -> S.of_list_type l
 
-let bind_sg md summary =
-  { visible = S.add_type summary.visible md;
-    defined = S.add_type summary.defined md }
+let merge s1 s2 = {
+  visible = View.merge s1.visible s2.visible;
+  defined = View.merge s1.defined s2.defined
+}
 
-let bind_gen level = match level with
-  | M.Module -> bind
+let (+|) = merge
+
+let add create view md summary =
+  merge summary @@ view @@
+  create md
+
+let bind_md = add S.create View.define
+let see = add S.create View.see
+
+let bind_sg = add S.create_type View.define
+
+
+let bind ?(level=M.Module) = match level with
+  | M.Module -> bind_md
   | M.Module_type -> bind_sg
 
 let binds l =
-  List.fold_left (fun summary (level,md) -> bind_gen level md summary) empty l
+  List.fold_left (fun summary (level,md) ->
+      bind ~level md summary) empty l
 
-let of_partial fsummary = Mresult.fmap sg_bind sg_bind @@ M.Partial.to_sign fsummary
+let of_partial fsummary =
+  let bind x = View.define @@ View.make x in
+  Mresult.fmap bind bind
+  @@ M.Partial.to_sign fsummary

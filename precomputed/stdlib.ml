@@ -1,5 +1,5 @@
-let signature= let open Module in  let open Sig in 
-of_list [M {name="Arg"; origin=Unit {source=Special "stdlib"; file=["Arg"]}; args=[]; signature=empty}; 
+let modules= let open Module in  let open Sig in 
+Dict.of_list [M {name="Arg"; origin=Unit {source=Special "stdlib"; file=["Arg"]}; args=[]; signature=empty}; 
         M {name="Array"; origin=Unit {source=Special "stdlib"; file=["Array"]}; args=[]; signature=empty}; 
         M {name="ArrayLabels"; origin=Unit {source=Special "stdlib"; file=["ArrayLabels"]}; args=[]; signature=empty}; 
         M {name="Buffer"; origin=Unit {source=Special "stdlib"; file=["Buffer"]}; args=[]; signature=empty}; 
@@ -122,10 +122,10 @@ of_list [M {name="Arg"; origin=Unit {source=Special "stdlib"; file=["Arg"]}; arg
           M {name="Snapshot"; origin=Submodule; args=[]; signature=empty}]}; 
         M {name="Stack"; origin=Unit {source=Special "stdlib"; file=["Stack"]}; args=[]; signature=empty}; 
         M {name="StdLabels"; origin=Unit {source=Special "stdlib"; file=["StdLabels"]}; args=[]; signature=of_list 
-          [Alias {name="Array";path=["ArrayLabels"];phantom=None}; 
-          Alias {name="Bytes";path=["BytesLabels"];phantom=None}; 
-          Alias {name="List";path=["ListLabels"];phantom=None}; 
-          Alias {name="String";path=["StringLabels"];phantom=None}]}; 
+          [Alias {name="Array";path=Namespaced.make "ArrayLabels";phantom=None;weak=false}; 
+          Alias {name="Bytes";path=Namespaced.make"BytesLabels";phantom=None;weak=false}; 
+          Alias {name="List";path=Namespaced.make"ListLabels";phantom=None;weak=false}; 
+          Alias {name="String";path=Namespaced.make"StringLabels";phantom=None;weak=false}]}; 
         M {name="Stream"; origin=Unit {source=Special "stdlib"; file=["Stream"]}; args=[]; signature=empty}; 
         M {name="String"; origin=Unit {source=Special "stdlib"; file=["String"]}; args=[]; signature=empty}; 
         M {name="StringLabels"; origin=Unit {source=Special "stdlib"; file=["StringLabels"]}; args=[]; signature=empty}; 

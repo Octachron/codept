@@ -4,9 +4,9 @@
 
 type reader = {
   sign: string -> Module.t list option;
-  m2l: Fault.Policy.t -> Read.kind -> string -> Unit.s;
+  m2l: Fault.Policy.t -> Read.kind -> string -> Namespaced.t -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
-  env: Module.Def.t
+  env: Module.dict
 }
 
 type writer = {

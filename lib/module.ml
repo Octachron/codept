@@ -158,17 +158,21 @@ type m = {
       origin: Origin.t;
       args: m option list;
       signature:signature;
-}
+    }
 and t =
   | M of m
-  | Alias of { name:Name.t; path: Paths.S.t; phantom: Divergence.t option }
-
-and definition = { modules : mdict; module_types : mdict }
+  | Alias of
+      { name:Name.t;
+        path:Namespaced.t;
+        phantom: Divergence.t option;
+        weak:bool }
+  | Namespace of {name: Name.t; modules: dict}
+and definition = { modules : dict; module_types : dict }
 and signature =
   | Blank
   | Exact of definition
   | Divergence of { point: Divergence.t; before:signature; after:definition}
-and mdict = t Name.Map.t
+and dict = t Name.Map.t
 
 type arg = definition Arg.t
 type modul_ = t
@@ -178,25 +182,51 @@ let of_arg ({name;signature}:arg) =
 
 let is_functor = function
   | Alias _ |  M { args = []; _ } -> false
-  |  _ -> true
+  |  M _ | Namespace _ -> true
 
 let name = function
   | Alias {name; _ } -> name
   | M {name; _ } -> name
+  | Namespace {name; _ } -> name
 
 
+module Dict = struct
+  type t = dict
+  let empty = Name.Map.empty
+  let of_list = List.fold_left (fun x m -> Name.Map.add (name m) m x) empty
+
+  let union =
+    let rec merge _k x y = match x, y with
+      | Alias {weak=true; _ }, x
+      | x, Alias {weak=true; _ } -> Some x
+      | Namespace n, Namespace n' ->
+        Some (
+          Namespace { name = n.name;
+                      modules = Name.Map.union merge n.modules n'.modules
+                    }
+        )
+      | _, r -> Some r in
+    Name.Map.union merge
+
+end
+
+(* TODO: Behavior with weak aliases *)
 let rec spirit_away breakpoint root = function
   | Alias a as al ->
     if not root then
       Alias { a with phantom = Some breakpoint }
     else al
+  | Namespace {name; modules } ->
+    Namespace {name;
+               modules = Name.Map.map (spirit_away breakpoint false) modules }
   | M m ->
     let origin = Origin.Phantom (root,breakpoint) in
     let origin = match m.origin with
       | Unit _  as u -> u
       | Phantom _ as ph -> ph
       | _ -> origin in
-    M { m with origin; signature = spirit_away_sign breakpoint false m.signature }
+    M { m with origin;
+               signature = spirit_away_sign breakpoint false m.signature }
 and spirit_away_sign breakpoint root = function
   | Blank -> Blank
   | Divergence d -> Divergence {
@@ -212,10 +242,9 @@ and spirit_away_def breakpoint root def =
 
 let spirit_away b =  spirit_away b true
 
-let sig_merge s1 s2 =
-  { modules = Name.Map.union' s1.modules s2.modules
-  ; module_types = Name.Map.union' s1.module_types s2.module_types
-  }
+let sig_merge (s1:definition) (s2:definition) =
+  { module_types = Name.Map.union' s1.module_types s2.module_types;
+    modules = Dict.union s1.modules s2.modules }
 
 let empty = Name.Map.empty
 let empty_sig = {modules = empty; module_types = empty }
@@ -227,6 +256,7 @@ let rec flatten = function
 
 let is_exact m =
   match m with
+  | Namespace _ -> true
   | Alias {phantom ; _ } -> phantom = None
   | M m ->
     match m.signature with
@@ -237,8 +267,9 @@ let is_exact m =
 let md s = M s
 
 let rec aliases0 l = function
-  | Alias {path = a :: _ ; _ } -> a :: l
-  | Alias _ -> l
+  | Alias {path; _ } -> path :: l
+  | Namespace {modules; _ } ->
+      Name.Map.fold (fun _ x l -> aliases0 l x) modules l
   | M { signature; _ } ->
     let signature = flatten signature in
     let add _k x l = aliases0 l x in
@@ -263,11 +294,23 @@ let reflect_phantom ppf = function
 
 let rec reflect ppf = function
   | M m ->  Pp.fp ppf "M %a" reflect_m m
-  | Alias {name;path;phantom} ->
-    Pp.fp ppf "Alias {name=%a;path=[%a];phantom=%a}"
+  | Namespace {name; modules} ->
+    Pp.fp ppf "Namespace {name=%a; modules=%a}"
+      Pp.estring name reflect_mdict modules
+  |  Alias {name;path;phantom;weak} ->
+    Pp.fp ppf "Alias {name=%a;path=[%a];phantom=%a;weak=%b}"
       Pp.estring name
-      Pp.(list ~sep:(s ";@  ") @@ estring ) path
+      reflect_namespaced path
       reflect_phantom phantom
+      weak
+and reflect_namespaced ppf nd =
+  if nd.namespace = [] then
+    Pp.fp ppf "Namespaced.make %a"
+      Pp.estring nd.name
+  else
+    Pp.fp ppf "Namespaced.make ~namespace:(%a) %a"
+      Pp.(list ~sep:(s";@ ") @@ estring) nd.namespace
+      Pp.estring nd.name
 and reflect_m ppf {name;args;origin;signature} =
   Pp.fp ppf {|@[<hov>{name="%s"; origin=%a; args=%a; signature=Exact(%a)}@]|}
     name
@@ -297,10 +340,18 @@ and reflect_arg ppf arg = Pp.fp ppf "%a" (reflect_opt reflect_m) arg
 and reflect_args ppf args =
   Pp.fp ppf "[%a]" (Pp.(list ~sep:(s "; @,") ) @@ reflect_arg ) args
 
+let reflect_modules ppf dict =
+  Pp.fp ppf "Dict.of_list @[%a@]"
+    (Pp.list ~sep:(Pp.s "; @,") @@ fun ppf (_,m) -> reflect ppf m)
+    (Name.Map.bindings dict)
+
 let rec pp ppf = function
-  | Alias {name;path;phantom} ->
-    Pp.fp ppf "%s≡%s%a" name (if phantom=None then "" else "(👻)" ) Paths.S.pp path
+  | Alias {name;path;phantom;weak=_} ->
+    Pp.fp ppf "%s≡%s%a" name (if phantom=None then "" else "(👻)" )
+      Namespaced.pp path
   | M m -> pp_m ppf m
+  | Namespace n -> Pp.fp ppf "Namespace %s=@[[%a]@]" n.name
+                     pp_mdict n.modules
 and pp_m ppf {name;args;origin;signature;_} =
   Pp.fp ppf "%s%a:%a@[<hv>[@,%a@,]@]"
     name Origin.pp origin pp_args args pp_signature signature
@@ -346,6 +397,22 @@ let create
     ?(origin=Origin.Submodule) name signature =
   { name; origin; args; signature}
 
+let rec namespace (path:Namespaced.t) = match path.namespace with
+  | [] -> raise (Invalid_argument "Module.namespace: empty namespace")
+  | [name] ->
+    let placeholder =
+      Alias { name= path.name; path; phantom = None; weak = true } in
+    Namespace { name; modules = Dict.of_list[placeholder] }
+  | name :: nms ->
+    let path = Namespaced.make ~nms path.name in
+    Namespace {name; modules = Dict.of_list [namespace path] }
+
+let rec with_namespace nms module'=
+  match nms with
+  | [] -> module'
+  | a :: q ->
+    let sub = with_namespace q module' in
+    Namespace { name = a; modules = Dict.of_list [sub] }
 
 let signature_of_lists ms mts =
   let e = Name.Map.empty in
@@ -390,12 +457,18 @@ module Sexp_core = struct
     conv {f;fr} (key_list string record)
   and args () = list @@ opt @@ fix' m
   and module_ () =
-    let alias = C2.C { name = "Alias";
-                       proj = (function Alias a -> Some(a.name, a.path)
-                                      | _ -> None);
-                    inj = (fun (name,path) -> Alias {name;path;phantom=None} );
-                    impl = key_list string Paths.S.sexp;
-                     } in
+    let alias =
+      C2.C { name = "Alias";
+             proj = (function
+                 | Alias a -> Some(a.name, Namespaced.flatten a.path)
+                 | _ -> None);
+             inj = (fun (name,path) ->
+                 Alias {name;
+                        path=Namespaced.of_path path;
+                        phantom=None;
+                        weak=false} );
+             impl = key_list string Paths.S.sexp;
+           } in
     let mc =
       C2.C {name = "M";
          proj = (function M m -> Some m | _ -> None );
@@ -413,6 +486,7 @@ module Def = struct
   let empty = empty_sig
   let (|+>) m x = Name.Map.add (name x) x m
 
+  let modules dict = { empty with modules=dict }
   let merge = sig_merge
   let add sg x = { sg with modules = sg.modules |+> x }
   let add_type sg x = { sg with module_types = sg.module_types |+> x }
@@ -420,6 +494,7 @@ module Def = struct
     | Module -> add
     | Module_type -> add_type
 
+  let pp = pp_definition
 
   let sexp =
     let open Sexp in

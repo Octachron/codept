@@ -3,6 +3,7 @@
 val fp : Format.formatter -> ('a, Format.formatter, unit) format -> 'a
 
 (** {2 Short name } *)
+type 'a t = Format.formatter -> 'a -> unit
 val s : ('a, Format.formatter, unit) format -> Format.formatter -> 'a
 val const : string -> Format.formatter -> unit
 val string : Format.formatter -> string -> unit

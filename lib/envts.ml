@@ -2,10 +2,17 @@ module M = Module
 module S = Module.Sig
 module Edge = Deps.Edge
 module Origin = M.Origin
-module SDef = Summary.Def
+module Y = Summary
+module Nms = Namespaced
+module Out = Outliner
 
+type answer = Out.answer =
+  | M of Module.m
+  | Namespace of { name:Name.t; modules:Module.dict }
 
-
+type context =
+  | Signature of M.signature
+  | In_namespace of M.dict
 
 module Query = struct
 
@@ -25,8 +32,9 @@ end
 module type extended = sig
   include Outliner.envt
   val top: t -> t
-  val find_name: ?edge:Edge.t -> bool -> M.level -> Name.t -> t -> Module.t Query.t
-  val restrict: t -> M.signature -> t
+  val find_name: ?edge:Edge.t -> root:bool -> M.level -> Name.t -> t
+    -> Module.t Query.t
+  val restrict: t -> context -> t
 end
 
 module type extended_with_deps =
@@ -59,63 +67,73 @@ let ambiguity name breakpoint =
   }
 
 module Base = struct
-  type t = { top: M.definition; current: M.signature }
+  type t = { top: M.dict; current: context }
+  let eq x y = x.top = y.top
+  let empty = { top = Name.Map.empty; current = In_namespace M.empty }
+  let start s =
+    { top = s; current = Signature (Exact (M.Def.modules s) )}
 
-  let empty = { top = M.Def.empty; current = S.empty }
-  let start s = { top = s; current = Exact s }
-  let top env = { env with current = Exact env.top }
+  let top env = { env with current = Signature (Exact (M.Def.modules env.top) ) }
 
   let proj lvl def = match lvl with
     | M.Module -> def.M.modules
     | M.Module_type -> def.module_types
 
-
   let rec find_name level name current =
     match current with
-    | Module.Blank ->
+    | Signature Module.Blank ->
       (* If we have no information on the current signature,
          we create a mockup module for the requested submodule *)
-      Query.pure @@ Module.md @@ Module.mockup name
-    | Exact def ->
+      Query.pure @@ M.md @@ Module.mockup name
+    | Signature Exact def ->
       Query.pure @@ Name.Map.find name @@ proj level def
-    | Divergence d ->
+    | Signature Divergence d ->
       (* If we have a divergent signature, we first look
          at the signature after the divergence: *)
-      match Name.Map.find_opt name @@ proj level d.after with
-      | Some m -> Query.pure @@ m
+      begin match Name.Map.find_opt name @@ proj level d.after with
+      | Some m -> Query.pure m
       | None ->
         (* We then try to find the searched name in the signature
            before the divergence *)
         let open Query in
-        find_name level name d.before >>= fun q ->
+        ( find_name level name (Signature d.before) >>= fun q ->
         (* If we found the expected name before the divergence,
            we add a new message to the message stack, and return
            the found module, after marking it as a phantom module. *)
-        create (Module.spirit_away d.point q) [ambiguity name d.point]
+          create (Module.spirit_away d.point q) [ambiguity name d.point] )
+      end
+    | In_namespace modules ->
+      try
+        Query.pure @@ Name.Map.find name modules
+      with Not_found -> raise Not_found
+  let find_name ?edge:_ ~root:_ level name env = find_name level name env.current
 
-  let find_name ?edge:_ _root level name env = find_name level name env.current
+  let restrict env context = { env with current = context }
 
-  let restrict env sg = { env with current = sg }
-
-  let rec resolve_alias_def path def =
+  let rec resolve_alias_md path def =
     match path with
     | [] -> None
     | a :: q ->
-      match Name.Map.find a @@ proj Module def with
-      | Alias {path; _ } -> Some (List.hd path)
+      match Name.Map.find a def with
+      | M.Alias {path; weak = false; _ } -> Some path
+      | M.Alias { weak = true; _ } -> None
       | M m -> resolve_alias_sign q m.signature
+      | Namespace n -> resolve_alias_md q n.modules
       | exception Not_found -> None
   and resolve_alias_sign path = function
     | Blank -> None
-    | Exact s -> resolve_alias_def path s
+    | Exact s -> resolve_alias_md path s.modules
     | Divergence d ->
-      match resolve_alias_def path d.after with
+      match resolve_alias_md path d.after.modules with
       | Some _ as r -> r
       | None ->
         (* FIXME: Should we warn here? *)
         resolve_alias_sign path d.before
 
-  let resolve_alias path env = resolve_alias_sign path env.current
+  let resolve_alias path env =
+    match env.current with
+    | In_namespace md -> resolve_alias_md path md
+    | Signature sg -> resolve_alias_sign path sg
 
   let is_exterior path envt =
     match path with
@@ -133,20 +151,24 @@ module Base = struct
     | [] -> raise (Invalid_argument "Envt.find cannot find empty path")
     | a :: q ->
       let open Query in
-      find_name ?edge false (adjust_level level q) a env >>=
+      find_name ?edge ~root:false (adjust_level level q) a env >>=
       function
-      | M.Alias {path; _ } ->
+      | M.Alias { weak = true; _ } -> raise Not_found
+      | M.Alias {path; weak = false; _ } ->
         if require_root then
           raise Not_found
         else
-          find0 true level ( path @ q ) (top env)
+          find0 true level ( Namespaced.flatten path @ q ) (top env)
       | M.M m ->
         if require_root && not (is_unit m) then
           raise Not_found
         else if q = [] then
-          pure m
+          pure (Out.M m)
         else
-          find0 false level q  @@ restrict env m.signature
+          find0 false level q  @@ restrict env (Signature m.signature)
+      | Namespace {name;modules}  ->
+        if q = [] then pure (Namespace {name;modules}) else
+          find0 false level q @@ restrict env (In_namespace modules)
 
   let find ?(edge=Edge.Normal) level path env=
     find0 ~edge false level path env
@@ -154,11 +176,25 @@ module Base = struct
   let deps _env = Paths.P.Map.empty
   let reset_deps = ignore
 
-  let (>>) env def = restrict env SDef.(env.current +@ def.Summary.visible)
+  let to_sign = function
+    | Signature s -> s
+    | In_namespace modules ->
+      M.Exact { M.Def.empty with modules }
 
-  let add_unit env x =
-    let top = M.Def.add env.top x in
-    { top; current = Exact top }
+  let (>>) env def =
+    restrict env @@
+    Signature (Y.extend (to_sign env.current) (Y.strenghen def))
+
+  let add_unit env ?(namespace=[]) x =
+    let m: Module.t = M.with_namespace namespace x in
+    let top = Name.Map.add  (M.name m)  m env.top in
+    start top
+
+  let add_namespace env (nms:Namespaced.t) =
+    if nms.namespace = [] then env else
+    let top = M.Dict.( union env.top @@ of_list [Module.namespace nms] ) in
+    start top
+
 end
 
 
@@ -170,8 +206,10 @@ module Open_world(Envt:extended_with_deps) = struct
 
 
   module P = Paths.Pkg
-  type t = { core: Envt.t; world: Name.set; externs: Edge.t P.map ref }
+  type t = { core: Envt.t; world: Name.Set.t;
+             externs: Edge.t P.map ref }
 
+  let eq x y = Envt.eq x.core y.core
   let is_exterior path env = Envt.is_exterior path env.core
   let top env = { env with core = Envt.top env.core }
 
@@ -196,13 +234,14 @@ module Open_world(Envt:extended_with_deps) = struct
       Module.mockup name ~path:{Paths.P.source=Unknown; file=[name]}
     | l -> let name = last l in Module.mockup name
 
- let find_name ?edge root level name env =
-    try Envt.find_name ?edge root level name env.core with
+ let find_name ?edge ~root level name env =
+    try Envt.find_name ?edge ~root level name env.core with
     | Not_found ->
-      if root && Name.Set.mem name env.world then
+      if root && Name.Set.mem name
+           env.world then
         raise Not_found
       else
-        Query.pure @@ Module.md @@ approx [name]
+        Query.pure @@ M.M (approx [name])
 
  let find ?(edge=Edge.Normal) level path env =
    (*   Format.printf "Open world looking for %a\n" Paths.S.pp path; *)
@@ -210,17 +249,18 @@ module Open_world(Envt:extended_with_deps) = struct
     | Not_found ->
       let aliased, root = match resolve_alias path env with
         | Some root -> true, root
-        | None -> false, List.hd path in
+        | None -> false, Namespaced.make @@ List.hd path in
       (* Format.printf "aliased:%b, true name:%s\n" aliased root; *)
       let undefined =
         aliased ||
-        match Envt.find Module [root] env.core with
+        match Envt.find Module (Nms.flatten root) env.core with
         | exception Not_found -> true
         | _ -> false in
-      if Name.Set.mem root env.world
-      && record_level level path (* module types never come from files *)
-      && undefined (* is root defined to be something else than
-                           the unit root? *)
+      if Name.Set.mem (Namespaced.head root) env.world
+      (* module types never come from files *)
+      && record_level level path
+      (* is root defined to be something else than the unit root? *)
+      && undefined
       then
         raise Not_found
       else if undefined then
@@ -228,15 +268,18 @@ module Open_world(Envt:extended_with_deps) = struct
           if record_level level path then
             begin
               env.externs := Deps.update
-                  { P.file = [root]; source = Unknown } edge !(env.externs)
+                  { P.file = Nms.flatten root;
+                    source = Unknown } edge !(env.externs)
             end;
-          Query.( pure (approx path) ++ fault path )
+          Query.( pure (M(approx path)) ++ fault path )
         )
       else
-        Query.create (approx path) [fault path]
+        Query.create (M(approx path)) [fault path]
 
   let (>>) env sg = { env with core = Envt.( env.core >> sg ) }
-  let add_unit env m = { env with core = Envt.add_unit env.core m }
+  let add_unit env ?namespace m =
+    { env with core = Envt.add_unit env.core ?namespace m }
+  let add_namespace env n = { env with core = Envt.add_namespace env.core n }
   let restrict env m = { env with core = Envt.restrict env.core m }
 
 end
@@ -258,15 +301,16 @@ module Layered = struct
       Array.fold_left (fun (s,m) x ->
           if Filename.check_suffix x ".cmi" then
             let p = {P.source = P.Pkg origin; file = Paths.S.parse_filename x} in
-            Name.Set.add (P.module_name p) s, Name.Map.add (P.module_name p) p m
+            Name.Set.add (P.module_name p) s,
+            Name.Map.add (P.module_name p) p m
           else s, m
         )
-        Name.(Set.empty,Map.empty) files in
+        (Name.Set.empty, Name.Map.empty) files in
     { origin; resolved= Envt.start Base.empty cmis_set; cmis= cmis_map }
 
-  type t = { local: Base.t; local_units: Name.set; pkgs: source list }
+  type t = { local: Base.t; local_units: Name.Set.t; pkgs: source list }
 
-
+  let eq x y = Base.eq x.local y.local
   let is_exterior path env = Base.is_exterior path env.local
   let resolve_alias name env = Base.resolve_alias name env.local
   let top env = { env with local = Base.top env.local }
@@ -325,8 +369,8 @@ module Layered = struct
       with Not_found ->
         pkgs_find name q
 
-  let find_name ?edge root level name env =
-    try Base.find_name ?edge root level name env.local with
+  let find_name ?edge ~root level name env =
+    try Base.find_name ?edge ~root level name env.local with
     | Not_found when level = Module ->
       if root && Name.Set.mem name env.local_units then
         raise Not_found
@@ -342,11 +386,16 @@ module Layered = struct
       let open Query in
       find_name false (adjust_level level q) a env >>=
       function
-      | Alias {path; _ } -> find0 level (path @ q ) (top env)
+      | Alias { weak = true; _ } -> raise Not_found
+      | Alias {path; weak= false; _ } ->
+        find0 level (Namespaced.flatten path @ q ) (top env)
       | M.M m ->
-        if q = [] then pure m
+        if q = [] then pure (M m)
         else
-          find0 level q (restrict env m.signature)
+          find0 level q (restrict env @@ Signature m.signature)
+      | Namespace {name;modules} ->
+        if q = [] then pure (Namespace {name;modules})
+        else find0 level q (restrict env @@ In_namespace modules)
 
   let find ?edge:_ level path env =
     if Name.Set.mem (List.hd path (* paths are not empty *)) env.local_units then
@@ -356,7 +405,10 @@ module Layered = struct
 
 
   let (>>) e1 sg = { e1 with local = Base.( e1.local >> sg) }
-  let add_unit e m = { e with local = Base.add_unit e.local m }
+  let add_unit e ?namespace m =
+    { e with local = Base.add_unit e.local ?namespace m }
+  let add_namespace env n =
+    { env with local = Base.add_namespace env.local n }
 
 end
 
@@ -369,6 +421,7 @@ module Tracing(Envt:extended) = struct
            }
 
 
+  let eq x y= Envt.eq x.env y.env
   let is_exterior path env = Envt.is_exterior path env.env
   let resolve_alias name env = Envt.resolve_alias name env.env
   let top env = { env with env = Envt.top env.env }
@@ -401,7 +454,8 @@ module Tracing(Envt:extended) = struct
       let open Query in
       Envt.find_name root (adjust_level level q) a env.env >>=
       function
-      | Alias {path; phantom; name } ->
+      | Alias { weak = true; _ } -> raise Not_found
+      | Alias {path; phantom; name; weak= false } ->
         let msgs =
           match phantom with
           | None -> []
@@ -416,31 +470,44 @@ module Tracing(Envt:extended) = struct
           (* aliases link only to compilation units *)
           Query.add_msg msgs @@
           find0 ~root:true ~require_top:true
-            level (path @ q) (top env)
+            level (Namespaced.flatten path @ q) (top env)
       | M.M m ->
         if require_top && not (is_unit m) then
           raise Not_found
         else begin
           let faults = record edge root env m in
           if q = [] then
-            create m faults
+            create (M m) faults
           else
             find0 ~root:false ~require_top:false level q
-              @@ restrict env m.signature
+              @@ restrict env @@ Signature m.signature
+        end
+      | Namespace {name;modules} ->
+        begin
+          (*          let faults = record edge root env m in *)
+          (* FIXME: record Namespace deps *)
+          if q = [] then
+            pure (Namespace {name;modules})
+          else
+            find0 ~root:false ~require_top:false level q
+              @@ restrict env @@ In_namespace modules
+
         end
 
   let find ?edge level path env =
     find0 ?edge ~root:true ~require_top:false level path env
 
-  let find_name ?(edge=Edge.Normal) root level name env =
-    Query.fmap (fun m -> M.M m)
-      (find0 ~edge ~root ~require_top:false level [name] env)
+  let find_name ?(edge=Edge.Normal) ~root level name env =
+    Query.fmap (function Namespace {name;modules} -> M.Namespace {name;modules}
+                   | M x -> M.M x )
+    (find0 ~edge ~root ~require_top:false level [name] env)
 
 
   let (>>) e1 sg = { e1 with env = Envt.( e1.env >> sg) }
 
 
-  let add_unit e m = { e with env = Envt.add_unit e.env m }
+  let add_unit e ?namespace m = { e with env = Envt.add_unit e.env ?namespace m }
+  let add_namespace env n = { env with env = Envt.add_namespace env.env n }
 
   let deps env = !(env.deps)
   let reset_deps env =  env.deps := Paths.P.Map.empty

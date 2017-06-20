@@ -51,8 +51,8 @@ module Origin: sig
     | Arg (** module created for functor application *)
     | Phantom of bool * Divergence.t
     (** Module with an ambiguous signature due to a divergence.
-        In particular, it submodule structure should not be trusted and
-        is kept around only to handle delayed alias dependencies.
+        In particular, its submodule structure should not be trusted
+        and is kept around only to handle delayed alias dependencies
     *)
 
   val at_most : t -> t -> t
@@ -64,6 +64,7 @@ module Origin: sig
   val pp : Format.formatter -> t -> unit
   val reflect : Format.formatter -> t -> unit
   val sexp: (t,Sexp.one_and_many) Sexp.impl
+
 end
 type origin = Origin.t
 
@@ -77,15 +78,46 @@ type m = {
 
 (** Core module or alias *)
 and t =
-  | M of m
-  | Alias of { name:Name.t; path: Paths.S.t; phantom: Divergence.t option }
+  | M of m (** Classic module *)
+  | Alias of
+      {
+        name:Name.t; (** module Name = … *)
+        path: Namespaced.t; (** … = Path.To.Target *)
+        phantom: Divergence.t option;
+        (** Track potential delayed dependencies
+            after divergent accident:
+            [
+              module M = A  (* Alias { name = M; path = [A] } *)
+              open Unknownable (* <- divergence *)
+              open M (* Alias{ phantom = Some divergence } *)
+            ]
+            In the example above, [M] could be the local module
+            [.M], triggering the delayed alias dependency [A]. Or it could
+            be a submodule [Unknownable.M] . Without sufficient information,
+            codept defaults to computing an upper bound of dependencies,
+            and therefore considers that [M] is [.M], and the inferred
+            dependencies for the above code snipet is {A,Unknowable} .
+        *)
+        weak:bool (** Weak alias are used as placehoder in namespace *)
+      }
+  | Namespace of {name: Name.t; modules:dict}
+  (** Namespace support: Namespace are bundles of modules, used for
+      packs or as an higher-level views of the alias atlas idiom *)
 
-and definition = { modules : mdict; module_types : mdict }
+and definition = { modules : dict; module_types : dict }
 and signature =
-  | Blank
+  | Blank (** Unknown signature, used as for extern module, placeholder, … *)
   | Exact of definition
   | Divergence of { point: Divergence.t; before:signature; after:definition}
-and mdict = t Name.map
+  (** A divergent signature happens when a signature inference is disturbed
+      by opening or including an unknowable module:
+      [ module A = …
+         include Extern (* <- divergence *)
+        module B = A (* <- which A is this: .A or Extern.A ?*)
+      ]
+  *)
+
+and dict = t Name.map
 
 type arg = definition Arg.t
 type level = Module | Module_type
@@ -97,6 +129,13 @@ val of_arg : arg -> m
 val is_functor : t -> bool
 val name: t -> Name.t
 
+module Dict: sig
+  type t = dict
+  val empty: t
+  val of_list: modul_ list -> t
+  val union: t -> t -> t
+end
+
 val spirit_away: Divergence.t -> t -> t
 (** transform to a ghost module *)
 
@@ -107,7 +146,11 @@ val create :
   ?args:m option list ->
   ?origin:origin -> Name.t -> signature -> m
 
-val aliases: t -> Name.t list
+val with_namespace: Paths.S.t -> t -> t
+val namespace: Namespaced.t -> t
+
+
+val aliases: t -> Namespaced.t list
 
 (** Create a mockup module with empty signature *)
 val mockup: ?origin:Origin.t -> ?path:Paths.P.t -> Name.t -> m
@@ -119,12 +162,12 @@ val reflect : Format.formatter -> t -> unit
 
 val pp_signature : Format.formatter -> signature -> unit
 val reflect_signature : Format.formatter -> signature -> unit
-
+val reflect_modules:  Format.formatter -> dict -> unit
 
 
 val pp_alias : Format.formatter -> Paths.Expr.t option -> unit
 val pp_level : Format.formatter -> level -> unit
-val pp_mdict : Format.formatter -> mdict -> unit
+val pp_mdict : Format.formatter -> dict -> unit
 val pp_pair : Format.formatter -> string * t -> unit
 val pp_arg : Format.formatter -> m option -> unit
 val pp_args : Format.formatter -> m option list -> unit
@@ -134,8 +177,8 @@ val sexp: (modul_,Sexp.one_and_many) Sexp.impl
 
 (** Helper functions for definitions *)
 module Def: sig
-
   val empty : definition
+  val modules: dict -> definition
 
   val add : definition -> t ->  definition
   val add_type : definition -> t -> definition
@@ -143,6 +186,7 @@ module Def: sig
 
   val merge: definition -> definition -> definition
 
+  val pp: Format.formatter -> definition -> unit
   val sexp: (definition,Sexp.many) Sexp.impl
   type t = definition
 end
