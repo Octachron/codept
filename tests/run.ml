@@ -154,9 +154,9 @@ module Branch(Param:Outliner.param) = struct
     && test "lib" lib lib'
     && test "unknown" unkw unkw'
 
-  let add_info {Unit.ml; mli} (f, info) =
+  let add_info {Unit.ml; mli} ((f,p), info) =
     let k = classify f in
-    let x = (k,f,Namespaced.of_filename f, info) in
+    let x = (k,f,p, info) in
     match k.kind with
     | M2l.Structure -> { Unit.ml = x :: ml; mli }
     | M2l.Signature -> { Unit.mli = x :: mli; ml }
@@ -239,11 +239,15 @@ let l = List.map Paths.P.local
 let u = List.map (fun x -> Paths.P.{(local x) with source=Unknown})
 let std = List.map
     (fun x -> Paths.P.{(local x) with source=Special "stdlib"})
+let d x = x, Namespaced.of_filename x
+let (/) p x =
+  x, Namespaced.of_filename ~nms:[p] x
 
+let dl x = List.map (fun (f,deps) -> d f, deps) x
 
 let result =
   Sys.chdir "tests/cases";
-  List.for_all Std.deps_test_single [
+  List.for_all Std.deps_test_single @@ List.map dl [
     ["abstract_module_type.ml", []];
     ["alias_map.ml", u["Aliased__B"; "Aliased__C"] ];
     ["apply.ml", u["F"; "X"]];
@@ -257,7 +261,7 @@ let result =
     ["foreign_arg_sig.ml", u["Ext";"Ext2"] ];
     ["functor.ml", [] ];
     ["functor_with_include.ml", [] ];
-    [ "hidden.ml", u["Ext"] ];
+    ["hidden.ml", u["Ext"] ];
     ["imperfect_modules.ml", u["Ext"] ];
     ["include.ml", std ["List"] ];
     ["include_functor.ml", u["A"] ];
@@ -287,42 +291,45 @@ let result =
   ]
 
   && ( Version.( v < v_4_04) ||
-       Std.deps_test_single ["pattern_open.ml", u["A'";"E1"; "E2"; "E3";"E4"]] )
+       Std.deps_test_single [d"pattern_open.ml", u["A'";"E1"; "E2"; "E3";"E4"]] )
 
   (* Note the inferred dependencies is wrong, but there is not much
      (or far too much ) to do here *)
-  && Std.deps_test_single  [ "riddle.ml", u["M5"] ]
+  && Std.deps_test_single  [ d"riddle.ml", u["M5"] ]
   &&
-  List.for_all Std.deps_test_single [
+  List.for_all Std.deps_test_single @@ List.map dl [
     ["broken.ml", u["Ext"; "Ext2"; "Ext3"; "Ext4"; "Ext5" ] ];
     ["broken2.ml", u["A"; "Ext"; "Ext2" ]];
-      ["broken3.ml", []];
+    ["broken3.ml", []];
   ]
   &&( Sys.chdir "../mixed";
-      both ["A"] ["a.ml", l["d.mli"];
-                 "a.mli", l["b.ml"; "d.mli"];
-                 "b.ml", l["c.mli"];
-                 "c.mli", l["d.mli"];
-                 "d.mli", []
-                ]
+      both ["A"] @@ dl
+        ["a.ml", l["d.mli"];
+         "a.mli", l["b.ml"; "d.mli"];
+         "b.ml", l["c.mli"];
+         "c.mli", l["d.mli"];
+         "d.mli", []
+        ]
     )
   && ( Sys.chdir "../aliases";
-       both ["User"] [ "amap.ml", l["long__B.ml"];
-                   "user.ml", l["amap.ml"; "long__A.ml"];
-                   "long__A.ml", [];
-                   "long__B.ml", []
-                 ]
+       both ["User"] @@ dl
+         [ "amap.ml", l["long__B.ml"];
+           "user.ml", l["amap.ml"; "long__A.ml"];
+           "long__A.ml", [];
+           "long__B.ml", []
+         ]
      )
   && ( Sys.chdir "../aliases2";
-       both ["A";"C";"E"] [ "a.ml", l["b.ml"; "d.ml" ];
-                   "b.ml", [];
-                   "c.ml", [];
-                   "d.ml", [];
-                   "e.ml", []
-                 ]
+       both ["A";"C";"E"] @@ dl
+         [ "a.ml", l["b.ml"; "d.ml" ];
+           "b.ml", [];
+           "c.ml", [];
+           "d.ml", [];
+           "e.ml", []
+         ]
      )
   && (Sys.chdir "../aliases_and_map";
-      both ["n__C"; "n__D"]
+      both ["n__C"; "n__D"] @@ dl
         ["n__A.ml", l["m.ml"];
          "n__B.ml", l["m.ml"];
          "n__C.ml", l["m.ml"; "n__A.ml"];
@@ -337,19 +344,20 @@ let result =
      )
   &&
   ( Sys.chdir "../broken_network";
-    both ["A"] [
+    both ["A"] @@ dl [
       "a.ml", (l["broken.ml"; "c.ml"] @ u["B"]);
       "broken.ml", u["B"];
       "c.ml", u["Extern"] ]
   )
   &&
   ( Sys.chdir "../network";
-    both ["C"] ["a.ml", l["b.ml"]@ u ["Extern"];
-                "b.ml", []; "c.ml", l["a.ml"] ]
+    both ["C"] @@ dl
+      ["a.ml", l["b.ml"]@ u ["Extern"];
+       "b.ml", []; "c.ml", l["a.ml"] ]
   )
   &&
   ( Sys.chdir "../collision";
-    both ["A";"C";"D"]
+    both ["A";"C";"D"] @@ dl
       ["a.ml", l["b.ml"] @ u ["Ext"];
        "b.ml", [];
        "c.ml", l["b.ml"];
@@ -357,11 +365,11 @@ let result =
   )
   &&
   ( Sys.chdir "../pair";
-  both ["A"] ["a.ml", l["b.ml"];  "b.ml", u["Extern"] ]
+  both ["A"] [d"a.ml", l["b.ml"];  d"b.ml", u["Extern"] ]
   )
   &&
   ( Sys.chdir "../namespaced";
-    both ["NAME__a"; "NAME__c"] [
+    both ["NAME__a"; "NAME__c"] @@ dl [
       "NAME__a.ml", l["main.ml"; "NAME__b.ml"];
       "NAME__b.ml", l["main.ml"; "NAME__c.ml"];
       "NAME__c.ml", l["main.ml"];
@@ -370,16 +378,16 @@ let result =
   )
   &&
   ( Sys.chdir "../module_types";
-  both ["B"] ["a.mli", u["E"];  "b.ml", l["a.mli"] ]
+  both ["B"] @@ dl ["a.mli", u["E"]; "b.ml", l["a.mli"] ]
   )
   &&
   (
     Sys.chdir "../5624";
     Eps.deps_test
       (Some ["C"],
-       [ "a.mli", [];
-         "b.mli", l["a.mli"];
-         "c.ml", l["a.mli"; "b.mli"]
+       [ d"a.mli", [];
+         d"b.mli", l["a.mli"];
+         d"c.ml", l["a.mli"; "b.mli"]
        ]
       )
   )
@@ -388,7 +396,7 @@ let result =
     Sys.chdir "../deep-eps";
     Eps.deps_test
       (Some ["C"] ,
-       [
+       dl [
          "a.mli", l["w.mli";"z.mli"; "k.ml"];
          "b.mli", l["a.mli"; "w.mli"; "z.mli"];
          "c.ml", l["a.mli"; "b.mli"; "w.mli"; "z.mli"];
@@ -408,23 +416,32 @@ let result =
         [ Printf.sprintf "m%03d.mli" k, [] ]
       else
         (Printf.sprintf "m%03d.mli" k, dep) :: (deps @@ k+1) in
-    both ["M001"] @@ deps 1
+    both ["M001"] @@ dl @@ deps 1
   )
     &&
   ( Sys.chdir "../stops";
-    both ["A"] ["a.ml", l["b.ml"; "c.ml"; "d.ml"; "e.ml"; "f.ml"]
-              ; "b.ml", l["z.ml"]
-              ; "c.ml", l["y.ml"]
-              ; "d.ml", l["x.ml"]
-              ; "e.ml", l["w.ml"]
-              ; "f.ml", l["v.ml"]
-              ; "v.ml", l["e.ml"]
-              ; "w.ml", l["d.ml"]
-              ; "x.ml", l["c.ml"]
-              ; "y.ml", l["b.ml"]
-              ; "z.ml", l[]
-              ]
-)
+    both ["A"] @@ dl
+      [ "a.ml", l["b.ml"; "c.ml"; "d.ml"; "e.ml"; "f.ml"]
+      ; "b.ml", l["z.ml"]
+      ; "c.ml", l["y.ml"]
+      ; "d.ml", l["x.ml"]
+      ; "e.ml", l["w.ml"]
+      ; "f.ml", l["v.ml"]
+      ; "v.ml", l["e.ml"]
+      ; "w.ml", l["d.ml"]
+      ; "x.ml", l["c.ml"]
+      ; "y.ml", l["b.ml"]
+      ; "z.ml", l[]
+      ]
+  )
+    && ( Sys.chdir "../uncoupled";
+         both ["A";"C"]
+           [
+             d"a.ml", l["b.ml"];
+            "N" / "b.ml", [];
+            d"c.ml", l ["b.ml"]
+           ]
+       )
     && (
       Sys.chdir "../cases";
       Std.cycle_test [["Self_cycle"]] ["self_cycle.ml"]
@@ -432,17 +449,18 @@ let result =
     &&
     (
       Sys.chdir "../ω-cycle";
-      Std.cycle_test [["C1";"C2";"C3";"C4";"C5"]] [ "a.ml"
-                    ; "b.ml"
-                    ; "c1.ml"
-                    ; "c2.ml"
-                    ; "c3.ml"
-                    ; "c4.ml"
-                    ; "c5.ml"
-                    ; "k.ml"
-                    ; "l.ml"
-                    ; "w.ml"
-                                              ]
+      Std.cycle_test [["C1";"C2";"C3";"C4";"C5"]] [
+        "a.ml"
+      ; "b.ml"
+      ; "c1.ml"
+      ; "c2.ml"
+      ; "c3.ml"
+      ; "c4.ml"
+      ; "c5.ml"
+      ; "k.ml"
+      ; "l.ml"
+      ; "w.ml"
+      ]
     )
     && (
       Sys.chdir "../2+2-cycles";
@@ -462,7 +480,7 @@ let result =
     ( Sys.chdir "../../lib";
       Std.gen_deps_test (Std.ocamlfind "compiler-libs") Std.precise_deps_test
         (Some ~:["Solver"; "Standard_policies"])
-        [
+        (dl[
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
           "ast_converter.ml", ( ["Loc"; "M2l"; "Name"; "Option"; "Module";
                                  "Paths"],
@@ -570,7 +588,7 @@ let result =
             []);
           "support.ml", ([],["String"],[]);
           "support.mli", ([],[],[]);
-        ]
+        ])
       )
     )
 
