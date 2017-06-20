@@ -140,8 +140,7 @@ let solve param (E((module Envt), core)) (units: _ Unit.pair) =
 let solve_from_seeds seeds loader files param
     (E((module Envt), core)) =
   let module S = Solver.Directed(Envt)((val lift param)) in
-  let gen = S.generator loader files in
-  snd @@ S.solve gen core seeds
+  snd @@ S.solve loader files core seeds
 
 let remove_units invisibles =
   List.filter @@ function

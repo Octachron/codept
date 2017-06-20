@@ -598,7 +598,7 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
         Fault.handle Param.policy
           Standard_faults.local_module_conflict k
         @@ List.map
-          (fun (_k,x,_n) -> Paths.P.local x) l; 
+          (fun (_k,x,_n) -> Paths.P.local x) l;
         Some a in
     let convert_p (k, p) = k, Unit.unimap (convert k) p
     in
@@ -611,7 +611,10 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
       |> Unit.unimap (Option.fmap load_file)
 
 
-  let start gen env roots =
+  let start loader files env roots =
+    let add env (_,_,nms) = Envt.add_namespace env nms in
+    let env = List.fold_left add env files in
+    let gen = generator loader files in
     {
       gen;
       resolved = Paths.P.Map.empty ;
@@ -657,7 +660,7 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
       { state with pending = Mp.empty;
                    not_ancestors = Namespaced.Set.empty }
 
-  let solve gen core seeds =
+  let solve loader files core seeds =
     let rec solve_harder ancestors state =
       match ancestors with
       | _ :: g :: _ when eq g state -> exit 2
@@ -667,7 +670,9 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
       | Error s ->
         Fault.handle Param.policy fault  (alias_resolver s) (wip s);
         solve_harder (s :: ancestors) @@ approx_and_try_harder s in
-    solve_harder [] @@ start gen core seeds
+    solve_harder [] @@ start loader files core seeds
 
+  type entry = Read.kind * string * Namespaced.t
+  type loader = entry -> Unit.s
 
 end

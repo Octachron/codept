@@ -119,22 +119,22 @@ sig
   val alias_resolver: state -> Failure.alias_resolver
 
 
+  type entry = Read.kind * string * Namespaced.t
+  type loader = entry -> Unit.s
+
   (** Generate unit files when needed from a
       loading function and a list of files *)
-  val generator:
-    ( (Read.kind * string * Namespaced.t) -> Unit.s )
-    -> (Read.kind * string * Namespaced.t) list
-    -> gen
+  val generator: loader -> entry list -> gen
 
 
-  val start: gen -> Envt.t -> Namespaced.t list ->
+  val start: loader -> entry list -> Envt.t -> Namespaced.t list ->
     state
 
   val eval: state -> i -> (state,state) result
 
   val solve_once: state -> (Envt.t * Unit.r list, state) result
   val approx_and_try_harder: state -> state
-  val solve: gen -> Envt.t -> Namespaced.t list
+  val solve: loader -> entry list -> Envt.t -> Namespaced.t list
     -> Envt.t * Unit.r list
 
 end

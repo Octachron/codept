@@ -57,10 +57,9 @@ module Branch(Param:Outliner.param) = struct
 
   let analyze_k pkgs files roots =
     let core, units = organize pkgs files in
-    let gen = D.generator (read policy)
-        (files.ml @ files.mli) in
+    let loader, files = read policy, files.ml @ files.mli in
     S.solve core units,
-    Option.fmap (fun roots -> snd @@ D.solve gen core roots) roots
+    Option.fmap (fun roots -> snd @@ D.solve loader files core roots) roots
 
   module CSet =
     Set.Make(struct
