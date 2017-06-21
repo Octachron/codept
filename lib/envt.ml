@@ -64,6 +64,11 @@ module Core = struct
       providers = []
     }
 
+  let pp_context ppf = function
+    | In_namespace modules ->
+      Pp.fp ppf "namespace [%a]@." Module.pp_mdict modules
+    | Signature sg -> Pp.fp ppf "[%a]@." Module.pp_signature sg
+
   module D = struct
     let path_record edge p env =
       env.deps := Deps.update p edge !(env.deps)
@@ -166,8 +171,9 @@ module Core = struct
                   else None)
 
 
-  let rec find ?(edge=Edge.Normal) ~root level path env =
+  let rec find ~absolute_path ?(edge=Edge.Normal) ~root level path env =
     debug "looking for %a" Paths.S.pp path;
+    debug "in %a" pp_context env.current;
     match path with
     | [] ->
       raise (Invalid_argument "Envt.find cannot find empty path")
@@ -183,8 +189,9 @@ module Core = struct
           end
         | None -> request lvl a env
         | Some _ as x -> x in
-      r >>? function
-      | Alias { weak = true; _ } -> None
+      r >>?
+      begin debug "found %s" a;
+      function
       | Alias {path; phantom; name; weak= false } ->
         debug "alias to %a" Namespaced.pp path;
         let msgs =
@@ -196,10 +203,18 @@ module Core = struct
             else [] in
         (* aliases link only to compilation units *)
         Option.(
-          find ~root:true ~edge
+          find ~absolute_path:false ~root:true ~edge
             level (Namespaced.flatten path @ q) (top env)
           >>| Query.add_msg msgs
         )
+
+      | Alias { weak = true; path; _ } ->
+        begin if absolute_path then
+            None
+          else
+            find ~absolute_path:true ~root:true ~edge level
+              (Namespaced.flatten path) (top env)
+        end
       | M.M m ->
         debug "found module %s" m.name;
         begin
@@ -207,7 +222,7 @@ module Core = struct
           if q = [] then
             Some ((create (M m) faults))
           else
-            find  ~root:false level q
+            find ~absolute_path:false ~root:false level q
             @@ restrict env @@ Signature m.signature
         end
       | Namespace {name;modules} ->
@@ -216,13 +231,14 @@ module Core = struct
           if q = [] then
             Some (Query.pure (Namespace {name;modules}))
           else
-            find ~root:true level q
+            find ~absolute_path ~root:true level q
             @@ restrict env @@ In_namespace modules
 
         end
+      end
 
   let find ?edge level path envt =
-    match find ?edge ~root:true level path envt with
+    match find ~absolute_path:false ?edge ~root:true level path envt with
     | None -> raise Not_found
     | Some x -> x
 
@@ -240,20 +256,17 @@ module Core = struct
 
   let add_unit env ?(namespace=[]) x =
     let m: Module.t = M.with_namespace namespace x in
-    let t = Name.Map.add  (M.name m)  m env.top in
+    let t = Module.Dict.( union env.top (of_list [m]) ) in
+    debug "@[<hov 2>adding %s to@ @[[%a]@] yielding@ @[[%a]@]@]"
+      (M.name m) M.pp_mdict env.top M.pp_mdict t;
     top { env with top = t }
-
-  let pp_context ppf = function
-    | In_namespace modules ->
-      Pp.fp ppf "namespace [%a]@." Module.pp_mdict modules
-    | Signature sg -> Pp.fp ppf "[%a]@." Module.pp_signature sg
 
   let add_namespace env (nms:Namespaced.t) =
     debug "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
       env.current;
     if nms.namespace = [] then env else
     let t = M.Dict.( union env.top @@ of_list [Module.namespace nms] ) in
-    debug "result: %a" pp_context env.current;
+    debug "result: %a" M.pp_mdict t;
     top { env with top = t }
 
   let rec resolve_alias_md path def =
@@ -261,10 +274,9 @@ module Core = struct
     | [] -> None
     | a :: q ->
       match Name.Map.find a def with
-      | M.Alias {path; weak = false; _ } ->
+      | M.Alias {path; _ } ->
         debug "resolved to %a" Namespaced.pp path;
         Some path
-      | M.Alias { weak = true; _ } -> None
       | M m -> resolve_alias_sign q m.signature
       | Namespace n -> resolve_alias_md q n.modules
       | exception Not_found -> None
@@ -297,6 +309,8 @@ module Core = struct
         | M.Alias _ -> false
         | _ -> false
 
+
+  let pp ppf x = pp_context ppf x.current
 end
 
 let mask fileset request =

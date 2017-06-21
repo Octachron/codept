@@ -464,6 +464,24 @@ let result =
         ]
     end
 
+    && begin Sys.chdir "../siblings";
+        both ["L.L.A"; "A"; "L.A"; "R.R.A"; "R.R.B" ] @@ dl
+        [
+          "L/L/a.ml", l["L/L/b.ml"; "L/R/a.ml"];
+          "L/L/b.ml", l["L/R/b.ml"];
+          "L/a.ml", l["L/L/a.ml";"L/R/a.ml"];
+          "L/R/a.ml", l["L/R/b.ml"];
+          "L/R/b.ml", [];
+          "a.ml", l["L/L/a.ml";"R/R/b.ml"];
+          "R/R/a.ml", l["R/R/b.ml"; "L/a.ml"];
+          "R/R/b.ml", l["R/L/b.ml"];
+          "R/L/a.ml", l["R/L/b.ml"];
+          "R/L/b.ml", []
+
+        ]
+    end
+
+
     (** Cycle tests *)
     && (
       Sys.chdir "../cases";
@@ -533,15 +551,24 @@ let result =
              "Standard_faults";"Standard_policies"],
             ["Array"; "Filename"; "List";"Sys"],
             []);
+          "envt.mli", (
+            ["Deps"; "Module";"Name"; "Outliner";
+             "Paths"], [], []);
+          "envt.ml", (
+            ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
+             "Module"; "Name"; "Namespaced"; "Paths";
+             "Standard_faults";"Standard_policies";"Option";"Pp"],
+            ["Array"; "Filename"; "List";"Sys"; "Format"],
+            []);
           "outliner.mli", (
             ["Deps"; "Fault"; "Module"; "Namespaced";  "Name";
              "Paths";"M2l"; "Summary"],
-            [],[]);
+            ["Format"],[]);
           "outliner.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Namespaced";
              "Option"; "Paths"; "Mresult"; "Fault"; "Standard_faults";
              "Deps"]
-          ,["List"],[]);
+          ,["List";"Format"],[]);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";"Sexp" ],
                       ["Format"],[]);
           "m2l.ml", (["Loc"; "Deps"; "Module"; "Mresult"; "Name";
@@ -591,7 +618,7 @@ let result =
              "M2l"; "Module"; "Mresult"; "Namespaced";
              "Option"; "Pp"; "Paths"; "Read"; "Unit"; "Fault";
              "Standard_faults"],
-            ["List"; "Map"; "Set"],[]);
+            ["List"; "Map"; "Set";"Format"],[]);
           "standard_faults.ml", (
             ["Fault"; "Module"; "Namespaced"; "Paths"; "Pp"; "Loc" ],
             ["Format"; "Location"; "Syntaxerr"],[]);

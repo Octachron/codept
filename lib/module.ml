@@ -197,7 +197,7 @@ module Dict = struct
 
   let union =
     let rec merge _k x y = match x, y with
-      | Alias {weak=true; _ }, x
+      | Alias {weak=true; _}, x -> Some x
       | x, Alias {weak=true; _ } -> Some x
       | Namespace n, Namespace n' ->
         Some (
@@ -397,15 +397,18 @@ let create
     ?(origin=Origin.Submodule) name signature =
   { name; origin; args; signature}
 
-let rec namespace (path:Namespaced.t) = match path.namespace with
-  | [] -> raise (Invalid_argument "Module.namespace: empty namespace")
-  | [name] ->
-    let placeholder =
-      Alias { name= path.name; path; phantom = None; weak = true } in
-    Namespace { name; modules = Dict.of_list[placeholder] }
-  | name :: nms ->
-    let path = Namespaced.make ~nms path.name in
-    Namespace {name; modules = Dict.of_list [namespace path] }
+let namespace (path:Namespaced.t) =
+  let rec namespace (global:Namespaced.t) path =
+    match path with
+    | [] -> raise (Invalid_argument "Module.namespace: empty namespace")
+    | [name] ->
+      let placeholder =
+        Alias { name= global.name; path=global; phantom = None; weak = true } in
+      Namespace { name; modules = Dict.of_list[placeholder] }
+  | name :: rest ->
+    Namespace {name; modules = Dict.of_list [namespace global rest] }
+  in
+  namespace path path.namespace
 
 let rec with_namespace nms module'=
   match nms with

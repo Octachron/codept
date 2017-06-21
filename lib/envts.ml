@@ -194,6 +194,7 @@ module Base = struct
     if nms.namespace = [] then env else
     let top = M.Dict.( union env.top @@ of_list [Module.namespace nms] ) in
     start top
+  let pp _x = assert false
 
 end
 
@@ -281,7 +282,7 @@ module Open_world(Envt:extended_with_deps) = struct
     { env with core = Envt.add_unit env.core ?namespace m }
   let add_namespace env n = { env with core = Envt.add_namespace env.core n }
   let restrict env m = { env with core = Envt.restrict env.core m }
-
+  let pp _x = assert false
 end
 
 module Layered = struct
@@ -410,6 +411,7 @@ module Layered = struct
   let add_namespace env n =
     { env with local = Base.add_namespace env.local n }
 
+  let pp _x = assert false
 end
 
 
@@ -426,7 +428,7 @@ module Tracing(Envt:extended) = struct
   let resolve_alias name env = Envt.resolve_alias name env.env
   let top env = { env with env = Envt.top env.env }
   let restrict env m = { env with env = Envt.restrict env.env m }
-
+  let pp _x = assert false
 
 
   let path_record edge p env =

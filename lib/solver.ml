@@ -1,6 +1,12 @@
 
+let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
+
 type i = { input: Unit.s; code: M2l.t; deps: Deps.t }
-let make input = { input; code = input.code; deps = Deps.empty }
+let make (input:Unit.s) =
+  let open_namespace = List.map
+      (fun name -> Loc.nowhere @@ M2l.Open [name]) input.path.namespace in
+  { input; code = open_namespace @ input.code; deps = Deps.empty }
+
 module Mp = Namespaced.Map module Sp = Namespaced.Set
 
 module Failure = struct
@@ -425,8 +431,6 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
     (* Invariant name ∈ state.pending, except when looking at a new seed *)
     List.hd @@ Mp.find name state.pending
 
-
-
   let remove name pending =
     match Mp.find name pending with
     | _ :: (b :: _ as q) -> Some b, Mp.add name q pending
@@ -483,7 +487,7 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
   let alias_resolver state y path =
     let env' = Envt.( state.env >> y ) in
     match Envt.resolve_alias path env' with
-    | None -> { Namespaced.namespace = []; name = List.hd path }
+    | None -> Namespaced.make (List.hd path)
     | Some name -> name
 
   let rec eval_depth state i =
@@ -520,7 +524,9 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
       | None ->
         assert false (* we failed to eval the m2l code due to something *)
       | Some { Loc.data = y, path; _ } ->
+        debug "blocked at :%a" Paths.S.pp path;
         let first_parent = alias_resolver state y path in
+        debug "first parent:%a" Namespaced.pp first_parent;
         (* are we cycling? *)
         if Namespaced.Set.mem first_parent state.not_ancestors then
           Error state
@@ -610,10 +616,10 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
       |> Option.default {Unit.ml = None; mli = None}
       |> Unit.unimap (Option.fmap load_file)
 
-
   let start loader files env roots =
     let add env (_,_,nms) = Envt.add_namespace env nms in
     let env = List.fold_left add env files in
+    debug "starting env:%a" Envt.pp env;
     let gen = generator loader files in
     {
       gen;
