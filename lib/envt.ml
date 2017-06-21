@@ -82,6 +82,15 @@ module Core = struct
         Fault.log = (fun lvl l -> f.log lvl l name breakpoint)
       }
 
+    let nosubmodule current level name =
+      let fault = Standard_faults.nonexisting_submodule in
+      {  fault with
+        Fault.log = (fun lvl l ->
+            fault.log lvl l (List.rev current) level name
+          )
+      }
+
+
     let record edge root env (m:Module.m) =
       match m.origin with
       | M.Origin.Unit p ->
@@ -171,7 +180,7 @@ module Core = struct
                   else None)
 
 
-  let rec find ~absolute_path ?(edge=Edge.Normal) ~root level path env =
+  let rec find current ~absolute_path ?(edge=Edge.Normal) ~root level path env =
     debug "looking for %a" Paths.S.pp path;
     debug "in %a" pp_context env.current;
     match path with
@@ -185,7 +194,8 @@ module Core = struct
         | None when not root || lvl = Module_type ->
           begin
             debug "approximate %s" (last path);
-            Some (pure @@ M.M(M.mockup @@ last path))
+            Some (create (M.md @@ M.mockup @@ last path)
+                    [nosubmodule current lvl a])
           end
         | None -> request lvl a env
         | Some _ as x -> x in
@@ -203,13 +213,13 @@ module Core = struct
                 else [] in
             (* aliases link only to compilation units *)
             Option.(
-              find ~absolute_path:true ~root:true ~edge
+              find (a::current) ~absolute_path:false ~root:true ~edge
                 level (Namespaced.flatten path @ q) (top env)
               >>| Query.add_msg msgs
             )
       | Alias { weak = true; _ } when absolute_path -> None
       | Alias {path; weak = true; _ } ->
-        find ~absolute_path:true ~root:true ~edge level
+        find [] ~absolute_path:true ~root:true ~edge level
           (Namespaced.flatten path) (top env)
       | M.M m ->
         debug "found module %s" m.name;
@@ -218,7 +228,7 @@ module Core = struct
           if q = [] then
             Some ((create (M m) faults))
           else
-            find ~absolute_path:false ~root:false level q
+            find (a::current) ~absolute_path:false ~root:false level q
             @@ restrict env @@ Signature m.signature
         end
       | Namespace {name;modules} ->
@@ -227,14 +237,14 @@ module Core = struct
           if q = [] then
             Some (Query.pure (Namespace {name;modules}))
           else
-            find ~absolute_path ~root:true level q
+            find (a::current) ~absolute_path ~root:true level q
             @@ restrict env @@ In_namespace modules
 
         end
       end
 
   let find ?edge level path envt =
-    match find ~absolute_path:false ?edge ~root:true level path envt with
+    match find [] ~absolute_path:false ?edge ~root:true level path envt with
     | None -> raise Not_found
     | Some x -> x
 

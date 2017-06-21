@@ -14,6 +14,9 @@ val applied_structure : (Fault.loc -> Module.Partial.t -> unit) Fault.t
 val structure_expected : (Fault.loc -> Module.Partial.t -> unit) Fault.t
 val applied_unknown : (Fault.loc -> Module.Partial.t -> unit) Fault.t
 val unknown_approximated : (Paths.S.t -> Fault.loc -> unit) Fault.t
+val nonexisting_submodule:
+  (Fault.loc -> Paths.S.t -> Module.level -> Name.t -> unit) Fault.t
+
 val ambiguous :
   (Fault.loc -> Name.t -> Module.Divergence.t -> unit) Fault.t
 

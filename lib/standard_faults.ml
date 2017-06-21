@@ -58,6 +58,18 @@ let structure_expected =
     expl = "Signature fault: a functor was not expected in this situation."
   }
 
+let nonexisting_submodule =
+    {
+      path = ["typing"; "non_existing"; "submodule"];
+      log = (fun lvl l path level name ->
+          log lvl "%a,@ module @{<m>%a@} does not contain any %s @{<m>%s@}"
+            loc l Paths.S.pp path
+            (if level=Module.Module_type then "module type" else "submodule")
+            name
+        );
+      expl="Signature fault: there was an error when looking for a non-existing \
+             submodule of a known module"
+    }
 
 let applied_unknown =
   { path = ["typing"; "apply"; "unknown"];

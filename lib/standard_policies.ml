@@ -25,6 +25,7 @@ let default =
   |> set (["typing"], Some "Typing faults", warning)
   |> set_err (applied_structure, warning)
   |> set_err (structure_expected,warning)
+  |> set_err (nonexisting_submodule,warning)
   |> set_err (applied_unknown, notification)
   |> set_err (unknown_approximated, notification)
   |> set_err (ambiguous, warning)

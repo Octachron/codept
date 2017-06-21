@@ -375,8 +375,16 @@ let g x =
 # To do
 
 * Uniformize fault messages
-* Improved exterior API for integration in build tools
-* Portability
+
+* Improved exterior API for integration in build tools:
+  * structured output: WIP
+
+* Portability:
+  * Mac, BSD: ~, ?
+  * Windows: ?
+
 * Bugs tracking
+
 * Proper library documentation
+
 * Improved library packaging
