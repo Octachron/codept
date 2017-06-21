@@ -108,10 +108,10 @@ let ambiguous =
 
 let unknown_approximated =
   { path = ["typing"; "unknown"; "approximation"];
-    log = (fun lvl path l ->
-        log lvl "%a,@ a non-resolvable module, @{<m>%a@}, has been \
+    log = (fun lvl mlvl name l ->
+        log lvl "%a,@ a non-resolvable module%s, @{<m>%s@}, has been \
                  replaced by an approximation"
-          loc l Paths.S.pp path);
+          loc l (if mlvl = Module.Module_type then " type" else "") name );
     expl = "Signature fault: an unknown module was approximated, possibly \
             leading to an over-approximation of dependencies";
   }

@@ -41,6 +41,27 @@ let last l = List.hd @@ List.rev l
 
 let to_context s = Signature (Exact s)
 
+let ambiguity name breakpoint =
+  let f = Standard_faults.ambiguous in
+  { f  with
+    Fault.log = (fun lvl l -> f.log lvl l name breakpoint)
+  }
+
+let nosubmodule current level name =
+  let fault = Standard_faults.nonexisting_submodule in
+  {  fault with
+     Fault.log = (fun lvl l ->
+         fault.log lvl l (List.rev current) level name
+       )
+  }
+
+let unknown mlvl path =
+  let fault = Standard_faults.unknown_approximated in
+  {  fault with
+     Fault.log = (fun lvl -> fault.log lvl mlvl path)
+  }
+
+
 module Core = struct
 
   type t = {
@@ -75,20 +96,6 @@ module Core = struct
 
     let phantom_record name env =
       path_record Edge.Normal { P.source = Unknown; file = [name] } env
-
-    let ambiguity name breakpoint =
-      let f = Standard_faults.ambiguous in
-      { f  with
-        Fault.log = (fun lvl l -> f.log lvl l name breakpoint)
-      }
-
-    let nosubmodule current level name =
-      let fault = Standard_faults.nonexisting_submodule in
-      {  fault with
-        Fault.log = (fun lvl l ->
-            fault.log lvl l (List.rev current) level name
-          )
-      }
 
 
     let record edge root env (m:Module.m) =
@@ -147,6 +154,7 @@ module Core = struct
   let rec find_name level name current =
     match current with
     | Signature Module.Blank ->
+      (* we are already in error mode here, no need to emit yet another warning *)
       Some (Query.pure @@ M.md @@ M.mockup name)
     | In_namespace modules ->
       if level = M.Module_type then None
@@ -176,7 +184,8 @@ module Core = struct
         (* If we did not find anything and were looking for a module type,
            we return a mockup module type *)
         ||| lazy (if level = Module_type then
-                    Some(pure @@ M.md @@ M.mockup name)
+                    Some(Query.create (M.md @@ M.mockup name)
+                           [unknown Module_type name] )
                   else None)
 
 
@@ -331,7 +340,7 @@ let approx name =
 
 let open_world request =
   debug "open world: requesting %s" request;
-  Ok (Query.pure @@ M.M(approx request))
+  Ok (Query.create(M.md @@ approx request) [unknown Module request]  )
 
 module Libraries = struct
 
