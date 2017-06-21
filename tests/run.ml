@@ -239,7 +239,14 @@ let l = List.map Paths.P.local
 let u = List.map (fun x -> Paths.P.{(local x) with source=Unknown})
 let std = List.map
     (fun x -> Paths.P.{(local x) with source=Special "stdlib"})
-let d x = x, Namespaced.of_filename x
+
+let d x =
+  x,
+  let nms = List.map String.capitalize_ascii @@ Support.split_on_char '/' x in
+  let n = Namespaced.of_path nms in
+  let name = Paths.S.(module_name @@ parse_filename n.name) in
+  { n with name }
+
 let (/) p x =
   x, Namespaced.of_filename ~nms:[p] x
 
@@ -446,14 +453,14 @@ let result =
        )
 
     && begin Sys.chdir "../any_m";
-        both ["M.F"; "M.D"]
+        both ["M.F"; "M.D"] @@ dl
         [
-          "A"/"a/m.ml", l["b/m.ml"];
-          "B"/"b/m.ml", l["d/m.ml";"e/m.ml"];
-          "C"/"c/m.ml", l["d/m.ml"] @ u["Ext"];
-          "D"/"d/m.ml", [];
-          "E"/"e/m.ml", l["d/m.ml"];
-          "F"/"f/m.ml", l["a/m.ml"]
+          "a/m.ml", l["b/m.ml"];
+          "b/m.ml", l["d/m.ml";"e/m.ml"];
+          "c/m.ml", l["d/m.ml"] @ u["Ext"];
+          "d/m.ml", [];
+          "e/m.ml", l["d/m.ml"];
+          "f/m.ml", l["a/m.ml"]
         ]
     end
 
