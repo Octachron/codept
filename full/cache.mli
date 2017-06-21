@@ -3,7 +3,7 @@
 module Findmap : Map.S with type key = Findlib.query
 
 type t = {
-  env: Envts.Base.t;
+  env: Envt.Core.t;
   signatures: Module.t list Name.map;
   m2l: Unit.s Name.map;
   findlib: ( (Common.task -> Common.task) * (unit -> unit) ) Findmap.t

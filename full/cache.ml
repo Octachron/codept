@@ -2,14 +2,14 @@
 module Findmap = Map.Make(struct type t = Findlib.query let compare = compare end)
 
 type t = {
-  env: Envts.Base.t;
+  env: Envt.Core.t;
   signatures: Module.t list Name.map;
   m2l: Unit.s Name.map;
   findlib: ( (Common.task -> Common.task) * (unit -> unit) ) Findmap.t
 }
 
 let empty =
-  { env = Envts.Base.empty;
+  { env = Envt.Core.empty;
     signatures = Name.Map.empty;
     m2l = Name.Map.empty;
     findlib = Findmap.empty

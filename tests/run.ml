@@ -542,15 +542,6 @@ let result =
           "summary.ml", (
             ["Module"; "Pp"; "Mresult"; "Name"; "Sexp"],
             ["List"], []);
-          "envts.mli", (
-            ["Deps"; "Module";"Name"; "Outliner";
-             "Paths"], [], []);
-          "envts.ml", (
-            ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
-             "Module"; "Name"; "Namespaced"; "Paths";
-             "Standard_faults";"Standard_policies"],
-            ["Array"; "Filename"; "List";"Sys"],
-            []);
           "envt.mli", (
             ["Deps"; "Module";"Name"; "Outliner";
              "Paths"], [], []);

@@ -164,13 +164,11 @@ module Collisions = struct
 
   (** Compute local/libraries collisions *)
   let libs (task:Common.task) units =
-    let module E = Envts.Layered in
-    let env =
-      let base = Envts.Base.empty in
-      E.create task.libs Name.Set.empty base in
+    let env = Envt.start ~open_approximation:false
+        Name.Set.empty task.libs Module.Dict.empty in
     let m = Namespaced.Map.empty in
     List.fold_left (fun m (u:Unit.s) ->
-        match E.find M.Module (Namespaced.flatten u.path) env with
+        match Envt.Core.find M.Module (Namespaced.flatten u.path) env with
         | exception Not_found -> m
         | { main = M { M.origin = Unit p; _ }; msgs= [] } ->
           (add u.path p @@ add u.path u.src m)

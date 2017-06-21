@@ -36,12 +36,12 @@ let approx_file _ _ ppf _param (_,f,_) =
 let one_pass _ _ ppf param (_,filename,_ as x) =
   let param = param.analyzer in
   let module Param = (val Analysis.lift param) in
-  let module Sg = Outliner.Make(Envts.Base)(Param) in
+  let module Sg = Outliner.Make(Envt.Core)(Param) in
   let start = to_m2l param.policy param.sig_only x in
   match Option.( start
                  >>| snd
                  >>| Sg.m2l (Pkg.local filename)
-                   Envts.Base.empty )
+                   Envt.Core.empty )
   with
   | None -> ()
   | Some (Ok (_state,d)) ->
