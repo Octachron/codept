@@ -192,29 +192,25 @@ module Core = struct
       r >>?
       begin debug "found %s" a;
       function
-      | Alias {path; phantom; name; weak= false } ->
-        debug "alias to %a" Namespaced.pp path;
-        let msgs =
-          match phantom with
-          | None -> []
-          | Some b ->
-            if root then
-              (phantom_record name env; [ambiguity name b])
-            else [] in
-        (* aliases link only to compilation units *)
-        Option.(
-          find ~absolute_path:false ~root:true ~edge
-            level (Namespaced.flatten path @ q) (top env)
-          >>| Query.add_msg msgs
-        )
-
-      | Alias { weak = true; path; _ } ->
-        begin if absolute_path then
-            None
-          else
-            find ~absolute_path:true ~root:true ~edge level
-              (Namespaced.flatten path) (top env)
-        end
+      | Alias {path; phantom; name; weak = false } ->
+            debug "alias to %a" Namespaced.pp path;
+            let msgs =
+              match phantom with
+              | None -> []
+              | Some b ->
+                if root then
+                  (phantom_record name env; [ambiguity name b])
+                else [] in
+            (* aliases link only to compilation units *)
+            Option.(
+              find ~absolute_path:true ~root:true ~edge
+                level (Namespaced.flatten path @ q) (top env)
+              >>| Query.add_msg msgs
+            )
+      | Alias { weak = true; _ } when absolute_path -> None
+      | Alias {path; weak = true; _ } ->
+        find ~absolute_path:true ~root:true ~edge level
+          (Namespaced.flatten path) (top env)
       | M.M m ->
         debug "found module %s" m.name;
         begin
@@ -252,7 +248,7 @@ module Core = struct
 
   let (>>) env def =
     restrict env @@
-    Signature (Y.extend (to_sign env.current) (Y.strenghen def))
+    Signature (Y.extend (to_sign env.current) def)
 
   let add_unit env ?(namespace=[]) x =
     let m: Module.t = M.with_namespace namespace x in
