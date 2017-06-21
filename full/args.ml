@@ -49,6 +49,7 @@ let param0 = {
 
     no_include = false;
     may_approx = false;
+    nested = false;
   }
 
 let task0 : Common.task = {
@@ -273,6 +274,9 @@ let args action param task fquery version =
     "-L", taskc lib,
     "<dir>: use all cmi files in <dir> in the analysis";
     "-no-alias-deps", set_t transparent_aliases, ": delay aliases dependencies";
+    "-nested", set_t nested,
+    ": Map file path <Subdir/ … /file> to module path <Subdir. … .File>, \
+     instead of just <File>";
     "-o", Cmd.String ( (:=) output ), "<filename>: mode current output file";
     "-only-ancestors-of", task_p Task.add_seed,
     "<module name>: only analyze files which are an ancestor of <module name>";

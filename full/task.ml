@@ -37,25 +37,33 @@ let add_seed _param task seed = (* TODO: namespaced seed *)
     @@ Support.remove_extension seed in
   task := { !task with seeds = seed :: (!task).seeds }
 
-let rec add_file ~prefix ~cycle_guard ~policy param path task name0 =
-  let name = String.concat "/" (prefix @ [name0]) in
-  let lax = let open Fault in
-    Policy.set_err (Codept_policies.unknown_extension, Level.info)
-      L.(!param.[policy]) in
+let file_path prefix name =
+  Some (Namespaced.make ~nms:prefix @@
+        Paths.S.(module_name @@ parse_filename name))
+
+let add_file policy synonyms task path name k =
   if Sys.file_exists name then
-    match Common.classify lax L.(!param.[synonyms]) name with
-    | None -> if Sys.is_directory name then
-        add_dir ~prefix ~policy:lax ~cycle_guard param path task
-          ~dir_name:name0 ~abs_name:name
-      else
-        Fault.handle policy Codept_policies.unknown_extension name; ()
+    match Common.classify policy synonyms name with
+    | None -> ( Fault.handle policy Codept_policies.unknown_extension name; k ())
     | Some { kind = Implementation; format } ->
       add_impl format path task name
     | Some { kind = Interface; format } ->
       add_intf format path task name
     | Some { kind = Signature; _ } ->
       add_sig task name
-and add_dir ~policy ~prefix ~cycle_guard param path task
+
+
+let rec add_file_rec ~prefix ~cycle_guard param task name0 =
+  let name = String.concat "/" (prefix @ [name0]) in
+  let lax = let open Fault in
+    Policy.set_err (Codept_policies.unknown_extension, Level.info)
+   L.(!param.[policy]) in
+  let path = file_path L.(if !param.[nested] then prefix else []) name0 in
+  let k () = if Sys.is_directory name then
+        add_dir ~prefix ~cycle_guard param task ~dir_name:name0 ~abs_name:name in
+  add_file lax L.(!param.[synonyms]) task path name k
+
+and add_dir ~prefix ~cycle_guard param task
     ~dir_name ~abs_name =
     if  cycle_guard && dir_name = "." then
        ()
@@ -63,14 +71,17 @@ and add_dir ~policy ~prefix ~cycle_guard param path task
       let cycle_guard = dir_name = "." in
       let files = Sys.readdir abs_name in
       Array.iter
-        (add_file ~policy ~prefix:(dir_name::prefix) ~cycle_guard
-           param path task)
+        (add_file_rec ~prefix:(dir_name::prefix) ~cycle_guard
+           param task)
         files
 
-let add_file param task name  =
-  let name, path = parse_filename name in
-  add_file ~policy:L.(!param.[policy]) ~cycle_guard:false ~prefix:[]
-    param path task name
+let add_file param task name0  =
+  let name, path = parse_filename name0 in
+  match path with
+  | Some _  ->
+    add_file L.(!param.[policy]) L.(!param.[synonyms]) task path name ignore
+  | None ->
+    add_file_rec ~prefix:[] ~cycle_guard:false param task name0
 
 let add_impl param task name =
   let name, path = parse_filename name in

@@ -5,6 +5,7 @@ type t =
     analyzer: Analysis.param;
     no_include:bool;
     may_approx:bool;
+    nested: bool;
   }
 
 module L = struct
@@ -33,6 +34,7 @@ module L = struct
   let analyzer = create (fun x -> x.analyzer) (fun x y -> { x with analyzer = y})
   let no_include = create
       (fun x -> x.no_include) (fun x y -> { x with no_include = y})
+  let nested = create (fun x -> x.nested) (fun x y -> { x with nested = y })
   let may_approx = create
       (fun x -> x.may_approx) (fun x y -> { x with may_approx = y})
   open Makefile

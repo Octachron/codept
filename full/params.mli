@@ -6,6 +6,7 @@ type t = {
   analyzer : Analysis.param;
   no_include : bool;
   may_approx : bool;
+  nested:bool;
 }
 
 (** Lens module for accessing nested record in params *)
@@ -46,4 +47,5 @@ module L :
     val closed_world : (t, bool) l
     val sig_only : (t, bool) l
     val policy : (t, Fault.Policy.t) l
+    val nested : (t,bool) l
   end

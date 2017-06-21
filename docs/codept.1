@@ -144,6 +144,13 @@ dependency is recorded only when the module `M` is opened in `open M`
 not during the definition of the alias.
 
 .TP
+.B -nested
+Map file path \fISubdir/…/file\fR to module path \fISubdir.….File\fR instead
+of <File>. In particular, this can be used to compute dependencies precisely
+for a deeply nested hierarchy of modules, where the same final module name
+appears multiple time at different point in the hierarchy.
+
+.TP
 .BI -o \ filename
 set the output file for the subsequent modes. Multiple outputs
 can be specified for the same invocation of \fBcodept\fR.

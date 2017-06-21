@@ -3,6 +3,7 @@ Codept intends to be a dependency solver for OCaml projects and an alternative t
 * whole project analysis
 * extensive warning and error messages
 * uniform handling of delayed alias dependencies
+* full support for nested module hierarchy
 * (experimental) full dependencies, when dependencies up to transitive closure are not enough
 
 Both ocamldep and codept compute an over-approximation of the dependency graph of OCaml projects. However, codept uses whole project analysis to reduce the number of fictitious dependencies inferred at the project scale, whereas ocamldep is, by design, limited to local file analysis.
@@ -14,7 +15,12 @@ Moreover, codept will emit warning messages any time it encounters a source of p
 
 Another important point is that codept's whole project analysis feature makes it possible to handle uniformly the delayed dependency aspect of module aliases introduced by the compiler `-no-alias-deps` option.
 
-At last, in situation where dependencies up to transitive closure are not precise enough, codept's experimental "-expand-deps" option can track more precisely type aliases induced dependencies, making it easier to track all cmi files required to compile a given file for instance.
+Nested module hierarchy is also fully supported by codept starting from version 0.10.
+In particular, when the `-nested` option is enabled, a file with path
+`dir_1/…/dir_N/a.ml` will be mapped to the module `Dir_1. … . Dir_n. A ` instead
+of just `A`.
+
+At last, in situation where dependencies up to transitive closure are not precise enough, codept's experimental `-expand-deps` option can track more precisely type aliases induced dependencies, making it easier to track all cmi files required to compile a given file for instance.
 
 Basic performance measures indicate that the average time increase when compared to ocamldepranges between 10% to 50%.
 
