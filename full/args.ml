@@ -201,14 +201,25 @@ let no_stdlib param =
 
 let usage_msg =
   "Codept is an alternative dependency solver for OCaml.\n\
-   Usage: codept [options] [⟨signature files⟩] [⟨source files⟩] [⟨m2l files⟩]\n\
+   Usage: codept [options] [⟨signature files⟩] [⟨source files|m2l files⟩ groups]\n\
    − ⟨m2l⟩ files are serialized m2l ast files, identified by either a ⟨.m2l⟩ or\
      ⟨.m2li⟩ extension.\n\
    − ⟨signature⟩ files are signature information files, identified by \
    a ⟨.sig⟩ extension.\n\
    These two files format are useful to save persistent information between \
    multiple calls to codept.\n\n\
-   Non-existent files and files with an unknown extension are ignored.\
+   — files can be submitted as file groups. File groups allows to easily isolate
+    a subset of files in a separated namespace. For instance, in \
+    codept A[a.ml,b.ml] c.ml \
+    the compilation units a.ml and b.ml would be mapped to A.A and B.B.
+   More precisely, a file group consists in a non-empty comma-separated list \
+   of file elements. \
+   A file element consists either in a single name or in a subgroup.
+   This subgroup must be enclosed by ⟨[⟩ and ⟨]⟩ and contain itself a
+   non-empty comma-separated list of file elements. \
+   Optionally, a subgroup can be prefixed by a module path, prefixing the \
+   path of all elements inside the group with this prefix. \
+   — Non-existent files and files with an unknown extension are ignored.\
    \n\
    The following options are common with ocamldep:\n"
 open L
