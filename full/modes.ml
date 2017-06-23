@@ -18,7 +18,7 @@ type variant =
 type t =
   | Aliases
   | Dot
-  | Export
+  | Export of Name.t
   | Modules of variant * filter
   | Info
   | Signature
@@ -29,14 +29,14 @@ let info _ _ ppf _param {Unit.ml; mli} =
   let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) ppf in
   print ml; print mli
 
-let export _ _ ppf _param {Unit.mli; _} =
+let export name _ _ ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
   let sign (u:Unit.r)= u.signature in
   let md (unit:Unit.r) =
     Module.M {Module.
       name = unit.path.name
     ; origin =
-        Unit { source=Pkg.Special "exported"; file = [unit.path.name] }
+        Unit { source=Pkg.Special name; file = [unit.path.name] }
     ; args = []
     ; signature = sign unit
     } in
@@ -211,7 +211,7 @@ end
 let eval = function
   | Aliases -> aliases
   | Dot -> dot
-  | Export -> export
+  | Export name -> export name
   | Modules (Standard, filter) -> modules ~filter:(Filter.eval filter)
   | Modules (Nl, filter) -> line_modules ~filter:(Filter.eval filter)
   | Info -> info
