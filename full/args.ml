@@ -296,8 +296,8 @@ let args action param task fquery version =
     ^ "\n\n Codept only modes:\n";
 
     "-info", Unit (mode Modes.Info), ": print detailed information";
-    "-export", Unit (mode Modes.Export), ": export resolved modules signature";
-
+    "-export", String (fun s -> mode (Modes.Export s) ()),
+    "<name>: export resolved modules signature";
     "-dot", Unit (mode Modes.Dot), ": print dependencies in dot format";
     "-makefile", Unit (makefile_c action), ": print makefile depend file(default)";
     "-approx-m2l", Unit (set_iter Single.Approx_file),

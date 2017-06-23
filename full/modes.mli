@@ -13,7 +13,7 @@ type variant =
 type t =
   | Aliases
   | Dot
-  | Export
+  | Export of Name.t
   | Modules of variant * filter
   | Info
   | Signature
@@ -40,7 +40,7 @@ val dot: mode
 val sort: mode
 
 (** Export the inferred m2l signature in ocaml syntax *)
-val export: mode
+val export: Name.t -> mode
 
 (** Display generic information on the result of codept analysis *)
 val info: mode

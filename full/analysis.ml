@@ -171,7 +171,7 @@ module Collisions = struct
         match Envt.Core.find M.Module (Namespaced.flatten u.path) env with
         | exception Not_found -> m
         | { main = M { M.origin = Unit p; _ }; msgs= [] } ->
-          (add u.path p @@ add u.path u.src m)
+          (add u.path p.source @@ add u.path u.src m)
         | { msgs = _ :: _ ; _ }
         | { main = Namespace _ | M { M.origin =
                        (Phantom _ |Arg|Submodule|First_class); _ }; _ }

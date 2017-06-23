@@ -45,7 +45,8 @@ end
 (** Module origin *)
 module Origin: sig
   type t =
-    | Unit of Paths.Pkg.t (** toplevel module mapped from a unit file *)
+    | Unit of {source:Paths.Pkg.t; path:Paths.S.t}
+    (** toplevel module mapped from a unit file *)
     | Submodule (** non top-level module *)
     | First_class (** unpacked first-class module *)
     | Arg (** module created for functor application *)

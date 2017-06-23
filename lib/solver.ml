@@ -325,7 +325,9 @@ module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
       let env =
         if learn then begin
           let input = unit.input in
-          let md = Module.( create ~origin:(Unit input.src))
+          let md = let open Module in
+            create
+              ~origin:(Unit {source=input.src; path=Namespaced.flatten input.path})
               input.path.name sg in
           Envt.add_unit ~namespace:input.path.namespace state.env
             (Module.M md)
@@ -502,8 +504,10 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
         if Namespaced.Set.mem path state.learned then
           state
         else
+          let origin =
+            Module.Origin.Unit {source=src; path=Namespaced.flatten path} in
           let md = Module.md @@
-            Module.(create ~origin:(Unit src)) path.name sg in
+            Module.create ~origin path.name sg in
           let env =
             Envt.add_unit state.env ~namespace:path.namespace md in
           { state with env;

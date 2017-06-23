@@ -93,7 +93,8 @@ module Origin = struct
   type source = Pkg.t
 
   type t =
-    | Unit of source (** aka toplevel module *)
+    | Unit of {source:Paths.P.t; path:Paths.S.t}
+    (** aka toplevel module *)
     | Submodule
     | First_class (** Not resolved first-class module *)
     | Arg (** functor argument *)
@@ -101,10 +102,13 @@ module Origin = struct
     (** Ambiguous module, that could be an external module *)
 
   let pp ppf = function
-    | Unit { Pkg.source= Local; _ } -> Pp.fp ppf "#"
-    | Unit { Pkg.source = Pkg x; _ } -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
-    | Unit { Pkg.source = Unknown; _} -> Pp.fp ppf "#!"
-    | Unit { Pkg.source = Special n; _} -> Pp.fp ppf "*(%s)" n
+    | Unit s ->
+      begin match s.source.Pkg.source with
+        | Pkg.Local-> Pp.fp ppf "#"
+        | Pkg x -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
+        | Unknown -> Pp.fp ppf "#!"
+        | Special n -> Pp.fp ppf "*(%s)" n
+      end
     | Submodule -> Pp.fp ppf "."
     | First_class -> Pp.fp ppf "'"
     | Arg -> Pp.fp ppf "§"
@@ -113,9 +117,10 @@ module Origin = struct
   module Sexp = struct
     open Sexp
     let unit = C { name = "Unit";
-                   proj = (function Unit s -> Some s | _ -> None);
-                   inj = (fun x -> Unit x);
-                   impl = Pkg.sexp;
+                   proj = (function Unit {source;path} ->
+                       Some (source,path) | _ -> None);
+                   inj = (fun (source,path) -> Unit {source;path});
+                   impl = pair Pkg.sexp Paths.S.sexp;
                    default = None;
                  }
 
@@ -136,7 +141,8 @@ module Origin = struct
 
 
     let reflect ppf = function
-    | Unit pkg  -> Pp.fp ppf "Unit %a" Pkg.reflect pkg
+      | Unit u  -> Pp.fp ppf "Unit {source=%a;path=[%a]}"
+                     Pkg.reflect u.source Pp.(list ~sep:(const ";@ ") estring) u.path
     | Submodule -> Pp.fp ppf "Submodule"
     | First_class -> Pp.fp ppf "First_class"
     | Arg -> Pp.fp ppf "Arg"
@@ -197,8 +203,9 @@ module Dict = struct
 
   let union =
     let rec merge _k x y = match x, y with
-      | Alias {weak=true; _}, x -> Some x
-      | x, Alias {weak=true; _ } -> Some x
+      | (M { origin = Unit {path = p;_}; _ } as x), Alias {weak=true; path; _ }
+        when Namespaced.flatten path = p -> Some x
+      (*      | x, Alias {weak=true; _ } -> Some x *)
       | Namespace n, Namespace n' ->
         Some (
           Namespace { name = n.name;
@@ -312,7 +319,7 @@ and reflect_namespaced ppf nd =
       Pp.(list ~sep:(s";@ ") @@ estring) nd.namespace
       Pp.estring nd.name
 and reflect_m ppf {name;args;origin;signature} =
-  Pp.fp ppf {|@[<hov>{name="%s"; origin=%a; args=%a; signature=Exact(%a)}@]|}
+  Pp.fp ppf {|@[<hov>{name="%s"; origin=%a; args=%a; signature=%a}@]|}
     name
     Origin.reflect origin
     reflect_args args
@@ -341,7 +348,7 @@ and reflect_args ppf args =
   Pp.fp ppf "[%a]" (Pp.(list ~sep:(s "; @,") ) @@ reflect_arg ) args
 
 let reflect_modules ppf dict =
-  Pp.fp ppf "Dict.of_list @[%a@]"
+  Pp.fp ppf "Dict.of_list @[<v 2>[%a]@]"
     (Pp.list ~sep:(Pp.s "; @,") @@ fun ppf (_,m) -> reflect ppf m)
     (Name.Map.bindings dict)
 
@@ -382,7 +389,7 @@ and pp_args ppf args = Pp.fp ppf "%a" (Pp.(list ~sep:(s "@,→") ) @@ pp_arg )
 
 let mockup ?origin ?path name =
   let origin = match origin, path with
-    | _, Some p -> Origin.Unit p
+    | _, Some p -> Origin.Unit {source= p; path=[name]}
     | Some o, None -> o
     | _ -> Submodule in
   {

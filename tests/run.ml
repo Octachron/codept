@@ -473,7 +473,7 @@ let result =
           "L/R/a.ml", l["L/R/b.ml"];
           "L/R/b.ml", [];
           "a.ml", l["L/L/a.ml";"R/R/b.ml"];
-          "R/R/a.ml", l["R/R/b.ml"; "L/a.ml"];
+          "R/R/a.ml", l["R/R/b.ml"; "R/L/a.ml"];
           "R/R/b.ml", l["R/L/b.ml"];
           "R/L/a.ml", l["R/L/b.ml"];
           "R/L/b.ml", []

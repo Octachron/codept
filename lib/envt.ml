@@ -101,7 +101,7 @@ module Core = struct
     let record edge root env (m:Module.m) =
       match m.origin with
       | M.Origin.Unit p ->
-        path_record edge p env; []
+        path_record edge p.source env; []
       | Phantom (phantom_root, b) ->
         if root && not phantom_root then
           (phantom_record m.name env; [ambiguity m.name b] ) else []
@@ -394,13 +394,14 @@ module Libraries = struct
         end
       | Ok (_, sg) ->
         let md = M.create
-            ~origin:(M.Origin.Unit path) name sg in
+            ~origin:(M.Origin.Unit {source=path;path=[name]}) name sg in
         source.resolved <- Core.add_unit source.resolved (M.M md);
         track source q
 
   let rec pkg_find name source =
     match Core.find_name M.Module name source.resolved.current with
-    | Some {main = M.M { origin = Unit { source = Unknown; _ }; _ }; _ } ->
+    | Some {main =
+              M.M { origin = Unit {source={ source = Unknown; _ }; _ }; _ }; _} ->
       raise Not_found
     | None ->
       let path = Name.Map.find name source.cmis in

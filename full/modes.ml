@@ -33,10 +33,13 @@ let export name _ _ ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
   let sign (u:Unit.r)= u.signature in
   let md (unit:Unit.r) =
+    let fp = Namespaced.flatten unit.path in
     Module.M {Module.
       name = unit.path.name
     ; origin =
-        Unit { source=Pkg.Special name; file = [unit.path.name] }
+        Unit { source = { source=Pkg.Special name; file = fp };
+               path = fp
+             }
     ; args = []
     ; signature = sign unit
     } in
@@ -53,7 +56,7 @@ let signature filename writer ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
   let md {Unit.signature; src; path; _  } =
     Module.M ( Module.create ~args:[]
-      ~origin:(Unit src)
+      ~origin:(Unit {source=src;path=Namespaced.flatten path})
       path.name signature
              )
   in
