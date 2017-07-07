@@ -1,10 +1,14 @@
 type void = private Void
 
+module L = struct
+  type 'a t = 'a list =
+    | [  ]
+    | (::) of 'a * 'a t
+end
+
 type 'a tuple =
   | []: void tuple
   | (::): 'a * 'b tuple -> ('a * 'b) tuple
-
-type ('a,'b) field = ..
 
 module type name = sig type t val s:string end
 module Name(X:sig val s:string end) = struct type t include X end
@@ -41,6 +45,8 @@ and 'a record =
   | (::): ( 'a name * ('m,'b) elt) * 'c record ->
     ('m * 'a * 'b * 'c) record
 
+type ('m,'a,'b) field = 'a name * ('m, 'b) elt
+
 
 let rec json: type a. a t -> Format.formatter -> a -> unit =
   fun sch ppf x -> match sch, x with
@@ -49,35 +55,29 @@ let rec json: type a. a t -> Format.formatter -> a -> unit =
     | String, s -> Pp.estring ppf s
     | Array k, l ->
       Pp.fp ppf "@[<hov>[%a]@]"
-        (Pp.list ~sep:(Pp.const ",@ ") @@ json k) l
+        (Pp.list ~sep:(Pp.s ",@ ") @@ json k) l
     | [], [] -> ()
     | [a], [x] -> json a ppf x
     | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json a) x (json q) xs
-    | Obj sch, x -> Pp.fp ppf "@[{%a}@]" (json_obj sch) x
+    | Obj sch, x -> Pp.fp ppf "@[<hov>{@;<1 2>%a@;<1 2>}@]" (json_obj sch) x
 and json_obj: type a.
   a record_declaration -> Format.formatter -> a record -> unit =
   fun sch ppf x -> match sch, x with
     | [], [] -> ()
     | (_, name,sch) :: q ,   (_, Just x) :: xs ->
-      Format.fprintf ppf {|"%s":%a,@ %a|}
-        (show name) (json sch) x (json_obj q) xs
+      Pp.fp ppf {|"%s":%a|} (show name) (json sch) x;
+      begin match q, xs  with
+        | [], [] -> ()
+        | _ -> Pp.fp ppf ",@ %a" (json_obj q) xs
+      end
     | (Opt,_,_) :: q, (_, Nothing ) :: xs ->
       json_obj q ppf xs
-
-
-module Module = Name(struct let s = "module" end)
-module Ml = Name(struct let s = "ml" end)
-module Mli = Name(struct let s = "mli" end)
-
-let ml: Ml.t name = (module Ml)
-let mli: Mli.t name = (module Mli)
-let m: Module.t name = (module Module)
 
 let ($=) field x = field, Just x
 let skip name = name, Nothing
 
-let path = Array String
-let deps = Array path
-let item = [path;deps]
-let assoc = Obj [Req,m,path;Opt,ml,path;Opt,mli,path]
-let sch = [Array assoc; Array item]
+let ($=?) field x = match x with
+  | Some x -> field $= x
+  | None -> skip field
+
+let obj (x:_ record)= x

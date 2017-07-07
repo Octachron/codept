@@ -87,14 +87,14 @@ full/makefile.cmx : lib/unit.cmx lib/support.cmx lib/standard_faults.cmx \
     lib/read.cmx lib/pp.cmx lib/paths.cmx lib/name.cmx lib/fault.cmx \
     lib/deps.cmx full/common.cmx full/codept_policies.cmx full/makefile.cmi
 full/makefile.cmi : lib/unit.cmi lib/fault.cmi full/common.cmi
-full/modes.cmo : lib/unit.cmi full/sorting.cmi lib/pp.cmi lib/paths.cmi \
-    full/params.cmi lib/option.cmi lib/namespaced.cmi lib/name.cmi \
-    lib/module.cmi full/makefile.cmi full/io.cmi lib/deps.cmi full/common.cmi \
-    full/modes.cmi
-full/modes.cmx : lib/unit.cmx full/sorting.cmx lib/pp.cmx lib/paths.cmx \
-    full/params.cmx lib/option.cmx lib/namespaced.cmx lib/name.cmx \
-    lib/module.cmx full/makefile.cmx full/io.cmx lib/deps.cmx full/common.cmx \
-    full/modes.cmi
+full/modes.cmo : lib/unit.cmi full/sorting.cmi lib/scheme.cmi \
+    full/schema.cmi lib/pp.cmi lib/paths.cmi full/params.cmi lib/option.cmi \
+    lib/namespaced.cmi lib/name.cmi lib/module.cmi full/makefile.cmi \
+    full/io.cmi lib/deps.cmi full/common.cmi full/modes.cmi
+full/modes.cmx : lib/unit.cmx full/sorting.cmx lib/scheme.cmx \
+    full/schema.cmx lib/pp.cmx lib/paths.cmx full/params.cmx lib/option.cmx \
+    lib/namespaced.cmx lib/name.cmx lib/module.cmx full/makefile.cmx \
+    full/io.cmx lib/deps.cmx full/common.cmx full/modes.cmi
 full/modes.cmi : lib/unit.cmi lib/paths.cmi full/params.cmi lib/name.cmi \
     full/io.cmi
 full/params.cmo : full/makefile.cmi full/common.cmi full/analysis.cmi \
@@ -103,6 +103,9 @@ full/params.cmx : full/makefile.cmx full/common.cmx full/analysis.cmx \
     full/params.cmi
 full/params.cmi : lib/name.cmi full/makefile.cmi lib/fault.cmi \
     full/common.cmi full/analysis.cmi
+full/schema.cmo : lib/scheme.cmi full/schema.cmi
+full/schema.cmx : lib/scheme.cmx full/schema.cmi
+full/schema.cmi : lib/scheme.cmi
 full/single.cmo : lib/standard_faults.cmi lib/read.cmi lib/pp.cmi \
     lib/paths.cmi full/params.cmi lib/outliner.cmi lib/option.cmi \
     lib/namespaced.cmi lib/module.cmi lib/m2l.cmi full/io.cmi lib/fault.cmi \
@@ -216,6 +219,9 @@ lib/read.cmo : lib/sexp/sexp_parse.cmi lib/sexp/sexp_lex.cmo \
 lib/read.cmx : lib/sexp/sexp_parse.cmx lib/sexp/sexp_lex.cmx \
     lib/m2l.cmx lib/cmi.cmx lib/ast_converter.cmx lib/read.cmi
 lib/read.cmi : lib/name.cmi lib/m2l.cmi
+lib/scheme.cmo : lib/pp.cmi lib/scheme.cmi
+lib/scheme.cmx : lib/pp.cmx lib/scheme.cmi
+lib/scheme.cmi :
 lib/sexp.cmo : lib/pp.cmi lib/option.cmi lib/name.cmi lib/sexp.cmi
 lib/sexp.cmx : lib/pp.cmx lib/option.cmx lib/name.cmx lib/sexp.cmi
 lib/sexp.cmi : lib/name.cmi

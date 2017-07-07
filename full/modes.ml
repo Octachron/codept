@@ -21,6 +21,7 @@ type t =
   | Export of Name.t
   | Modules of variant * filter
   | Info
+  | Json
   | Signature
   | Sort
 
@@ -28,6 +29,39 @@ type t =
 let info _ _ ppf _param {Unit.ml; mli} =
   let print =  Pp.(list ~sep:(s" @,") @@ Unit.pp ) ppf in
   print ml; print mli
+
+let str x = Format.asprintf "%a" x
+let ufile (u:Unit.r) = str Paths.Pkg.pp u.src
+let upath (u:Unit.r) = Namespaced.flatten u.path
+let json _ _ ppf _ units =
+  let open Scheme in
+  let open Schema in
+  let groups = Unit.Groups.R.group units in
+  let assoc (_, x) =
+    let x, _  = Unit.Groups.R.flatten x in
+    let m, ml, mli = Schema.(m,ml,mli) in
+      match x.mli, x.ml with
+      | Some u, _ | None, Some u ->
+        L.[
+          let p = upath u in
+          obj [ m $= p;
+                ml $=? Option.fmap ufile x.ml;
+                mli $=? Option.fmap ufile x.mli
+              ]
+        ]
+      | _ -> [] in
+  let atl =
+    List.fold_left(fun l x -> assoc x @ l)[](Paths.S.Map.bindings groups) in
+  let dep (u:Unit.r) =
+    let d =
+      List.map (fun p -> p.Paths.P.file)
+      (Deps.Forget.to_list u.dependencies) in
+    obj [ file $= ufile u; dependencies $= d ] in
+  let ud = List.map dep units.ml @ List.map dep units.mli in
+  let data = let open Scheme in
+    obj [ atlas $= atl; dependencies $= ud ] in
+  Pp.fp ppf "%a@." (json deps) data
+
 
 let export name _ _ ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
@@ -156,6 +190,7 @@ let dot _ _ ppf param {Unit.mli; _ } =
     ) mli;
   Pp.fp ppf "}\n"
 
+
 let local_deps x =
   let filter = function { Pkg.source = Local; _ } -> true | _ -> false in
   x.Unit.dependencies |> Deps.Forget.to_set |> Pkg.Set.filter filter
@@ -218,5 +253,6 @@ let eval = function
   | Modules (Standard, filter) -> modules ~filter:(Filter.eval filter)
   | Modules (Nl, filter) -> line_modules ~filter:(Filter.eval filter)
   | Info -> info
+  | Json -> json
   | Signature ->  signature
   | Sort -> sort

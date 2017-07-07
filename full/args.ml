@@ -296,6 +296,7 @@ let args action param task fquery version =
     ^ "\n\n Codept only modes:\n";
 
     "-info", Unit (mode Modes.Info), ": print detailed information";
+    "-json", Unit (mode Modes.Json), ": print dependencies in a json format";
     "-export", String (fun s -> mode (Modes.Export s) ()),
     "<name>: export resolved modules signature";
     "-dot", Unit (mode Modes.Dot), ": print dependencies in dot format";

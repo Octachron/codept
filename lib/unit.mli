@@ -12,7 +12,7 @@ type precision =
 (** Input type *)
 type s = {
   path: Namespaced.t; (** module path of the compilation unit *)
-  src: Pkg.t; (** source file of the compilation unit *) 
+  src: Pkg.t; (** source file of the compilation unit *)
   kind: M2l.kind;
   precision: precision;
   code: M2l.t;
