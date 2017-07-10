@@ -49,7 +49,14 @@ and 'a record =
     ('m * 'a * 'b * 'c) record
 and ('m,'a,'b) field = 'a name * ('m, 'b) elt
 
-val json: 'a t -> Format.formatter -> 'a -> unit
+type 'a s = {
+  title: string;
+  description: string;
+  sch: 'a t;
+}
+
+val json: 'a s -> Format.formatter -> 'a -> unit
+val json_schema:  Format.formatter -> 'a s -> unit
 
 val ($=): 'a name -> 'b -> ('any,'a,'b) field
 val skip: 'a name -> (optional,'a,'any) field

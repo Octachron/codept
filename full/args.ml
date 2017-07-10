@@ -164,6 +164,8 @@ let exit_level param s =
 let print_policy param ()=
   Fault.Policy.pp Pp.std L.(!param.[policy])
 
+let print_json_schema () =
+  Scheme.json_schema Pp.std Schema.x
 
 let set_p param lens value =
   let open L in
@@ -297,6 +299,7 @@ let args action param task fquery version =
 
     "-info", Unit (mode Modes.Info), ": print detailed information";
     "-json", Unit (mode Modes.Json), ": print dependencies in a json format";
+    "-json-schema", Unit print_json_schema, ": print json schema";
     "-export", String (fun s -> mode (Modes.Export s) ()),
     "<name>: export resolved modules signature";
     "-dot", Unit (mode Modes.Dot), ": print dependencies in dot format";

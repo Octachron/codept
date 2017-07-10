@@ -60,7 +60,7 @@ let json _ _ ppf _ units =
   let ud = List.map dep units.ml @ List.map dep units.mli in
   let data = let open Scheme in
     obj [ atlas $= atl; dependencies $= ud ] in
-  Pp.fp ppf "%a@." (json deps) data
+  Pp.fp ppf "%a@." (json schema) data
 
 
 let export name _ _ ppf _param {Unit.mli; _} =

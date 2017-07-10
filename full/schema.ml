@@ -45,6 +45,14 @@ let deps = Obj [
     Req, dependencies, Array item
   ]
 
+let x  = {
+  title ="codept.0.10/deps";
+  description = "dependencies and module mapping of ocaml project";
+  sch = deps
+}
+
+let schema = x
+
 type path = string list
 type dep_list = path list
 

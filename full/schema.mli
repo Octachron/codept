@@ -36,3 +36,6 @@ type deps = (
   )
 ) record
 val deps: deps t
+
+val x: deps s
+val schema: deps s

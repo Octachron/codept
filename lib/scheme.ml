@@ -47,6 +47,64 @@ and 'a record =
 
 type ('m,'a,'b) field = 'a name * ('m, 'b) elt
 
+type 'a s = {
+  title: string;
+  description: string;
+  sch: 'a t;
+}
+
+let k ppf name = Pp.fp ppf {|"%s"|} name
+let p ppf (key,data)=
+  Pp.fp ppf {|@[%a@ :@ "%s"@]|} k key data
+
+let ty ppf data = p ppf ("type",data)
+
+let rec json_type: type a. Format.formatter -> a t -> unit =
+  fun ppf -> function
+    | Float -> ty ppf "number"
+    | Int -> ty ppf "number"
+    | String -> ty ppf "string"
+    | Array t -> Pp.fp ppf
+                   "%a,@;@[<hov 2>%a@ :@ {@;%a@;}@]"
+                   ty "array" k "items" json_type t
+    | [] -> ()
+    | _ :: _ as l ->
+      Pp.fp ppf "%a,@; @[<hov 2>%a@ :@[%a]@]" ty "array" k "items"
+        json_schema_tuple l
+    | Obj r ->
+      Pp.fp ppf "%a,@;@[<v 2>%a : {@;%a@;}@],@;@[<hov 2>%a@ :@ [@ %a@ ]@]"
+        ty "object"
+        k "properties"
+        json_properties r
+        k "required"
+        (json_required true) r
+and json_schema_tuple: type a. Format.formatter -> a tuple t -> unit =
+  fun ppf -> function
+    | [] -> ()
+    | [a] -> Pp.fp ppf {|@[<hov 2>{@;%a@;}@]|}
+               json_type a
+    | a :: q ->
+      Pp.fp ppf {|@[<hov 2>{@;%a@;}@],@; %a|}
+        json_type a json_schema_tuple q
+and json_properties: type a. Format.formatter -> a record_declaration -> unit =
+  fun ppf -> function
+  | [] -> ()
+  | [_, n, a] -> Pp.fp ppf {|@[<hov 2>"%s" : {@;%a@;}@]|}
+      (show n) json_type a
+  | (_, n, a) :: q ->
+     Pp.fp ppf {|@[<hov 2>"%s" : {@;%a@;},@;%a@]|}
+       (show n) json_type a json_properties q
+and json_required: type a. bool ->Format.formatter -> a record_declaration
+  -> unit =
+  fun first ppf -> function
+  | [] -> ()
+  | (Req, n, _) :: q ->
+    Pp.fp ppf {|%t"%s"%a|}
+      (fun ppf -> if not first then Pp.fp ppf ",@ " else ())
+      (show n)
+      (json_required false) q
+  | _ :: q -> json_required first ppf q
+
 
 let rec json: type a. a t -> Format.formatter -> a -> unit =
   fun sch ppf x -> match sch, x with
@@ -72,6 +130,20 @@ and json_obj: type a.
       end
     | (Opt,_,_) :: q, (_, Nothing ) :: xs ->
       json_obj q ppf xs
+
+let json s = json s.sch
+let json_schema ppf s =
+  Pp.fp ppf
+    "@[<v 2>{@ \
+     %a,@;\
+     %a,@;\
+     %a,@;\
+     %a\
+      @ }@]@."
+     p ("$schema", "http://json-schema.org/schema#")
+     p ("title", s.title)
+     p ("description", s.description)
+     json_type s.sch
 
 let ($=) field x = field, Just x
 let skip name = name, Nothing
