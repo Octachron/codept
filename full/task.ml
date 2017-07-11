@@ -147,6 +147,10 @@ and add_dir ~prefix ~cycle_guard param task
     if  cycle_guard && dir_name = "." then
        ()
     else
+      let dir_name =
+        if dir_name.[String.length dir_name - 1] = L.(!param.[slash]).[0] then
+          String.sub dir_name 0 (String.length dir_name - 1)
+        else dir_name in
       let cycle_guard = dir_name = "." in
       let files = Sys.readdir abs_name in
       Array.iter
