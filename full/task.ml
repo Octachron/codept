@@ -123,7 +123,12 @@ let file_path prefix name =
 let add_file k policy synonyms task (name,path) =
   if Sys.file_exists name then
     match Common.classify policy synonyms name with
-    | None -> ( Fault.handle policy Codept_policies.unknown_extension name; k ())
+    | None when Sys.is_directory name -> k name
+    | None ->
+      begin
+        Fault.handle policy Codept_policies.unknown_extension name;
+        k name
+      end
     | Some { kind = Implementation; format } ->
       add_impl format task (name,path)
     | Some { kind = Interface; format } ->
@@ -132,17 +137,19 @@ let add_file k policy synonyms task (name,path) =
       add_sig task name
 
 
-let rec add_file_rec ~prefix ~cycle_guard param task name0 =
-  let name = String.concat "/" (prefix @ [name0]) in
+let rec add_file_rec ~prefix:(mpre0,mpre1,fpre) ~start ~cycle_guard param task
+    name0 =
+  let name = String.concat "/" (List.rev_append fpre [name0]) in
   let lax = let open Fault in
     Policy.set_err (Codept_policies.unknown_extension, Level.info)
    L.(!param.[policy]) in
-  let path = file_path L.(if !param.[nested] then prefix else []) name0 in
-  let k () = if Sys.is_directory name then
-        add_dir ~prefix ~cycle_guard param task ~dir_name:name0 ~abs_name:name in
+  let path = file_path (mpre0 @ List.rev mpre1) name0 in
+  let k name = if Sys.is_directory name then
+      add_dir ~prefix:(mpre0, mpre1, fpre) start
+        ~cycle_guard param task ~dir_name:name0 ~abs_name:name in
   add_file k lax L.(!param.[synonyms]) task (name,path)
 
-and add_dir ~prefix ~cycle_guard param task
+and add_dir ~prefix:(mpre0,mpre1,fpre) first ~cycle_guard param task
     ~dir_name ~abs_name =
     if  cycle_guard && dir_name = "." then
        ()
@@ -153,21 +160,29 @@ and add_dir ~prefix ~cycle_guard param task
         else dir_name in
       let cycle_guard = dir_name = "." in
       let files = Sys.readdir abs_name in
+
+      let mpre1 = if L.( !param.[nested] ) && not first then
+          let mname =  Paths.S.( module_name @@ parse_filename dir_name) in
+          mname :: mpre1 else mpre1 in
       Array.iter
-        (add_file_rec ~prefix:(dir_name::prefix) ~cycle_guard
-           param task)
+        (add_file_rec ~prefix:(mpre0, mpre1, dir_name :: fpre) ~start:false
+           ~cycle_guard param task)
         files
+let add_file_rec ~prefix = add_file_rec ~prefix ~start:true ~cycle_guard:false
 
 let add_file param task name0  =
   let expanded = parse_filename name0 in
-  let add_simple = add_file ignore L.(!param.[policy]) L.(!param.[synonyms]) task in
-  match expanded with
-  | [_, Some _ as pair]  ->
-     add_simple pair
-  | [ _, None] ->
-    add_file_rec ~prefix:[] ~cycle_guard:false param task name0
-  | l ->
-    List.iter add_simple l
+  let add (fpath, mpath) =
+    match mpath with
+    | None ->
+      add_file_rec ~prefix:([],[],[]) param task fpath
+    | Some p ->
+      let module_prefix =
+        if Sys.is_directory fpath then
+          p.Namespaced.namespace
+        else Namespaced.flatten p in
+      add_file_rec ~prefix:(module_prefix,[],[]) param task fpath in
+    List.iter add expanded
 
 let add_impl param task name =
   List.iter (add_impl param task) (parse_filename name)
