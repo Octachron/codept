@@ -117,14 +117,14 @@ let rec json: type a. a t -> Format.formatter -> a -> unit =
     | [], [] -> ()
     | [a], [x] -> json a ppf x
     | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json a) x (json q) xs
-    | Obj sch, x -> Pp.fp ppf "@[<hov>{@ %a@ }@]" (json_obj false sch) x
+    | Obj sch, x -> Pp.fp ppf "@[<hv>{ %a }@]" (json_obj false sch) x
 and json_obj: type a.
   bool -> a record_declaration -> Format.formatter -> a record -> unit =
   fun not_first sch ppf x -> match sch, x with
     | [], [] -> ()
     | (_, name,sch) :: q ,   (_, Just x) :: xs ->
       if not_first then Pp.fp ppf ",@ ";
-      Pp.fp ppf {|"%s":%a|} (show name) (json sch) x;
+      Pp.fp ppf {|@[<hov 2>"%s" :@ %a@]|} (show name) (json sch) x;
       Pp.fp ppf "%a" (json_obj true q) xs
     | (Opt,_,_) :: q, (_, Nothing ) :: xs ->
       json_obj not_first q ppf xs
