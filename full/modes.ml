@@ -22,6 +22,7 @@ type t =
   | Modules of variant * filter
   | Info
   | Json
+  | Sexp
   | Signature
   | Sort
 
@@ -33,7 +34,8 @@ let info _ _ ppf _param {Unit.ml; mli} =
 let str x = Format.asprintf "%a" x
 let ufile (u:Unit.r) = str Paths.Pkg.pp u.src
 let upath (u:Unit.r) = Namespaced.flatten u.path
-let json _ _ ppf _ units =
+
+let structured pp _ _ ppf _ units =
   let open Scheme in
   let open Schema in
   let groups = Unit.Groups.R.group units in
@@ -60,7 +62,7 @@ let json _ _ ppf _ units =
   let ud = List.map dep units.ml @ List.map dep units.mli in
   let data = let open Scheme in
     obj [ atlas $= atl; dependencies $= ud ] in
-  Pp.fp ppf "%a@." (json schema) data
+  Pp.fp ppf "%a@." (pp schema) data
 
 
 let export name _ _ ppf _param {Unit.mli; _} =
@@ -253,6 +255,7 @@ let eval = function
   | Modules (Standard, filter) -> modules ~filter:(Filter.eval filter)
   | Modules (Nl, filter) -> line_modules ~filter:(Filter.eval filter)
   | Info -> info
-  | Json -> json
+  | Json -> structured Scheme.json
+  | Sexp ->  structured Scheme.sexp
   | Signature ->  signature
   | Sort -> sort

@@ -17,6 +17,7 @@ type t =
   | Modules of variant * filter
   | Info
   | Json
+  | Sexp
   | Signature
   | Sort
 
@@ -46,8 +47,9 @@ val export: Name.t -> mode
 (** Display generic information on the result of codept analysis *)
 val info: mode
 
-(** Display dependencies in a json format *)
-val json: mode
+(** Display dependencies in a structured format *)
+val structured:
+  (Schema.deps Scheme.s -> Format.formatter -> Schema.deps -> unit) -> mode
 
 (** Display the list of modules dependencies of the input compilation units
     using ocamldep format *)

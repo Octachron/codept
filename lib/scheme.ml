@@ -145,6 +145,40 @@ let json_schema ppf s =
      p ("description", s.description)
      json_type s.sch
 
+let cstring ppf s =
+  begin try
+      ignore(String.index s ' ');
+      Pp.estring ppf s
+    with
+      Not_found -> Pp.string ppf s
+  end
+
+let rec sexp: type a. a t -> Format.formatter -> a -> unit =
+  fun sch ppf x -> match sch, x with
+    | Int, n -> Pp.fp ppf "%d" n
+    | Float, f -> Pp.fp ppf "%f" f
+    | String, s -> cstring ppf s
+    | Array k, l ->
+      Pp.fp ppf "@[<hov>(%a)@]"
+        (Pp.list ~sep:(Pp.s "@ ") @@ sexp k) l
+    | [], [] -> ()
+    | [a], [x] -> sexp a ppf x
+    | a :: q, x :: xs -> Pp.fp ppf "%a@ %a" (sexp a) x (sexp q) xs
+    | Obj sch, x -> Pp.fp ppf "@[<hov>(@;<1 2>%a@;<1 2>)@]" (sexp_obj sch) x
+and sexp_obj: type a.
+  a record_declaration -> Format.formatter -> a record -> unit =
+  fun sch ppf x -> match sch, x with
+    | [], [] -> ()
+    | (_, name,sch) :: q ,   (_, Just x) :: xs ->
+      Pp.fp ppf {|(%a %a)|} cstring (show name) (sexp sch) x;
+      begin match q, xs  with
+        | [], [] -> ()
+        | _ -> Pp.fp ppf "@ %a" (sexp_obj q) xs
+      end
+    | (Opt,_,_) :: q, (_, Nothing ) :: xs -> sexp_obj q ppf xs
+
+let sexp x = sexp x.sch
+
 let ($=) field x = field, Just x
 let skip name = name, Nothing
 

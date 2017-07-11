@@ -300,6 +300,9 @@ let args action param task fquery version =
     "-info", Unit (mode Modes.Info), ": print detailed information";
     "-json", Unit (mode Modes.Json), ": print dependencies in a json format";
     "-json-schema", Unit print_json_schema, ": print json schema";
+    "-sexp", Unit (mode Modes.Sexp),
+    ": print dependencies in a s-expression format";
+
     "-export", String (fun s -> mode (Modes.Export s) ()),
     "<name>: export resolved modules signature";
     "-dot", Unit (mode Modes.Dot), ": print dependencies in dot format";

@@ -56,6 +56,7 @@ type 'a s = {
 }
 
 val json: 'a s -> Format.formatter -> 'a -> unit
+val sexp: 'a s  -> Format.formatter -> 'a -> unit
 val json_schema:  Format.formatter -> 'a s -> unit
 
 val ($=): 'a name -> 'b -> ('any,'a,'b) field
