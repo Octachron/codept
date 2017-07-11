@@ -65,14 +65,14 @@ let rec json_type: type a. Format.formatter -> a t -> unit =
     | Int -> ty ppf "number"
     | String -> ty ppf "string"
     | Array t -> Pp.fp ppf
-                   "%a,@;@[<hov 2>%a@ :@ {@;%a@;}@]"
+                   "%a,@;@[<hov 2>%a : {@ %a@ }@]"
                    ty "array" k "items" json_type t
     | [] -> ()
     | _ :: _ as l ->
-      Pp.fp ppf "%a,@; @[<hov 2>%a@ :@[%a]@]" ty "array" k "items"
+      Pp.fp ppf "%a,@; @[<hov 2>%a :[@ %a@ ]@]" ty "array" k "items"
         json_schema_tuple l
     | Obj r ->
-      Pp.fp ppf "%a,@;@[<v 2>%a : {@;%a@;}@],@;@[<hov 2>%a@ :@ [@ %a@ ]@]"
+      Pp.fp ppf "%a,@;@[<v 2>%a : {@ %a@ }@],@;@[<hov 2>%a@ :@ [@ %a@ ]@]"
         ty "object"
         k "properties"
         json_properties r
@@ -81,18 +81,18 @@ let rec json_type: type a. Format.formatter -> a t -> unit =
 and json_schema_tuple: type a. Format.formatter -> a tuple t -> unit =
   fun ppf -> function
     | [] -> ()
-    | [a] -> Pp.fp ppf {|@[<hov 2>{@;%a@;}@]|}
+    | [a] -> Pp.fp ppf {|@[<hov 2>{@ %a@ }@]|}
                json_type a
     | a :: q ->
-      Pp.fp ppf {|@[<hov 2>{@;%a@;}@],@; %a|}
+      Pp.fp ppf {|@[<hov 2>{@ %a@ }@],@; %a|}
         json_type a json_schema_tuple q
 and json_properties: type a. Format.formatter -> a record_declaration -> unit =
   fun ppf -> function
   | [] -> ()
-  | [_, n, a] -> Pp.fp ppf {|@[<hov 2>"%s" : {@;%a@;}@]|}
+  | [_, n, a] -> Pp.fp ppf {|@[<hov 2>"%s" : {@ %a@ }@]|}
       (show n) json_type a
   | (_, n, a) :: q ->
-     Pp.fp ppf {|@[<hov 2>"%s" : {@;%a@;},@;%a@]|}
+     Pp.fp ppf {|@[<hov 2>"%s" : {@ %a@ }@],@;%a|}
        (show n) json_type a json_properties q
 and json_required: type a. bool ->Format.formatter -> a record_declaration
   -> unit =
@@ -117,19 +117,17 @@ let rec json: type a. a t -> Format.formatter -> a -> unit =
     | [], [] -> ()
     | [a], [x] -> json a ppf x
     | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json a) x (json q) xs
-    | Obj sch, x -> Pp.fp ppf "@[<hov>{@;<1 2>%a@;<1 2>}@]" (json_obj sch) x
+    | Obj sch, x -> Pp.fp ppf "@[<hov>{@ %a@ }@]" (json_obj false sch) x
 and json_obj: type a.
-  a record_declaration -> Format.formatter -> a record -> unit =
-  fun sch ppf x -> match sch, x with
+  bool -> a record_declaration -> Format.formatter -> a record -> unit =
+  fun not_first sch ppf x -> match sch, x with
     | [], [] -> ()
     | (_, name,sch) :: q ,   (_, Just x) :: xs ->
+      if not_first then Pp.fp ppf ",@ ";
       Pp.fp ppf {|"%s":%a|} (show name) (json sch) x;
-      begin match q, xs  with
-        | [], [] -> ()
-        | _ -> Pp.fp ppf ",@ %a" (json_obj q) xs
-      end
+      Pp.fp ppf "%a" (json_obj true q) xs
     | (Opt,_,_) :: q, (_, Nothing ) :: xs ->
-      json_obj q ppf xs
+      json_obj not_first q ppf xs
 
 let json s = json s.sch
 let json_schema ppf s =

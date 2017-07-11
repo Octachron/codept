@@ -37,11 +37,15 @@ let upath (u:Unit.r) = Namespaced.flatten u.path
 
 let structured pp _ _ ppf _ units =
   let udeps (u:Unit.r) =
-      let add_dep l (p:Paths.P.t) =
+      let add_dep (loc,lib,unknw) (p:Paths.P.t) =
         match p.source with
-        | Paths.P.Local -> p.file :: l
-        | _ -> l in
-      List.fold_left add_dep [] (Deps.Forget.to_list u.dependencies) in
+        | Paths.P.Local -> p.file :: loc, lib, unknw
+        | Paths.P.Pkg pkg ->
+          let p: _ Scheme.tuple = [pkg; p.file] in
+          loc, p :: lib, unknw
+        | Paths.P.Unknown -> loc, lib, p.file :: unknw
+        | Paths.P.Special _ -> loc, lib, unknw in
+      List.fold_left add_dep ([],[],[]) (Deps.Forget.to_list u.dependencies) in
 
   let open Scheme in
   let open Schema in
@@ -61,7 +65,11 @@ let structured pp _ _ ppf _ units =
       | _ -> [] in
   let atl =
     List.fold_left(fun l x -> assoc x @ l)[](Paths.S.Map.bindings groups) in
-  let dep (u:Unit.r) = obj [ file $= ufile u; dependencies $= udeps u ] in
+  let dep (u:Unit.r) =
+    let loc, libs, unkns =  udeps u in
+    let wrap l = if l = L.[] then None else Some l in
+    let all_deps = obj [ local $= loc; lib $=? wrap libs; unknown $=? wrap unkns ] in
+    obj [ file $= ufile u; dependencies $= all_deps ] in
   let ud = List.map dep units.ml @ List.map dep units.mli in
   let data = let open Scheme in
     obj [ atlas $= atl; dependencies $= ud ] in

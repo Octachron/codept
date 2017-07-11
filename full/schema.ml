@@ -5,6 +5,11 @@ module Ml = Name(struct let s = "ml" end)
 module Mli = Name(struct let s = "mli" end)
 
 module File = Name(struct let s = "file" end)
+
+module Local = Name(struct let s = "local" end)
+module Lib = Name(struct let s = "lib" end)
+module Unknown = Name(struct let s ="unknown" end)
+
 module Dependencies = Name(struct let s = "dependencies" end)
 module Atlas = Name(struct let s = "atlas" end)
 
@@ -20,6 +25,10 @@ let m: m name = (module Module)
 type file = File.t
 let file: file name= (module File)
 
+type local = Local.t let local: local name = (module Local)
+type unknown = Unknown.t let unknown: unknown name = (module Unknown)
+type lib = Lib.t let lib: lib name = (module Lib)
+
 type dependencies = Dependencies.t
 let dependencies: dependencies name = (module Dependencies)
 
@@ -29,9 +38,14 @@ let atlas: atlas name= (module Atlas)
 
 let path = Array String
 let dep_list = Array path
+let all_deps = Obj [
+    Req, local, dep_list;
+    Opt, lib, Array [path; path];
+    Opt, unknown, dep_list
+  ]
 let item = Obj [
     Req, file, String;
-    Req, dependencies, dep_list
+    Req, dependencies, all_deps
   ]
 let assoc =
   Obj [
@@ -56,9 +70,18 @@ let schema = x
 type path = string list
 type dep_list = path list
 
+type all_deps = (
+  required * local * dep_list * (
+    optional * lib * (path * (path * void)) tuple list * (
+      optional * unknown * dep_list *
+      void
+    )
+  )
+) record
+
 type item = (
   required * file * string * (
-    required * dependencies * dep_list
+    required * dependencies * all_deps
     * void
   )
 ) record
@@ -78,4 +101,3 @@ type deps = (
     void
   )
 ) record
-
