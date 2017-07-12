@@ -30,32 +30,24 @@ let first string cs pos =
 
 let sub s start stop = String.sub s start (stop-start+1)
 
-let debug fmt = Format.ifprintf Pp.err ("@{<warning>debug@}:" ^^ fmt ^^ "@.")
-
 let parse_name name =
-  debug "parsed name:%s" name;
   match Support.split_on_char '@' name with
-  | [_] ->  debug "simple"; name, None
+  | [_] -> name, [], None
   | [a;b] ->
-    a, Some (Namespaced.of_path @@ Support.split_on_char '.' b)
+    a, [], Some (Namespaced.of_path @@ Support.split_on_char '.' b)
   | _ ->
     raise (Invalid_argument "Multiple module path associated to the same file")
 
-let name_to_path name = Paths.S.(module_name @@ parse_filename name)
+let name_of_path name = Paths.S.(module_name @@ parse_filename name)
 
 let (#.) s (start,stop) = sub s start stop
 let (--) start stop = start, stop
-let (--*) start stop = start, stop-1
+let (--*) start stop = start -- (stop-1)
 
-let decorate m =
+let decorate m (s,l,p) =
   let nms = List.filter ((<>) "") @@
     List.map String.capitalize_ascii @@ Support.split_on_char '.' m in
-  function
-  | s, None -> s, Some( Namespaced.make ~nms
-                          Paths.S.(module_name @@ parse_filename s)
-                      )
-  | s, Some p -> s, Some { p with namespace = nms @ p.Namespaced.namespace }
-
+  s, nms @ l, p
 
 let rec parse_top s pos =
   let len = String.length s in
@@ -100,14 +92,20 @@ and parse_inner_group s k pos p =
 
 let parse_filename s = snd @@ parse_top s 0
 
-let add_file kind format task (name,path) =
+let add_file kind format task (name,prefix,path) =
+  let path = match prefix, path with
+    | [], None -> None
+    | p, None ->
+      Some (Namespaced.make ~nms:p (name_of_path name))
+    | p, (Some x) -> Some Namespaced.{ x with namespace = p @ x.namespace }
+  in
   let k = { Common.kind ; format } in
   let files = (!task).files in
   task := { !task with files = (k,name,path) :: files }
 
 let add_impl = add_file Implementation
 let add_intf = add_file Interface
-let add_sig task name= add_file Signature Read.M2l task (name,None)
+let add_sig task name= add_file Signature Read.M2l task (name,[],None)
 
 let add_seed _param task seed = (* TODO: namespaced seed *)
   let seed =
@@ -116,11 +114,7 @@ let add_seed _param task seed = (* TODO: namespaced seed *)
     @@ Support.remove_extension seed in
   task := { !task with seeds = seed :: (!task).seeds }
 
-let file_path prefix name =
-  Some (Namespaced.make ~nms:prefix @@
-        Paths.S.(module_name @@ parse_filename name))
-
-let add_file k policy synonyms task (name,path) =
+let add_file k policy synonyms task (name,pre,path) =
   if Sys.file_exists name then
     match Common.classify policy synonyms name with
     | None when Sys.is_directory name -> k name
@@ -130,58 +124,62 @@ let add_file k policy synonyms task (name,path) =
         k name
       end
     | Some { kind = Implementation; format } ->
-      add_impl format task (name,path)
+      add_impl format task (name,pre,path)
     | Some { kind = Interface; format } ->
-      add_intf format task (name,path)
+      add_intf format task (name,pre,path)
     | Some { kind = Signature; _ } ->
       add_sig task name
 
 
 let rec add_file_rec ~prefix:(mpre0,mpre1,fpre) ~start ~cycle_guard param task
-    name0 =
+    (name0,path) =
   let name = String.concat "/" (List.rev_append fpre [name0]) in
   let lax = let open Fault in
     Policy.set_err (Codept_policies.unknown_extension, Level.info)
    L.(!param.[policy]) in
-  let path = file_path (mpre0 @ List.rev mpre1) name0 in
   let k name = if Sys.is_directory name then
-      add_dir ~prefix:(mpre0, mpre1, fpre) start
-        ~cycle_guard param task ~dir_name:name0 ~abs_name:name in
-  add_file k lax L.(!param.[synonyms]) task (name,path)
+        add_dir ~prefix:(mpre0, mpre1, fpre) start
+          ~cycle_guard param task ~dir_name:name0 ~abs_name:name in
+  add_file k lax L.(!param.[synonyms]) task (name, mpre0 @ List.rev mpre1, path)
 
 and add_dir ~prefix:(mpre0,mpre1,fpre) first ~cycle_guard param task
     ~dir_name ~abs_name =
-    if  cycle_guard && dir_name = "." then
-       ()
-    else
+  if  cycle_guard && dir_name = "." then
+    ()
+  else
       let dir_name =
         if dir_name.[String.length dir_name - 1] = L.(!param.[slash]).[0] then
           String.sub dir_name 0 (String.length dir_name - 1)
-        else dir_name in
+        else
+          dir_name
+      in
       let cycle_guard = dir_name = "." in
       let files = Sys.readdir abs_name in
 
-      let mpre1 = if L.( !param.[nested] ) && not first then
-          let mname =  Paths.S.( module_name @@ parse_filename dir_name) in
-          mname :: mpre1 else mpre1 in
-      Array.iter
-        (add_file_rec ~prefix:(mpre0, mpre1, dir_name :: fpre) ~start:false
-           ~cycle_guard param task)
-        files
-let add_file_rec ~prefix = add_file_rec ~prefix ~start:true ~cycle_guard:false
+      let mpre1 =
+        if L.( !param.[nested] ) && not first then
+          let mname =  name_of_path dir_name in
+          mname :: mpre1
+        else mpre1 in
+      let f n = add_file_rec ~prefix:(mpre0, mpre1, dir_name :: fpre) ~start:false
+          ~cycle_guard param task (n,None) in
+      Array.iter f files
+
+let add_file_rec ~prefix = add_file_rec ~prefix ~start:true ~cycle_guard:false;;
 
 let add_file param task name0  =
   let expanded = parse_filename name0 in
-  let add (fpath, mpath) =
+  let add (fpath, mpre, mpath ) =
     match mpath with
     | None ->
-      add_file_rec ~prefix:([],[],[]) param task fpath
+      add_file_rec ~prefix:(mpre, [] ,[]) param task (fpath,mpath)
     | Some p ->
-      let module_prefix =
-        if Sys.is_directory fpath then
-          p.Namespaced.namespace
-        else Namespaced.flatten p in
-      add_file_rec ~prefix:(module_prefix,[],[]) param task fpath in
+      let module_prefix, module_name =
+        (if Sys.is_directory fpath then Namespaced.flatten p
+        else p.Namespaced.namespace),
+             { p with Namespaced.namespace = [] } in
+      add_file_rec ~prefix:(mpre @ module_prefix,[],[]) param task
+        (fpath,Some module_name) in
     List.iter add expanded
 
 let add_impl param task name =
