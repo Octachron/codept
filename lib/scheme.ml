@@ -115,9 +115,15 @@ let rec json: type a. a t -> Format.formatter -> a -> unit =
       Pp.fp ppf "@[<hov>[%a]@]"
         (Pp.list ~sep:(Pp.s ",@ ") @@ json k) l
     | [], [] -> ()
-    | [a], [x] -> json a ppf x
-    | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json a) x (json q) xs
+    | _ :: _ as sch , l -> Pp.fp ppf "@[<hov>[%a]@]" (json_tuple sch) l
     | Obj sch, x -> Pp.fp ppf "@[<hv>{ %a }@]" (json_obj false sch) x
+and json_tuple: type a. a tuple t -> Format.formatter -> a tuple -> unit =
+  fun sch ppf x -> match sch, x with
+    | [], [] -> ()
+    | [a], [x] -> json a ppf x
+    | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json a) x (json_tuple q) xs
+
+
 and json_obj: type a.
   bool -> a record_declaration -> Format.formatter -> a record -> unit =
   fun not_first sch ppf x -> match sch, x with
