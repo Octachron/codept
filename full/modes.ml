@@ -53,16 +53,20 @@ let structured pp _ _ ppf _ units =
   let assoc (_, x) =
     let x, _  = Unit.Groups.R.flatten x in
     let m, ml, mli = Schema.(m,ml,mli) in
-      match x.mli, x.ml with
-      | Some u, _ | None, Some u ->
-        L.[
-          let p = upath u in
-          obj [ m $= p;
-                ml $=? Option.fmap ufile x.ml;
-                mli $=? Option.fmap ufile x.mli
-              ]
-        ]
-      | _ -> [] in
+    let x = match x.mli, x.ml with
+      | Some ({ kind = M2l.Structure; _ } as u) , None ->
+        { Unit.ml = Some u; mli = None }
+      | _ -> x in
+    match x.mli, x.ml with
+    | Some u, _ | None, Some u ->
+      L.[
+        let p = upath u in
+        obj [ m $= p;
+              ml $=? Option.fmap ufile x.ml;
+              mli $=? Option.fmap ufile x.mli
+            ]
+      ]
+    | _ -> [] in
   let atl =
     List.fold_left(fun l x -> assoc x @ l)[](Paths.S.Map.bindings groups) in
   let dep (u:Unit.r) =
