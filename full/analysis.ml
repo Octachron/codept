@@ -153,22 +153,22 @@ module Collisions = struct
   (** Check that there is no module name collisions with libraries and local files*)
   (** Note: no library/library collision detection*)
 
-  let empty = Namespaced.Map.empty
+  let empty = Nms.Map.empty
 
   (** add a new collision [path] to a map of collision [m]
       for a module name [name] *)
   let add name path m =
     let s = Option.default Paths.P.Set.empty
-      @@ Namespaced.Map.find_opt name m in
-    Namespaced.Map.add name (Paths.P.Set.add path s) m
+      @@ Nms.Map.find_opt name m in
+    Nms.Map.add name (Paths.P.Set.add path s) m
 
   (** Compute local/libraries collisions *)
   let libs (task:Common.task) units =
     let env = Envt.start ~open_approximation:false
         Name.Set.empty task.libs Module.Dict.empty in
-    let m = Namespaced.Map.empty in
+    let m = Nms.Map.empty in
     List.fold_left (fun m (u:Unit.s) ->
-        match Envt.Core.find M.Module (Namespaced.flatten u.path) env with
+        match Envt.Core.find M.Module (Nms.flatten u.path) env with
         | exception Not_found -> m
         | { main = M { M.origin = Unit p; _ }; msgs= [] } ->
           (add u.path p.source @@ add u.path u.src m)
@@ -184,7 +184,7 @@ module Collisions = struct
     List.iter (fun (name,paths) ->
         Fault.handle policy fault
           name @@ Paths.P.Set.elements paths)
-      (Namespaced.Map.bindings collisions)
+      (Nms.Map.bindings collisions)
 
   (** Compute local/local collisions *)
   let local units =
@@ -192,10 +192,10 @@ module Collisions = struct
     List.fold_left
       (fun (collisions, name_set) (u:Unit.s) ->
          add u.path u.src collisions,
-         Name.Set.add (Namespaced.head u.path) name_set
+         Name.Set.add (Nms.head u.path) name_set
       )
       (empty,Name.Set.empty) units in
-    Namespaced.Map.filter (fun _k s -> Paths.P.Set.cardinal s > 1)
+    Nms.Map.filter (fun _k s -> Paths.P.Set.cardinal s > 1)
       potential_collisions, set
 
 end
@@ -227,7 +227,7 @@ let main_seed io param (task:Common.task) =
   let units, signatures =
     pre_organize io task.files in
   let file_set = List.fold_left (fun s (_k,_x,p) ->
-      Name.Set.add (Namespaced.head p) s
+      Name.Set.add (Nms.head p) s
     ) Name.Set.empty units in
   let load_file =
     load_file io param.policy param.sig_only task.opens in
