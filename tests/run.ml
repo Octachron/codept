@@ -442,7 +442,7 @@ let result =
       ]
   )
 
-    (**Namespace related tests *)
+    (*Namespace related tests *)
     && ( Sys.chdir "../uncoupled";
          both ["A";"C"]
            [
@@ -482,7 +482,7 @@ let result =
     end
 
 
-    (** Cycle tests *)
+    (* Cycle tests *)
     && (
       Sys.chdir "../cases";
       Std.cycle_test [["Self_cycle"]] ["self_cycle.ml"]
