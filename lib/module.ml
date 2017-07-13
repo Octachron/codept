@@ -90,7 +90,6 @@ end
 
 
 module Origin = struct
-  type source = Pkg.t
 
   type t =
     | Unit of {source:Paths.P.t; path:Paths.S.t}
