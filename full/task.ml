@@ -30,13 +30,15 @@ let first string cs pos =
 
 let sub s start stop = String.sub s start (stop-start+1)
 
+exception Invalid_file_group of string
+
 let parse_name name =
   match Support.split_on_char '@' name with
   | [_] -> name, [], None
   | [a;b] ->
     a, [], Some (Namespaced.of_path @@ Support.split_on_char '.' b)
   | _ ->
-    raise (Invalid_argument "Multiple module path associated to the same file")
+    raise (Invalid_file_group "Multiple module path associated to the same file")
 
 let name_of_path name = Paths.S.(module_name @@ parse_filename name)
 
@@ -73,7 +75,7 @@ and parse_group s pos =
   | Some (']', p) ->
     p+1, if p>pos then [parse_name s#.(pos--*p)] else []
   | Some ('[', p) -> parse_inner_group s parse_group pos p
-  | _ -> raise (Invalid_argument "Missing matching ']'")
+  | _ -> raise (Invalid_file_group "Missing matching ']'")
 end
 and parse_inner_group s k pos p =
   let len = String.length s in
@@ -168,7 +170,7 @@ and add_dir ~prefix:(mpre0,mpre1,fpre) first ~cycle_guard param task
 let add_file_rec ~prefix = add_file_rec ~prefix ~start:true ~cycle_guard:false;;
 
 let add_file param task name0  =
-  let expanded = parse_filename name0 in
+  try let expanded = parse_filename name0 in
   let add (fpath, mpre, mpath ) =
     match mpath with
     | None ->
@@ -181,6 +183,8 @@ let add_file param task name0  =
       add_file_rec ~prefix:(mpre @ module_prefix,[],[]) param task
         (fpath,Some module_name) in
     List.iter add expanded
+  with Invalid_file_group s ->
+    Fault.handle L.(!param.[policy]) Codept_policies.invalid_file_group name0 s
 
 let add_impl param task name =
   List.iter (add_impl param task) (parse_filename name)

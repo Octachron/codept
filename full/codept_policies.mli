@@ -2,6 +2,8 @@
 
 (** {2 Codept specific fault} *)
 val unknown_extension: (string -> unit) Fault.t
+val invalid_file_group: (string -> string -> unit) Fault.t
+
 
 (** Default policy *)
 val policy: Fault.Policy.t

@@ -8,11 +8,18 @@ let unknown_extension =
                                an unknown extension.")
   }
 
+let invalid_file_group =
+  { path = ["codept"; "io"; "invalid_file_group"];
+    expl = "Codept fault: invalid syntax for a file group";
+    log = (fun lvl -> log lvl
+              "File group syntax error.@ Attempting to read ⟨%s⟩, aborting due to invalid syntax:@ %s.")
+  }
 
 let policy =
   let open Policy in
   policy
   |> set_err (unknown_extension, Level.warning)
+  |> set_err (invalid_file_group, Level.error)
 
 
 let parsing_approx = let open Policy in
