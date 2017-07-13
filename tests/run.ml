@@ -599,7 +599,11 @@ let result =
           "sexp.ml", (["Name"; "Option"; "Pp"],
                       [ "Obj"; "Format";"List";"Map"; "Hashtbl"; "String"], [] );
           "sexp.mli", (["Name"],
-                      [ "Format"], [] );
+                       [ "Format"], [] );
+          "scheme.mli", ([],
+                       [ "Format"], [] );
+          "scheme.ml", (["Pp"],
+                        [ "Format";"String"], [] );
           "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";
                           "Namespaced"; "Read";
                           "Summary"; "Outliner"; "Paths"],
