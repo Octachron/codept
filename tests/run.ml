@@ -111,6 +111,7 @@ module Branch(Param:Outliner.param) = struct
   let normalize set =
     set
     |> Deps.Forget.to_list
+    |> List.map fst
     |> List.sort compare
 
 
@@ -126,7 +127,7 @@ module Branch(Param:Outliner.param) = struct
   let (%) f g x = f (g x)
 
   let normalize_2 set =
-    let l = Deps.Forget.to_list set in
+    let l = List.map fst @@ Deps.Forget.to_list set in
     let is_inner =
       function { Pth.source = Local; _ } -> true | _ -> false in
     let is_lib =
@@ -543,8 +544,7 @@ let result =
             ["Module"; "Pp"; "Mresult"; "Name"; "Sexp"],
             ["List"], []);
           "envt.mli", (
-            ["Deps"; "Module";"Name"; "Outliner";
-             "Paths"], [], []);
+            ["Deps"; "Module";"Name"; "Outliner"], [], []);
           "envt.ml", (
             ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
              "Module"; "Name"; "Namespaced"; "Paths";
