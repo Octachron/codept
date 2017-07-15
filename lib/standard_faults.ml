@@ -172,8 +172,8 @@ let discordant_approximation =
                "Approximate parsing of %a.\n\
                 Computed dependencies: at least {%a}, maybe: {%a}"
         Paths.P.pp path
-        Pp.(list string) lower
-        Pp.(list string) diff
+        Pp.(list Paths.S.pp) lower
+        Pp.(list Paths.S.pp) diff
            )
   }
 

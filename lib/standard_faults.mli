@@ -34,7 +34,7 @@ val local_module_conflict: (Namespaced.t -> Paths.P.t list -> unit) Fault.t
 (** {2 Parsing approximation faults} *)
 val concordant_approximation : (Paths.Pkg.t -> unit) Fault.t
 val discordant_approximation :
-  (Paths.Pkg.t -> string list -> string list -> unit) Fault.t
+  (Paths.Pkg.t -> Paths.S.t list -> Paths.S.t list -> unit) Fault.t
 val syntaxerr : (Syntaxerr.error -> unit) Fault.t
 
 (** Syntax error when parsing serialized m2l file *)

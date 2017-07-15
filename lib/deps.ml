@@ -8,18 +8,22 @@ module Edge = struct
          simple_constr "eps" Epsilon]
 end
 
-type t = Edge.t Paths.P.map
+type t = (Edge.t * Paths.S.set) Paths.P.map
 
+module Pth = Paths.S
 module P = Paths.P
 
 let empty = P.Map.empty
 
-let update p e deps =
-  let e = Option.(  Paths.P.Map.find_opt p deps >>| max e >< e )in
-  Paths.P.Map.add p e deps
+let update mp e ps deps: t =
+  let ep = let open Option in
+    P.Map.find_opt mp deps
+    >>| (fun (e', ps' ) -> (Edge.max e e', Pth.Set.union ps' ps ) )
+    >< (e, ps) in
+  P.Map.add mp ep deps
 
 let merge = P.Map.merge (fun _k x y -> match x, y with
-    | Some x, Some y -> Some (Edge.max x y)
+    | Some (x,ps), Some (y,ps') -> Some (Edge.max x y, Pth.Set.union ps ps')
     | None, (Some _ as x) | (Some _ as x), None -> x
     | None, None -> None
   )
@@ -28,18 +32,20 @@ let (+) = merge
 
 
 
-let pp_elt ppf (path,edge) =
-  Pp.fp ppf "%s%a" (if edge = Edge.Normal then "" else "ε∙") Paths.P.pp path
+let pp_elt ppf (path,(edge,mpaths)) =
+  Pp.fp ppf "%s%a(%a)" (if edge = Edge.Normal then "" else "ε∙")
+    Paths.P.pp path Pth.Set.pp mpaths
 
 
 let pp ppf s =
-    Pp.fp ppf "@[<hov>{%a}@]" (Pp.list pp_elt) (Paths.P.Map.bindings s)
+    Pp.fp ppf "@[<hov>{%a}@]" (Pp.list pp_elt) (P.Map.bindings s)
 
 let of_list l =
-  List.fold_left (fun m (k,x) -> Paths.P.Map.add k x m) empty l
+  List.fold_left (fun m (k,(e,mps)) ->
+      P.Map.add k (e, mps) m) empty l
 
 module Forget = struct
   let to_set x = P.Map.fold (fun k _ s -> P.Set.add k s) x P.Set.empty
   let to_list d =
-    List.map fst @@ Paths.P.Map.bindings d
+    List.map (fun (x, (_,s)) -> (x,s)) @@ P.Map.bindings d
 end

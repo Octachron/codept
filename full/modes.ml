@@ -37,15 +37,18 @@ let upath (u:Unit.r) = Namespaced.flatten u.path
 
 let structured pp _ _ ppf _ units =
   let udeps (u:Unit.r) =
-      let add_dep (loc,lib,unknw) (p:Paths.P.t) =
+    let add_dep (loc,lib,unknw) ((p:Paths.P.t), mps) =
+      let mps = Paths.S.Set.elements mps in
+      let pair f: _ Scheme.tuple = Scheme.[f;mps] in
         match p.source with
-        | Paths.P.Local -> p.file :: loc, lib, unknw
+        | Paths.P.Local -> pair p.file :: loc, lib, unknw
         | Paths.P.Pkg pkg ->
-          let p: _ Scheme.tuple = [pkg; p.file] in
+          let p: _ Scheme.tuple = [pkg; p.file; mps] in
           loc, p :: lib, unknw
-        | Paths.P.Unknown -> loc, lib, p.file :: unknw
+        | Paths.P.Unknown -> loc, lib, (List.hd mps) :: unknw
         | Paths.P.Special _ -> loc, lib, unknw in
-      List.fold_left add_dep ([],[],[]) (Deps.Forget.to_list u.dependencies) in
+      List.fold_left add_dep ([],[],[])
+        (Deps.Forget.to_list u.dependencies) in
 
   let open Scheme in
   let open Schema in
@@ -72,7 +75,8 @@ let structured pp _ _ ppf _ units =
   let dep (u:Unit.r) =
     let loc, libs, unkns =  udeps u in
     let wrap l = if l = L.[] then None else Some l in
-    let all_deps = obj [ local $= loc; lib $=? wrap libs; unknown $=? wrap unkns ] in
+    let all_deps =
+      obj [ local $=? wrap loc; lib $=? wrap libs; unknown $=? wrap unkns ] in
     obj [ file $= ufile u; dependencies $= all_deps ] in
   let ud = List.map dep units.ml @ List.map dep units.mli in
   let data = let open Scheme in
@@ -170,7 +174,7 @@ let modules ?filter _ _ =
 
 let pp_only_deps sort ?filter ppf u =
   let open Unit in
-  let elts = Deps.Forget.to_list u.dependencies in
+  let elts = List.map fst @@ Deps.Forget.to_list u.dependencies in
   let elts = sort elts in
   let elts = match filter with
     | Some f -> List.filter f elts
@@ -192,6 +196,7 @@ let local_dependencies sort unit =
   @@ List.filter
     (function {Pkg.source=Unknown; _ }
             | {Pkg.source=Special _ ; _ } -> false | _ -> true )
+  @@ List.map fst
   @@ Deps.Forget.to_list unit.Unit.dependencies
 
 

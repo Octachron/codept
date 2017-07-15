@@ -30,7 +30,7 @@ type task =
 val expand_dir: string -> string
 
 (** [local_dependencies u] *)
-val local_dependencies: Unit.r -> Paths.Pkg.t list
+val local_dependencies: Unit.r -> (Paths.Pkg.t * Paths.S.set) list
 
 (**[make_abs bool] if <bool> convert relative path to absolute path *)
 val make_abs: bool -> Paths.Pkg.t -> Paths.Pkg.t

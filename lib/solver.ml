@@ -216,37 +216,39 @@ let fault =
       | _ , Ok (_,sg)
       | Ok(_,sg) , Error _  ->  sg
       | Error _, Error _ -> Module.Sig.empty
-        (* something bad happened but we are already parsing 
+        (* something bad happened but we are already parsing
            problematic input *) in
     let elts m = List.map fst @@ Paths.P.Map.bindings m in
-    let set m = Paths.P.Set.of_list @@ elts m in
+    let set m =
+      List.fold_left Paths.S.Set.union Paths.S.Set.empty
+        (List.map (fun (_,(_,s)) -> s ) @@ Paths.P.Map.bindings m) in
     if elts upper = elts lower then
       Fault.handle policy Standard_faults.concordant_approximation
         unit.src
     else
       Fault.handle policy Standard_faults.discordant_approximation
         unit.src
-        (List.map Paths.P.module_name @@ elts lower)
-        ( List.map Paths.P.module_name @@ Paths.P.Set.elements
-          @@ Paths.P.Set.diff (set upper) (set lower));
+        (Paths.S.Set.elements @@ set lower)
+        ( Paths.S.Set.elements
+          @@ Paths.S.Set.diff (set upper) (set lower));
     Unit.lift sign upper unit
 
 
 let expand_epsilon resolved unit =
-  let module M = Paths.P.Map in
+  let module M = Namespaced.Map in
   let open Unit in
-  let add_epsilon_dep edge name e' deps =
+  let add_epsilon_dep edge name (e',p) deps =
     if e' = Deps.Edge.Epsilon then
-      Deps.update name edge deps
+      Deps.update name edge p deps
     else
       deps in
-  let expand_dep path edge deps =
-    let deps = Deps.update path edge deps in
-    match M.find_opt path resolved with
+  let expand_dep path (edge,mpaths) deps =
+    let deps = Deps.update path edge mpaths deps in
+    match Paths.P.Map.find_opt path resolved with
     | None -> deps
     | Some ancestor ->
       Paths.P.Map.fold (add_epsilon_dep edge) ancestor.dependencies deps in
-  let deps = M.fold expand_dep unit.dependencies Deps.empty in
+  let deps = Paths.P.Map.fold expand_dep unit.dependencies Deps.empty in
   { unit with dependencies = deps }
 
 (* shortcut ε expansion when not needed *)

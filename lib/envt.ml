@@ -67,7 +67,7 @@ module Core = struct
   type t = {
     top: M.Dict.t;
     current: context;
-    deps: Edge.t P.Map.t ref;
+    deps: Deps.t ref;
     providers: module_provider list;
   }
 
@@ -91,17 +91,17 @@ module Core = struct
     | Signature sg -> Pp.fp ppf "[%a]@." Module.pp_signature sg
 
   module D = struct
-    let path_record edge p env =
-      env.deps := Deps.update p edge !(env.deps)
+    let path_record edge mp p env =
+      env.deps := Deps.update p edge (Paths.S.Set.singleton mp) !(env.deps)
 
     let phantom_record name env =
-      path_record Edge.Normal { P.source = Unknown; file = [name] } env
+      path_record Edge.Normal [name] { P.source = Unknown; file = [name] } env
 
 
     let record edge root env (m:Module.m) =
       match m.origin with
       | M.Origin.Unit p ->
-        path_record edge p.source env; []
+        path_record edge p.path p.source env; []
       | Phantom (phantom_root, b) ->
         if root && not phantom_root then
           (phantom_record m.name env; [ambiguity m.name b] ) else []

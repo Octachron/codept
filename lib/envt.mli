@@ -12,7 +12,7 @@ sig
   type t = {
     top: Module.Dict.t;
     current: context;
-    deps: Deps.Edge.t Paths.Pkg.Map.t ref;
+    deps: Deps.t ref;
     providers: module_provider list;
   }
   include Outliner.envt_with_deps with type t := t
