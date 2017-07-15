@@ -5,7 +5,7 @@ module Edge = struct
   let min x y = if x = Normal then x else y
   let sexp = let open Sexp in
     sum [simple_constr "Normal" Normal;
-         simple_constr "ε" Epsilon]
+         simple_constr "eps" Epsilon]
 end
 
 type t = Edge.t Paths.P.map
