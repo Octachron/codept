@@ -37,12 +37,12 @@ let atlas: atlas name= (module Atlas)
 
 
 let path = Array String
-let dep: _ tuple t = [path; Array path]
+let dep: _ tuple t = [path; path]
 let dep_list = Array dep
 
 let all_deps = Obj [
     Opt, local, dep_list;
-    Opt, lib, Array [path; path; Array path];
+    Opt, lib, Array [path; path; path];
     Opt, unknown, Array path
   ]
 let item = Obj [
@@ -70,12 +70,12 @@ let x  = {
 let schema = x
 
 type path = string list
-type dep = (path * (path list * void)) tuple
+type dep = (path * (path * void)) tuple
 type dep_list = dep list
 
 type all_deps = (
   optional * local * dep_list * (
-    optional * lib * (path * (path * (path list * void))) tuple list * (
+    optional * lib * (path * (path * (path * void))) tuple list * (
       optional * unknown * path list *
       void
     )

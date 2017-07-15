@@ -39,13 +39,15 @@ let structured pp _ _ ppf _ units =
   let udeps (u:Unit.r) =
     let add_dep (loc,lib,unknw) ((p:Paths.P.t), mps) =
       let mps = Paths.S.Set.elements mps in
-      let pair f: _ Scheme.tuple = Scheme.[f;mps] in
+      let dup mk l =
+        List.fold_left (fun l x -> mk x :: l ) l mps in
+      let pair f p : _ Scheme.tuple = Scheme.[f;p] in
         match p.source with
-        | Paths.P.Local -> pair p.file :: loc, lib, unknw
+        | Paths.P.Local -> dup (pair p.file) loc, lib, unknw
         | Paths.P.Pkg pkg ->
-          let p: _ Scheme.tuple = [pkg; p.file; mps] in
-          loc, p :: lib, unknw
-        | Paths.P.Unknown -> loc, lib, (List.hd mps) :: unknw
+          let mk pth : _ Scheme.tuple = [pkg; p.file; pth] in
+          loc, dup mk lib, unknw
+        | Paths.P.Unknown -> loc, lib, dup (fun x -> x) unknw
         | Paths.P.Special _ -> loc, lib, unknw in
       List.fold_left add_dep ([],[],[])
         (Deps.Forget.to_list u.dependencies) in

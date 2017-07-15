@@ -15,12 +15,12 @@ type unknown val unknown: unknown name
 type atlas val atlas: atlas name
 
 type path = string list val path: path t
-type dep = (path * (path list * void)) tuple val dep: dep t
+type dep = (path * (path * void)) tuple val dep: dep t
 type dep_list = dep list val dep_list: dep_list t
 
 type all_deps = (
   optional * local * dep_list * (
-    optional * lib * (path * (path * (path list * void))) tuple list * (
+    optional * lib * (path * (path * (path * void))) tuple list * (
       optional * unknown * path list *
       void
     )
