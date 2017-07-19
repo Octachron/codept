@@ -106,7 +106,7 @@ and inf_uident name lexbuf =
   | Parser.DOT ->
     let loc = locate lexbuf in
     let _ = !inf_path lexbuf in
-    Some { data = name; loc }
+    Some { data = [name]; loc }
   | x -> rewind x; None
   | exception Lexer.Error _ -> None
 and inf_path lexbuf =
@@ -134,7 +134,7 @@ let to_upper_bound m2l =
     Loc.{data = M2l.Annot.Access.merge x.data y.data; loc = merge x.loc y.loc } in
   let add x s  =
     Loc.{ data =
-            Name.Map.add x.data (x.loc, Deps.Edge.Normal) s.data;
+            Paths.S.Map.add x.data (x.loc, Deps.Edge.Normal) s.data;
           loc = merge x.loc s.loc } in
   let open M2l in
   let open Loc in
@@ -143,9 +143,9 @@ let to_upper_bound m2l =
         let locate x = Loc.create elt.loc x in
         match elt.data with
         | Minor { access; _ } -> union (locate access) s
-        | Open path -> add (locate @@ List.hd path) s
+        | Open path -> add (locate path) s
         | Bind {expr = Ident path; _}
-        | Include (Ident path) -> add (locate @@ List.hd path) s
+        | Include (Ident path) -> add (locate path) s
         | _ -> s
       ) (Loc.nowhere M2l.Annot.Access.empty) m2l in
   [Loc.fmap (fun access -> Minor { Annot.empty.data with access }) access]

@@ -64,9 +64,9 @@ and expression =
     dependency tracking.
 *)
 and annotation =
-  { access: (Loc.t * Deps.Edge.t) Name.map
-  (** [M.N.L.x] ⇒ access \{M = Normal \}
-      type t = A.t ⇒ access \{ M = ε \}
+  { access: (Loc.t * Deps.Edge.t) Paths.S.map
+  (** [M.N.L.x] ⇒ access \{M.N.L = Normal \}
+      type t = A.t ⇒ access \{ A = ε \}
   *)
   ; values: m2l list (** − [let open A in …] ⇒ [[ Open A; …  ]]
                          − [let module M = … ] ⇒ [[ Include A; … ]]
@@ -150,7 +150,7 @@ module Annot : sig
   type t = annotation Loc.ext
 
   module Access: sig
-    type t = (Loc.t * Deps.Edge.t) Name.map
+    type t = (Loc.t * Deps.Edge.t) Paths.S.map
     val empty: t
     val merge: t -> t -> t
   end
@@ -166,8 +166,8 @@ module Annot : sig
   val union: t list -> t
   val union_map: ('a -> t) -> 'a list -> t
 
-  val access: Name.t Loc.ext -> t
-  val abbrev: Name.t Loc.ext -> t
+  val access: Paths.S.t Loc.ext -> t
+  val abbrev:  Paths.S.t Loc.ext -> t
   val value: m2l list -> t
   val pack: module_expr Loc.ext list Loc.ext -> t
   val opt: ('a -> t) -> 'a option -> t

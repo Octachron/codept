@@ -350,6 +350,14 @@ let result =
          "m.mli", [];
         ]
      )
+
+  && (Sys.chdir "../alias_values";
+      both ["C"] @@ dl
+        ["a.ml", l[];
+         "b.ml", l[];
+         "c.ml", l["a.ml"; "b.ml"]
+        ]
+     )
   &&
   ( Sys.chdir "../broken_network";
     both ["A"] @@ dl [
@@ -529,7 +537,7 @@ let result =
                                 ["List";"Longident"; "Location"; "Lexing";
                                  "Parsetree"], [] );
           "approx_parser.mli", (["M2l"], [],[]);
-          "approx_parser.ml", (["Deps"; "Loc"; "Read";"M2l";"Name"],
+          "approx_parser.ml", (["Deps"; "Loc"; "Read";"M2l";"Paths"],
                                ["Lexer"; "Parser"; "Lexing";"List"],[]);
           "cmi.mli", (["M2l"], [], []);
 

@@ -47,7 +47,7 @@ module H = struct
     let loc =  extract_loc lid in
     match x with
     | A _ -> Annot.empty
-    | S(p,_) -> Annot.access {data = prefix p; loc }
+    | S(p,_) -> Annot.access {data = concrete p; loc }
     | T | F _ -> assert false
 
   let do_open lid =
@@ -113,7 +113,7 @@ module Pattern = struct
 
   let open_ m { annot={ data = {values; packed; access}; loc } ; binds} =
     let values =
-      ( if Name.Map.cardinal access > 0 then
+      ( if Paths.S.Map.cardinal access > 0 then
           M2l.[{ Loc.data = Minor {Annot.empty.data with access}; loc }]
         else
           []
