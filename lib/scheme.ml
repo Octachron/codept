@@ -6,9 +6,14 @@ module L = struct
     | (::) of 'a * 'a t
 end
 
-type 'a tuple =
-  | []: void tuple
-  | (::): 'a * 'b tuple -> ('a * 'b) tuple
+module Tuple = struct
+  type 'a tuple =
+    | []: void tuple
+    | (::): 'a * 'b tuple -> ('a * 'b) tuple
+  type 'a t = 'a tuple
+end
+open Tuple
+
 
 module type name = sig type t val s:string end
 module Name(X:sig val s:string end) = struct type t include X end
@@ -26,6 +31,17 @@ type ('m,'a) elt =
   | Just: 'a -> ('any,'a) elt
   | Nothing: (optional,'any) elt
 
+module Record = struct
+  type 'a record =
+    | []: void record
+    | (::): ( 'a name * ('m,'b) elt) * 'c record ->
+      ('m * 'a * 'b * 'c) record
+  type 'a t = 'a record
+end
+open Record
+
+type ('a,'b) bijection = { fwd:'a->'b;rev:'b -> 'a}
+
 type 'hole t =
   | Float: float t
   | Int: int t
@@ -34,16 +50,13 @@ type 'hole t =
   | (::) : 'a t * 'b tuple t -> ('a * 'b) tuple t
   | []: void tuple t
   | Obj:'a record_declaration -> 'a record t
+  | Custom: ('a,'b) bijection * 'b t -> 'a t
 
 and 'a record_declaration =
   | []: void record_declaration
   | (::): ( 'm modal * 'a name * 'b t) * 'c record_declaration
     -> (  'm * 'a * 'b * 'c ) record_declaration
 
-and 'a record =
-  | []: void record
-  | (::): ( 'a name * ('m,'b) elt) * 'c record ->
-    ('m * 'a * 'b * 'c) record
 
 type ('m,'a,'b) field = 'a name * ('m, 'b) elt
 
@@ -78,6 +91,7 @@ let rec json_type: type a. Format.formatter -> a t -> unit =
         json_properties r
         k "required"
         (json_required true) r
+    | Custom(_,t) -> json_type ppf t
 and json_schema_tuple: type a. Format.formatter -> a tuple t -> unit =
   fun ppf -> function
     | [] -> ()
@@ -86,6 +100,7 @@ and json_schema_tuple: type a. Format.formatter -> a tuple t -> unit =
     | a :: q ->
       Pp.fp ppf {|@[<hov 2>{@ %a@ }@],@; %a|}
         json_type a json_schema_tuple q
+    | Custom(_, _) -> assert false
 and json_properties: type a. Format.formatter -> a record_declaration -> unit =
   fun ppf -> function
   | [] -> ()
@@ -117,12 +132,13 @@ let rec json: type a. a t -> Format.formatter -> a -> unit =
     | [], [] -> ()
     | _ :: _ as sch , l -> Pp.fp ppf "@[<hov>[%a]@]" (json_tuple sch) l
     | Obj sch, x -> Pp.fp ppf "@[<hv>{ %a }@]" (json_obj false sch) x
+    | Custom(f,t), x -> json t ppf (f.fwd x)
 and json_tuple: type a. a tuple t -> Format.formatter -> a tuple -> unit =
   fun sch ppf x -> match sch, x with
     | [], [] -> ()
     | [a], [x] -> json a ppf x
     | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json a) x (json_tuple q) xs
-
+    | Custom (_,_), _ -> assert false
 
 and json_obj: type a.
   bool -> a record_declaration -> Format.formatter -> a record -> unit =
@@ -169,6 +185,7 @@ let rec sexp: type a. a t -> Format.formatter -> a -> unit =
     | [a], [x] -> sexp a ppf x
     | a :: q, x :: xs -> Pp.fp ppf "%a@ %a" (sexp a) x (sexp q) xs
     | Obj sch, x -> Pp.fp ppf "@[<hov>(@;<1 2>%a@;<1 2>)@]" (sexp_obj sch) x
+    | Custom(f,t), x -> sexp t ppf (f.fwd x)
 and sexp_obj: type a.
   a record_declaration -> Format.formatter -> a record -> unit =
   fun sch ppf x -> match sch, x with
@@ -191,3 +208,48 @@ let ($=?) field x = match x with
   | None -> skip field
 
 let obj (x:_ record)= x
+
+type untyped =
+  | Array of untyped list
+  | Array_or_obj of untyped list
+  | Atom of string
+  | Obj of (string * untyped) list
+
+
+let promote_to_obj l =
+  let promote_pair = function Array [Atom x;y] -> Some(x,y) | _ -> None in
+  Option.List'.map promote_pair l
+
+let rec retype: type a. a t -> untyped -> a option =
+  let open Option in
+  fun sch u -> match sch, u with
+    | Int, Atom u -> int_of_string_opt u
+    | Float, Atom u -> float_of_string_opt u
+    | String, Atom s -> Some s
+    | Array t, (Array ul | Array_or_obj ul) ->
+      Option.List'.map (retype t) ul
+    |  [], Array [] -> Some []
+    | (a::q), Array(ua :: uq) ->
+        retype a ua >>= fun h ->
+        retype q (Array uq) >>| fun q ->
+        Tuple.(h :: q)
+    | Obj r, Obj ur ->
+      retype_obj r ur
+    | Obj r, Array_or_obj ur ->
+      promote_to_obj ur >>= fun obj ->
+      retype_obj r obj
+    | Custom(f,t), x -> retype t x >>| f.rev
+    | _ -> None
+and retype_obj: type a. a record_declaration -> (string * untyped) list ->
+  a record option = fun sch x ->
+  let open Option in
+  match sch, x with
+  | [], [] -> Some []
+  | (_, field, t) :: q , (ufield, u) :: uq when show field = ufield ->
+    retype t u >>= fun h ->
+    retype_obj q uq >>| fun l ->
+    Record.( (field $= h) :: l )
+  | (Opt,field,_) :: q , l ->
+    retype_obj q l >>| fun l ->
+    Record.( skip field :: l )
+  | _ -> None
