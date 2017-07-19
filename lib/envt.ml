@@ -18,12 +18,7 @@ module Query = struct
 
   type 'a t = 'a Outliner.query_result
   let pure main = { Outliner.main; msgs = [] }
-  let (++) (query:_ t) fault = { query with msgs = fault :: query.msgs }
   let create main msgs : _ t = {main; msgs}
-  let fmap f (q: _ t) : _ t = { q with main = f q.main }
-  let (>>=) (x: _ t) f: _ t =
-    let {main;msgs}: _ t = f x.main in
-    { main; msgs = msgs @ x.msgs }
 
   let (>>?) (x: _ t option) f =
     Option.( x >>= fun x ->
@@ -126,21 +121,9 @@ module Core = struct
     | M.Module_type -> def.module_types
 
 
-  (* compute if the level of the root of the path is
-     at level module
-  *)
-  let record_level level = function
-    | _ :: _ :: _ -> true
-    | [_] -> level = M.Module
-    | [] -> false
-
   let adjust_level level = function
     | [] -> level
     | _ :: _ -> M.Module
-
-  let is_unit = function
-    |{ M.origin = M.Origin.Unit _ ; _ } -> true
-    | _ -> false
 
   let restrict env context = { env with current = context }
   let top env =
@@ -363,8 +346,6 @@ module Libraries = struct
         )
         Name.Map.empty files in
     { origin; resolved= Core.start M.Def.empty; cmis= cmis_map }
-
-  type t = source list
 
   let create includes =  List.map read_dir includes
 
