@@ -260,26 +260,6 @@ let expand_and_add expand  =
     fun resolved (unit:Unit.r) ->
       Paths.P.Map.add unit.src unit resolved
 
-module type s = functor (Envt : Outliner.envt_with_deps)
-  (Param : Outliner.param) ->
-  sig
-    type state
-    val start : Envt.t -> Unit.s list -> state
-    val compute_more :
-      Envt.t -> i -> Deps.t * (Envt.t * Module.Sig.t, M2l.t) result
-    val eval : ?learn:bool -> state -> i -> state
-    val eval_bounded : Envt.t -> Unit.s -> Unit.r
-    val resolve_dependencies :
-      ?learn:bool -> state -> (Envt.t * Unit.r list, state) result
-    val resolve_split_dependencies :
-      Envt.t ->
-      Unit.s list Unit.pair ->
-      (Unit.r list Unit.pair,
-       [> `Ml of Unit.r list * state | `Mli of state ])
-      result
-    val approx_and_try_harder : state -> state
-  end
-
 module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
   open Unit
 
