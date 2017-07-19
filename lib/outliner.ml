@@ -180,18 +180,26 @@ module Make(Envt:envt)(Param:param) = struct
       Ok (Some(Y.define [m]))
 
   let bind state module_expr (b: M2l.module_expr bind) =
-    if not transparent_aliases then
-      (* trigger dependency tracking *)
-      ignore (bind state module_expr b);
+    match b.expr with
+    | (Ident p:M2l.module_expr)
+    | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
+      begin
+      let m = Module.Alias
+          { name = b.name; path = Namespaced.of_path p;
+            weak=false; phantom = None } in
+      let r = Ok ( Some (Y.define [m]) ) in
+      if not transparent_aliases then
+        (* trigger dependency tracking *)
+        match bind state module_expr b with
+        | Error _ as e -> e
+        | Ok _ -> r
+      else
+        r
+    end
+    | _ -> bind state module_expr b
 
-      match b.expr with
-      | (Ident p:M2l.module_expr)
-      | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
-        let m = Module.Alias
-            { name = b.name; path = Namespaced.of_path p;
-              weak=false; phantom = None } in
-        Ok ( Some (Y.define [m]) )
-      | _ -> bind state module_expr b
+
+
 
   let bind_sig state module_type {name;expr} =
     match module_type state expr with
