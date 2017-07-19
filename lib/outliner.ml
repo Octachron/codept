@@ -181,8 +181,9 @@ module Make(Envt:envt)(Param:param) = struct
 
   let bind state module_expr (b: M2l.module_expr bind) =
     if not transparent_aliases then
-      bind state module_expr b
-    else
+      (* trigger dependency tracking *)
+      ignore (bind state module_expr b);
+
       match b.expr with
       | (Ident p:M2l.module_expr)
       | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
