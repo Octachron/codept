@@ -22,6 +22,7 @@ struct
   end
   include Core
   let sexp = Sexp.( list string )
+  let sch = Scheme.(Array String)
 
   module Set = struct
     include Set.Make(Core)
@@ -107,6 +108,27 @@ module Expr = struct
     let all = all ()
   end
   let sexp = Sexp.all
+
+  module Sch = struct
+    open Scheme
+    let rec raw = Sum[ Void; String; [t;String]; [t; t] ]
+    and t = Custom {fwd;rev; sch=raw; recs = true }
+    and fwd = let open Tuple in
+      function
+      | T -> C E
+      | A s -> C (S (Z s))
+      | S(t,s) -> C(S(S(Z [t;s])))
+      | F {f;x} -> C(S(S(S(Z [f;x]))))
+    and rev = let open Tuple in
+      function
+      | C E -> T
+      | C S Z s -> A s
+      | C S S Z [t;s] -> S(t,s)
+      | C S S S Z [f;x] -> F {f;x}
+      | _ -> .
+  end
+  let sch = Sch.t
+
 
   exception Functor_not_expected
   let concrete p: Simple.t =
@@ -199,6 +221,28 @@ module Pkg = struct
 
   end
   let sexp = Sexp.all
+
+  module Sch = struct open Scheme
+    let raw_source = Sum [ Void; Void; Simple.sch; String ]
+    let source = custom raw_source
+        (function
+          | Local -> C E
+          | Unknown -> C (S E)
+          | Pkg s -> C (S (S (Z s)))
+          | Special s -> C(S(S(S(Z s))))
+        )
+        (function
+          | C E -> Local
+          | C S E -> Unknown
+          | C S S Z s -> Pkg s
+          | C S S S Z s -> Special s
+          | _ -> .
+        )
+    let all =
+        custom [source; Simple.sch]
+          (fun {source;file} -> Tuple.[source;file])
+          Tuple.(fun [source;file] ->  {source;file} )
+  end let sch = Sch.all
 
   let filename ?(sep=sep) p =
     begin match p.source with

@@ -81,4 +81,28 @@ module Sexp = struct
       (fun r -> r.data, r.loc)
 
 
-  end
+end
+
+module Sch = struct
+  open Scheme
+
+  let raw_sch =
+    Sum [ Void; [Int;Int;Int]; [ [Int;Int]; [Int;Int] ] ]
+
+  let t = let open Tuple in
+    custom raw_sch
+      (function
+        | Nowhere -> C E
+        | Simple {line;start;stop} -> C(S (Z [line;start;stop]))
+        | Multiline { start =l,c; stop = l',c' } -> C(S (S (Z [[l;c];[l';c']])))
+      )
+      (function
+        | C E -> Nowhere
+        | C S Z [line;start;stop] -> Simple {line;start;stop}
+        | C S S Z [[l;c];[l';c']] -> Multiline {start=l,c; stop=l',c' }
+        | _ -> .
+      )
+
+  let ext inner = let open Tuple in
+    custom [ inner; t ] (fun r -> [r.data;r.loc]) (fun [data;loc] -> {data;loc})
+end

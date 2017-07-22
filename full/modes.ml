@@ -41,11 +41,11 @@ let structured pp _ _ ppf _ units =
       let mps = Paths.S.Set.elements mps in
       let dup mk l =
         List.fold_left (fun l x -> mk x :: l ) l mps in
-      let pair f p : _ Scheme.tuple = Scheme.[f;p] in
+      let pair f p = Scheme.Tuple.[f;p] in
         match p.source with
         | Paths.P.Local -> dup (pair p.file) loc, lib, unknw
         | Paths.P.Pkg pkg ->
-          let mk pth : _ Scheme.tuple = [pkg; p.file; pth] in
+          let mk pth = Scheme.Tuple.[pkg; p.file; pth] in
           loc, dup mk lib, unknw
         | Paths.P.Unknown -> loc, lib, dup (fun x -> x) unknw
         | Paths.P.Special _ -> loc, lib, unknw in

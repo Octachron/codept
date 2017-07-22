@@ -22,3 +22,8 @@ module Sexp: sig
   val t: (t,Sexp.one_and_many) Sexp.impl
   val ext:  ('a,'b) Sexp.impl -> ('a ext, Sexp.many) Sexp.impl
 end
+
+module Sch: sig
+  val t: t Scheme.t
+  val ext: 'a Scheme.t -> 'a ext Scheme.t
+end

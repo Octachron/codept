@@ -37,7 +37,7 @@ let atlas: atlas name= (module Atlas)
 
 
 let path = Array String
-let dep: _ tuple t = [path; path]
+let dep: _ Tuple.t t = [path; path]
 let dep_list = Array dep
 
 let all_deps = Obj [
@@ -70,24 +70,24 @@ let x  = {
 let schema = x
 
 type path = string list
-type dep = (path * (path * void)) tuple
+type dep = (path * (path * void)) Tuple.t
 type dep_list = dep list
 
 type all_deps = (
   optional * local * dep_list * (
-    optional * lib * (path * (path * (path * void))) tuple list * (
+    optional * lib * (path * (path * (path * void))) Tuple.t list * (
       optional * unknown * path list *
       void
     )
   )
-) record
+) Record.t
 
 type item = (
   required * file * string * (
     required * dependencies * all_deps
     * void
   )
-) record
+) Record.t
 
 type assoc = (
   required * m * path * (
@@ -96,11 +96,11 @@ type assoc = (
       void
     )
   )
-) record
+) Record.t
 
 type deps = (
   required * atlas * assoc list * (
     required * dependencies * item list *
     void
   )
-) record
+) Record.t

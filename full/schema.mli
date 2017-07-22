@@ -15,17 +15,17 @@ type unknown val unknown: unknown name
 type atlas val atlas: atlas name
 
 type path = string list val path: path t
-type dep = (path * (path * void)) tuple val dep: dep t
+type dep = (path * (path * void)) Tuple.t val dep: dep t
 type dep_list = dep list val dep_list: dep_list t
 
 type all_deps = (
   optional * local * dep_list * (
-    optional * lib * (path * (path * (path * void))) tuple list * (
+    optional * lib * (path * (path * (path * void))) Tuple.t list * (
       optional * unknown * path list *
       void
     )
   )
-) record
+) Record.t
 val all_deps: all_deps t
 
 
@@ -34,7 +34,7 @@ type item = (
     required * dependencies * all_deps
     * void
   )
-) record
+) Record.t
 val item: item t
 
 type assoc = (
@@ -44,7 +44,7 @@ type assoc = (
       void
     )
   )
-) record
+) Record.t
 val assoc: assoc t
 
 type deps = (
@@ -52,7 +52,7 @@ type deps = (
     required * dependencies * item list *
     void
   )
-) record
+) Record.t
 val deps: deps t
 
 val x: deps s

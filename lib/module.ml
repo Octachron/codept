@@ -15,6 +15,11 @@ module Arg = struct
       (fun (x,y) -> {name=x; signature=y} )
       ( fun r -> r.name, r.signature )
 
+  let sch sign = let open Scheme.Tuple in
+    let fwd arg = [arg.name; arg.signature] in
+    let rev [name;signature] = {name;signature} in
+    Scheme.custom Scheme.[String; sign] fwd rev
+
   let reflect pp ppf = function
     | Some arg ->
       Pp.fp ppf {|Some {name="%s"; %a}|} arg.name pp arg.signature
@@ -78,6 +83,16 @@ module Divergence= struct
     sum [ simple_constr "First_class_module" First_class_module;
           simple_constr "External" External]
 
+  let sch_origin =
+    let open Scheme in
+    custom (Sum[Void;Void])
+      (function
+        | First_class_module -> C E
+        | External -> C (S E))
+      (function
+      | C E -> First_class_module
+      | C (S E) -> External
+      | _ -> .)
 
   let sexp =
     let open Sexp in
@@ -85,6 +100,11 @@ module Divergence= struct
     convr raw
       (fun (r,o,l) -> {root=r; origin = o; loc = l })
       (fun r -> r.root, r.origin, r.loc )
+
+  let sch = let open Scheme in let open Tuple in
+    custom Scheme.[String; sch_origin; [Paths.P.sch; Loc.Sch.t ]]
+      (fun r -> [r.root;r.origin; [fst r.loc; snd r.loc] ])
+      (fun [root;origin;[s;l]] -> {root;origin;loc=(s,l)} )
 
 end
 
@@ -138,6 +158,27 @@ module Origin = struct
   end
   let sexp = Sexp.sexp
 
+  module Sch = struct open Scheme
+    let raw =
+      Sum [ [Paths.P.sch; Paths.S.sch]; Void; Void; Void; [ Bool; Divergence.sch]]
+    let t = let open Tuple in
+      custom raw
+        (function
+          | Unit {source; path} -> C (Z [source;path])
+          | Submodule -> C (S E)
+          | First_class -> C (S (S E))
+          | Arg -> C(S (S (S E)))
+          | Phantom (b,div) -> C (S (S (S (S(Z [b;div])))))
+        )
+        (function
+          | C Z [source;path] -> Unit {source;path}
+          | C S E -> Submodule
+          | C S S E -> First_class
+          | C S S S E -> Arg
+          | C S S S S Z [b;d] -> Phantom(b,d)
+          | _ -> .
+        )
+  end let sch = Sch.t
 
     let reflect ppf = function
       | Unit u  -> Pp.fp ppf "Unit {source=%a;path=[%a]}"
@@ -490,6 +531,13 @@ module Sexp_core = struct
   let modul_ = module_ ()
 end
 let sexp = Sexp_core.modul_
+
+module Sch = struct
+  open Scheme
+  module Origin = Name(struct let s = "origin" end)
+  let origin: Origin.t name = (module Origin)
+
+end
 
 module Def = struct
   let empty = empty_sig
