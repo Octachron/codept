@@ -19,9 +19,9 @@ type dep = (path * (path * void)) Tuple.t val dep: dep t
 type dep_list = dep list val dep_list: dep_list t
 
 type all_deps = (
-  optional * local * dep_list * (
-    optional * lib * (path * (path * (path * void))) Tuple.t list * (
-      optional * unknown * path list *
+  local * dep_list option * (
+    lib * (path * (path * (path * void))) Tuple.t list option * (
+      unknown * path list option *
       void
     )
   )
@@ -30,17 +30,16 @@ val all_deps: all_deps t
 
 
 type item = (
-  required * file * string * (
-    required * dependencies * all_deps
-    * void
+  file * string * (
+    dependencies * all_deps * void
   )
 ) Record.t
 val item: item t
 
 type assoc = (
-  required * m * path * (
-    optional * ml * string * (
-      optional * mli * string *
+  m * path * (
+    ml * string option * (
+      mli * string option *
       void
     )
   )
@@ -48,8 +47,8 @@ type assoc = (
 val assoc: assoc t
 
 type deps = (
-  required * atlas * assoc list * (
-    required * dependencies * item list *
+  atlas * assoc list * (
+    dependencies * item list *
     void
   )
 ) Record.t

@@ -17,26 +17,37 @@ end
 open Tuple
 
 module type name = sig type t val s:string end
-module Name(X:sig val s:string end) = struct type t include X end
-
 type 'a name = (module name with type t = 'a)
+module Name(X:sig val s:string end) =
+struct
+  type t
+  type s = t
+  include X
+  module M = struct type t = s let s = s end
+  let x: t name = (module M)
+end
+
 let show (type a) (module X:name with type t = a) = X.s
 
 type required = private Required
 type optional = private Optional
-type _ modal =
-  | Opt:optional modal
-  | Req:required modal
 
+type (_,_,_) modal =
+  | Opt:(optional,'a,'a option) modal
+  | Req:(required,'a,'a) modal
+
+(*
 type ('m,'a) elt =
   | Just: 'a -> ('any,'a) elt
   | Nothing: (optional,'any) elt
+*)
+
 
 module Record = struct
   type 'a record =
     | []: void record
-    | (::): ( 'a name * ('m,'b) elt) * 'c record ->
-      ('m * 'a * 'b * 'c) record
+    | (::): ( 'a name * 'elt) * 'c record ->
+      ('a * 'elt * 'c) record
   type 'a t = 'a record
 end
 open Record
@@ -59,8 +70,8 @@ type 'hole t =
 and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; recs:bool }
 and 'a record_declaration =
   | []: void record_declaration
-  | (::): ( 'm modal * 'a name * 'b t) * 'c record_declaration
-    -> (  'm * 'a * 'b * 'c ) record_declaration
+  | (::): ( ('m,'x,'fx) modal * 'a name * 'x t) * 'c record_declaration
+    -> (  'a * 'fx * 'c ) record_declaration
 
 and 'a sum_decl =
     | [] : void sum_decl
@@ -73,7 +84,8 @@ and (_,_) cons =
 
 and 'a sum = C: ('a, 'elt ) cons -> 'a sum
 
-type ('m,'a,'b) field = 'a name * ('m, 'b) elt
+(*
+type ('m,'a,'b) field = 'a name * ('m, 'b) elt*)
 
 type 'a s = {
   title: string;
@@ -179,11 +191,14 @@ and json_obj: type a.
   bool -> a record_declaration -> Format.formatter -> a record -> unit =
   fun not_first sch ppf x -> match sch, x with
     | [], [] -> ()
-    | (_, name,sch) :: q ,   (_, Just x) :: xs ->
+    | (Req, name,sch) :: q ,   (_, x) :: xs ->
       if not_first then Pp.fp ppf ",@ ";
       Pp.fp ppf {|@[<hov 2>"%s" :@ %a@]|} (show name) (json sch) x;
       Pp.fp ppf "%a" (json_obj true q) xs
-    | (Opt,_,_) :: q, (_, Nothing ) :: xs ->
+    | (Opt,name,sch) :: q, (_,Some x) :: xs ->
+      Pp.fp ppf {|@[<hov 2>"%s" :@ %a@]|} (show name) (json sch) x;
+      Pp.fp ppf "%a" (json_obj true q) xs
+    | (Opt,_,_) :: q, (_, None ) :: xs ->
       json_obj not_first q ppf xs
 
 type tree = Leaf of int | N of tree * tree
@@ -250,21 +265,28 @@ and sexp_obj: type a.
   a record_declaration -> Format.formatter -> a record -> unit =
   fun sch ppf x -> match sch, x with
     | [], [] -> ()
-    | (_, name,sch) :: q ,   (_, Just x) :: xs ->
+    | (Req, name,sch) :: q ,   (_, x) :: xs ->
       Pp.fp ppf {|(%a %a)|} cstring (show name) (sexp sch) x;
       begin match q, xs  with
         | [], [] -> ()
         | _ -> Pp.fp ppf "@ %a" (sexp_obj q) xs
       end
-    | (Opt,_,_) :: q, (_, Nothing ) :: xs -> sexp_obj q ppf xs
+    | (Opt, name,sch) :: q ,   (_, Some x) :: xs ->
+      Pp.fp ppf {|(%a %a)|} cstring (show name) (sexp sch) x;
+      begin match q, xs  with
+        | [], [] -> ()
+        | _ -> Pp.fp ppf "@ %a" (sexp_obj q) xs
+      end
+
+    | (Opt,_,_) :: q, (_, None ) :: xs -> sexp_obj q ppf xs
 
 let sexp x = sexp x.sch
 
-let ($=) field x = field, Just x
-let skip name = name, Nothing
+let ($=) field x = field, x
+let skip name = name, None
 
 let ($=?) field x = match x with
-  | Some x -> field $= x
+  | Some x -> field $= Some x
   | None -> skip field
 
 let obj (x:_ record)= x
@@ -319,10 +341,14 @@ and retype_obj: type a. a record_declaration -> (string * untyped) list ->
   let open Option in
   match sch, x with
   | [], [] -> Some []
-  | (_, field, t) :: q , (ufield, u) :: uq when show field = ufield ->
+  | (Req, field, t) :: q , (ufield, u) :: uq when show field = ufield ->
     retype t u >>= fun h ->
     retype_obj q uq >>| fun l ->
     Record.( (field $= h) :: l )
+  | (Opt, field, t) :: q , (ufield, u) :: uq when show field = ufield ->
+    retype t u >>= fun h ->
+    retype_obj q uq >>| fun l ->
+    Record.( (field $=? Some h) :: l )
   | (Opt,field,_) :: q , l ->
     retype_obj q l >>| fun l ->
     Record.( skip field :: l )

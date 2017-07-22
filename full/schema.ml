@@ -13,27 +13,22 @@ module Unknown = Name(struct let s ="unknown" end)
 module Dependencies = Name(struct let s = "dependencies" end)
 module Atlas = Name(struct let s = "atlas" end)
 
-type ml = Ml.t
-let ml: ml name = (module Ml)
+type ml = Ml.t let ml = Ml.x
+type mli = Mli.t let mli = Mli.x
 
-type mli = Mli.t
-let mli: mli name = (module Mli)
+type m = Module.t let m = Module.x
 
-type m = Module.t
-let m: m name = (module Module)
+type file = File.t let file = File.x
 
-type file = File.t
-let file: file name= (module File)
-
-type local = Local.t let local: local name = (module Local)
-type unknown = Unknown.t let unknown: unknown name = (module Unknown)
-type lib = Lib.t let lib: lib name = (module Lib)
+type local = Local.t let local = Local.x
+type unknown = Unknown.t let unknown = Unknown.x
+type lib = Lib.t let lib = Lib.x
 
 type dependencies = Dependencies.t
-let dependencies: dependencies name = (module Dependencies)
+let dependencies = Dependencies.x
 
 type atlas = Atlas.t
-let atlas: atlas name= (module Atlas)
+let atlas = Atlas.x
 
 
 let path = Array String
@@ -73,34 +68,34 @@ type path = string list
 type dep = (path * (path * void)) Tuple.t
 type dep_list = dep list
 
+
 type all_deps = (
-  optional * local * dep_list * (
-    optional * lib * (path * (path * (path * void))) Tuple.t list * (
-      optional * unknown * path list *
+  local * dep_list option * (
+    lib * (path * (path * (path * void))) Tuple.t list option * (
+      unknown * path list option *
       void
     )
   )
 ) Record.t
 
 type item = (
-  required * file * string * (
-    required * dependencies * all_deps
-    * void
+  file * string * (
+    dependencies * all_deps * void
   )
 ) Record.t
 
 type assoc = (
-  required * m * path * (
-    optional * ml * string * (
-      optional * mli * string *
+  m * path * (
+    ml * string option * (
+      mli * string option *
       void
     )
   )
 ) Record.t
 
 type deps = (
-  required * atlas * assoc list * (
-    required * dependencies * item list *
+  atlas * assoc list * (
+    dependencies * item list *
     void
   )
 ) Record.t

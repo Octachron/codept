@@ -18,26 +18,24 @@ module Tuple: sig
 end
 
 module type name = sig type t val s:string end
-module Name: functor(X:sig val s:string end) -> name
-
 type 'a name = (module name with type t = 'a)
+module Name: functor(X:sig val s:string end) ->
+  sig type t val x: t name end
+
 val show: 'a name -> string
 
 type required = private Required
 type optional = private Optional
-type _ modal =
-  | Opt:optional modal
-  | Req:required modal
 
-type ('m,'a) elt =
-  | Just: 'a -> ('any,'a) elt
-  | Nothing: (optional,'any) elt
+type (_,_,_) modal =
+  | Opt:(optional,'a,'a option) modal
+  | Req:(required,'a,'a) modal
 
 module Record: sig
   type 'a record =
     | []: void record
-    | (::): ( 'a name * ('m,'b) elt) * 'c record ->
-      ('m * 'a * 'b * 'c) record
+    | (::): ( 'a name * 'elt) * 'c record ->
+      ('a * 'elt * 'c) record
   type 'a t = 'a record
 end
 
@@ -59,8 +57,8 @@ type 'hole t =
 and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; recs: bool}
 and 'a record_declaration =
   | []: void record_declaration
-  | (::): ( 'm modal * 'a name * 'b t) * 'c record_declaration
-    -> (  'm * 'a * 'b * 'c ) record_declaration
+  | (::):  ( ('m,'x,'fx) modal * 'a name * 'x t) * 'c record_declaration
+    -> (  'a * 'fx * 'c ) record_declaration
 
 and 'a sum_decl =
     | [] : void sum_decl
@@ -73,8 +71,6 @@ and (_,_) cons =
 
 and 'a sum = C: ('a, 'elt ) cons -> 'a sum
 
-type ('m,'a,'b) field = 'a name * ('m, 'b) elt
-
 type 'a s = {
   title: string;
   description: string;
@@ -85,9 +81,9 @@ val json: 'a s -> Format.formatter -> 'a -> unit
 val sexp: 'a s  -> Format.formatter -> 'a -> unit
 val json_schema:  Format.formatter -> 'a s -> unit
 
-val ($=): 'a name -> 'b -> ('any,'a,'b) field
-val skip: 'a name -> (optional,'a,'any) field
-val ($=?): 'a name -> 'b option -> (optional,'a,'b) field
+val ($=): 'a name -> 'b -> ('a name * 'b)
+val skip: 'a name -> ('a name * 'b option)
+val ($=?): 'a name -> 'b option -> ('a name * 'b option)
 
 val obj: 'a Record.t -> 'a Record.t
 val custom: ?recs:bool -> 'b t -> ('a -> 'b) -> ('b -> 'a) -> 'a t

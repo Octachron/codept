@@ -534,8 +534,63 @@ let sexp = Sexp_core.modul_
 
 module Sch = struct
   open Scheme
-  module Origin = Name(struct let s = "origin" end)
-  let origin: Origin.t name = (module Origin)
+  module Origin_f = Name(struct let s = "origin" end)
+  module Args = Name(struct let s = "args" end)
+  module Modules = Name(struct let s = "module" end)
+  module Module_types = Name(struct let s = "module_types" end)
+  module Name_f = Name(struct let s = "name" end)
+
+  let (><) = Option.(><)
+
+  let default x y = if x = y then None else Some y
+
+  let l = let open L in function | [] -> None | x -> Some x
+
+  let option (type a)  (sch:a t) =
+    custom (Sum [Void; sch])
+      (function None -> C E | Some x -> C (S(Z x)))
+      (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
+
+  let rec schr = Obj [
+      Req, Name_f.x, String;
+      Opt, Origin_f.x, Origin.sch;
+      Opt, Args.x, Array opt_m;
+      Opt, Modules.x, Array module';
+      Opt, Module_types.x, Array module'
+    ]
+  and opt_m = Custom { fwd=ofwd ; rev = orev ; sch= Sum [Void;m]; recs=true }
+  and ofwd: m option -> 'a = function None -> C E | Some x -> C(S(Z x))
+  and orev: 'a -> m option = function C E -> None | C S Z x-> Some x | _ -> .
+  and m = Custom { fwd; rev; sch = schr; recs = true}
+  and fwd x =
+    let s = flatten x.signature in
+    Record.[
+      Name_f.x $= x.name;
+      Origin_f.x $=? (default Origin.Submodule x.origin);
+      Args.x $=? (l x.args);
+      Modules.x $=? (l @@ Sexp_core.to_list s.modules);
+      Module_types.x $=? (l @@ Sexp_core.to_list s.module_types)
+    ]
+  and rev = let open Record in
+    fun [_, name; _, o; _, a; _, m; _, mt] ->
+      create ~args:(a><[]) ~origin:(o >< Origin.Submodule) name
+        (Exact (signature_of_lists (m >< []) (mt >< [])) )
+  and module' =
+    Custom { fwd = fwdm; rev=revm;
+             sch = Sum[m; [String;Paths.S.sch]; [String; Array module']];
+             recs = true }
+  and fwdm = function
+    | Alias x -> C (S (Z (Tuple.[x.name; Namespaced.flatten x.path ])))
+    | M m -> C (Z m)
+    | Namespace n -> C (S (S (Z ( Tuple.[n.name; Sexp_core.to_list n.modules] ))))
+  and revm = let open Tuple in
+    function
+    | C Z m -> M m
+    | C S Z  [name;path] -> Alias {name; path=Namespaced.of_path path;
+                                   phantom=None; weak = false}
+    | C S S Z [name; modules] ->
+      Namespace { name; modules = Dict.of_list modules }
+    | _ -> .
 
 end
 
