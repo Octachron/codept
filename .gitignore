@@ -7,3 +7,7 @@ tests/star/m*.mli
 *.cmti
 *.o
 docs/*.html
+lib/ast_converter.ml
+lib/cmi.ml
+full/extended_args.ml
+#*#
