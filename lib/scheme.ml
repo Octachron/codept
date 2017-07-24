@@ -249,12 +249,17 @@ let rec sexp: type a. a t -> Format.formatter -> a -> unit =
     | Array k, l ->
       Pp.fp ppf "@[<hov>(%a)@]"
         (Pp.list ~sep:(Pp.s "@ ") @@ sexp k) l
-    | [], [] -> ()
-    | [a], [x] -> sexp a ppf x
-    | a :: q, x :: xs -> Pp.fp ppf "%a@ %a" (sexp a) x (sexp q) xs
     | Obj sch, x -> Pp.fp ppf "@[<hov>(@;<1 2>%a@;<1 2>)@]" (sexp_obj sch) x
+    | [], [] -> ()
+    | _ :: _ as tu, t -> Pp.fp ppf "@[<hov>(@;%a@;)@]" (sexp_tuple tu) t
     | Custom r, x -> sexp r.sch ppf (r.fwd x)
     | Sum s, x -> sexp_sum 0 s ppf x
+and sexp_tuple: type a. a Tuple.t t -> Format.formatter -> a Tuple.t -> unit =
+  fun ty ppf t -> match ty, t with
+    | [], [] -> ()
+    | [a], [x] -> sexp a ppf x
+    | a :: q, x :: xs -> Pp.fp ppf "%a@ %a" (sexp a) x (sexp_tuple q) xs
+    | Custom _, _ -> assert false
 and sexp_sum: type a. int -> a sum_decl -> Format.formatter -> a sum -> unit =
   fun n decl ppf x -> match decl, x with
     | a :: _ , C Z x -> sexp [Int;a] ppf Tuple.[n;x]
