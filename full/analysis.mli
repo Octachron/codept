@@ -8,6 +8,7 @@ type param = {
   precomputed_libs: Name.set  ;
   closed_world: bool;
   sig_only:bool;
+  format: Io.format
 }
 
 

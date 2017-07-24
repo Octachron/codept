@@ -109,7 +109,7 @@ let export name _ _ ppf _param {Unit.mli; _} =
              let open Sig in @;\
              %a @]@." Module.reflect_modules s
 
-let signature filename writer ppf _param {Unit.mli; _} =
+let signature filename writer ppf param {Unit.mli; _} =
   (* TODO: prefixed unit *)
   let md {Unit.signature; src; path; _  } =
     Module.M ( Module.create ~args:[]
@@ -118,7 +118,7 @@ let signature filename writer ppf _param {Unit.mli; _} =
              )
   in
   let mds = List.map md mli in
-  writer.Io.sign filename ppf mds
+  writer.Io.sign L.(param.[fmt]) filename ppf mds
 
 
 let dependencies ?filter sort (u:Unit.r) =

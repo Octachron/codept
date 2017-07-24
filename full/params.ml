@@ -74,4 +74,5 @@ module L = struct
                    (fun x-> x.sig_only) (fun x y -> { x with sig_only = y })
   let policy = analyzer % create
                  (fun x-> x.policy) (fun x y -> { x with policy = y })
+  let fmt = analyzer % create (fun x -> x.format) (fun x y -> { x with format = y } )
 end

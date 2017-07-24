@@ -1,15 +1,18 @@
-
+type format =
+  | Sexp
+  | Json
+  | Sexp2
 
 type reader = {
-  sign: string -> Module.t list option;
-  m2l: Fault.Policy.t -> Read.kind -> string -> Namespaced.t -> Unit.s;
+  sign: format -> string -> Module.t list option;
+  m2l: format -> Fault.Policy.t -> Read.kind -> string -> Namespaced.t -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
   env: Module.dict
 }
 
 type writer = {
-  sign: string -> Format.formatter -> Module.t list -> unit;
-  m2l: (Read.kind * string) -> Format.formatter -> M2l.t -> unit
+  sign: format -> string -> Format.formatter -> Module.t list -> unit;
+  m2l: format -> (Read.kind * string) -> Format.formatter -> M2l.t -> unit
 }
 
 type t = {
@@ -39,7 +42,7 @@ let parse_sig lexbuf=
   @@ Sexp_parse.many Sexp_lex.main
   @@ lexbuf
 
-let read_sigfile filename =
+let read_sigfile _ filename =
   let chan = open_in filename in
   let lexbuf = Lexing.from_channel chan in
   let sigs = parse_sig lexbuf in
@@ -47,21 +50,55 @@ let read_sigfile filename =
   sigs
 
 
+let sm2l = { Scheme.title = "codept/m2l/0.10";
+            description = "module level ocaml file skeleton";
+            sch = M2l.sch
+          }
+
+let ssign = { Scheme.title = "codept/sig/0.10";
+             description = "module level ocaml signature";
+             sch = Array Module.sch
+           }
+
+let minify ppf =
+  let f = Format.pp_get_formatter_out_functions ppf () in
+  let unspace = ref false in
+  let remove_space s n = match s.[n-1] with
+    | '(' | ')' |'['|']'|'{'|'}' -> unspace := true
+    | _ -> unspace := false in
+  let out_string s start stop = remove_space s stop; f.out_string s start stop in
+  let basic =
+    { f with Format.out_newline = (fun () -> ());
+             out_string;
+             out_spaces = (fun _ -> if not !unspace then f.out_spaces 1) } in
+  Format.pp_set_formatter_out_functions ppf basic;
+  Format.kfprintf (fun _ -> Format.pp_set_formatter_out_functions ppf f;
+                    Format.pp_flush_formatter ppf) ppf
+
 let direct = {
   reader = {
     sign = read_sigfile;
-    m2l = Unit.read_file;
+    m2l = (fun _ -> Unit.read_file);
     env = Name.Map.empty;
     findlib = Findlib.expand
   };
   writer = {
-    m2l =  (fun _filename ppf m2l ->
-        Pp.fp ppf  "%a@." Sexp.pp @@ M2l.sexp.embed m2l );
+    m2l =  (fun format _filename ppf m2l ->
+        match format with
+        | Sexp -> Pp.fp ppf  "%a@." Sexp.pp (M2l.sexp.embed m2l)
+        | Json -> minify ppf "%a" (Scheme.json sm2l) m2l
+        | Sexp2 -> minify ppf "%a" (Scheme.sexp sm2l) m2l
+
+      );
     sign =
-      (fun _ ppf (mds: Module.t list) ->
-        mds
-        |> Sexp.( embed @@ list Module.sexp)
-        |> Pp.fp ppf "@[%a@]@." Sexp.pp
+      (fun format _ ppf (mds: Module.t list) ->
+         match format with
+         | Sexp ->
+           mds
+           |> Sexp.( embed @@ list Module.sexp)
+           |> Pp.fp ppf "@[%a@]@." Sexp.pp
+         | Sexp2 -> minify ppf "%a" (Scheme.json ssign) mds
+         | Json -> minify ppf "%a" (Scheme.sexp ssign) mds
       )
   }
 }

@@ -45,6 +45,7 @@ let param0 = {
       closed_world = false;
       sig_only = false;
       policy = Codept_policies.policy;
+      format = Sexp
     };
 
     no_include = false;
@@ -113,6 +114,13 @@ let iter_mode out writer param r (file,mode) =
       Modes.eval mode file writer  ppf param r
     )
 
+let format param x =
+  let open L in
+  match x with
+    | "sexp" -> param.[fmt] <- Io.Sexp
+    | "sexp2" -> param.[fmt] <- Io.Sexp2
+    | "json" -> param.[fmt] <- Io.Json
+    | _ -> ()
 
 let mode action command () =
   let output = !output in
@@ -369,7 +377,12 @@ let args action param task fquery version =
     "-read-sig", taskc add_sig,
     "<signature>: add signature to the base environment";
     "-see", task_p add_invisible_file,
-    "<file>: use <file> in dependencies computation but do not display it.";
+    "<file>: use <file> in dependencies computation but do not display it."
+
+    ^ "\n\nGeneric IO settings:\n";
+
+    "-format", String (format param),
+    "<format>: use <format> for input and output files";
   ]
 
 

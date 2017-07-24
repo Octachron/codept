@@ -48,4 +48,5 @@ module L :
     val sig_only : (t, bool) l
     val policy : (t, Fault.Policy.t) l
     val nested : (t,bool) l
+    val fmt: (t, Io.format) l
   end

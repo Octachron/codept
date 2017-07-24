@@ -5,6 +5,8 @@ type t =
   | One_pass
   | M2l
   | M2l_sexp
+(*  | M2l_sexp2
+    | M2l_json2 *)
 
 type single = string -> Io.writer -> Format.formatter -> Params.t
   -> Common.info * string * Namespaced.t option -> unit
@@ -69,7 +71,7 @@ let m2l_sexp filename (writer:Io.writer) ppf param f =
     m
     |> Normalize.all
     |> snd
-    |> writer.m2l (k,filename) ppf
+    |> writer.m2l param.format (k,filename) ppf
   end
       >< ()
 
