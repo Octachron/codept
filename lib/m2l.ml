@@ -453,7 +453,6 @@ module Sch = struct
                           recs = false;
                         }
   and m2l = Array expr_loc
-  and me_fn = assert false
   and module_expr = Custom{ sch = me_raw ; fwd = me_fwd; rev = me_rev; recs = true }
   and me_raw =
     Sum [ Module.Partial.sch; Paths.S.sch; [module_expr;module_expr];
