@@ -403,9 +403,158 @@ module More_sexp = struct
     let mt = mt recursive ()
     let annot = annot recursive ()
 
-end
-
+  end
 let sexp = More_sexp.m2l
+
+module Sch = struct
+  module S = Name.Set
+  open Scheme
+
+  let l x = if x = L.[] then None else Some x
+  let (><) = Option.(><)
+  module Access = Name(struct let s = "access" end)
+  module Values = Name(struct let s = "values" end)
+  module Packed = Name(struct let s = "packed" end)
+
+  let edge = custom (Sum[ Void; Void ])
+      Deps.Edge.(function Normal -> C E | Epsilon -> C (S E))
+      Deps.Edge.(function C E -> Normal | C S E -> Epsilon | _ -> . )
+
+  let rec raw_expr =
+    Sum [ Summary.sch; Paths.S.sch; module_expr; module_type;
+          [String; module_expr]; [String; module_type]; Array [String;module_expr];
+          annotation; extension ]
+  and expr = Custom{fwd=expr_fwd;rev=expr_bwd;recs=true;sch=raw_expr}
+  and expr_fwd = let open Tuple in function
+    | Defs s -> C (Z s)
+    | Open p -> C (S (Z p))
+    | Include me -> C(S (S (Z me)))
+    | SigInclude mt -> C(S(S(S(Z mt))))
+    | Bind {expr;name} -> C(S(S(S(S(Z [name;expr])))))
+    | Bind_sig {expr;name} -> C(S(S(S(S(S(Z [name;expr]))))))
+    | Bind_rec rb ->
+      C(S(S(S(S(S(S(Z (List.map (fun {expr;name} -> [name;expr]) rb))))))))
+    | Minor a -> C(S(S(S(S(S(S(S(Z a))))))))
+    | Extension_node ext -> C(S(S(S(S(S(S(S(S(Z ext)))))))))
+  and expr_bwd = let open Tuple in function
+    | C Z x -> Defs x
+    | C S Z x -> Open x
+    | C S S Z x -> Include x
+    | C S S S Z x -> SigInclude x
+    | C S S S S Z [name;expr] -> Bind {name;expr}
+    | C S S S S S Z [name;expr] -> Bind_sig {name;expr}
+    | C S S S S S S Z x -> Bind_rec (List.map (fun [name;expr] -> {name;expr}) x)
+    | C S S S S S S S Z x -> Minor x
+    | C S S S S S S S S Z x -> Extension_node x
+    | _ -> .
+  and expr_loc = Custom { sch = [expr;Loc.Sch.t];
+                          fwd = (fun x -> Tuple.[x.Loc.data;x.loc]);
+                          rev = Tuple.(fun [data;loc] -> {data;loc});
+                          recs = false;
+                        }
+  and m2l = Array expr_loc
+  and me_fn = assert false
+  and module_expr = Custom{ sch = me_raw ; fwd = me_fwd; rev = me_rev; recs = true }
+  and me_raw =
+    Sum [ Module.Partial.sch; Paths.S.sch; [module_expr;module_expr];
+          [arg; module_expr];
+          [module_expr;module_type]; m2l; annotation; extension; Void; Void;
+          [Summary.sch; Array Paths.S.sch; module_expr] ]
+  and me_fwd = let open Tuple in
+    function
+    | Resolved x -> C (Z x)
+    | Ident x -> C(S (Z x))
+    | Apply {f;x} -> C(S (S (Z [f;x])))
+    | Fun {arg;body} -> C (S (S ( S (Z [arg;body]))))
+    | Constraint (x,y) -> C(S(S(S(S(Z[x;y])))))
+    | Str x -> C(S(S(S(S(S(Z x))))))
+    | Val x -> C(S(S(S(S(S(S(Z x)))))))
+    | Extension_node x -> C(S(S(S(S(S(S(S(Z x))))))))
+    | Abstract -> C(S(S(S(S(S(S(S(S E))))))))
+    | Unpacked -> C(S(S(S(S(S(S(S(S(S E)))))))))
+    | Open_me r -> C(S(S(S(S(S(S(S(S(S(S(Z [r.resolved;r.opens;r.expr])))))))))))
+  and me_rev = let open Tuple in function
+      | C Z x -> Resolved x
+      | C S Z x -> Ident x
+      | C S S Z [f;x] -> Apply{f;x}
+      | C S S S Z [arg;body] -> Fun{arg;body}
+      | C S S S S Z [x;y] -> Constraint(x,y)
+      | C S S S S S Z x -> Str x
+      | C S S S S S S Z x -> Val x
+      | C S S S S S S S Z x -> Extension_node x
+      | C S S S S S S S S E -> Abstract
+      | C S S S S S S S S S E -> Unpacked
+      | C S S S S S S S S S S Z [resolved;opens;expr] ->
+        Open_me {resolved;opens;expr}
+      | _ -> .
+  and module_type = Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev; recs=true}
+  and mt_sch =
+    Sum [ Module.Partial.sch; Paths.S.sch; Paths.E.sch; m2l; [ arg; module_type ];
+          [ module_type; Array String ]; module_expr; extension; Void ]
+  and mt_fwd = let open Tuple in function
+      | Resolved x -> C (Z x)
+      | Alias x -> C (S (Z x))
+      | Ident x -> C (S (S (Z x)))
+      | Sig x -> C(S (S (S (Z x))))
+      | Fun x -> C(S (S (S (S (Z [x.arg; x.body])))))
+      | With x -> C(S (S (S (S (S (Z [x.body; S.elements x.deletions]))))))
+      | Of x ->  C(S (S (S (S (S (S (Z x)))))))
+      | Extension_node x ->  C(S (S (S (S (S (S (S (Z x))))))))
+      | Abstract ->  C(S (S (S (S (S (S (S (S E))))))))
+  and mt_rev = let open Tuple in function
+      | C Z x -> Resolved x
+      | C S Z x -> Alias x
+      | C S S Z x -> Ident x
+      | C S S S Z x -> Sig x
+      | C S S S S Z [arg;body] -> Fun {arg;body}
+      | C S S S S S Z [body;deletions] ->
+        With {body;deletions = S.of_list deletions}
+      | C S S S S S S Z x -> Of x
+      | C S S S S S S S Z x -> Extension_node x
+      | C S S S S S S S S E -> Abstract
+      | _ -> .
+  and annotation = Custom{ fwd=ann_f; rev = ann_r; sch = ann_s; recs = true }
+  and ann_s = Obj [
+      Opt, Access.x, Array [Paths.S.sch; Loc.Sch.t; edge];
+      Opt, Values.x, Array m2l; Opt, Packed.x, Array [module_expr;Loc.Sch.t]
+    ]
+  and ann_f x = Record.[
+    Access.x $=?
+    (l @@ Paths.S.Map.fold
+       (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x.access L.[]);
+    Values.x $=? l x.values;
+    Packed.x $=? l (List.map (fun x -> Tuple.[x.Loc.data; x.loc]) x.packed)
+  ]
+  and ann_r = Record.(fun [_,a;_,v;_,p] ->
+      {access=
+         List.fold_left Tuple.(fun m [k;x;y] ->Paths.S.Map.add k (x,y) m)
+           Paths.S.Map.empty (a><[])
+      ; values = v >< [];
+       packed =List.map Tuple.(fun [data;loc] -> {Loc.data;loc}) (p><[])
+      })
+
+  and extension =
+    Custom {sch = [ String; ext ];
+            fwd = (fun {name;extension} -> Tuple.[name;extension] );
+            rev = Tuple.(fun [name;extension] -> {name;extension} ); recs = false
+           }
+  and ext =
+    Custom {sch = Sum[m2l;annotation] ; fwd = ext_fwd; rev = ext_rev; recs= true }
+  and ext_fwd = function Module x -> C (Z x) | Val x-> C (S (Z x))
+  and ext_rev =function C Z x -> Module x | C S Z x -> Val x | _ -> .
+  and arg =
+    Custom { sch = Sum[ Void; [String; module_type] ];
+             fwd = arg_fwd;
+             rev = arg_rev;
+             recs = true }
+  and arg_fwd = function
+    | None -> C E
+    | Some (a:_ Module.Arg.t) -> C(S(Z Tuple.[a.name;a.signature]))
+  and arg_rev = let open Tuple in
+    function C E -> None | C S Z [n;s] -> Some {name=n;signature=s} | _ -> .
+
+end let sch = Sch.m2l
+
 
 (** The Block module computes the first dependencies needed to be resolved
     before any interpreter can make progress evaluating a given code block *)

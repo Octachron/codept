@@ -554,11 +554,12 @@ module Sch = struct
   let rec schr = Obj [
       Req, Name_f.x, String;
       Opt, Origin_f.x, Origin.sch;
-      Opt, Args.x, Array opt_m;
+      Opt, Args.x, args;
       Opt, Modules.x, Array module';
       Opt, Module_types.x, Array module'
     ]
   and opt_m = Custom { fwd=ofwd ; rev = orev ; sch= Sum [Void;m]; recs=true }
+  and args = Array opt_m
   and ofwd: m option -> 'a = function None -> C E | Some x -> C(S(Z x))
   and orev: 'a -> m option = function C E -> None | C S Z x-> Some x | _ -> .
   and m = Custom { fwd; rev; sch = schr; recs = true}
@@ -592,7 +593,7 @@ module Sch = struct
       Namespace { name; modules = Dict.of_list modules }
     | _ -> .
 
-end
+end let sch = Sch.module'
 
 module Def = struct
   let empty = empty_sig
@@ -622,6 +623,12 @@ module Def = struct
                   module_types := to_list s.module_types] )
     in
     convr r f fr
+
+  let sch = let open Scheme in let open Sch in
+    custom (Obj[Opt,Modules.x, Array module'; Opt, Module_types.x, Array module'])
+      (fun x -> [ Modules.x $=? l(Sexp_core.to_list x.modules);
+                  Module_types.x $=? (l @@ Sexp_core.to_list x.module_types)] )
+      (let open Record in fun [_,m;_,mt] -> signature_of_lists (m><[]) (mt><[]))
 
   type t = definition
 end
@@ -695,9 +702,15 @@ module Sig = struct
     let fr s =
       let s = flatten s in
       R.(create [ modules := to_list s.modules;
-module_types := to_list s.module_types] )
-in
+                  module_types := to_list s.module_types] )
+    in
     convr r f fr
+
+  let sch = let open Scheme in let open Sch in
+    custom (Obj [Opt, Modules.x, Array module'; Opt, Module_types.x, Array module'])
+      (fun x -> let s = flatten x in let l x = l(Sexp_core.to_list x) in
+        Record.[ Modules.x $=? l s.modules; Module_types.x $=? l s.module_types ])
+      (let open Record in fun [_,m;_,mt] -> of_lists (m><[]) (mt><[]) )
 
 end
 
@@ -774,6 +787,27 @@ let fr r = R.(create [ksign := flatten r.result;
 
   end
   let sexp = Sexp.partial
+  module Sch = struct
+    open Scheme
+    module S = Sch
+    module Result = Name(struct let s = "signature" end)
+    let raw =
+      Obj [ Opt, S.Origin_f.x, Origin.sch;
+            Opt, S.Args.x, S.args;
+            Opt, Result.x, Def.sch;
+          ]
 
+    let (><) = Option.(><)
+    let partial = custom raw
+        (fun {args;origin;result} ->
+           Record.[ S.Origin_f.x $=? S.default Origin.Submodule origin;
+                    S.Args.x $=? (S.l args);
+                    Result.x $=? S.default Def.empty (flatten result);
+                  ])
+        (let open Record in fun [_,origin; _, args;_,result] ->
+            { args = args >< []; origin = origin >< Submodule;
+              result = Exact(result>< Def.empty) }
+        )
+  end let sch = Sch.partial
 
 end

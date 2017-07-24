@@ -94,6 +94,11 @@ module Sexp = struct
 end
 let sexp = Sexp.summary
 
+let sch = let open Scheme in
+  custom [Module.Sig.sch;Module.Sig.sch]
+    Tuple.(fun r -> [r.defined; r.visible] )
+    Tuple.(fun [defined;visible] -> {defined;visible})
+
 let clear_visible v = { v with visible =  View.empty }
 
 let define ?(level=M.Module)  l =

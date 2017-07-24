@@ -15,6 +15,7 @@ module Arg :
       Format.formatter -> 'a arg option -> unit
 
     val sexp: ('a, 'b) Sexp.impl -> ('a t,Sexp.many) Sexp.impl
+    val sch: 'a Scheme.t -> 'a t Scheme.t
 
     val pp_s :
       (Format.formatter -> 'a -> unit) ->
@@ -65,7 +66,7 @@ module Origin: sig
   val pp : Format.formatter -> t -> unit
   val reflect : Format.formatter -> t -> unit
   val sexp: (t,Sexp.one_and_many) Sexp.impl
-
+  val sch: t Scheme.t
 end
 type origin = Origin.t
 
@@ -175,6 +176,7 @@ val pp_args : Format.formatter -> m option list -> unit
 
 (** {2 Sexp} *)
 val sexp: (modul_,Sexp.one_and_many) Sexp.impl
+val sch: modul_ Scheme.t
 
 (** Helper functions for definitions *)
 module Def: sig
@@ -189,6 +191,7 @@ module Def: sig
 
   val pp: Format.formatter -> definition -> unit
   val sexp: (definition,Sexp.many) Sexp.impl
+  val sch: definition Scheme.t
   type t = definition
 end
 
@@ -215,6 +218,7 @@ module Sig :
 
     val pp : Format.formatter -> signature -> unit
     val sexp: (signature,Sexp.many) Sexp.impl
+    val sch: signature Scheme.t
 
     type t = signature
   end
@@ -234,7 +238,7 @@ module Partial :
 
     val pp : Format.formatter -> t -> unit
     val sexp: (t,Sexp.many) Sexp.impl
-
+    val sch: t Scheme.t
 
     val no_arg : signature -> t
     val drop_arg : t -> t option
