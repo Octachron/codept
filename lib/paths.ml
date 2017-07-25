@@ -111,7 +111,7 @@ module Expr = struct
 
   module Sch = struct
     open Scheme
-    let rec raw = Sum[ Void; String; [t;String]; [t; t] ]
+    let rec raw = Sum[ "T", Void; "A", String; "S", [t;String]; "F", [t; t] ]
     and t = Custom {fwd;rev; sch=raw; id = "Paths.Expr.t" }
     and fwd = let open Tuple in
       function
@@ -223,7 +223,8 @@ module Pkg = struct
   let sexp = Sexp.all
 
   module Sch = struct open Scheme
-    let raw_source = Sum [ Void; Void; Simple.sch; String ]
+    let raw_source = Sum [ "Local", Void; "Unknown", Void;
+                           "Pkg", Simple.sch; "Special", String ]
     let source = custom "Paths.Pkg.source" raw_source
         (function
           | Local -> C E

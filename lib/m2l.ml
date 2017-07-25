@@ -416,14 +416,15 @@ module Sch = struct
   module Values = Name(struct let s = "values" end)
   module Packed = Name(struct let s = "packed" end)
 
-  let edge = custom "Deps.edge" (Sum[ Void; Void ])
+  let edge = custom "Deps.edge" (Sum[  "Normal", Void; "Epsilon", Void ])
       Deps.Edge.(function Normal -> C E | Epsilon -> C (S E))
       Deps.Edge.(function C E -> Normal | C S E -> Epsilon | _ -> . )
 
   let rec raw_expr =
-    Sum [ Summary.sch; Paths.S.sch; module_expr; module_type;
-          [String; module_expr]; [String; module_type]; Array [String;module_expr];
-          annotation; extension ]
+    Sum [ "Defs", Summary.sch; "Open", Paths.S.sch; "Include_me", module_expr;
+          "SigInclude", module_type; "Bind", [String; module_expr];
+          "Bind_sig", [String; module_type]; "Bind_rec", Array [String;module_expr];
+          "Minor", annotation; "Extension_node", extension ]
   and expr = Custom{fwd=expr_fwd;rev=expr_bwd;id="M2l.expr";sch=raw_expr}
   and expr_fwd = let open Tuple in function
     | Defs s -> C (Z s)
@@ -456,10 +457,11 @@ module Sch = struct
   and module_expr =
     Custom{ sch = me_raw ; fwd = me_fwd; rev = me_rev; id = "M2l.module_expr" }
   and me_raw =
-    Sum [ Module.Partial.sch; Paths.S.sch; [module_expr;module_expr];
-          [arg; module_expr];
-          [module_expr;module_type]; m2l; annotation; extension; Void; Void;
-          [Summary.sch; Array Paths.S.sch; module_expr] ]
+    Sum [ "Resolved", Module.Partial.sch; "Ident", Paths.S.sch;
+          "Apply", [module_expr;module_expr]; "Fun",[arg; module_expr];
+          "Constraint",[module_expr;module_type]; "Str",m2l; "Val",annotation;
+          "Extension_node",extension; "Abstract",Void; "Unpacked", Void;
+          "Open_me",[Summary.sch; Array Paths.S.sch; module_expr] ]
   and me_fwd = let open Tuple in
     function
     | Resolved x -> C (Z x)
@@ -490,8 +492,9 @@ module Sch = struct
   and module_type =
     Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev; id="M2l.module_type"}
   and mt_sch =
-    Sum [ Module.Partial.sch; Paths.S.sch; Paths.E.sch; m2l; [ arg; module_type ];
-          [ module_type; Array String ]; module_expr; extension; Void ]
+    Sum [ "Resolved",Module.Partial.sch; "Alias",Paths.S.sch;"Ident",Paths.E.sch;
+          "Sig",m2l;"Fun",[ arg; module_type ];"With",[ module_type; Array String ];
+          "Of", module_expr; "Extension_node", extension; "Abstract", Void ]
   and mt_fwd = let open Tuple in function
       | Resolved x -> C (Z x)
       | Alias x -> C (S (Z x))
@@ -542,11 +545,12 @@ module Sch = struct
             id = "M2l.extension"
            }
   and ext =
-    Custom {sch = Sum[m2l;annotation] ; fwd = ext_fwd; rev = ext_rev; id="M2l.ext" }
+    Custom {sch = Sum["Module",m2l;"Val",annotation];
+            fwd = ext_fwd; rev = ext_rev; id="M2l.ext" }
   and ext_fwd = function Module x -> C (Z x) | Val x-> C (S (Z x))
   and ext_rev =function C Z x -> Module x | C S Z x -> Val x | _ -> .
   and arg =
-    Custom { sch = Sum[ Void; [String; module_type] ];
+    Custom { sch = Sum[ "None",Void; "Some",[String; module_type] ];
              fwd = arg_fwd;
              rev = arg_rev;
              id = "M2l.arg" }

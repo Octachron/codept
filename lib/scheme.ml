@@ -76,7 +76,7 @@ and 'a record_declaration =
 
 and 'a sum_decl =
     | [] : void sum_decl
-    | (::): 'a t * 'b sum_decl -> ('a * 'b) sum_decl
+    | (::): (string * 'a t) * 'b sum_decl -> ('a * 'b) sum_decl
 
 and (_,_) cons =
   | Z: 'a -> ('a * 'any,'a) cons
@@ -125,7 +125,7 @@ let rec json_type: type a. Format.formatter -> a t -> unit =
       Pp.fp ppf "@[<hov 2>%a@ :@ \"#/definitions/%s\"@]" k "$ref" id
     | Sum decl ->
       Pp.fp ppf "@[<hov 2>%a :[%a]@]"
-        k "OneOf" (json_sum 0) decl
+        k "OneOf" (json_sum true 0) decl
 and json_schema_tuple: type a. Format.formatter -> a tuple t -> unit =
   fun ppf -> function
     | [] -> ()
@@ -153,13 +153,13 @@ and json_required: type a. bool ->Format.formatter -> a record_declaration
       (show n)
       (json_required false) q
   | _ :: q -> json_required first ppf q
-and json_sum: type a. int -> Format.formatter -> a sum_decl -> unit =
-  fun n ppf -> function
+and json_sum: type a. bool -> int -> Format.formatter -> a sum_decl -> unit =
+  fun first n ppf -> function
   | [] -> ()
-  | [a] -> Pp.fp ppf "{%a}@ " json_type a
-  | a::q ->
-    let module Int = Name(struct let s = string_of_int n end) in
-    Pp.fp ppf "{%a},@,%a" json_type (Obj[Req,Int.x,a]) (json_sum @@ n + 1) q
+  | (s,a)::q ->
+    if not first then Pp.fp ppf ",@,";
+    let module N = Name(struct let s = s end) in
+    Pp.fp ppf "{%a},@,%a" json_type (Obj[Req,N.x,a]) (json_sum false @@ n + 1) q
 
 let rec json_definitions:
   type a.  bool * S.t -> Format.formatter -> a t ->  bool * S.t =
@@ -175,7 +175,7 @@ let rec json_definitions:
       let st = json_definitions st ppf a in
       json_definitions st ppf q
     | Sum [] -> st
-    | Sum (a :: q) ->
+    | Sum ((_,a) :: q) ->
       let st = json_definitions st ppf a in
       json_definitions st ppf (Sum q)
     | Custom{id; _ } when S.mem id set -> st
@@ -203,10 +203,11 @@ let rec json: type a. a t -> Format.formatter -> a -> unit =
     | Sum q, x -> json_sum 0 q ppf x
 and json_sum: type a. int -> a sum_decl -> Format.formatter -> a sum -> unit =
   fun n sch ppf x -> match sch, x with
-    | a :: _ , C Z x ->
-      let module Int = Name(struct let s=string_of_int n end) in
-      json (Obj [Req, Int.x, a]) ppf (Record.[Int.x, x])
-    | _ , C E -> json Int ppf n
+    | (n,a) :: _ , C Z x ->
+      let module N = Name(struct let s=n end) in
+      json (Obj [Req, N.x, a]) ppf (Record.[N.x, x])
+    | (n,_) :: _ , C E ->
+      json String ppf n
     | _ :: q, C S c -> json_sum (n+1) q ppf (C c)
     | [], _ -> .
 
@@ -234,7 +235,7 @@ and json_obj: type a.
 
 
 type tree = Leaf of int | N of tree * tree
-let rec sch = Sum [Int; [tree;tree] ]
+let rec sch = Sum [ "Leaf", Int; "N", [tree;tree] ]
 and tree: tree t = Custom {fwd;rev;sch; id = "tree"}
 and rev: (int * ((tree * (tree * void)) Tuple.t * void)) sum -> tree = function
   | C(Z n) -> Leaf n
@@ -294,8 +295,8 @@ and sexp_tuple: type a. a Tuple.t t -> Format.formatter -> a Tuple.t -> unit =
     | Custom _, _ -> assert false
 and sexp_sum: type a. int -> a sum_decl -> Format.formatter -> a sum -> unit =
   fun n decl ppf x -> match decl, x with
-    | a :: _ , C Z x -> sexp [Int;a] ppf Tuple.[n;x]
-    | _, C E -> sexp Int ppf n
+    | (n,a) :: _ , C Z x -> sexp [String;a] ppf Tuple.[n;x]
+    | (n,_) :: _ , C E -> sexp String ppf n
     | _ :: q, C S c -> sexp_sum (n+1) q ppf (C c)
     | [] , _ -> .
 and sexp_obj: type a.
@@ -367,11 +368,9 @@ let rec retype: type a. a t -> untyped -> a option =
       retype_obj r obj
     | Custom r, x -> retype r.sch x >>| r.rev
     | Sum s, Atom x ->
-      int_of_string_opt x >>= fun n ->
-      retype_const_sum s n
+      retype_const_sum s x
     | Sum s, (Obj[x,y]|Array_or_obj[Atom x;y]) ->
-      int_of_string_opt x >>= fun n ->
-      retype_sum s n y
+      retype_sum s x y
     | _ -> None
 and retype_obj: type a. a record_declaration -> (string * untyped) list ->
   a record option = fun sch x ->
@@ -390,19 +389,19 @@ and retype_obj: type a. a record_declaration -> (string * untyped) list ->
     retype_obj q l >>| fun l ->
     Record.( skip field :: l )
   | _ -> None
-and retype_sum: type a. a sum_decl -> int -> untyped -> a sum option =
+and retype_sum: type a. a sum_decl -> string -> untyped -> a sum option =
   let open Option in
-  fun decl n u -> match decl, n with
-    | (a :: _) , 0 ->
+  fun decl n u -> match decl with
+    | (s,a) :: _  when s = n ->
       retype a u >>| fun a -> C(Z a)
-    | [], _n -> None
-    | ( _:: q), n ->
-      retype_sum q (n-1) u >>| fun (C c) -> (C (S c))
+    | [] -> None
+    | ( _:: q) ->
+      retype_sum q n u >>| fun (C c) -> (C (S c))
 
-and retype_const_sum: type a. a sum_decl -> int -> a sum option =
+and retype_const_sum: type a. a sum_decl -> string -> a sum option =
   let open Option in
-  fun decl n -> match decl, n with
-    | (Void :: _ ), 0 -> Some (C E)
-    | [], _n -> None
-    | _ :: q, n ->
-      retype_const_sum q (n-1) >>| fun (C c) -> (C (S c))
+  fun decl n -> match decl with
+    | ( (s, Void) :: _ ) when s = n -> Some (C E)
+    | [] -> None
+    | _ :: q ->
+      retype_const_sum q n >>| fun (C c) -> (C (S c))

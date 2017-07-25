@@ -87,7 +87,8 @@ module Sch = struct
   open Scheme
 
   let raw_sch =
-    Sum [ Void; [Int;Int;Int]; [ [Int;Int]; [Int;Int] ] ]
+    Sum [ "Nowhere", Void; "Simple", [Int;Int;Int];
+          "Multiline", [ [Int;Int]; [Int;Int] ] ]
 
   let t = let open Tuple in
     custom "Loc.t" raw_sch

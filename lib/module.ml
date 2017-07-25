@@ -85,7 +85,8 @@ module Divergence= struct
 
   let sch_origin =
     let open Scheme in
-    custom "Module.Divergence.origin" (Sum[Void;Void])
+    custom "Module.Divergence.origin"
+      (Sum[ "First_class_module",  Void; "External", Void])
       (function
         | First_class_module -> C E
         | External -> C (S E))
@@ -161,7 +162,9 @@ module Origin = struct
 
   module Sch = struct open Scheme
     let raw =
-      Sum [ [Paths.P.sch; Paths.S.sch]; Void; Void; Void; [ Bool; Divergence.sch]]
+      Sum [ "Unit", [Paths.P.sch; Paths.S.sch];
+            "Submodule", Void; "First_class", Void; "Arg", Void;
+            "Phantom", [ Bool; Divergence.sch]]
     let t = let open Tuple in
       custom "Module.Origin.t" raw
         (function
@@ -548,7 +551,7 @@ module Sch = struct
   let l = let open L in function | [] -> None | x -> Some x
 
   let option (type a) name (sch:a t) =
-    custom ("Option."^"name") (Sum [Void; sch])
+    custom ("Option."^"name") (Sum ["None", Void; "Some", sch])
       (function None -> C E | Some x -> C (S(Z x)))
       (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
 
@@ -560,7 +563,8 @@ module Sch = struct
       Opt, Module_types.x, Array module'
     ]
   and opt_m =
-    Custom { fwd=ofwd ; rev = orev ; sch= Sum [Void;m]; id="Module.Option.m" }
+    Custom { fwd=ofwd ; rev = orev ; sch= Sum ["None",Void;"Some", m];
+             id="Module.Option.m" }
   and args = Array opt_m
   and ofwd: m option -> 'a = function None -> C E | Some x -> C(S(Z x))
   and orev: 'a -> m option = function C E -> None | C S Z x-> Some x | _ -> .
@@ -580,11 +584,12 @@ module Sch = struct
         (Exact (signature_of_lists (m >< []) (mt >< [])) )
   and module' =
     Custom { fwd = fwdm; rev=revm;
-             sch = Sum[m; [String;Paths.S.sch]; [String; Array module']];
+             sch = Sum[ "M", m; "Alias", [String;Paths.S.sch];
+                        "Namespace", [String; Array module']];
              id = "Module.module" }
   and fwdm = function
-    | Alias x -> C (S (Z (Tuple.[x.name; Namespaced.flatten x.path ])))
     | M m -> C (Z m)
+    | Alias x -> C (S (Z (Tuple.[x.name; Namespaced.flatten x.path ])))
     | Namespace n -> C (S (S (Z ( Tuple.[n.name; Sexp_core.to_list n.modules] ))))
   and revm = let open Tuple in
     function

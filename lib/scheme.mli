@@ -62,7 +62,7 @@ and 'a record_declaration =
 
 and 'a sum_decl =
     | [] : void sum_decl
-    | (::): 'a t * 'b sum_decl -> ('a * 'b) sum_decl
+    | (::): (string * 'a t) * 'b sum_decl -> ('a * 'b) sum_decl
 
 and (_,_) cons =
   | Z: 'a -> ('a * 'any,'a) cons
