@@ -102,8 +102,8 @@ let direct = {
            mds
            |> Sexp.( embed @@ list Module.sexp)
            |> Pp.fp ppf "@[%a@]@." Sexp.pp
-         | Sexp2 -> minify ppf "%a" (Scheme.json ssign) mds
-         | Json -> minify ppf "%a" (Scheme.sexp ssign) mds
+         | Sexp2 -> minify ppf "%a@.\n" (Scheme.sexp ssign) mds
+         | Json -> minify ppf "%a@.\n" (Scheme.json ssign) mds
       )
   }
 }
