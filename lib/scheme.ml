@@ -7,6 +7,7 @@ module L = struct
     | [  ]
     | (::) of 'a * 'a t
 end
+module S = Name.Set
 
 module Tuple = struct
   type 'a tuple =
@@ -67,7 +68,7 @@ type 'hole t =
   | Custom: ('a,'b) custom -> 'a t
   | Sum: 'a sum_decl -> 'a sum t
 
-and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; recs:bool }
+and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; id:string }
 and 'a record_declaration =
   | []: void record_declaration
   | (::): ( ('m,'x,'fx) modal * 'a name * 'x t) * 'c record_declaration
@@ -120,8 +121,8 @@ let rec json_type: type a. Format.formatter -> a t -> unit =
         json_properties r
         k "required"
         (json_required true) r
-    | Custom { recs=true ; _ }-> Pp.fp ppf "@[<hov 2>%a@ :@ \"#\"@]" k "$ref"
-    | Custom r -> json_type ppf r.sch
+    | Custom { id ; _ }->
+      Pp.fp ppf "@[<hov 2>%a@ :@ \"#/definitions/%s\"@]" k "$ref" id
     | Sum decl ->
       Pp.fp ppf "@[<hov 2>%a :[%a]@]"
         k "OneOf" (json_sum 0) decl
@@ -159,6 +160,31 @@ and json_sum: type a. int -> Format.formatter -> a sum_decl -> unit =
   | a::q ->
     let module Int = Name(struct let s = string_of_int n end) in
     Pp.fp ppf "{%a},@,%a" json_type (Obj[Req,Int.x,a]) (json_sum @@ n + 1) q
+
+let rec json_definitions:
+  type a.  bool * S.t -> Format.formatter -> a t ->  bool * S.t =
+  fun (first,set as st) ppf -> function
+    | Float -> st | Int -> st | String -> st | Bool -> st | Void -> st
+    | Array t -> json_definitions st ppf t
+    | Obj [] -> st
+    | Obj ( (_,_,x) :: q ) ->
+      let st = json_definitions st ppf x in
+      json_definitions st ppf (Obj q)
+    | [] -> st
+    | a :: q ->
+      let st = json_definitions st ppf a in
+      json_definitions st ppf q
+    | Sum [] -> st
+    | Sum (a :: q) ->
+      let st = json_definitions st ppf a in
+      json_definitions st ppf (Sum q)
+    | Custom{id; _ } when S.mem id set -> st
+    | Custom{id; sch; _ } ->
+      if not first then Pp.fp ppf ",@,";
+      Pp.fp ppf "@[<hov 2>%a@ :{@;%a@;}@]" k id json_type sch;
+      let set = S.add id set in
+      json_definitions (false,set) ppf sch
+
 
 let rec json: type a. a t -> Format.formatter -> a -> unit =
   fun sch ppf x -> match sch, x with
@@ -206,9 +232,10 @@ and json_obj: type a.
     | (Opt,_,_) :: q, (_, None ) :: xs ->
       json_obj not_first q ppf xs
 
+
 type tree = Leaf of int | N of tree * tree
 let rec sch = Sum [Int; [tree;tree] ]
-and tree: tree t = Custom {fwd;rev;sch; recs = true}
+and tree: tree t = Custom {fwd;rev;sch; id = "tree"}
 and rev: (int * ((tree * (tree * void)) Tuple.t * void)) sum -> tree = function
   | C(Z n) -> Leaf n
   | C(S (Z Tuple.[t1;t2])) -> N(t1,t2)
@@ -300,7 +327,7 @@ let ($=?) field x = match x with
   | None -> skip field
 
 let obj (x:_ record)= x
-let custom ?(recs=false) sch fwd rev = Custom {fwd;rev; sch; recs}
+let custom id sch fwd rev = Custom {fwd;rev; sch; id}
 
 module Untyped = struct
 type t =

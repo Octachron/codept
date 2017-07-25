@@ -54,7 +54,7 @@ type 'hole t =
   | Custom: ('a,'b) custom -> 'a t
   | Sum: 'a sum_decl -> 'a sum t
 
-and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; recs: bool}
+and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; id: string}
 and 'a record_declaration =
   | []: void record_declaration
   | (::):  ( ('m,'x,'fx) modal * 'a name * 'x t) * 'c record_declaration
@@ -86,7 +86,7 @@ val skip: 'a name -> ('a name * 'b option)
 val ($=?): 'a name -> 'b option -> ('a name * 'b option)
 
 val obj: 'a Record.t -> 'a Record.t
-val custom: ?recs:bool -> 'b t -> ('a -> 'b) -> ('b -> 'a) -> 'a t
+val custom: string -> 'b t -> ('a -> 'b) -> ('b -> 'a) -> 'a t
 
 module Untyped: sig
   type t =
