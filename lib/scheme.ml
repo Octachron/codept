@@ -191,7 +191,7 @@ let rec json: type a. a t -> Format.formatter -> a -> unit =
     | Int, n -> Pp.fp ppf "%d" n
     | Float, f -> Pp.fp ppf "%f" f
     | String, s -> Pp.estring ppf s
-    | Bool, b -> Pp.fp ppf {|"%b"|} b
+    | Bool, b -> Pp.fp ppf "%b" b
     | Void, _ -> .
     | Array k, l ->
       Pp.fp ppf "@[<hov>[%a]@]"
@@ -333,14 +333,14 @@ let custom id sch fwd rev = Custom {fwd;rev; sch; id}
 module Untyped = struct
 type t =
   | Array of t list
-  | Array_or_obj of t list
+  | List of t list
   | Atom of string
   | Obj of (string * t) list
 type untyped = t
 end
 type untyped = Untyped.t =
   | Array of untyped list
-  | Array_or_obj of untyped list
+  | List of untyped list
   | Atom of string
   | Obj of (string * untyped) list
 
@@ -353,8 +353,9 @@ let rec retype: type a. a t -> untyped -> a option =
   fun sch u -> match sch, u with
     | Int, Atom u -> int_of_string_opt u
     | Float, Atom u -> float_of_string_opt u
+    | Bool, Atom u -> bool_of_string_opt u
     | String, Atom s -> Some s
-    | Array t, (Array ul | Array_or_obj ul) ->
+    | Array t, (Array ul | List ul) ->
       Option.List'.map (retype t) ul
     |  [], Array [] -> Some []
     | (a::q), Array(ua :: uq) ->
@@ -363,13 +364,13 @@ let rec retype: type a. a t -> untyped -> a option =
         Tuple.(h :: q)
     | Obj r, Obj ur ->
       retype_obj r ur
-    | Obj r, Array_or_obj ur ->
+    | Obj r, List ur ->
       promote_to_obj ur >>= fun obj ->
       retype_obj r obj
     | Custom r, x -> retype r.sch x >>| r.rev
     | Sum s, Atom x ->
       retype_const_sum s x
-    | Sum s, (Obj[x,y]|Array_or_obj[Atom x;y]) ->
+    | Sum s, (Obj[x,y]|List[Atom x;y]) ->
       retype_sum s x y
     | _ -> None
 and retype_obj: type a. a record_declaration -> (string * untyped) list ->
@@ -389,13 +390,15 @@ and retype_obj: type a. a record_declaration -> (string * untyped) list ->
     retype_obj q l >>| fun l ->
     Record.( skip field :: l )
   | _ -> None
+
 and retype_sum: type a. a sum_decl -> string -> untyped -> a sum option =
   let open Option in
-  fun decl n u -> match decl with
+  fun decl n u ->
+    match decl with
     | (s,a) :: _  when s = n ->
       retype a u >>| fun a -> C(Z a)
     | [] -> None
-    | ( _:: q) ->
+    |  _ :: q ->
       retype_sum q n u >>| fun (C c) -> (C (S c))
 
 and retype_const_sum: type a. a sum_decl -> string -> a sum option =

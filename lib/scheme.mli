@@ -91,7 +91,7 @@ val custom: string -> 'b t -> ('a -> 'b) -> ('b -> 'a) -> 'a t
 module Untyped: sig
   type t =
     | Array of t list
-    | Array_or_obj of t list
+    | List of t list
     | Atom of string
     | Obj of (string * t) list
 end
