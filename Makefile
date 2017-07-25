@@ -1,4 +1,4 @@
-OPTS= -use-ocamlfind
+OPTS= -use-ocamlfind -use-menhir
 BUILD=build
 include Makefile.config
 S=$(abspath .)
