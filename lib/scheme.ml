@@ -120,7 +120,7 @@ let rec json_type: type a. Format.formatter -> a t -> unit =
         json_properties r
         k "required"
         (json_required true) r
-    | Custom { recs=true ; _ }-> Pp.fp ppf "@[<hov 2>%a : \"#\"@]" k "$ref"
+    | Custom { recs=true ; _ }-> Pp.fp ppf "@[<hov 2>%a@ :@ \"#\"@]" k "$ref"
     | Custom r -> json_type ppf r.sch
     | Sum decl ->
       Pp.fp ppf "@[<hov 2>%a :[%a]@]"
@@ -172,7 +172,7 @@ let rec json: type a. a t -> Format.formatter -> a -> unit =
         (Pp.list ~sep:(Pp.s ",@ ") @@ json k) l
     | [], [] -> ()
     | _ :: _ as sch , l -> Pp.fp ppf "@[<hov>[%a]@]" (json_tuple sch) l
-    | Obj sch, x -> Pp.fp ppf "@[<hv>{ %a }@]" (json_obj false sch) x
+    | Obj sch, x -> Pp.fp ppf "@[<hv>{@ %a@ }@]" (json_obj false sch) x
     | Custom c, x -> json c.sch ppf (c.fwd x)
     | Sum q, x -> json_sum 0 q ppf x
 and json_sum: type a. int -> a sum_decl -> Format.formatter -> a sum -> unit =
@@ -197,10 +197,11 @@ and json_obj: type a.
     | [], [] -> ()
     | (Req, name,sch) :: q ,   (_, x) :: xs ->
       if not_first then Pp.fp ppf ",@ ";
-      Pp.fp ppf {|@[<hov 2>"%s" :@ %a@]|} (show name) (json sch) x;
+      Pp.fp ppf {|@[<hov 2>"%s"@ :@ %a@]|} (show name) (json sch) x;
       Pp.fp ppf "%a" (json_obj true q) xs
     | (Opt,name,sch) :: q, (_,Some x) :: xs ->
-      Pp.fp ppf {|@[<hov 2>"%s" :@ %a@]|} (show name) (json sch) x;
+      if not_first then Pp.fp ppf ",@ ";
+      Pp.fp ppf {|@[<hov 2>"%s"@ :@ %a@]|} (show name) (json sch) x;
       Pp.fp ppf "%a" (json_obj true q) xs
     | (Opt,_,_) :: q, (_, None ) :: xs ->
       json_obj not_first q ppf xs
@@ -275,13 +276,13 @@ and sexp_obj: type a.
   fun sch ppf x -> match sch, x with
     | [], [] -> ()
     | (Req, name,sch) :: q ,   (_, x) :: xs ->
-      Pp.fp ppf {|(%a %a)|} cstring (show name) (sexp sch) x;
+      Pp.fp ppf {|(%a@ %a)|} cstring (show name) (sexp sch) x;
       begin match q, xs  with
         | [], [] -> ()
         | _ -> Pp.fp ppf "@ %a" (sexp_obj q) xs
       end
     | (Opt, name,sch) :: q ,   (_, Some x) :: xs ->
-      Pp.fp ppf {|(%a %a)|} cstring (show name) (sexp sch) x;
+      Pp.fp ppf {|(%a@ %a)|} cstring (show name) (sexp sch) x;
       begin match q, xs  with
         | [], [] -> ()
         | _ -> Pp.fp ppf "@ %a" (sexp_obj q) xs
