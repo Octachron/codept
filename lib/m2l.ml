@@ -416,7 +416,7 @@ module Sch = struct
   module Values = Name(struct let s = "values" end)
   module Packed = Name(struct let s = "packed" end)
 
-  let edge = custom (Sum[ Void; Void ])
+  let edge = custom "Deps.edge" (Sum[ Void; Void ])
       Deps.Edge.(function Normal -> C E | Epsilon -> C (S E))
       Deps.Edge.(function C E -> Normal | C S E -> Epsilon | _ -> . )
 
@@ -424,7 +424,7 @@ module Sch = struct
     Sum [ Summary.sch; Paths.S.sch; module_expr; module_type;
           [String; module_expr]; [String; module_type]; Array [String;module_expr];
           annotation; extension ]
-  and expr = Custom{fwd=expr_fwd;rev=expr_bwd;recs=true;sch=raw_expr}
+  and expr = Custom{fwd=expr_fwd;rev=expr_bwd;id="M2l.expr";sch=raw_expr}
   and expr_fwd = let open Tuple in function
     | Defs s -> C (Z s)
     | Open p -> C (S (Z p))
@@ -450,10 +450,11 @@ module Sch = struct
   and expr_loc = Custom { sch = [expr;Loc.Sch.t];
                           fwd = (fun x -> Tuple.[x.Loc.data;x.loc]);
                           rev = Tuple.(fun [data;loc] -> {data;loc});
-                          recs = false;
+                          id = "M2l.expr.ext";
                         }
   and m2l = Array expr_loc
-  and module_expr = Custom{ sch = me_raw ; fwd = me_fwd; rev = me_rev; recs = true }
+  and module_expr =
+    Custom{ sch = me_raw ; fwd = me_fwd; rev = me_rev; id = "M2l.module_expr" }
   and me_raw =
     Sum [ Module.Partial.sch; Paths.S.sch; [module_expr;module_expr];
           [arg; module_expr];
@@ -486,7 +487,8 @@ module Sch = struct
       | C S S S S S S S S S S Z [resolved;opens;expr] ->
         Open_me {resolved;opens;expr}
       | _ -> .
-  and module_type = Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev; recs=true}
+  and module_type =
+    Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev; id="M2l.module_type"}
   and mt_sch =
     Sum [ Module.Partial.sch; Paths.S.sch; Paths.E.sch; m2l; [ arg; module_type ];
           [ module_type; Array String ]; module_expr; extension; Void ]
@@ -512,7 +514,8 @@ module Sch = struct
       | C S S S S S S S Z x -> Extension_node x
       | C S S S S S S S S E -> Abstract
       | _ -> .
-  and annotation = Custom{ fwd=ann_f; rev = ann_r; sch = ann_s; recs = true }
+  and annotation =
+    Custom{ fwd=ann_f; rev = ann_r; sch = ann_s; id = "M2l.annotation" }
   and ann_s = Obj [
       Opt, Access.x, Array [Paths.S.sch; Loc.Sch.t; edge];
       Opt, Values.x, Array m2l; Opt, Packed.x, Array [module_expr;Loc.Sch.t]
@@ -535,17 +538,18 @@ module Sch = struct
   and extension =
     Custom {sch = [ String; ext ];
             fwd = (fun {name;extension} -> Tuple.[name;extension] );
-            rev = Tuple.(fun [name;extension] -> {name;extension} ); recs = false
+            rev = Tuple.(fun [name;extension] -> {name;extension} );
+            id = "M2l.extension"
            }
   and ext =
-    Custom {sch = Sum[m2l;annotation] ; fwd = ext_fwd; rev = ext_rev; recs= true }
+    Custom {sch = Sum[m2l;annotation] ; fwd = ext_fwd; rev = ext_rev; id="M2l.ext" }
   and ext_fwd = function Module x -> C (Z x) | Val x-> C (S (Z x))
   and ext_rev =function C Z x -> Module x | C S Z x -> Val x | _ -> .
   and arg =
     Custom { sch = Sum[ Void; [String; module_type] ];
              fwd = arg_fwd;
              rev = arg_rev;
-             recs = true }
+             id = "M2l.arg" }
   and arg_fwd = function
     | None -> C E
     | Some (a:_ Module.Arg.t) -> C(S(Z Tuple.[a.name;a.signature]))

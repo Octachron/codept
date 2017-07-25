@@ -112,7 +112,7 @@ module Expr = struct
   module Sch = struct
     open Scheme
     let rec raw = Sum[ Void; String; [t;String]; [t; t] ]
-    and t = Custom {fwd;rev; sch=raw; recs = true }
+    and t = Custom {fwd;rev; sch=raw; id = "Paths.Expr.t" }
     and fwd = let open Tuple in
       function
       | T -> C E
@@ -224,7 +224,7 @@ module Pkg = struct
 
   module Sch = struct open Scheme
     let raw_source = Sum [ Void; Void; Simple.sch; String ]
-    let source = custom raw_source
+    let source = custom "Paths.Pkg.source" raw_source
         (function
           | Local -> C E
           | Unknown -> C (S E)
@@ -239,7 +239,7 @@ module Pkg = struct
           | _ -> .
         )
     let all =
-        custom [source; Simple.sch]
+        custom "Paths.Pkg.t" [source; Simple.sch]
           (fun {source;file} -> Tuple.[source;file])
           Tuple.(fun [source;file] ->  {source;file} )
   end let sch = Sch.all

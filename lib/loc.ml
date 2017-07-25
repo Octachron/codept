@@ -90,7 +90,7 @@ module Sch = struct
     Sum [ Void; [Int;Int;Int]; [ [Int;Int]; [Int;Int] ] ]
 
   let t = let open Tuple in
-    custom raw_sch
+    custom "Loc.t" raw_sch
       (function
         | Nowhere -> C E
         | Simple {line;start;stop} -> C(S (Z [line;start;stop]))
@@ -103,6 +103,7 @@ module Sch = struct
         | _ -> .
       )
 
-  let ext inner = let open Tuple in
-    custom [ inner; t ] (fun r -> [r.data;r.loc]) (fun [data;loc] -> {data;loc})
+  let ext name inner = let open Tuple in
+    custom ("Loc.ext."^name)
+      [ inner; t ] (fun r -> [r.data;r.loc]) (fun [data;loc] -> {data;loc})
 end

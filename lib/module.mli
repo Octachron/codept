@@ -15,7 +15,7 @@ module Arg :
       Format.formatter -> 'a arg option -> unit
 
     val sexp: ('a, 'b) Sexp.impl -> ('a t,Sexp.many) Sexp.impl
-    val sch: 'a Scheme.t -> 'a t Scheme.t
+    val sch:  Name.t -> 'a Scheme.t -> 'a t Scheme.t
 
     val pp_s :
       (Format.formatter -> 'a -> unit) ->

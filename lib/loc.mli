@@ -25,5 +25,5 @@ end
 
 module Sch: sig
   val t: t Scheme.t
-  val ext: 'a Scheme.t -> 'a ext Scheme.t
+  val ext: Name.t -> 'a Scheme.t -> 'a ext Scheme.t
 end

@@ -15,10 +15,10 @@ module Arg = struct
       (fun (x,y) -> {name=x; signature=y} )
       ( fun r -> r.name, r.signature )
 
-  let sch sign = let open Scheme.Tuple in
+  let sch name sign = let open Scheme.Tuple in
     let fwd arg = [arg.name; arg.signature] in
     let rev [name;signature] = {name;signature} in
-    Scheme.custom Scheme.[String; sign] fwd rev
+    Scheme.custom ("Module.Arg." ^ name) Scheme.[String; sign] fwd rev
 
   let reflect pp ppf = function
     | Some arg ->
@@ -85,7 +85,7 @@ module Divergence= struct
 
   let sch_origin =
     let open Scheme in
-    custom (Sum[Void;Void])
+    custom "Module.Divergence.origin" (Sum[Void;Void])
       (function
         | First_class_module -> C E
         | External -> C (S E))
@@ -102,7 +102,8 @@ module Divergence= struct
       (fun r -> r.root, r.origin, r.loc )
 
   let sch = let open Scheme in let open Tuple in
-    custom Scheme.[String; sch_origin; [Paths.P.sch; Loc.Sch.t ]]
+    custom "Module.Divergence.t"
+      Scheme.[String; sch_origin; [Paths.P.sch; Loc.Sch.t ]]
       (fun r -> [r.root;r.origin; [fst r.loc; snd r.loc] ])
       (fun [root;origin;[s;l]] -> {root;origin;loc=(s,l)} )
 
@@ -162,7 +163,7 @@ module Origin = struct
     let raw =
       Sum [ [Paths.P.sch; Paths.S.sch]; Void; Void; Void; [ Bool; Divergence.sch]]
     let t = let open Tuple in
-      custom raw
+      custom "Module.Origin.t" raw
         (function
           | Unit {source; path} -> C (Z [source;path])
           | Submodule -> C (S E)
@@ -546,8 +547,8 @@ module Sch = struct
 
   let l = let open L in function | [] -> None | x -> Some x
 
-  let option (type a)  (sch:a t) =
-    custom (Sum [Void; sch])
+  let option (type a) name (sch:a t) =
+    custom ("Option."^"name") (Sum [Void; sch])
       (function None -> C E | Some x -> C (S(Z x)))
       (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
 
@@ -558,11 +559,12 @@ module Sch = struct
       Opt, Modules.x, Array module';
       Opt, Module_types.x, Array module'
     ]
-  and opt_m = Custom { fwd=ofwd ; rev = orev ; sch= Sum [Void;m]; recs=true }
+  and opt_m =
+    Custom { fwd=ofwd ; rev = orev ; sch= Sum [Void;m]; id="Module.Option.m" }
   and args = Array opt_m
   and ofwd: m option -> 'a = function None -> C E | Some x -> C(S(Z x))
   and orev: 'a -> m option = function C E -> None | C S Z x-> Some x | _ -> .
-  and m = Custom { fwd; rev; sch = schr; recs = true}
+  and m = Custom { fwd; rev; sch = schr; id = "Module.m" }
   and fwd x =
     let s = flatten x.signature in
     Record.[
@@ -579,7 +581,7 @@ module Sch = struct
   and module' =
     Custom { fwd = fwdm; rev=revm;
              sch = Sum[m; [String;Paths.S.sch]; [String; Array module']];
-             recs = true }
+             id = "Module.module" }
   and fwdm = function
     | Alias x -> C (S (Z (Tuple.[x.name; Namespaced.flatten x.path ])))
     | M m -> C (Z m)
@@ -625,7 +627,8 @@ module Def = struct
     convr r f fr
 
   let sch = let open Scheme in let open Sch in
-    custom (Obj[Opt,Modules.x, Array module'; Opt, Module_types.x, Array module'])
+    custom "Module.Def.t"
+      (Obj[Opt,Modules.x, Array module'; Opt, Module_types.x, Array module'])
       (fun x -> [ Modules.x $=? l(Sexp_core.to_list x.modules);
                   Module_types.x $=? (l @@ Sexp_core.to_list x.module_types)] )
       (let open Record in fun [_,m;_,mt] -> signature_of_lists (m><[]) (mt><[]))
@@ -707,7 +710,8 @@ module Sig = struct
     convr r f fr
 
   let sch = let open Scheme in let open Sch in
-    custom (Obj [Opt, Modules.x, Array module'; Opt, Module_types.x, Array module'])
+    custom "Module.signature"
+      (Obj [Opt, Modules.x, Array module'; Opt, Module_types.x, Array module'])
       (fun x -> let s = flatten x in let l x = l(Sexp_core.to_list x) in
         Record.[ Modules.x $=? l s.modules; Module_types.x $=? l s.module_types ])
       (let open Record in fun [_,m;_,mt] -> of_lists (m><[]) (mt><[]) )
@@ -798,7 +802,7 @@ let fr r = R.(create [ksign := flatten r.result;
           ]
 
     let (><) = Option.(><)
-    let partial = custom raw
+    let partial = custom "Module.partial" raw
         (fun {args;origin;result} ->
            Record.[ S.Origin_f.x $=? S.default Origin.Submodule origin;
                     S.Args.x $=? (S.l args);
