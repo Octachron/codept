@@ -416,9 +416,6 @@ module Sch = struct
   module Values = Name(struct let s = "values" end)
   module Packed = Name(struct let s = "packed" end)
 
-  let edge = custom "Deps.edge" (Sum[  "Normal", Void; "Epsilon", Void ])
-      Deps.Edge.(function Normal -> C E | Epsilon -> C (S E))
-      Deps.Edge.(function C E -> Normal | C S E -> Epsilon | _ -> . )
 
   let rec raw_expr =
     Sum [ "Defs", Summary.sch; "Open", Paths.S.sch; "Include_me", module_expr;
@@ -520,7 +517,7 @@ module Sch = struct
   and annotation =
     Custom{ fwd=ann_f; rev = ann_r; sch = ann_s; id = "M2l.annotation" }
   and ann_s = Obj [
-      Opt, Access.x, Array [Paths.S.sch; Loc.Sch.t; edge];
+      Opt, Access.x, Array [Paths.S.sch; Loc.Sch.t; Deps.Edge.sch];
       Opt, Values.x, Array m2l; Opt, Packed.x, Array [module_expr;Loc.Sch.t]
     ]
   and ann_f x = Record.[

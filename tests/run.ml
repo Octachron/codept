@@ -543,13 +543,13 @@ let result =
 
           "cmi.ml", (["Loc"; "M2l";"Module"; "Option"; "Paths"],
                      ["Cmi_format"; "List"; "Path";"Types"], []);
-          "deps.ml", (["Option"; "Paths"; "Pp"; "Sexp"],["List"],[]);
+          "deps.ml", (["Option"; "Paths"; "Pp"; "Scheme";"Sexp"],["List"],[]);
           "summary.mli", (
-            ["Module";"Paths";"Sexp"],
+            ["Module";"Paths";"Scheme";"Sexp"],
             ["Format"],
             [] );
           "summary.ml", (
-            ["Module"; "Pp"; "Mresult"; "Name"; "Sexp"],
+            ["Module"; "Pp"; "Mresult"; "Name"; "Scheme"; "Sexp"],
             ["List"], []);
           "envt.mli", (
             ["Deps"; "Module";"Name"; "Outliner"], [], []);
@@ -568,19 +568,21 @@ let result =
              "Option"; "Paths"; "Mresult"; "Fault"; "Standard_faults";
              "Deps"]
           ,["List";"Format"],[]);
-          "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";"Sexp" ],
+          "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";
+                       "Scheme"; "Sexp" ],
                       ["Format"],[]);
           "m2l.ml", (["Loc"; "Deps"; "Module"; "Mresult"; "Name";
-                      "Option";"Summary";"Paths"; "Pp"; "Sexp" ],
+                      "Option";"Summary";"Paths"; "Pp"; "Scheme"; "Sexp" ],
                      ["List"],[]);
           "fault.ml", (["Loc"; "Option"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"],[]);
           "fault.mli", (["Loc"; "Paths"; "Name"],
                           ["Format"],[]);
 
-          "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Sexp"],
+          "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Scheme"; "Sexp"],
                           ["Format"], [] );
-          "module.ml", ( ["Loc";"Paths";"Name"; "Namespaced"; "Pp"; "Sexp" ],
+          "module.ml", ( ["Loc";"Paths";"Name"; "Namespaced"; "Option"; "Pp"
+                         ; "Scheme" ; "Sexp" ],
                          ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map"], [] );
@@ -588,20 +590,20 @@ let result =
                               ["Set";"Map"], [] );
           "namespaced.ml", ( ["Name"; "Paths"; "Pp"],
                              ["List"; "Set";"Map"], [] );
-          "loc.mli", ( ["Sexp"], ["Format"], []);
-          "loc.ml", ( ["Pp";"Sexp"], ["List"], []);
+          "loc.mli", ( ["Name";"Scheme";"Sexp"], ["Format"], []);
+          "loc.ml", ( ["Pp";"Scheme";"Sexp"], ["List"], []);
           "option.mli", ([],["Lazy"],[]);
           "option.ml", ([],["List"; "Lazy"],[]);
-          "paths.mli", (["Name"; "Sexp"], ["Map";"Set";"Format"],[]);
-          "paths.ml", (["Name"; "Pp"; "Sexp"; "Support" ],
+          "paths.mli", (["Name"; "Scheme"; "Sexp"], ["Map";"Set";"Format"],[]);
+          "paths.ml", (["Name"; "Pp"; "Scheme"; "Sexp"; "Support" ],
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
           "read.mli", (["M2l"; "Name"],["Syntaxerr"],[]);
-          "read.ml", (["Ast_converter"; "Cmi"; "M2l"],
+          "read.ml", (["Ast_converter"; "Cmi"; "M2l"; "Scheme" ],
                       ["Filename"; "Format"; "Lexing"; "Location";
                        "Parsing"; "Pparse"; "String"; "Syntaxerr"],
-                      ["Sexp_parse"; "Sexp_lex"]);
+                      ["Sparser";"Slex"]);
           "mresult.mli", ([],[],[]);
           "mresult.ml", ([],["List"],[]);
           "sexp.ml", (["Name"; "Option"; "Pp"],
@@ -610,7 +612,7 @@ let result =
                        [ "Format"], [] );
           "scheme.mli", ([],
                        [ "Format"], [] );
-          "scheme.ml", (["Pp"],
+          "scheme.ml", (["Name"; "Option"; "Pp"],
                         [ "Format";"String"], [] );
           "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";
                           "Namespaced"; "Read";

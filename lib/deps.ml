@@ -6,6 +6,12 @@ module Edge = struct
   let sexp = let open Sexp in
     sum [simple_constr "Normal" Normal;
          simple_constr "eps" Epsilon]
+
+  let sch = let open Scheme in
+    custom "Deps.edge" (Sum[  "Normal", Void; "Epsilon", Void ])
+      (function Normal -> C E | Epsilon -> C (S E))
+      (function C E -> Normal | C S E -> Epsilon | _ -> . )
+
 end
 
 type t = (Edge.t * Paths.S.set) Paths.P.map
