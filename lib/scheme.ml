@@ -347,7 +347,7 @@ type untyped = Untyped.t =
   | Obj of (string * untyped) list
 
 let promote_to_obj l =
-  let promote_pair = function Array [Atom x;y] -> Some(x,y) | _ -> None in
+  let promote_pair = function List [Atom x;y] -> Some(x,y) | _ -> None in
   Option.List'.map promote_pair l
 
 let rec retype: type a. a t -> untyped -> a option =
@@ -360,7 +360,7 @@ let rec retype: type a. a t -> untyped -> a option =
     | Array t, (Array ul | List ul) ->
       Option.List'.map (retype t) ul
     |  [], Array [] -> Some []
-    | (a::q), Array(ua :: uq) ->
+    | (a::q), (Array(ua :: uq) | List(ua :: uq)) ->
         retype a ua >>= fun h ->
         retype q (Array uq) >>| fun q ->
         Tuple.(h :: q)
