@@ -94,7 +94,7 @@ module Sexp = struct
 end
 let sexp = Sexp.summary
 
-let sch = let open Scheme in
+let sch = let open Schematic in
   custom "Summary.t" [Module.Sig.sch;Module.Sig.sch]
     Tuple.(fun r -> [r.defined; r.visible] )
     Tuple.(fun [defined;visible] -> {defined;visible})

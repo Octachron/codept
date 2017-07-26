@@ -22,7 +22,7 @@ struct
   end
   include Core
   let sexp = Sexp.( list string )
-  let sch = Scheme.(Array String)
+  let sch = Schematic.(Array String)
 
   module Set = struct
     include Set.Make(Core)
@@ -110,7 +110,7 @@ module Expr = struct
   let sexp = Sexp.all
 
   module Sch = struct
-    open Scheme
+    open Schematic
     let rec raw = Sum[ "T", Void; "A", String; "S", [t;String]; "F", [t; t] ]
     and t = Custom {fwd;rev; sch=raw; id = "Paths.Expr.t" }
     and fwd = let open Tuple in
@@ -222,7 +222,7 @@ module Pkg = struct
   end
   let sexp = Sexp.all
 
-  module Sch = struct open Scheme
+  module Sch = struct open Schematic
     let raw_source = Sum [ "Local", Void; "Unknown", Void;
                            "Pkg", Simple.sch; "Special", String ]
     let source = custom "Paths.Pkg.source" raw_source

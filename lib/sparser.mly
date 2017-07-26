@@ -3,11 +3,11 @@
 %token COLON, COMMA
 %token L, R, EOF
 
-%type <Scheme.Untyped.t> main
+%type <Schematic.Untyped.t> main
 %start main
 
 %{
-open Scheme.Untyped
+open Schematic.Untyped
 %}
 
 %%

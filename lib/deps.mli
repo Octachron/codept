@@ -7,7 +7,7 @@ module Edge: sig
   val max: t -> t -> t
   val min: t -> t -> t
   val sexp: (t, Sexp.one_and_many) Sexp.impl
-  val sch: t Scheme.t
+  val sch: t Schematic.t
 end
 
 type t = (Edge.t * Paths.S.set) Paths.P.map

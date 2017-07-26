@@ -1,4 +1,4 @@
-open Scheme
+open Schematic
 
 module Module = Label(struct let l = "module" end)
 module Ml = Label(struct let l = "ml" end)

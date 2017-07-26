@@ -173,7 +173,7 @@ let print_policy param ()=
   Fault.Policy.pp Pp.std L.(!param.[policy])
 
 let print_json_schema () =
-  Scheme.json_schema Pp.std Schema.x
+  Schematic.json_schema Pp.std Schema.x
 
 let set_p param lens value =
   let open L in

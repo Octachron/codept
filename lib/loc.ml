@@ -84,7 +84,7 @@ module Sexp = struct
 end
 
 module Sch = struct
-  open Scheme
+  open Schematic
 
   let raw_sch =
     Sum [ "Nowhere", Void; "Simple", [Int;Int;Int];

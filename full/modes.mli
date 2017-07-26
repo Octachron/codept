@@ -49,7 +49,7 @@ val info: mode
 
 (** Display dependencies in a structured format *)
 val structured:
-  (Schema.deps Scheme.s -> Format.formatter -> Schema.deps -> unit) -> mode
+  (Schema.deps Schematic.s -> Format.formatter -> Schema.deps -> unit) -> mode
 
 (** Display the list of modules dependencies of the input compilation units
     using ocamldep format *)

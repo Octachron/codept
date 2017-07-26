@@ -24,6 +24,6 @@ module Sexp: sig
 end
 
 module Sch: sig
-  val t: t Scheme.t
-  val ext: Name.t -> 'a Scheme.t -> 'a ext Scheme.t
+  val t: t Schematic.t
+  val ext: Name.t -> 'a Schematic.t -> 'a ext Schematic.t
 end

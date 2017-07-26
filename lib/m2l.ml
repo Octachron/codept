@@ -408,7 +408,7 @@ let sexp = More_sexp.m2l
 
 module Sch = struct
   module S = Name.Set
-  open Scheme
+  open Schematic
 
   let l x = if x = L.[] then None else Some x
   let (><) = Option.(><)

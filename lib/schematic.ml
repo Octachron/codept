@@ -430,3 +430,11 @@ let minify ppf =
   Format.pp_set_formatter_out_functions ppf basic;
   Format.kfprintf (fun _ -> Format.pp_set_formatter_out_functions ppf f;
                     Format.pp_flush_formatter ppf) ppf
+
+
+let default x y = if x = y then None else Some y
+
+let option (type a) name (sch:a t) =
+  custom ("Option."^name) (Sum ["None", Void; "Some", sch])
+    (function None -> C E | Some x -> C (S(Z x)))
+    (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )

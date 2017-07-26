@@ -46,7 +46,7 @@ let file {format;kind} filename =
     let lex = Lexing.from_channel file in
     begin
       (*    match M2l.sexp.parse @@ Sexp_parse.many Sexp_lex.main lex with*)
-      match Scheme.retype M2l.sch @@ Sparser.main Slex.main lex with
+      match Schematic.retype M2l.sch @@ Sparser.main Slex.main lex with
       | Some m2l -> close_in file; ok m2l
       | None -> close_in file; Error M2l
       | exception Parsing.Parse_error -> close_in file; Error M2l

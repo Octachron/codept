@@ -137,7 +137,7 @@ and extension_core =
 type t = m2l
 
 val sexp: (m2l,Sexp.many) Sexp.impl
-val sch: m2l Scheme.t
+val sch: m2l Schematic.t
 
 module More_sexp: sig
 
@@ -149,10 +149,10 @@ module More_sexp: sig
 end
 
 module Sch: sig
-  val expr: expression Scheme.t
-  val module_expr: module_expr Scheme.t
-  val module_type: module_type Scheme.t
-  val annotation: annotation Scheme.t
+  val expr: expression Schematic.t
+  val module_expr: module_expr Schematic.t
+  val module_type: module_type Schematic.t
+  val annotation: annotation Schematic.t
 end
 
 module Annot : sig

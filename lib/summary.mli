@@ -28,7 +28,7 @@ val pp : Format.formatter -> summary -> unit
 (** pretty printer *)
 
 val sexp: (t, Sexp.many) Sexp.impl
-val sch: t Scheme.t
+val sch: t Schematic.t
 
 val empty : summary
 (** Empty summary *)

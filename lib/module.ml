@@ -15,10 +15,10 @@ module Arg = struct
       (fun (x,y) -> {name=x; signature=y} )
       ( fun r -> r.name, r.signature )
 
-  let sch name sign = let open Scheme.Tuple in
+  let sch name sign = let open Schematic.Tuple in
     let fwd arg = [arg.name; arg.signature] in
     let rev [name;signature] = {name;signature} in
-    Scheme.custom ("Module.Arg." ^ name) Scheme.[String; sign] fwd rev
+    Schematic.custom ("Module.Arg." ^ name) Schematic.[String; sign] fwd rev
 
   let reflect pp ppf = function
     | Some arg ->
@@ -84,7 +84,7 @@ module Divergence= struct
           simple_constr "External" External]
 
   let sch_origin =
-    let open Scheme in
+    let open Schematic in
     custom "Module.Divergence.origin"
       (Sum[ "First_class_module",  Void; "External", Void])
       (function
@@ -102,9 +102,9 @@ module Divergence= struct
       (fun (r,o,l) -> {root=r; origin = o; loc = l })
       (fun r -> r.root, r.origin, r.loc )
 
-  let sch = let open Scheme in let open Tuple in
+  let sch = let open Schematic in let open Tuple in
     custom "Module.Divergence.t"
-      Scheme.[String; sch_origin; [Paths.P.sch; Loc.Sch.t ]]
+      Schematic.[String; sch_origin; [Paths.P.sch; Loc.Sch.t ]]
       (fun r -> [r.root;r.origin; [fst r.loc; snd r.loc] ])
       (fun [root;origin;[s;l]] -> {root;origin;loc=(s,l)} )
 
@@ -160,7 +160,7 @@ module Origin = struct
   end
   let sexp = Sexp.sexp
 
-  module Sch = struct open Scheme
+  module Sch = struct open Schematic
     let raw =
       Sum [ "Unit", [Paths.P.sch; Paths.S.sch];
             "Submodule", Void; "First_class", Void; "Arg", Void;
@@ -537,7 +537,7 @@ end
 let sexp = Sexp_core.modul_
 
 module Sch = struct
-  open Scheme
+  open Schematic
   module Origin_f = Label(struct let l = "origin" end)
   module Args = Label(struct let l = "args" end)
   module Modules = Label(struct let l = "modules" end)
@@ -546,14 +546,7 @@ module Sch = struct
 
   let (><) = Option.(><)
 
-  let default x y = if x = y then None else Some y
-
   let l = let open L in function | [] -> None | x -> Some x
-
-  let option (type a) name (sch:a t) =
-    custom ("Option."^name) (Sum ["None", Void; "Some", sch])
-      (function None -> C E | Some x -> C (S(Z x)))
-      (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
 
   let rec schr = Obj [
       Req, Name_f.l, String;
@@ -631,7 +624,7 @@ module Def = struct
     in
     convr r f fr
 
-  let sch = let open Scheme in let open Sch in
+  let sch = let open Schematic in let open Sch in
     custom "Module.Def.t"
       (Obj[Opt,Modules.l, Array module'; Opt, Module_types.l, Array module'])
       (fun x -> [ Modules.l $=? l(Sexp_core.to_list x.modules);
@@ -714,7 +707,7 @@ module Sig = struct
     in
     convr r f fr
 
-  let sch = let open Scheme in let open Sch in
+  let sch = let open Schematic in let open Sch in
     custom "Module.signature"
       (Obj [Opt, Modules.l, Array module'; Opt, Module_types.l, Array module'])
       (fun x -> let s = flatten x in let l x = l(Sexp_core.to_list x) in
@@ -797,7 +790,7 @@ let fr r = R.(create [ksign := flatten r.result;
   end
   let sexp = Sexp.partial
   module Sch = struct
-    open Scheme
+    open Schematic
     module S = Sch
     module Result = Label(struct let l = "signature" end)
     let raw =
@@ -809,9 +802,9 @@ let fr r = R.(create [ksign := flatten r.result;
     let (><) = Option.(><)
     let partial = custom "Module.partial" raw
         (fun {args;origin;result} ->
-           Record.[ S.Origin_f.l $=? S.default Origin.Submodule origin;
+           Record.[ S.Origin_f.l $=? default Origin.Submodule origin;
                     S.Args.l $=? (S.l args);
-                    Result.l $=? S.default Def.empty (flatten result);
+                    Result.l $=? default Def.empty (flatten result);
                   ])
         (let open Record in fun [_,origin; _, args;_,result] ->
             { args = args >< []; origin = origin >< Submodule;

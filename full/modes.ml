@@ -41,18 +41,18 @@ let structured pp _ _ ppf _ units =
       let mps = Paths.S.Set.elements mps in
       let dup mk l =
         List.fold_left (fun l x -> mk x :: l ) l mps in
-      let pair f p = Scheme.Tuple.[f;p] in
+      let pair f p = Schematic.Tuple.[f;p] in
         match p.source with
         | Paths.P.Local -> dup (pair p.file) loc, lib, unknw
         | Paths.P.Pkg pkg ->
-          let mk pth = Scheme.Tuple.[pkg; p.file; pth] in
+          let mk pth = Schematic.Tuple.[pkg; p.file; pth] in
           loc, dup mk lib, unknw
         | Paths.P.Unknown -> loc, lib, dup (fun x -> x) unknw
         | Paths.P.Special _ -> loc, lib, unknw in
       List.fold_left add_dep ([],[],[])
         (Deps.Forget.to_list u.dependencies) in
 
-  let open Scheme in
+  let open Schematic in
   let open Schema in
   let groups = Unit.Groups.R.group units in
   let assoc (_, x) =
@@ -81,7 +81,7 @@ let structured pp _ _ ppf _ units =
       obj [ local $=? wrap loc; lib $=? wrap libs; unknown $=? wrap unkns ] in
     obj [ file $= ufile u; dependencies $= all_deps ] in
   let ud = List.map dep units.ml @ List.map dep units.mli in
-  let data = let open Scheme in
+  let data = let open Schematic in
     obj [ atlas $= atl; dependencies $= ud ] in
   Pp.fp ppf "%a@." (pp schema) data
 
@@ -277,7 +277,7 @@ let eval = function
   | Modules (Standard, filter) -> modules ~filter:(Filter.eval filter)
   | Modules (Nl, filter) -> line_modules ~filter:(Filter.eval filter)
   | Info -> info
-  | Json -> structured Scheme.json
-  | Sexp ->  structured Scheme.sexp
+  | Json -> structured Schematic.json
+  | Sexp ->  structured Schematic.sexp
   | Signature ->  signature
   | Sort -> sort

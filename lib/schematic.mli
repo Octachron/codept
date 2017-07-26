@@ -101,3 +101,6 @@ end
 val retype: 'a t -> Untyped.t -> 'a option
 
 val minify: Format.formatter -> ('a, Format.formatter, unit, unit) format4 -> 'a
+
+val default: 'a -> 'a -> 'a option
+val option: Name.t -> 'a t -> 'a option t

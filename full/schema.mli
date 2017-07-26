@@ -1,4 +1,4 @@
-open Scheme
+open Schematic
 
 type m val m: m label
 type ml val ml:ml label

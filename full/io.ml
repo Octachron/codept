@@ -43,7 +43,7 @@ let parse_sig format lexbuf=
     @@ Sexp_parse.many Sexp_lex.main
     @@ lexbuf
   | Json | Sexp2 ->
-    Scheme.retype (Array Module.sch) @@ Sparser.main Slex.main lexbuf
+    Schematic.retype (Array Module.sch) @@ Sparser.main Slex.main lexbuf
 
 let read_sigfile fmt filename =
   let chan = open_in filename in
@@ -53,12 +53,12 @@ let read_sigfile fmt filename =
   sigs
 
 
-let sm2l = { Scheme.title = "codept/m2l/0.10";
+let sm2l = { Schematic.title = "codept/m2l/0.10";
             description = "module level ocaml file skeleton";
             sch = M2l.sch
           }
 
-let ssign = { Scheme.title = "codept/sig/0.10";
+let ssign = { Schematic.title = "codept/sig/0.10";
              description = "module level ocaml signature";
              sch = Array Module.sch
            }
@@ -75,8 +75,8 @@ let direct = {
     m2l =  (fun format _filename ppf m2l ->
         match format with
         | Sexp -> Pp.fp ppf  "%a@." Sexp.pp (M2l.sexp.embed m2l)
-        | Json -> Scheme.minify ppf "%a@.\n" (Scheme.json sm2l) m2l
-        | Sexp2 ->  Scheme.minify ppf "%a@.\n" (Scheme.sexp sm2l) m2l
+        | Json -> Schematic.minify ppf "%a@.\n" (Schematic.json sm2l) m2l
+        | Sexp2 ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp sm2l) m2l
 
       );
     sign =
@@ -86,8 +86,8 @@ let direct = {
            mds
            |> Sexp.( embed @@ list Module.sexp)
            |> Pp.fp ppf "@[%a@]@." Sexp.pp
-         | Sexp2 ->  Scheme.minify ppf "%a@.\n" (Scheme.sexp ssign) mds
-         | Json ->  Scheme.minify ppf "%a@.\n" (Scheme.json ssign) mds
+         | Sexp2 ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp ssign) mds
+         | Json ->  Schematic.minify ppf "%a@.\n" (Schematic.json ssign) mds
       )
   }
 }

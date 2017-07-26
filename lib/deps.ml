@@ -7,8 +7,8 @@ module Edge = struct
     sum [simple_constr "Normal" Normal;
          simple_constr "eps" Epsilon]
 
-  let sch = let open Scheme in
-    custom "Deps.edge" (Sum[  "Normal", Void; "Epsilon", Void ])
+  let sch = let open Schematic in
+    custom "Deps.edge" (Sum["Normal", Void; "Epsilon", Void ])
       (function Normal -> C E | Epsilon -> C (S E))
       (function C E -> Normal | C S E -> Epsilon | _ -> . )
 
