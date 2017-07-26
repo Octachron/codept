@@ -47,7 +47,9 @@ module H = struct
     let loc =  extract_loc lid in
     match x with
     | A _ -> Annot.empty
-    | S(p,_) -> Annot.access {data = concrete p; loc }
+    | S(p,_) ->
+      List.fold_left (fun annot data -> Annot.(merge annot @@ access {data; loc }))
+        Annot.empty (multiples p)
     | T | F _ -> assert false
 
   let do_open lid =
@@ -68,7 +70,6 @@ module H = struct
     | a :: q -> (f a) @ gen_mmap (@) f q
 
   let mmap f = gen_mmap (@%) f
-  let gmmap f = gen_mmap (@) f
 
   let (%) f g x = f (g x)
 

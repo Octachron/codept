@@ -268,6 +268,7 @@ let result =
     ["first_class_more.ml", [] ];
     ["foreign_arg_sig.ml", u["Ext";"Ext2"] ];
     ["functor.ml", [] ];
+    ["functor_in_type_expr.ml", u["Ext1";"Ext2";"Ext3";"Ext4"] ];
     ["functor_with_include.ml", [] ];
     ["hidden.ml", u["Ext"] ];
     ["imperfect_modules.ml", u["Ext"] ];
