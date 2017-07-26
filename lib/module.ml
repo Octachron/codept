@@ -538,11 +538,11 @@ let sexp = Sexp_core.modul_
 
 module Sch = struct
   open Scheme
-  module Origin_f = Name(struct let s = "origin" end)
-  module Args = Name(struct let s = "args" end)
-  module Modules = Name(struct let s = "module" end)
-  module Module_types = Name(struct let s = "module_types" end)
-  module Name_f = Name(struct let s = "name" end)
+  module Origin_f = Label(struct let l = "origin" end)
+  module Args = Label(struct let l = "args" end)
+  module Modules = Label(struct let l = "modules" end)
+  module Module_types = Label(struct let l = "module_types" end)
+  module Name_f = Label(struct let l = "name" end)
 
   let (><) = Option.(><)
 
@@ -551,16 +551,16 @@ module Sch = struct
   let l = let open L in function | [] -> None | x -> Some x
 
   let option (type a) name (sch:a t) =
-    custom ("Option."^"name") (Sum ["None", Void; "Some", sch])
+    custom ("Option."^name) (Sum ["None", Void; "Some", sch])
       (function None -> C E | Some x -> C (S(Z x)))
       (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
 
   let rec schr = Obj [
-      Req, Name_f.x, String;
-      Opt, Origin_f.x, Origin.sch;
-      Opt, Args.x, args;
-      Opt, Modules.x, Array module';
-      Opt, Module_types.x, Array module'
+      Req, Name_f.l, String;
+      Opt, Origin_f.l, Origin.sch;
+      Opt, Args.l, args;
+      Opt, Modules.l, Array module';
+      Opt, Module_types.l, Array module'
     ]
   and opt_m =
     Custom { fwd=ofwd ; rev = orev ; sch= Sum ["None",Void;"Some", m];
@@ -572,11 +572,11 @@ module Sch = struct
   and fwd x =
     let s = flatten x.signature in
     Record.[
-      Name_f.x $= x.name;
-      Origin_f.x $=? (default Origin.Submodule x.origin);
-      Args.x $=? (l x.args);
-      Modules.x $=? (l @@ Sexp_core.to_list s.modules);
-      Module_types.x $=? (l @@ Sexp_core.to_list s.module_types)
+      Name_f.l $= x.name;
+      Origin_f.l $=? (default Origin.Submodule x.origin);
+      Args.l $=? (l x.args);
+      Modules.l $=? (l @@ Sexp_core.to_list s.modules);
+      Module_types.l $=? (l @@ Sexp_core.to_list s.module_types)
     ]
   and rev = let open Record in
     fun [_, name; _, o; _, a; _, m; _, mt] ->
@@ -633,9 +633,9 @@ module Def = struct
 
   let sch = let open Scheme in let open Sch in
     custom "Module.Def.t"
-      (Obj[Opt,Modules.x, Array module'; Opt, Module_types.x, Array module'])
-      (fun x -> [ Modules.x $=? l(Sexp_core.to_list x.modules);
-                  Module_types.x $=? (l @@ Sexp_core.to_list x.module_types)] )
+      (Obj[Opt,Modules.l, Array module'; Opt, Module_types.l, Array module'])
+      (fun x -> [ Modules.l $=? l(Sexp_core.to_list x.modules);
+                  Module_types.l $=? (l @@ Sexp_core.to_list x.module_types)] )
       (let open Record in fun [_,m;_,mt] -> signature_of_lists (m><[]) (mt><[]))
 
   type t = definition
@@ -716,9 +716,9 @@ module Sig = struct
 
   let sch = let open Scheme in let open Sch in
     custom "Module.signature"
-      (Obj [Opt, Modules.x, Array module'; Opt, Module_types.x, Array module'])
+      (Obj [Opt, Modules.l, Array module'; Opt, Module_types.l, Array module'])
       (fun x -> let s = flatten x in let l x = l(Sexp_core.to_list x) in
-        Record.[ Modules.x $=? l s.modules; Module_types.x $=? l s.module_types ])
+        Record.[ Modules.l $=? l s.modules; Module_types.l $=? l s.module_types ])
       (let open Record in fun [_,m;_,mt] -> of_lists (m><[]) (mt><[]) )
 
 end
@@ -799,19 +799,19 @@ let fr r = R.(create [ksign := flatten r.result;
   module Sch = struct
     open Scheme
     module S = Sch
-    module Result = Name(struct let s = "signature" end)
+    module Result = Label(struct let l = "signature" end)
     let raw =
-      Obj [ Opt, S.Origin_f.x, Origin.sch;
-            Opt, S.Args.x, S.args;
-            Opt, Result.x, Def.sch;
+      Obj [ Opt, S.Origin_f.l, Origin.sch;
+            Opt, S.Args.l, S.args;
+            Opt, Result.l, Def.sch;
           ]
 
     let (><) = Option.(><)
     let partial = custom "Module.partial" raw
         (fun {args;origin;result} ->
-           Record.[ S.Origin_f.x $=? S.default Origin.Submodule origin;
-                    S.Args.x $=? (S.l args);
-                    Result.x $=? S.default Def.empty (flatten result);
+           Record.[ S.Origin_f.l $=? S.default Origin.Submodule origin;
+                    S.Args.l $=? (S.l args);
+                    Result.l $=? S.default Def.empty (flatten result);
                   ])
         (let open Record in fun [_,origin; _, args;_,result] ->
             { args = args >< []; origin = origin >< Submodule;

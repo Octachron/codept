@@ -1,18 +1,18 @@
 open Scheme
 
-type m val m: m name
-type ml val ml:ml name
-type mli val mli:mli name
+type m val m: m label
+type ml val ml:ml label
+type mli val mli:mli label
 
-type file val file:file name
-type dependencies val dependencies: dependencies name
+type file val file:file label
+type dependencies val dependencies: dependencies label
 
-type local val local: local name
-type lib val lib: lib name
-type unknown val unknown: unknown name
+type local val local: local label
+type lib val lib: lib label
+type unknown val unknown: unknown label
 
 
-type atlas val atlas: atlas name
+type atlas val atlas: atlas label
 
 type path = string list val path: path t
 type dep = (path * (path * void)) Tuple.t val dep: dep t

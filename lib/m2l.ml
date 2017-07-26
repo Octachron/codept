@@ -412,9 +412,9 @@ module Sch = struct
 
   let l x = if x = L.[] then None else Some x
   let (><) = Option.(><)
-  module Access = Name(struct let s = "access" end)
-  module Values = Name(struct let s = "values" end)
-  module Packed = Name(struct let s = "packed" end)
+  module Access = Label(struct let l = "access" end)
+  module Values = Label(struct let l = "values" end)
+  module Packed = Label(struct let l = "packed" end)
 
 
   let rec raw_expr =
@@ -517,15 +517,15 @@ module Sch = struct
   and annotation =
     Custom{ fwd=ann_f; rev = ann_r; sch = ann_s; id = "M2l.annotation" }
   and ann_s = Obj [
-      Opt, Access.x, Array [Paths.S.sch; Loc.Sch.t; Deps.Edge.sch];
-      Opt, Values.x, Array m2l; Opt, Packed.x, Array [module_expr;Loc.Sch.t]
+      Opt, Access.l, Array [Paths.S.sch; Loc.Sch.t; Deps.Edge.sch];
+      Opt, Values.l, Array m2l; Opt, Packed.l, Array [module_expr;Loc.Sch.t]
     ]
   and ann_f x = Record.[
-    Access.x $=?
+    Access.l $=?
     (l @@ Paths.S.Map.fold
        (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x.access L.[]);
-    Values.x $=? l x.values;
-    Packed.x $=? l (List.map (fun x -> Tuple.[x.Loc.data; x.loc]) x.packed)
+    Values.l $=? l x.values;
+    Packed.l $=? l (List.map (fun x -> Tuple.[x.Loc.data; x.loc]) x.packed)
   ]
   and ann_r = Record.(fun [_,a;_,v;_,p] ->
       {access=

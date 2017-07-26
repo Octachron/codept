@@ -19,18 +19,18 @@ module Tuple = struct
 end
 open Tuple
 
-module type name = sig type t val s:string end
-type 'a name = (module name with type t = 'a)
-module Name(X:sig val s:string end) =
+module type label = sig type t val l:string end
+type 'a label = (module label with type t = 'a)
+module Label(X:sig val l:string end) =
 struct
   type t
   type s = t
   include X
-  module M = struct type t = s let s = s end
-  let x: t name = (module M)
+  module M = struct type t = s let l = l end
+  let l: t label = (module M)
 end
 
-let show (type a) (module X:name with type t = a) = X.s
+let show (type a) ((module X):a label) = X.l
 
 type required = private Required
 type optional = private Optional
@@ -49,7 +49,7 @@ type ('m,'a) elt =
 module Record = struct
   type 'a record =
     | []: void record
-    | (::): ( 'a name * 'elt) * 'c record ->
+    | (::): ( 'a label * 'elt) * 'c record ->
       ('a * 'elt * 'c) record
   type 'a t = 'a record
 end
@@ -73,7 +73,7 @@ type 'hole t =
 and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; id:string }
 and 'a record_declaration =
   | []: void record_declaration
-  | (::): ( ('m,'x,'fx) modal * 'a name * 'x t) * 'c record_declaration
+  | (::): ( ('m,'x,'fx) modal * 'a label * 'x t) * 'c record_declaration
     -> (  'a * 'fx * 'c ) record_declaration
 
 and 'a sum_decl =
@@ -160,8 +160,8 @@ and json_sum: type a. bool -> int -> Format.formatter -> a sum_decl -> unit =
   | [] -> ()
   | (s,a)::q ->
     if not first then Pp.fp ppf ",@,";
-    let module N = Name(struct let s = s end) in
-    Pp.fp ppf "{%a}%a" json_type (Obj[Req,N.x,a]) (json_sum false @@ n + 1) q
+    let module N = Label(struct let l = s end) in
+    Pp.fp ppf "{%a}%a" json_type (Obj[Req,N.l,a]) (json_sum false @@ n + 1) q
 
 let rec json_definitions:
   type a.  bool * S.t -> Format.formatter -> a t ->  bool * S.t =
@@ -206,8 +206,8 @@ let rec json: type a. a t -> Format.formatter -> a -> unit =
 and json_sum: type a. int -> a sum_decl -> Format.formatter -> a sum -> unit =
   fun n sch ppf x -> match sch, x with
     | (n,a) :: _ , C Z x ->
-      let module N = Name(struct let s=n end) in
-      json (Obj [Req, N.x, a]) ppf (Record.[N.x, x])
+      let module N = Label(struct let l=n end) in
+      json (Obj [Req, N.l, a]) ppf (Record.[N.l, x])
     | (n,_) :: _ , C E ->
       json String ppf n
     | _ :: q, C S c -> json_sum (n+1) q ppf (C c)

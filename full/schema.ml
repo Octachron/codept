@@ -1,34 +1,34 @@
 open Scheme
 
-module Module = Name(struct let s = "module" end)
-module Ml = Name(struct let s = "ml" end)
-module Mli = Name(struct let s = "mli" end)
+module Module = Label(struct let l = "module" end)
+module Ml = Label(struct let l = "ml" end)
+module Mli = Label(struct let l = "mli" end)
 
-module File = Name(struct let s = "file" end)
+module File = Label(struct let l = "file" end)
 
-module Local = Name(struct let s = "local" end)
-module Lib = Name(struct let s = "lib" end)
-module Unknown = Name(struct let s ="unknown" end)
+module Local = Label(struct let l = "local" end)
+module Lib = Label(struct let l = "lib" end)
+module Unknown = Label(struct let l ="unknown" end)
 
-module Dependencies = Name(struct let s = "dependencies" end)
-module Atlas = Name(struct let s = "atlas" end)
+module Dependencies = Label(struct let l = "dependencies" end)
+module Atlas = Label(struct let l = "atlas" end)
 
-type ml = Ml.t let ml = Ml.x
-type mli = Mli.t let mli = Mli.x
+type ml = Ml.t let ml = Ml.l
+type mli = Mli.t let mli = Mli.l
 
-type m = Module.t let m = Module.x
+type m = Module.t let m = Module.l
 
-type file = File.t let file = File.x
+type file = File.t let file = File.l
 
-type local = Local.t let local = Local.x
-type unknown = Unknown.t let unknown = Unknown.x
-type lib = Lib.t let lib = Lib.x
+type local = Local.t let local = Local.l
+type unknown = Unknown.t let unknown = Unknown.l
+type lib = Lib.t let lib = Lib.l
 
 type dependencies = Dependencies.t
-let dependencies = Dependencies.x
+let dependencies = Dependencies.l
 
 type atlas = Atlas.t
-let atlas = Atlas.x
+let atlas = Atlas.l
 
 
 let path = Array String

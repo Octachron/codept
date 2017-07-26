@@ -19,12 +19,12 @@ module Tuple: sig
   type 'a t = 'a tuple
 end
 
-module type name = sig type t val s:string end
-type 'a name = (module name with type t = 'a)
-module Name: functor(X:sig val s:string end) ->
-  sig type t val x: t name end
+module type label = sig type t val l:string end
+type 'a label = (module label with type t = 'a)
+module Label: functor(X:sig val l:string end) ->
+  sig type t val l: t label end
 
-val show: 'a name -> string
+val show: 'a label -> string
 
 type required = private Required
 type optional = private Optional
@@ -36,7 +36,7 @@ type (_,_,_) modal =
 module Record: sig
   type 'a record =
     | []: void record
-    | (::): ( 'a name * 'elt) * 'c record ->
+    | (::): ( 'a label * 'elt) * 'c record ->
       ('a * 'elt * 'c) record
   type 'a t = 'a record
 end
@@ -59,7 +59,7 @@ type 'hole t =
 and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; id: string}
 and 'a record_declaration =
   | []: void record_declaration
-  | (::):  ( ('m,'x,'fx) modal * 'a name * 'x t) * 'c record_declaration
+  | (::):  ( ('m,'x,'fx) modal * 'a label * 'x t) * 'c record_declaration
     -> (  'a * 'fx * 'c ) record_declaration
 
 and 'a sum_decl =
@@ -83,9 +83,9 @@ val json: 'a s -> Format.formatter -> 'a -> unit
 val sexp: 'a s  -> Format.formatter -> 'a -> unit
 val json_schema:  Format.formatter -> 'a s -> unit
 
-val ($=): 'a name -> 'b -> ('a name * 'b)
-val skip: 'a name -> ('a name * 'b option)
-val ($=?): 'a name -> 'b option -> ('a name * 'b option)
+val ($=): 'a label -> 'b -> ('a label * 'b)
+val skip: 'a label -> ('a label * 'b option)
+val ($=?): 'a label -> 'b option -> ('a label * 'b option)
 
 val obj: 'a Record.t -> 'a Record.t
 val custom: string -> 'b t -> ('a -> 'b) -> ('b -> 'a) -> 'a t
