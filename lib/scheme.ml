@@ -125,7 +125,7 @@ let rec json_type: type a. Format.formatter -> a t -> unit =
       Pp.fp ppf "@[<hov 2>%a@ :@ \"#/definitions/%s\"@]" k "$ref" id
     | Sum decl ->
       Pp.fp ppf "@[<hov 2>%a :[%a]@]"
-        k "OneOf" (json_sum true 0) decl
+        k "oneOf" (json_sum true 0) decl
 and json_schema_tuple: type a. Format.formatter -> a tuple t -> unit =
   fun ppf -> function
     | [] -> ()
@@ -159,7 +159,7 @@ and json_sum: type a. bool -> int -> Format.formatter -> a sum_decl -> unit =
   | (s,a)::q ->
     if not first then Pp.fp ppf ",@,";
     let module N = Name(struct let s = s end) in
-    Pp.fp ppf "{%a},@,%a" json_type (Obj[Req,N.x,a]) (json_sum false @@ n + 1) q
+    Pp.fp ppf "{%a}%a" json_type (Obj[Req,N.x,a]) (json_sum false @@ n + 1) q
 
 let rec json_definitions:
   type a.  bool * S.t -> Format.formatter -> a t ->  bool * S.t =
