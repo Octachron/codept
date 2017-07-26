@@ -40,49 +40,6 @@ type 'a ext = { loc:t; data:'a }
   let fmap f x = { x with data = f x.data }
 
 
-module Sexp = struct
-  open Sexp
-    let simple = C2.C { name = "Simple";
-                        proj = (function Simple s -> Some(s.line, s.start, s.stop)
-                                       | _ -> None ) ;
-                        inj = (fun (line,start,stop) -> Simple {line;start;stop} );
-                        impl = triple' int int int;
-                      }
-    let multiline = C2.C
-        { name = "Multiline";
-          proj = (function Multiline {start;stop} ->
-              Some(fst start, snd start, fst stop, snd stop )
-                         | _ -> None );
-          inj = (fun (l,c,l2,c2) -> Multiline { start = l, c; stop = l2, c2 });
-          impl = tetra' int int int int
-        }
-
-    let empty_set =
-      let parse = function
-        | Keyed_list ("∅", []) -> Some ()
-        | _ -> None
-      and embed _ = Keyed_list ("∅", [] ) in
-      {parse;embed;kind= One_and_many }
-
-    let nowhere = C2.C
-        { name= "Nowhere";
-          proj = (function Nowhere -> Some () | _ -> None );
-          inj = (fun _ -> Nowhere);
-          impl = empty_set;
-        }
-
-
-  let t =
-    C2.sum simple [simple;multiline;nowhere]
-
-  let ext impl =
-    Sexp.convr (Sexp.pair impl t)
-      (fun (data,loc) -> {data;loc})
-      (fun r -> r.data, r.loc)
-
-
-end
-
 module Sch = struct
   open Schematic
 

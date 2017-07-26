@@ -6,6 +6,7 @@ type t =
     no_include:bool;
     may_approx:bool;
     nested: bool;
+    format: Schematic.format
   }
 
 module L = struct
@@ -37,6 +38,9 @@ module L = struct
   let nested = create (fun x -> x.nested) (fun x y -> { x with nested = y })
   let may_approx = create
       (fun x -> x.may_approx) (fun x y -> { x with may_approx = y})
+
+  let fmt = create (fun x -> x.format) (fun x y -> { x with format = y } )
+
   open Makefile
   let all = makefile % create (fun x-> x.all) (fun x y -> { x with all = y })
   let native = makefile % create
@@ -74,5 +78,4 @@ module L = struct
                    (fun x-> x.sig_only) (fun x y -> { x with sig_only = y })
   let policy = analyzer % create
                  (fun x-> x.policy) (fun x y -> { x with policy = y })
-  let fmt = analyzer % create (fun x -> x.format) (fun x y -> { x with format = y } )
 end

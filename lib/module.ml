@@ -9,12 +9,6 @@ module Arg = struct
       Pp.fp ppf "(%s:%a)" arg.name pp arg.signature
     | None -> Pp.fp ppf "()"
 
-  let sexp sign =
-    Sexp.convr
-      (Sexp.pair Sexp.string sign)
-      (fun (x,y) -> {name=x; signature=y} )
-      ( fun r -> r.name, r.signature )
-
   let sch name sign = let open Schematic.Tuple in
     let fwd arg = [arg.name; arg.signature] in
     let rev [name;signature] = {name;signature} in
@@ -78,11 +72,6 @@ module Divergence= struct
       Paths.Pkg.pp path Loc.pp loc
       pp_origin origin
 
-  let sexp_origin =
-    let open Sexp in
-    sum [ simple_constr "First_class_module" First_class_module;
-          simple_constr "External" External]
-
   let sch_origin =
     let open Schematic in
     custom "Module.Divergence.origin"
@@ -94,13 +83,6 @@ module Divergence= struct
       | C E -> First_class_module
       | C (S E) -> External
       | _ -> .)
-
-  let sexp =
-    let open Sexp in
-    let raw = triple string sexp_origin (pair Paths.Pkg.sexp Loc.Sexp.t) in
-    convr raw
-      (fun (r,o,l) -> {root=r; origin = o; loc = l })
-      (fun r -> r.root, r.origin, r.loc )
 
   let sch = let open Schematic in let open Tuple in
     custom "Module.Divergence.t"
@@ -134,31 +116,6 @@ module Origin = struct
     | First_class -> Pp.fp ppf "'"
     | Arg -> Pp.fp ppf "§"
     | Phantom _ -> Pp.fp ppf "👻"
-
-  module Sexp = struct
-    open Sexp
-    let unit = C { name = "Unit";
-                   proj = (function Unit {source;path} ->
-                       Some (source,path) | _ -> None);
-                   inj = (fun (source,path) -> Unit {source;path});
-                   impl = pair Pkg.sexp Paths.S.sexp;
-                   default = None;
-                 }
-
-    let submodule = simple_constr "Submodule" Submodule
-    let first_class = simple_constr "First_class" First_class
-    let arg = simple_constr "Arg" Arg
-    let phantom = C { name = "👻";
-                      proj = (function Phantom (root,b) -> Some (root,b)
-                                     | _ -> None);
-                      inj = (fun (root,b) -> Phantom (root,b));
-                      impl = pair bool Divergence.sexp;
-                      default = None
-                    }
-
-    let  sexp = Sexp.sum [unit; arg; submodule;first_class; phantom]
-  end
-  let sexp = Sexp.sexp
 
   module Sch = struct open Schematic
     let raw =
@@ -475,66 +432,7 @@ let signature_of_lists ms mts =
     module_types = List.fold_left add e mts
   }
 
-module Sexp_core = struct
-  open Sexp
-  module R = Sexp.Record
-  let to_list m = List.map snd @@ Name.Map.bindings m
-
-  let args_f = R.(key Many "args" [])
-  let modules = R.(key Many "modules" [])
-  let module_types = R.(key Many "module_types" [])
-  let origin = R.(key One_and_many "origin" Origin.Submodule)
-
-  let rec m () =
-    let fr r =
-      r.name,
-      let signature = flatten r.signature in
-      R.(create [
-                 origin := r.origin;
-                 args_f := r.args;
-                 modules := (to_list signature.modules);
-                 module_types := (to_list signature.module_types)
-                ]) in
-    let f (name,x) =
-      let get f = R.get f x in
-      create ~origin:(get origin) ~args:(get args_f)
-        name
-      @@ Exact (signature_of_lists (get modules) (get module_types)) in
-    let record =
-      record R.[
-        field origin Origin.sexp;
-        field args_f @@ fix args;
-        field modules @@ list @@ fix' module_;
-        field module_types @@ list @@ fix' module_
-      ]
-    in
-    conv {f;fr} (key_list string record)
-  and args () = list @@ opt @@ fix' m
-  and module_ () =
-    let alias =
-      C2.C { name = "Alias";
-             proj = (function
-                 | Alias a -> Some(a.name, Namespaced.flatten a.path)
-                 | _ -> None);
-             inj = (fun (name,path) ->
-                 Alias {name;
-                        path=Namespaced.of_path path;
-                        phantom=None;
-                        weak=false} );
-             impl = key_list string Paths.S.sexp;
-           } in
-    let mc =
-      C2.C {name = "M";
-         proj = (function M m -> Some m | _ -> None );
-         inj = (fun m -> M m);
-         impl = fix' m;
-        } in
-    C2.sum mc [alias; mc ]
-
-
-  let modul_ = module_ ()
-end
-let sexp = Sexp_core.modul_
+let to_list m = List.map snd @@ Name.Map.bindings m
 
 module Sch = struct
   open Schematic
@@ -568,8 +466,8 @@ module Sch = struct
       Name_f.l $= x.name;
       Origin_f.l $=? (default Origin.Submodule x.origin);
       Args.l $=? (l x.args);
-      Modules.l $=? (l @@ Sexp_core.to_list s.modules);
-      Module_types.l $=? (l @@ Sexp_core.to_list s.module_types)
+      Modules.l $=? (l @@ to_list s.modules);
+      Module_types.l $=? (l @@ to_list s.module_types)
     ]
   and rev = let open Record in
     fun [_, name; _, o; _, a; _, m; _, mt] ->
@@ -583,7 +481,7 @@ module Sch = struct
   and fwdm = function
     | M m -> C (Z m)
     | Alias x -> C (S (Z (Tuple.[x.name; Namespaced.flatten x.path ])))
-    | Namespace n -> C (S (S (Z ( Tuple.[n.name; Sexp_core.to_list n.modules] ))))
+    | Namespace n -> C (S (S (Z ( Tuple.[n.name; to_list n.modules] ))))
   and revm = let open Tuple in
     function
     | C Z m -> M m
@@ -609,26 +507,11 @@ module Def = struct
 
   let pp = pp_definition
 
-  let sexp =
-    let open Sexp in
-    let open Sexp_core in
-    let r = record R.[ field modules @@ list @@ fix' module_;
-                       field module_types @@ list @@ fix' module_
-                     ] in
-    let f x =
-      signature_of_lists (R.get modules x) (R.get module_types x)
-    in
-    let fr s =
-      R.(create [ modules := to_list s.modules;
-                  module_types := to_list s.module_types] )
-    in
-    convr r f fr
-
   let sch = let open Schematic in let open Sch in
     custom "Module.Def.t"
       (Obj[Opt,Modules.l, Array module'; Opt, Module_types.l, Array module'])
-      (fun x -> [ Modules.l $=? l(Sexp_core.to_list x.modules);
-                  Module_types.l $=? (l @@ Sexp_core.to_list x.module_types)] )
+      (fun x -> [ Modules.l $=? l(to_list x.modules);
+                  Module_types.l $=? (l @@ to_list x.module_types)] )
       (let open Record in fun [_,m;_,mt] -> signature_of_lists (m><[]) (mt><[]))
 
   type t = definition
@@ -691,26 +574,10 @@ module Sig = struct
 
   type t = signature
 
-  let sexp =
-    let open Sexp in
-    let open Sexp_core in
-    let r = record R.[ field modules @@ list @@ fix' module_;
-                     field module_types @@ list @@ fix' module_
-                   ] in
-    let f x =
-      of_lists (R.get modules x) (R.get module_types x)
-    in
-    let fr s =
-      let s = flatten s in
-      R.(create [ modules := to_list s.modules;
-                  module_types := to_list s.module_types] )
-    in
-    convr r f fr
-
   let sch = let open Schematic in let open Sch in
     custom "Module.signature"
       (Obj [Opt, Modules.l, Array module'; Opt, Module_types.l, Array module'])
-      (fun x -> let s = flatten x in let l x = l(Sexp_core.to_list x) in
+      (fun x -> let s = flatten x in let l x = l(to_list x) in
         Record.[ Modules.l $=? l s.modules; Module_types.l $=? l s.module_types ])
       (let open Record in fun [_,m;_,mt] -> of_lists (m><[]) (mt><[]) )
 
@@ -765,30 +632,6 @@ module Partial = struct
     else
       Ok fdefs.result
 
-  module Sexp = struct
-    open Sexp
-    module C = Sexp_core
-    module R = Sexp.Record
-    let ksign = R.(key Many "signature" Def.empty)
-    let partial =
-      let r = record R.[
-          field C.origin Origin.sexp;
-          field ksign Def.sexp;
-          field C.args_f @@ C.args ();
-        ] in
-      let f x =
-        let get f = R.get f x in
-        {args = get C.args_f; result = Exact (get ksign);
-         origin = get C.origin }
-        in
-let fr r = R.(create [ksign := flatten r.result;
-                      C.args_f := r.args;
-                      C.origin := r.origin
-                     ] ) in
-      conv {f;fr} r
-
-  end
-  let sexp = Sexp.partial
   module Sch = struct
     open Schematic
     module S = Sch

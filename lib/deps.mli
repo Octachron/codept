@@ -6,7 +6,6 @@ module Edge: sig
     | Epsilon (** immediate dependency *)
   val max: t -> t -> t
   val min: t -> t -> t
-  val sexp: (t, Sexp.one_and_many) Sexp.impl
   val sch: t Schematic.t
 end
 

@@ -3,9 +3,6 @@ module Edge = struct
   type t = Normal | Epsilon
   let max x y = if x = Epsilon then x else y
   let min x y = if x = Normal then x else y
-  let sexp = let open Sexp in
-    sum [simple_constr "Normal" Normal;
-         simple_constr "eps" Epsilon]
 
   let sch = let open Schematic in
     custom "Deps.edge" (Sum["Normal", Void; "Epsilon", Void ])

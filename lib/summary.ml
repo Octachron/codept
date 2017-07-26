@@ -79,21 +79,6 @@ let pp ppf x = Pp.fp ppf "@[[@,%a@,]@]"
       pp_view x.visible
   else ()
 
-
-module Sexp = struct
-  open Sexp
-
-  let view = Module.Sig.sexp
-
-    let summary =
-    convr
-      (pair view view)
-      (fun (a,b) -> {visible=b;defined=a})
-      (fun d -> d.defined, d.visible)
-
-end
-let sexp = Sexp.summary
-
 let sch = let open Schematic in
   custom "Summary.t" [Module.Sig.sch;Module.Sig.sch]
     Tuple.(fun r -> [r.defined; r.visible] )

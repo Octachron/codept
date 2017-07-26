@@ -6,7 +6,6 @@ module Simple :
     type t = Name.t list
     val pp : Format.formatter -> string list -> unit
     val sch: t Schematic.t
-    val sexp: (t,Sexp.many) Sexp.impl
     module Set : sig
       include Set.S with type elt = t
       val pp: Format.formatter -> t -> unit
@@ -32,7 +31,6 @@ module S = Simple
 module Expr :
   sig
     type t = T | A of string | S of t * string | F of { f : t; x : t; }
-    val sexp: (t,Sexp.one_and_many) Sexp.impl
     val sch: t Schematic.t
     exception Functor_not_expected
     val concrete : t -> Simple.t
@@ -52,7 +50,6 @@ module Pkg :
     type source = Local | Unknown | Pkg of Simple.t | Special of Name.t
     type t = { source : source; file : Simple.t; }
     type path = t
-    val sexp: (t,Sexp.many) Sexp.impl
     val sch: t Schematic.t
 
     (** {2 Printing function } *)

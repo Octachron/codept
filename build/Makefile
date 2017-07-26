@@ -3,7 +3,7 @@ include Makefile.common
 all: dirs tests $S/codept-server $S/codept-client $S/codept
 
 dirs:
-	mkdir -p full lib/sexp tests docs precomputed
+	mkdir -p full tests docs precomputed
 
 $S/codept: $(OBJ) full/codept.cmx | dirs
 	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codeptSORT)) -o $S/codept
@@ -40,15 +40,15 @@ $(OBJ):%.cmx: $S/%.ml | dirs
 $(BGENS:=.cmx):%.cmx: %.ml %.cmi
 	@$(OCAMLOPT) -c $<
 
-lib/sexp/sexp_parse.cmi: lib/sexp/sexp_parse.mli
+lib/sparser.cmi: lib/sparser.mli
 	@$(OCAMLC) -c $<
 
-lib/sexp/sexp_lex.cmi: lib/sexp/sexp_lex.ml lib/sexp/sexp_parse.cmi
+lib/slex.cmi: lib/slex.ml lib/sparser.cmi
 	@$(OCAMLC) -c $<
 
 
 clean:
-	@rm lib/*.cm[iox] lib/*.cmt lib/*.cmti lib/sexp/*.cm[iox];\
+	@rm lib/*.cm[iox] lib/*.cmt lib/*.cmti ;\
 	rm -R full; rm -R precomputed
 
 

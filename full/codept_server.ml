@@ -66,7 +66,7 @@ let io = {
   };
   writer = {
     m2l = begin
-      fun (kind,filename) ppf m2l ->
+      fun fmt (kind,filename) ppf m2l ->
         Sh.map (fun (cached:Cache.t) ->
             let src = Paths.P.local filename in
             let path = Namespaced.make @@ Paths.P.module_name src in
@@ -76,15 +76,15 @@ let io = {
             let m2l = Name.Map.add filename u cached.m2l in
             { cached with m2l }
           ) cache;
-        Io.direct.writer.m2l (kind,filename) ppf m2l
+        Io.direct.writer.m2l fmt (kind,filename) ppf m2l
     end;
     sign = begin
-      fun filename ppf sign ->
+      fun fmt filename ppf sign ->
         Sh.map (fun (cached:Cache.t) ->
             let signatures = Name.Map.add filename sign cached.signatures in
             { cached with signatures }
           ) cache;
-        Io.direct.writer.sign filename ppf sign
+        Io.direct.writer.sign fmt filename ppf sign
     end;
   }
 }

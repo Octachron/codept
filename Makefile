@@ -33,8 +33,8 @@ clean:
 	ocamlbuild -clean; cd build; make clean; cd ..; rm codept; rm codept-client; \
 		rm codept-server || true
 
-tests: tests/**/*.ml test-run test-serialization test-serialization2 codept
-	./test-run && ./test-serialization && ./test-serialization2
+tests: tests/**/*.ml test-run test-serialization codept
+	./test-run && ./test-serialization
 
 test-%: tests/%.ml codept
 	ocamlbuild $(OPTS) $*.native && mv $*.native $@ 

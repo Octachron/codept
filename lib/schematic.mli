@@ -96,6 +96,7 @@ module Untyped: sig
     | List of t list
     | Atom of string
     | Obj of (string * t) list
+  type untyped = t
 end
 
 val retype: 'a t -> Untyped.t -> 'a option

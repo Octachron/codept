@@ -8,7 +8,7 @@ PKGS= -I +compiler-libs
 LKS = unix.cmxa threads.cmxa ocamlcommon.cmxa
 
 define sorted_deps
-  echo "$(1)SORT = `cd $S && $(DEPGEN) -package compiler-libs.common -package unix $(SRCI) $(IMPL) $(addprefix build/, $(GENS)) -only-ancestors-of $(1).ml -sort`" | sed -e 's/build\///g' > $(1).sort
+  echo "$(1)SORT = `cd $S && $(DEPGEN) -package compiler-libs.common -package unix -package threads $(SRCI) $(IMPL) $(addprefix build/, $(GENS)) -only-ancestors-of $(1).ml -sort`" | sed -e 's/build\///g' > $(1).sort
 endef
 
 IDEPS=$(shell ocamlfind query $(DEPS))
@@ -41,7 +41,7 @@ SRCOS = $(basename $(DSORT))
 OBJS= $(SRCOS:%=%.cmx)
 BOBJS=$(patsubst $S/%,%,$(OBJS))
 
-GENS=$(addprefix lib/sexp/sexp_, lex.ml parse.mli)
+GENS=$(addprefix lib/, slex.ml sparser.mli)
 BGENS = $(basename $(GENS))
 
 LIB = $(wildcard $S/lib/*.mli)
@@ -51,3 +51,6 @@ ODOC = $(patsubst $S/lib/%,docs/%, $(LIBDOC))
 define tocmx
         $(addsuffix .cmx, $(basename $(1)))
 endef
+
+lib/slex.ml: $S/lib/slex.mll
+	ocamllex $< -o $@

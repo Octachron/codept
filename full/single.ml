@@ -63,6 +63,7 @@ let m2l _ _ ppf param f =
   >< ()
 
 let m2l_sexp filename (writer:Io.writer) ppf param f =
+  let fmt = param.format in
   let param = param.analyzer in
   let start = to_m2l param.policy param.sig_only f in
   let open Option in
@@ -71,7 +72,7 @@ let m2l_sexp filename (writer:Io.writer) ppf param f =
     m
     |> Normalize.all
     |> snd
-    |> writer.m2l param.format (k,filename) ppf
+    |> writer.m2l fmt (k,filename) ppf
   end
       >< ()
 

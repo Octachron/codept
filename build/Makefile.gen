@@ -1,15 +1,12 @@
+all: depend
 include Makefile.common
 
-all: depend
+lib/sparser.mli : $S/lib/sparser.mly
+	menhir $< --base lib/sexp/sparser
 
-lib/sexp/sexp_parse.mli : $S/lib/sexp/sexp_parse.mly
-	menhir $< --base lib/sexp/sexp_parse
-
-lib/sexp/sexp_lex.ml: $S/lib/sexp/sexp_lex.mll
-	ocamllex $< -o $@
-
-depend: codept.sort codept_client.sort codept_server.sort run.sort serialization.sort lib/sexp/sexp_parse.mli lib/sexp/sexp_lex.ml
-	cd $S && $(DEPGEN) -package $(DEPS) -package unix $(SRC) $(SRCI) \
+depend: codept.sort codept_client.sort codept_server.sort run.sort serialization.sort lib/sparser.mli lib/slex.ml
+	cd $S && $(DEPGEN) -package $(DEPS) -package unix -package threads $(SRC) \
+	$(SRCI) \
 	$(IMPL) $(addprefix build/, $(GENS)) $(MAINS) \
 	| sed -e 's/build\///g' > build/.depends
 

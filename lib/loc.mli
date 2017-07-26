@@ -18,11 +18,6 @@ val merge: t -> t -> t
 val fmap: ('a -> 'b) -> 'a ext -> 'b ext
 val list: 'a ext list -> t
 
-module Sexp: sig
-  val t: (t,Sexp.one_and_many) Sexp.impl
-  val ext:  ('a,'b) Sexp.impl -> ('a ext, Sexp.many) Sexp.impl
-end
-
 module Sch: sig
   val t: t Schematic.t
   val ext: Name.t -> 'a Schematic.t -> 'a ext Schematic.t

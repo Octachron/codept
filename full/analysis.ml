@@ -9,7 +9,6 @@ type param = {
   precomputed_libs: Name.set;
   closed_world: bool;
   sig_only:bool;
-  format: Io.format;
 }
 
 
@@ -45,8 +44,8 @@ let default_path f =
   Option.default (Namespaced.of_filename f)
 
 
-let info_split fmt (io:Io.reader) = function
-  | {Common.kind=Signature; _ }, f, _ -> Right (io.sign fmt f)
+let info_split (io:Io.reader) = function
+  | {Common.kind=Signature; _ }, f, _ -> Right (io.sign f)
   | {Common.kind=Implementation;format}, f, n ->
     Left ({ Read.kind = Structure; format}, f, default_path f n )
   | {Common.kind=Interface;format}, f, n ->
@@ -60,18 +59,18 @@ let pair_split l =
   List.fold_left folder {ml=[];mli=[]} l
 
 (** organisation **)
-let pre_organize fmt io files =
-  let units, signatures = split (info_split fmt io) files in
+let pre_organize io files =
+  let units, signatures = split (info_split io) files in
   let signatures =
     List.flatten @@ Option.List'.filter signatures in
   units, signatures
 
-let load_file fmt (io:Io.reader) policy sig_only opens (info,file,n) =
+let load_file (io:Io.reader) policy sig_only opens (info,file,n) =
   let filter_m2l (u: Unit.s) = if sig_only then
       { u with Unit.code = M2l.Sig_only.filter u.code }
     else
       u in
-  io.m2l fmt policy info file n
+  io.m2l policy info file n
   |> filter_m2l
   |> open_within opens
 
@@ -82,9 +81,9 @@ let log_conflict policy proj (path, units) =
   @@ List.map proj units
 
 
-let organize fmt io policy sig_only opens files =
-  let units, signatures = pre_organize fmt io files in
-  let units = List.map (load_file fmt io policy sig_only opens) units in
+let organize io policy sig_only opens files =
+  let units, signatures = pre_organize io files in
+  let units = List.map (load_file io policy sig_only opens) units in
   let units, errs = Unit.Groups.Unit.(split % group) @@ pair_split units in
   List.iter (log_conflict policy @@ fun (u:Unit.s) -> u.src ) errs;
   units, signatures
@@ -209,7 +208,7 @@ end
 let main_std io param (task:Common.task) =
   let module F = Standard_faults in
   let units, signatures =
-    organize param.format io param.policy param.sig_only task.opens task.files in
+    organize io param.policy param.sig_only task.opens task.files in
   if not @@ Fault.is_silent param.policy F.module_conflict then
     Collisions.libs task units.mli
     |> Collisions.handle param.policy F.module_conflict;
@@ -226,12 +225,11 @@ let main_std io param (task:Common.task) =
 (** Analysis step *)
 let main_seed io param (task:Common.task) =
   let units, signatures =
-    pre_organize param.format io task.files in
+    pre_organize io task.files in
   let file_set = List.fold_left (fun s (_k,_x,p) ->
       Name.Set.add (Nms.head p) s
     ) Name.Set.empty units in
-  let load_file =
-    load_file param.format io param.policy param.sig_only task.opens in
+  let load_file = load_file io param.policy param.sig_only task.opens in
   let e = start_env io param task.libs signatures file_set in
   let units = solve_from_seeds task.seeds load_file units param e in
   let units = remove_units task.invisibles units in

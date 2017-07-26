@@ -45,12 +45,12 @@ let param0 = {
       closed_world = false;
       sig_only = false;
       policy = Codept_policies.policy;
-      format = Sexp
     };
 
     no_include = false;
     may_approx = false;
     nested = false;
+    format = Sexp
   }
 
 let task0 : Common.task = {
@@ -117,9 +117,8 @@ let iter_mode out writer param r (file,mode) =
 let format param x =
   let open L in
   match x with
-    | "sexp" -> param.[fmt] <- Io.Sexp
-    | "sexp2" -> param.[fmt] <- Io.Sexp2
-    | "json" -> param.[fmt] <- Io.Json
+    | "sexp" -> param.[fmt] <- Schematic.Sexp
+    | "json" -> param.[fmt] <- Schematic.Json
     | _ -> ()
 
 let mode action command () =

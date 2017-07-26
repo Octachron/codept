@@ -543,13 +543,13 @@ let result =
 
           "cmi.ml", (["Loc"; "M2l";"Module"; "Option"; "Paths"],
                      ["Cmi_format"; "List"; "Path";"Types"], []);
-          "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic";"Sexp"],["List"],[]);
+          "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic"],["List"],[]);
           "summary.mli", (
-            ["Module";"Paths";"Schematic";"Sexp"],
+            ["Module";"Paths";"Schematic"],
             ["Format"],
             [] );
           "summary.ml", (
-            ["Module"; "Pp"; "Mresult"; "Name"; "Schematic"; "Sexp"],
+            ["Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
             ["List"], []);
           "envt.mli", (
             ["Deps"; "Module";"Name"; "Outliner"], [], []);
@@ -569,20 +569,20 @@ let result =
              "Deps"]
           ,["List";"Format"],[]);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";
-                       "Schematic"; "Sexp" ],
+                       "Schematic" ],
                       ["Format"],[]);
           "m2l.ml", (["Loc"; "Deps"; "Module"; "Mresult"; "Name";
-                      "Option";"Summary";"Paths"; "Pp"; "Schematic"; "Sexp" ],
+                      "Option";"Summary";"Paths"; "Pp"; "Schematic" ],
                      ["List"],[]);
           "fault.ml", (["Loc"; "Option"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"],[]);
           "fault.mli", (["Loc"; "Paths"; "Name"],
                           ["Format"],[]);
 
-          "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Schematic"; "Sexp"],
+          "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Schematic"],
                           ["Format"], [] );
           "module.ml", ( ["Loc";"Paths";"Name"; "Namespaced"; "Option"; "Pp"
-                         ; "Schematic" ; "Sexp" ],
+                         ; "Schematic"  ],
                          ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map"], [] );
@@ -590,12 +590,12 @@ let result =
                               ["Set";"Map"], [] );
           "namespaced.ml", ( ["Name"; "Paths"; "Pp"],
                              ["List"; "Set";"Map"], [] );
-          "loc.mli", ( ["Name";"Schematic";"Sexp"], ["Format"], []);
-          "loc.ml", ( ["Pp";"Schematic";"Sexp"], ["List"], []);
+          "loc.mli", ( ["Name";"Schematic"], ["Format"], []);
+          "loc.ml", ( ["Pp";"Schematic"], ["List"], []);
           "option.mli", ([],["Lazy"],[]);
           "option.ml", ([],["List"; "Lazy"],[]);
-          "paths.mli", (["Name"; "Schematic"; "Sexp"], ["Map";"Set";"Format"],[]);
-          "paths.ml", (["Name"; "Pp"; "Schematic"; "Sexp"; "Support" ],
+          "paths.mli", (["Name"; "Schematic"], ["Map";"Set";"Format"],[]);
+          "paths.ml", (["Name"; "Pp"; "Schematic"; "Support" ],
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
@@ -606,10 +606,6 @@ let result =
                       ["Sparser";"Slex"]);
           "mresult.mli", ([],[],[]);
           "mresult.ml", ([],["List"],[]);
-          "sexp.ml", (["Name"; "Option"; "Pp"],
-                      [ "Obj"; "Format";"List";"Map"; "Hashtbl"; "String"], [] );
-          "sexp.mli", (["Name"],
-                       [ "Format"], [] );
           "schematic.mli", (["Name"],
                        [ "Format"], [] );
           "schematic.ml", (["Name"; "Option"; "Pp"],

@@ -21,7 +21,6 @@ struct
     let pp = Pp.(list ~sep:(s".") ) Name.pp
   end
   include Core
-  let sexp = Sexp.( list string )
   let sch = Schematic.(Array String)
 
   module Set = struct
@@ -78,36 +77,6 @@ module Expr = struct
     | A of Name.t
     | S of t * Name.t
     | F of {f:t; x:t}
-
-
-  module Sexp = struct
-    open Sexp
-    let t = simple_constr "T" T
-    let a = C {name="A";
-               proj = (function A x -> Some x | _ -> None);
-               inj = (fun x -> A x);
-               impl = string;
-               default = None
-              }
-    let s r =
-      C {name="S";
-         proj = (function S (x,y) -> Some (x,y) | _ -> None);
-         inj = (fun (x,y) -> S (x,y) );
-         impl = pair (fix' r) string;
-         default = None
-        }
-
-    let f r = C {name="F";
-                 proj = (function F {f;x} -> Some (f, x) | _ -> None);
-                 inj = (fun (f,x) -> F {f;x} );
-                 impl = pair (fix' r) (fix' r);
-                 default = None;
-                }
-
-    let rec all () = sum [ t; a; s all; f all]
-    let all = all ()
-  end
-  let sexp = Sexp.all
 
   module Sch = struct
     open Schematic
@@ -189,38 +158,6 @@ module Pkg = struct
 
   type t = { source: source ; file: Simple.t }
   type path = t
-
-  module Sexp = struct
-    open Sexp
-    let local = simple_constr "Local" Local
-    let unknown = simple_constr "Unknwon" Unknown
-    let pkg = C {name="Pkg";
-                 proj= (function Pkg p -> Some p | _ -> None );
-                 inj = (fun x -> Pkg x);
-                 impl = Simple.sexp;
-                 default = Some [];
-                }
-    let special =
-      C {name="Special";
-         proj= (function Special s -> Some s | _ -> None );
-         inj = (fun x -> Special x);
-         impl = string;
-         default = Some "stdlib"
-        }
-    let source = sum [local;unknown;pkg;special]
-
-    let ksource = Record.(key One_and_many "source" Local)
-    let file = Record.(key Many "file" [])
-
-    let all =
-      convr Record.(define [field ksource source ; field file Simple.sexp ])
-        ( fun x -> let get f = Record.get f x in
-          { source = get ksource; file = get file }
-        )
-        (fun r -> Record.(create [ksource := r.source; file := r.file]))
-
-  end
-  let sexp = Sexp.all
 
   module Sch = struct open Schematic
     let raw_source = Sum [ "Local", Void; "Unknown", Void;

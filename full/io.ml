@@ -1,18 +1,15 @@
-type format =
-  | Sexp
-  | Json
-  | Sexp2
 
 type reader = {
-  sign: format -> string -> Module.t list option;
-  m2l: format -> Fault.Policy.t -> Read.kind -> string -> Namespaced.t -> Unit.s;
+  sign: string -> Module.t list option;
+  m2l: Fault.Policy.t -> Read.kind -> string
+    -> Namespaced.t -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
   env: Module.dict
 }
 
 type writer = {
-  sign: format -> string -> Format.formatter -> Module.t list -> unit;
-  m2l: format -> (Read.kind * string) -> Format.formatter -> M2l.t -> unit
+  sign: Schematic.format -> string -> Format.formatter -> Module.t list -> unit;
+  m2l: Schematic.format -> (Read.kind * string) -> Format.formatter -> M2l.t -> unit
 }
 
 type t = {
@@ -37,18 +34,13 @@ let expand task query =
   !task
 end
 
-let parse_sig format lexbuf=
-  match format with
-  | Sexp -> Sexp.( (list Module.sexp).parse )
-    @@ Sexp_parse.many Sexp_lex.main
-    @@ lexbuf
-  | Json | Sexp2 ->
-    Schematic.retype (Array Module.sch) @@ Sparser.main Slex.main lexbuf
+let parse_sig lexbuf=
+  Schematic.retype (Array Module.sch) @@ Sparser.main Slex.main lexbuf
 
-let read_sigfile fmt filename =
+let read_sigfile filename =
   let chan = open_in filename in
   let lexbuf = Lexing.from_channel chan in
-  let sigs = parse_sig fmt lexbuf in
+  let sigs = parse_sig lexbuf in
   close_in chan;
   sigs
 
@@ -67,26 +59,21 @@ let ssign = { Schematic.title = "codept/sig/0.10";
 let direct = {
   reader = {
     sign = read_sigfile;
-    m2l = (fun _ -> Unit.read_file);
+    m2l = Unit.read_file;
     env = Name.Map.empty;
     findlib = Findlib.expand
   };
   writer = {
     m2l =  (fun format _filename ppf m2l ->
         match format with
-        | Sexp -> Pp.fp ppf  "%a@." Sexp.pp (M2l.sexp.embed m2l)
         | Json -> Schematic.minify ppf "%a@.\n" (Schematic.json sm2l) m2l
-        | Sexp2 ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp sm2l) m2l
+        | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp sm2l) m2l
 
       );
     sign =
       (fun format _ ppf (mds: Module.t list) ->
          match format with
-         | Sexp ->
-           mds
-           |> Sexp.( embed @@ list Module.sexp)
-           |> Pp.fp ppf "@[%a@]@." Sexp.pp
-         | Sexp2 ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp ssign) mds
+         | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp ssign) mds
          | Json ->  Schematic.minify ppf "%a@.\n" (Schematic.json ssign) mds
       )
   }

@@ -136,18 +136,8 @@ and extension_core =
 
 type t = m2l
 
-val sexp: (m2l,Sexp.many) Sexp.impl
+(** {2 Schematic serialization } *)
 val sch: m2l Schematic.t
-
-module More_sexp: sig
-
-  val expr: (expression, Sexp.one_and_many) Sexp.impl
-  val me: (module_expr, Sexp.one_and_many) Sexp.impl
-  val mt: (module_type, Sexp.one_and_many) Sexp.impl
-  val annot: (annotation, Sexp.many) Sexp.impl
-
-end
-
 module Sch: sig
   val expr: expression Schematic.t
   val module_expr: module_expr Schematic.t

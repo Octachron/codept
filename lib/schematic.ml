@@ -163,30 +163,32 @@ and json_sum: type a. bool -> int -> Format.formatter -> a sum_decl -> unit =
     let module N = Label(struct let l = s end) in
     Pp.fp ppf "{%a}%a" json_type (Obj[Req,N.l,a]) (json_sum false @@ n + 1) q
 
-let rec json_definitions:
-  type a.  bool * S.t -> Format.formatter -> a t ->  bool * S.t =
-  fun (first,set as st) ppf -> function
-    | Float -> st | Int -> st | String -> st | Bool -> st | Void -> st
-    | Array t -> json_definitions st ppf t
-    | Obj [] -> st
-    | Obj ( (_,_,x) :: q ) ->
-      let st = json_definitions st ppf x in
-      json_definitions st ppf (Obj q)
-    | [] -> st
-    | a :: q ->
-      let st = json_definitions st ppf a in
-      json_definitions st ppf q
-    | Sum [] -> st
-    | Sum ((_,a) :: q) ->
-      let st = json_definitions st ppf a in
-      json_definitions st ppf (Sum q)
-    | Custom{id; _ } when S.mem id set -> st
-    | Custom{id; sch; _ } ->
-      if not first then Pp.fp ppf ",@,";
-      Pp.fp ppf "@[<hov 2>%a@ :{@;%a@;}@]" k id json_type sch;
-      let set = S.add id set in
-      json_definitions (false,set) ppf sch
-
+let json_definitions ppf sch =
+  let rec json_definitions:
+    type a.  bool * S.t -> Format.formatter -> a t ->  bool * S.t =
+    fun (first,set as st) ppf -> function
+      | Float -> st | Int -> st | String -> st | Bool -> st | Void -> st
+      | Array t -> json_definitions st ppf t
+      | Obj [] -> st
+      | Obj ( (_,_,x) :: q ) ->
+        let st = json_definitions st ppf x in
+        json_definitions st ppf (Obj q)
+      | [] -> st
+      | a :: q ->
+        let st = json_definitions st ppf a in
+        json_definitions st ppf q
+      | Sum [] -> st
+      | Sum ((_,a) :: q) ->
+        let st = json_definitions st ppf a in
+        json_definitions st ppf (Sum q)
+      | Custom{id; _ } when S.mem id set -> st
+      | Custom{id; sch; _ } ->
+        if not first then Pp.fp ppf ",@,";
+        Pp.fp ppf "@[<hov 2>%a@ :{@;%a@;}@]" k id json_type sch;
+        let set = S.add id set in
+        json_definitions (false,set) ppf sch
+  in
+  ignore @@ json_definitions (true,S.empty) ppf sch
 
 let rec json: type a. a t -> Format.formatter -> a -> unit =
   fun sch ppf x -> match sch, x with
@@ -235,23 +237,6 @@ and json_obj: type a.
     | (Opt,_,_) :: q, (_, None ) :: xs ->
       json_obj not_first q ppf xs
 
-
-type tree = Leaf of int | N of tree * tree
-let rec sch = Sum [ "Leaf", Int; "N", [tree;tree] ]
-and tree: tree t = Custom {fwd;rev;sch; id = "tree"}
-and rev: (int * ((tree * (tree * void)) Tuple.t * void)) sum -> tree = function
-  | C(Z n) -> Leaf n
-  | C(S (Z Tuple.[t1;t2])) -> N(t1,t2)
-  | C(S (S _)) -> .
-and fwd: tree -> _ sum = function
-  | Leaf n -> C(Z n)
-  | N (t1,t2) -> C(S (Z Tuple.[t1;t2]))
-
-let f ppf = json tree ppf (Leaf 0)
-let g ppf = json tree ppf (N(N (Leaf 0, Leaf 1), Leaf 2))
-
-
-
 let json s = json s.sch
 let json_schema ppf s =
   Pp.fp ppf
@@ -259,11 +244,13 @@ let json_schema ppf s =
      %a,@;\
      %a,@;\
      %a,@;\
+     @[%a :@ {%a},@]@;\
      %a\
       @ }@]@."
      p ("$schema", "http://json-schema.org/schema#")
      p ("title", s.title)
      p ("description", s.description)
+     k "definitions" json_definitions s.sch
      json_type s.sch
 
 let cstring ppf s =
