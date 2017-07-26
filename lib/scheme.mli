@@ -1,5 +1,7 @@
 (** Schema for exported data *)
 
+type format = Json | Sexp
+
 type (_,_) eq = Eq : ('a,'a) eq
 type void = (int,float) eq
 
@@ -97,3 +99,5 @@ module Untyped: sig
 end
 
 val retype: 'a t -> Untyped.t -> 'a option
+
+val minify: Format.formatter -> ('a, Format.formatter, unit, unit) format4 -> 'a

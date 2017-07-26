@@ -1,4 +1,6 @@
 
+type format = Json | Sexp
+
 type (_,_) eq = Eq : ('a,'a) eq
 type void = (int,float) eq
 
@@ -408,3 +410,23 @@ and retype_const_sum: type a. a sum_decl -> string -> a sum option =
     | [] -> None
     | _ :: q ->
       retype_const_sum q n >>| fun (C c) -> (C (S c))
+
+let minify ppf =
+  let f = Format.pp_get_formatter_out_functions ppf () in
+  let space_needed = ref false in
+  let out_string s start stop =
+    let special c =
+      match c with
+      | '(' | ',' |'{' | '"' |'[' | ')'| ']'| '}' -> true
+      | _ -> false in
+    if !space_needed && not (special s.[start]) then
+      f.out_string " " 0 1;
+    f.out_string s start stop;
+    space_needed := not (special s.[stop-1]) in
+  let basic =
+    { f with Format.out_newline = (fun () -> ());
+             out_spaces = (fun _ -> ());
+             out_string } in
+  Format.pp_set_formatter_out_functions ppf basic;
+  Format.kfprintf (fun _ -> Format.pp_set_formatter_out_functions ppf f;
+                    Format.pp_flush_formatter ppf) ppf

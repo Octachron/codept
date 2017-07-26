@@ -60,25 +60,6 @@ let ssign = { Scheme.title = "codept/sig/0.10";
              sch = Array Module.sch
            }
 
-let minify ppf =
-  let f = Format.pp_get_formatter_out_functions ppf () in
-  let space_needed = ref false in
-  let out_string s start stop =
-    let special c =
-      match c with
-      | '(' | ',' |'{' | '"' |'[' | ')'| ']'| '}' -> true
-      | _ -> false in
-    if !space_needed && not (special s.[start]) then
-      f.out_string " " 0 1;
-    f.out_string s start stop;
-    space_needed := not (special s.[stop-1]) in
-  let basic =
-    { f with Format.out_newline = (fun () -> ());
-             out_spaces = (fun _ -> ());
-             out_string } in
-  Format.pp_set_formatter_out_functions ppf basic;
-  Format.kfprintf (fun _ -> Format.pp_set_formatter_out_functions ppf f;
-                    Format.pp_flush_formatter ppf) ppf
 
 let direct = {
   reader = {
@@ -91,8 +72,8 @@ let direct = {
     m2l =  (fun format _filename ppf m2l ->
         match format with
         | Sexp -> Pp.fp ppf  "%a@." Sexp.pp (M2l.sexp.embed m2l)
-        | Json -> minify ppf "%a@.\n" (Scheme.json sm2l) m2l
-        | Sexp2 -> minify ppf "%a@.\n" (Scheme.sexp sm2l) m2l
+        | Json -> Scheme.minify ppf "%a@.\n" (Scheme.json sm2l) m2l
+        | Sexp2 ->  Scheme.minify ppf "%a@.\n" (Scheme.sexp sm2l) m2l
 
       );
     sign =
@@ -102,8 +83,8 @@ let direct = {
            mds
            |> Sexp.( embed @@ list Module.sexp)
            |> Pp.fp ppf "@[%a@]@." Sexp.pp
-         | Sexp2 -> minify ppf "%a@.\n" (Scheme.sexp ssign) mds
-         | Json -> minify ppf "%a@.\n" (Scheme.json ssign) mds
+         | Sexp2 ->  Scheme.minify ppf "%a@.\n" (Scheme.sexp ssign) mds
+         | Json ->  Scheme.minify ppf "%a@.\n" (Scheme.json ssign) mds
       )
   }
 }
