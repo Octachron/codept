@@ -37,15 +37,18 @@ let expand task query =
   !task
 end
 
-let parse_sig lexbuf=
-  Sexp.( (list Module.sexp).parse )
-  @@ Sexp_parse.many Sexp_lex.main
-  @@ lexbuf
+let parse_sig format lexbuf=
+  match format with
+  | Sexp -> Sexp.( (list Module.sexp).parse )
+    @@ Sexp_parse.many Sexp_lex.main
+    @@ lexbuf
+  | Json | Sexp2 ->
+    Scheme.retype (Array Module.sch) @@ Sparser.main Slex.main lexbuf
 
-let read_sigfile _ filename =
+let read_sigfile fmt filename =
   let chan = open_in filename in
   let lexbuf = Lexing.from_channel chan in
-  let sigs = parse_sig lexbuf in
+  let sigs = parse_sig fmt lexbuf in
   close_in chan;
   sigs
 
