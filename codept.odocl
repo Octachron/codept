@@ -2,9 +2,9 @@ Approx_parser
 Ast_converter
 Cmi
 Summary
-Envts
+Envt
 Fault
-Interpreter
+Outliner
 M2l
 Module
 Mresult
@@ -13,6 +13,6 @@ Option
 Paths
 Pp
 Read
-Sexp
+Schematic
 Solver
 Unit
