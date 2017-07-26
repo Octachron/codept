@@ -91,24 +91,32 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok def -> def
 
   type level = Module.level = Module | Module_type
-  let minor (path,_) module_expr str state m =
-    let value l v = match str state v with
-      | Ok _ -> l
-      | Error h -> h :: l in
+
+  let access (path,_) state x =
     let access n (loc,edge) m = match find ~edge (path,loc) Module n state with
       | _ -> m
       | exception Not_found ->  Paths.S.Map.add n (loc,edge) m in
+    let access = Paths.S.Map.fold access x Annot.Access.empty in
+    if access = Annot.Access.empty then
+      Ok ()
+    else
+      Error access
+
+  let minor (path,_ as loc) module_expr str state m =
+    let value l v = match str state v with
+      | Ok _ -> l
+      | Error h -> h :: l in
     let packed l (p: _ Loc.ext) = match module_expr (path,p.loc) state p.data with
       | Ok _ -> l
       | Error h -> (Loc.create p.loc h) :: l in
     let values = List.fold_left value [] m.values in
-    let access = Paths.S.Map.fold access m.access Annot.Access.empty in
+    let access = access loc state m.access in
     let packed = List.fold_left packed [] m.packed in
     (* to do opaque *)
-    if access = Annot.Access.empty && values = [] && packed = [] then
-      Ok None
-    else
-      Error { access; values; packed }
+    match access with
+    | Ok () when values = [] && packed = [] -> Ok None
+    | Ok () -> Error { access = Annot.Access.empty; values; packed }
+    | Error access -> Error { access; values; packed }
 
 
   let mt_ident loc level state id =
@@ -356,22 +364,25 @@ module Make(Envt:envt)(Param:param) = struct
         | exception Not_found -> Error (Alias i)
       end
     | With w ->
-      begin
-        match module_type loc state w.body with
-        | Error mt -> Error ( With { w with body = mt } )
-        | Ok d ->
-          let remove_from d = Name.Set.fold Name.Map.remove w.deletions d in
-          let rec remove = function
-            | M.Blank -> M.Blank
-            | Exact d -> M.Exact { d with modules = remove_from d.modules }
-            | Divergence p ->
-              Divergence {
-                p with before = remove p.before;
-                       after = { p.after with modules = remove_from p.after.modules }
-              } in
-          Ok { d with result = remove d.result }
+      begin match access loc state w.access with
+        | Error access -> Error ( With { w with access } )
+        | Ok () ->
+          begin
+            match module_type loc state w.body with
+            | Error mt -> Error ( With { w with body = mt } )
+            | Ok d ->
+              let remove_from d = Name.Set.fold Name.Map.remove w.deletions d in
+              let rec remove = function
+                | M.Blank -> M.Blank
+                | Exact d -> M.Exact { d with modules = remove_from d.modules }
+                | Divergence p ->
+                  let after =
+                    { p.after with modules = remove_from p.after.modules } in
+                  Divergence { p with before = remove p.before; after } in
+              Ok { d with result = remove d.result }
+          end
       end
-    | Fun {arg;body} ->
+        | Fun {arg;body} ->
       functor_expr (module_type loc)
         (module_type loc, Build.fn_sig, Build.demote_sig)
         state [] arg body

@@ -29,8 +29,9 @@ type expression =
  *)
   | Extension_node of extension
   (** [[%ext …]] *)
+and access = (Loc.t * Deps.Edge.t) Paths.S.map
 and annotation =
-  { access: (Loc.t * Deps.Edge.t) Paths.S.map
+  { access: access
   (** [M.N.L.x] ⇒ access \{M = Normal \}
       type t = A.t ⇒ access \{ M = ε \}
   *)
@@ -74,8 +75,8 @@ and module_type =
   | Fun of module_type fn (** [functor (X:S) → M] *)
   | With of {
       body: module_type;
-      deletions: Name.set
-      (* ; equalities: (Npath.t * Epath.t) list *)
+      deletions: Name.set;
+      access: access
     }
   (** [S with module N := …]
       we are only tracking module level modification
@@ -143,6 +144,13 @@ module Sch = struct
                           id = "M2l.expr.ext";
                         }
   and m2l = Array expr_loc
+  and access = Custom {sch=access_raw;fwd=access_fwd;rev=access_rev;id="M2l/access"}
+  and access_raw = Array [Paths.S.sch; Loc.Sch.t; Deps.Edge.sch]
+  and access_fwd x =
+    Paths.S.Map.fold (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x L.[]
+  and access_rev a = let open Tuple in
+    List.fold_left (fun m [k;x;y] ->Paths.S.Map.add k (x,y) m)
+      Paths.S.Map.empty a
   and module_expr =
     Custom{ sch = me_raw ; fwd = me_fwd; rev = me_rev; id = "M2l.module_expr" }
   and me_raw =
@@ -182,7 +190,8 @@ module Sch = struct
     Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev; id="M2l.module_type"}
   and mt_sch =
     Sum [ "Resolved",Module.Partial.sch; "Alias",Paths.S.sch;"Ident",Paths.E.sch;
-          "Sig",m2l;"Fun",[ arg; module_type ];"With",[ module_type; Array String ];
+          "Sig",m2l;"Fun",[ arg; module_type ];
+          "With",[ module_type; Array String; access ];
           "Of", module_expr; "Extension_node", extension; "Abstract", Void ]
   and mt_fwd = let open Tuple in function
       | Resolved x -> C (Z x)
@@ -190,7 +199,7 @@ module Sch = struct
       | Ident x -> C (S (S (Z x)))
       | Sig x -> C(S (S (S (Z x))))
       | Fun x -> C(S (S (S (S (Z [x.arg; x.body])))))
-      | With x -> C(S (S (S (S (S (Z [x.body; S.elements x.deletions]))))))
+      | With x -> C(S (S (S (S (S (Z [x.body; S.elements x.deletions; x.access]))))))
       | Of x ->  C(S (S (S (S (S (S (Z x)))))))
       | Extension_node x ->  C(S (S (S (S (S (S (S (Z x))))))))
       | Abstract ->  C(S (S (S (S (S (S (S (S E))))))))
@@ -200,8 +209,8 @@ module Sch = struct
       | C S S Z x -> Ident x
       | C S S S Z x -> Sig x
       | C S S S S Z [arg;body] -> Fun {arg;body}
-      | C S S S S S Z [body;deletions] ->
-        With {body;deletions = S.of_list deletions}
+      | C S S S S S Z [body;deletions;access] ->
+        With {body;deletions = S.of_list deletions; access}
       | C S S S S S S Z x -> Of x
       | C S S S S S S S Z x -> Extension_node x
       | C S S S S S S S S E -> Abstract
@@ -209,22 +218,18 @@ module Sch = struct
   and annotation =
     Custom{ fwd=ann_f; rev = ann_r; sch = ann_s; id = "M2l.annotation" }
   and ann_s = Obj [
-      Opt, Access.l, Array [Paths.S.sch; Loc.Sch.t; Deps.Edge.sch];
+      Opt, Access.l, access;
       Opt, Values.l, Array m2l; Opt, Packed.l, Array [module_expr;Loc.Sch.t]
     ]
   and ann_f x = Record.[
-    Access.l $=?
-    (l @@ Paths.S.Map.fold
-       (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x.access L.[]);
+    Access.l $=? (default Paths.S.Map.empty x.access);
     Values.l $=? l x.values;
     Packed.l $=? l (List.map (fun x -> Tuple.[x.Loc.data; x.loc]) x.packed)
   ]
   and ann_r = Record.(fun [_,a;_,v;_,p] ->
-      {access=
-         List.fold_left Tuple.(fun m [k;x;y] ->Paths.S.Map.add k (x,y) m)
-           Paths.S.Map.empty (a><[])
+      { access= a >< Paths.S.Map.empty
       ; values = v >< [];
-       packed =List.map Tuple.(fun [data;loc] -> {Loc.data;loc}) (p><[])
+        packed =List.map Tuple.(fun [data;loc] -> {Loc.data;loc}) (p><[])
       })
 
   and extension =
@@ -347,7 +352,7 @@ module Annot = struct
   let is_empty x  = x.data = annot_empty
 
   module Access = struct
-    type t = (Loc.t * Deps.Edge.t) Paths.S.map
+    type t = access
     let merge = Paths.S.Map.merge (fun _k x y -> match x, y with
         | Some (l,x), Some (l',y) ->
           if x = Deps.Edge.Normal && y = Deps.Edge.Epsilon then
@@ -510,8 +515,8 @@ and pp_mt ppf = function
   | Ident np -> Paths.Expr.pp ppf np
   | Sig m2l -> Pp.fp ppf "@,sig@, %a end" pp m2l
   | Fun { arg; body } ->  Pp.fp ppf "%a@,→%a" (Arg.pp pp_mt) arg pp_mt body
-  | With {body; deletions} ->
-    Pp.fp ppf "%a@,/%a" pp_mt body Name.Set.pp deletions
+  | With {body; deletions;access} ->
+    Pp.fp ppf "%a@,/%a (%a)" pp_mt body Name.Set.pp deletions pp_access access
   | Of me -> Pp.fp ppf "module type of@, %a" pp_me me
   | Extension_node ext -> Pp.fp ppf "%a" pp_extension ext
   | Abstract -> Pp.fp ppf "⟨abstract⟩"

@@ -295,7 +295,8 @@ let result =
     ["solvable.ml", u["Extern"]];
     ["tuple.ml", u["A"; "B"; "C"]];
     ["unknown_arg.ml", u["Ext"] ];
-    ["with.ml", u["Ext"] ]
+    ["with.ml", u["Ext"]];
+    ["with_more.ml", u["Ext"]]
   ]
 
   && ( Version.( v < v_4_04) ||

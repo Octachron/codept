@@ -64,7 +64,7 @@ and expression =
     dependency tracking.
 *)
 and annotation =
-  { access: (Loc.t * Deps.Edge.t) Paths.S.map
+  { access: access
   (** [M.N.L.x] ⇒ access \{M.N.L = Normal \}
       type t = A.t ⇒ access \{ A = ε \}
   *)
@@ -73,6 +73,7 @@ and annotation =
                      *)
   ; packed: module_expr Loc.ext list (** [(module M)] *)
   }
+and access = (Loc.t * Deps.Edge.t) Paths.S.map
 
 (** Module level expression representation *)
 and module_expr =
@@ -112,8 +113,9 @@ and module_type =
   | Fun of module_type fn (** [functor (X:S) → M] *)
   | With of {
       body: module_type;
-      deletions: Name.set
-      (* ; equalities: (Npath.t * Epath.t) list *)
+      deletions: Name.set;
+      access:access
+      (** equalities: type t= A.M.x N.y -> {A.M; N} *)
     }
   (** [S with module N := …]
       we are only tracking module level modification
@@ -134,6 +136,7 @@ and extension_core =
   | Module of m2l
   | Val of annotation
 
+
 type t = m2l
 
 (** {2 Schematic serialization } *)
@@ -149,7 +152,7 @@ module Annot : sig
   type t = annotation Loc.ext
 
   module Access: sig
-    type t = (Loc.t * Deps.Edge.t) Paths.S.map
+    type t = access
     val empty: t
     val merge: t -> t -> t
   end
