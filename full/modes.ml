@@ -21,8 +21,7 @@ type t =
   | Export of Name.t
   | Modules of variant * filter
   | Info
-  | Json
-  | Sexp
+  | Deps of Schematic.format option
   | Signature
   | Sort
 
@@ -35,7 +34,10 @@ let str x = Format.asprintf "%a" x
 let ufile (u:Unit.r) = str Paths.Pkg.pp u.src
 let upath (u:Unit.r) = Namespaced.flatten u.path
 
-let structured pp _ _ ppf _ units =
+let structured fmt _ _ ppf param units =
+  let fmt = Option.default param.format fmt in
+  let pp = let open Schematic in
+    match fmt with Json -> json Schema.x | Sexp -> sexp Schema.x in
   let udeps (u:Unit.r) =
     let add_dep (loc,lib,unknw) ((p:Paths.P.t), mps) =
       let mps = Paths.S.Set.elements mps in
@@ -83,7 +85,7 @@ let structured pp _ _ ppf _ units =
   let ud = List.map dep units.ml @ List.map dep units.mli in
   let data = let open Schematic in
     obj [ atlas $= atl; dependencies $= ud ] in
-  Pp.fp ppf "%a@." (pp schema) data
+  Pp.fp ppf "%a@." pp data
 
 
 let export name _ _ ppf _param {Unit.mli; _} =
@@ -277,7 +279,6 @@ let eval = function
   | Modules (Standard, filter) -> modules ~filter:(Filter.eval filter)
   | Modules (Nl, filter) -> line_modules ~filter:(Filter.eval filter)
   | Info -> info
-  | Json -> structured Schematic.json
-  | Sexp ->  structured Schematic.sexp
+  | Deps f -> structured f
   | Signature ->  signature
   | Sort -> sort

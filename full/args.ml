@@ -308,11 +308,15 @@ let args action param task fquery version =
     "<bool>: inspect unknown extension nodes\n"
     ^ "\n\n Codept only modes:\n";
 
+    "-deps", Unit (mode @@ Modes.Deps None),
+    ": print dependencies using the currently selected structured format\
+     (default:json)";
     "-info", Unit (mode Modes.Info), ": print detailed information";
-    "-json", Unit (mode Modes.Json), ": print dependencies in a json format";
+    "-json", Unit (mode @@ Modes.Deps (Some Schematic.Json)),
+    ": print dependencies in json format";
     "-json-schema", String print_json_schema,
     " <mode>: print json schema for the corresponding mode (deps,sig,m2l)";
-    "-sexp", Unit (mode Modes.Sexp),
+    "-sexp", Unit (mode @@ Modes.Deps (Some Schematic.Sexp)),
     ": print dependencies in a s-expression format";
 
     "-export", String (fun s -> mode (Modes.Export s) ()),
@@ -321,9 +325,11 @@ let args action param task fquery version =
     "-makefile", Unit (makefile_c action), ": print makefile depend file(default)";
     "-approx-m2l", Unit (set_iter Single.Approx_file),
     ": print approximated m2l ast";
-    "-m2l", Unit (set_iter Single.M2l), ": print m2l ast";
+    "-m2l-info", Unit (set_iter Single.M2l), ": print m2l ast";
+    "-m2l", Unit (set_iter Single.M2l_sexp),
+    ": print m2l ast in structured format";
     "-m2l-sexp", Unit (set_iter Single.M2l_sexp),
-    ": print m2l ast in s-expression format";
+    ": print m2l ast in structured format";
     "-one-pass", Unit (set_iter Single.One_pass), ": print m2l ast after one pass";
     "-sig", Unit (mode Modes.Signature), ": print inferred signature";
     "-sig-only", set_t sig_only,

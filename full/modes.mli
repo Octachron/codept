@@ -16,8 +16,7 @@ type t =
   | Export of Name.t
   | Modules of variant * filter
   | Info
-  | Json
-  | Sexp
+  | Deps of Schematic.format option
   | Signature
   | Sort
 
@@ -48,8 +47,7 @@ val export: Name.t -> mode
 val info: mode
 
 (** Display dependencies in a structured format *)
-val structured:
-  (Schema.deps Schematic.s -> Format.formatter -> Schema.deps -> unit) -> mode
+val structured: Schematic.format option -> mode
 
 (** Display the list of modules dependencies of the input compilation units
     using ocamldep format *)
