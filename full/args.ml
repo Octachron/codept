@@ -273,9 +273,9 @@ let args action param task fquery version =
 
     "-one-line", set_f one_line,
     ": output makefile dependencies on a single line for each target";
-    "-open", taskc add_open, "<name>: open module <name> at the start of \
-                             all compilation units \n\
-                             (except units whose name is <name>).";
+    "-open", taskc add_open,
+    "<name>: open module <name> at the start of all compilation units \
+     (except units whose name is <name>).";
     "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
     "<cmd>: pipe sources through preprocessor <cmd>";
     "-ppx", Cmd.String add_ppx,
@@ -302,9 +302,9 @@ let args action param task fquery version =
     ": Map file path <Subdir/ … /file> to module path <Subdir. … .File>, \
      instead of just <File>";
     "-o", Cmd.String ( (:=) output ), "<filename>: mode current output file";
-    "-only-ancestors-of", task_p Task.add_seed,
-    "<module name>: only analyze files which are an ancestor of <module name>";
-    "-transparent-extension-node", Cmd.Bool (use_p transparent_extension_nodes),
+    "-ancestors-of", task_p Task.add_seed,
+    "<filename>: only analyze files which are an ancestor of <filename>";
+    "-extension-node", Cmd.Bool (use_p transparent_extension_nodes),
     "<bool>: inspect unknown extension nodes\n"
     ^ "\n\n Codept only modes:\n";
 
@@ -347,7 +347,7 @@ let args action param task fquery version =
     "<pkg_name>: use the ocamlfind package <pkg_name> during the analysis";
     "-package", pkg param fquery, "<pkg_name>: same as pkg";
     "-predicates", findlib Findlib.predicates,
-    "<comma-separated list of string>: add predicates to ocamlfind processing";
+    "<p1,...,p_n>: add predicates to ocamlfind processing";
     "-ppxopt", findlib Findlib.ppxopt,
     "<ppx,opt>: add <opt> as an option of <ppx>";
     "-ppopt", findlib Findlib.ppopt,
@@ -374,7 +374,7 @@ let args action param task fquery version =
     "-fault-doc", Unit (print_policy param), ": show fault policy documentation";
     "-verbosity", String (silent_level param),
     "<level>: only print fault beyond level <level>, \
-     with level ∈{info,notification,warning,error,critical}"
+     with level in {info,notification,warning,error,critical}"
     ^ "\n\n Misc options:\n";
 
     "-no-implicits", set_f implicits,
@@ -411,10 +411,10 @@ let process version ?(extra=[]) argv =
   and task = ref task0
   and findlib_query = ref findlib_query0
   and action = ref action0 in
-  let args = args action params task findlib_query version in
+  let args = Arg.align @@ extra @ args action params task findlib_query version in
     Compenv.readenv stderr Before_args;
     begin
-      try Extended_args.parse  argv (extra @ args) (add_file params task) usage_msg
+      try Extended_args.parse  argv args (add_file params task) usage_msg
       with
       | Arg.Bad msg | Arg.Help msg ->
         (print_endline msg; exit 2)
