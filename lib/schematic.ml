@@ -157,11 +157,14 @@ and json_required: type a. bool ->Format.formatter -> a record_declaration
   | _ :: q -> json_required first ppf q
 and json_sum: type a. bool -> int -> Format.formatter -> a sum_decl -> unit =
   fun first n ppf -> function
-  | [] -> ()
-  | (s,a)::q ->
-    if not first then Pp.fp ppf ",@,";
-    let module N = Label(struct let l = s end) in
-    Pp.fp ppf "{%a}%a" json_type (Obj[Req,N.l,a]) (json_sum false @@ n + 1) q
+    | [] -> ()
+    | (s, Void) :: q  ->
+      if not first then Pp.fp ppf ",@,";
+      Pp.fp ppf "@[{%a@ :@ [\"%s\"]}@]%a" k "enum" s (json_sum false @@ n + 1) q
+    | (s,a)::q ->
+      if not first then Pp.fp ppf ",@,";
+      let module N = Label(struct let l = s end) in
+      Pp.fp ppf "{%a}%a" json_type (Obj[Req,N.l,a]) (json_sum false @@ n + 1) q
 
 let json_definitions ppf sch =
   let rec json_definitions:
