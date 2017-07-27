@@ -171,8 +171,12 @@ let exit_level param s =
 let print_policy param ()=
   Fault.Policy.pp Pp.std L.(!param.[policy])
 
-let print_json_schema () =
-  Schematic.json_schema Pp.std Schema.x
+let print_json_schema  =
+  function
+  | "sig" -> Schematic.json_schema Pp.std Schema.sign
+  | "m2l" -> Schematic.json_schema Pp.std Schema.m2l
+  | "deps" -> Schematic.json_schema Pp.std Schema.x
+  | _ -> ()
 
 let set_p param lens value =
   let open L in
@@ -306,7 +310,8 @@ let args action param task fquery version =
 
     "-info", Unit (mode Modes.Info), ": print detailed information";
     "-json", Unit (mode Modes.Json), ": print dependencies in a json format";
-    "-json-schema", Unit print_json_schema, ": print json schema";
+    "-json-schema", String print_json_schema,
+    " <mode>: print json schema for the corresponding mode (deps,sig,m2l)";
     "-sexp", Unit (mode Modes.Sexp),
     ": print dependencies in a s-expression format";
 
