@@ -434,7 +434,7 @@ let signature_of_lists ms mts =
 
 let to_list m = List.map snd @@ Name.Map.bindings m
 
-module Sch = struct
+module Schema = struct
   open Schematic
   module Origin_f = Label(struct let l = "origin" end)
   module Args = Label(struct let l = "args" end)
@@ -491,7 +491,7 @@ module Sch = struct
       Namespace { name; modules = Dict.of_list modules }
     | _ -> .
 
-end let sch = Sch.module'
+end
 
 module Def = struct
   let empty = empty_sig
@@ -507,7 +507,7 @@ module Def = struct
 
   let pp = pp_definition
 
-  let sch = let open Schematic in let open Sch in
+  let sch = let open Schematic in let open Schema in
     custom "Module.Def.t"
       (Obj[Opt,Modules.l, Array module'; Opt, Module_types.l, Array module'])
       (fun x -> [ Modules.l $=? l(to_list x.modules);
@@ -574,7 +574,7 @@ module Sig = struct
 
   type t = signature
 
-  let sch = let open Schematic in let open Sch in
+  let sch = let open Schematic in let open Schema in
     custom "Module.signature"
       (Obj [Opt, Modules.l, Array module'; Opt, Module_types.l, Array module'])
       (fun x -> let s = flatten x in let l x = l(to_list x) in
@@ -634,7 +634,7 @@ module Partial = struct
 
   module Sch = struct
     open Schematic
-    module S = Sch
+    module S = Schema
     module Result = Label(struct let l = "signature" end)
     let raw =
       Obj [ Opt, S.Origin_f.l, Origin.sch;

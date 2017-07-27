@@ -173,7 +173,10 @@ val pp_arg : Format.formatter -> m option -> unit
 val pp_args : Format.formatter -> m option list -> unit
 
 (** {2 Schematic } *)
-val sch: modul_ Schematic.t
+module Schema: sig
+  val module': modul_ Schematic.t
+  val m: m Schematic.t
+end
 
 (** Helper functions for definitions *)
 module Def: sig
