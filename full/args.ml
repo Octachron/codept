@@ -50,7 +50,8 @@ let param0 = {
     no_include = false;
     may_approx = false;
     nested = false;
-    format = Sexp
+    internal_format = Sexp;
+    external_format = Json
   }
 
 let task0 : Common.task = {
@@ -115,11 +116,14 @@ let iter_mode out writer param r (file,mode) =
     )
 
 let format param x =
+  let lenses = [L.inner_fmt;L.ext_fmt] in
   let open L in
+  let update x = List.iter(fun l -> param.[l] <- x ) lenses in
   match x with
-    | "sexp" -> param.[fmt] <- Schematic.Sexp
-    | "json" -> param.[fmt] <- Schematic.Json
+    | "sexp" -> update Schematic.Sexp
+    | "json" -> update Schematic.Json
     | _ -> ()
+
 
 let mode action command () =
   let output = !output in
@@ -326,7 +330,7 @@ let args action param task fquery version =
     "-approx-m2l", Unit (set_iter Single.Approx_file),
     ": print approximated m2l ast";
     "-m2l-info", Unit (set_iter Single.M2l), ": print m2l ast";
-    "-m2l", Unit (set_iter Single.M2l_sexp),
+    "-m2l", Unit (set_iter Single.M2l),
     ": print m2l ast in structured format";
     "-one-pass", Unit (set_iter Single.One_pass), ": print m2l ast after one pass";
     "-sig", Unit (mode Modes.Signature), ": print inferred signature";

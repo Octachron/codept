@@ -3,10 +3,8 @@
 type t =
   | Approx_file
   | One_pass
+  | M2l_info
   | M2l
-  | M2l_sexp
-(*  | M2l_sexp2
-    | M2l_json2 *)
 
 type single = string -> Io.writer -> Format.formatter -> Params.t
   -> Common.info * string * Namespaced.t option -> unit
@@ -51,7 +49,7 @@ let one_pass _ _ ppf param (_,filename,_ as x) =
   | Some (Error h) ->
     Pp.fp ppf "Computation halted at:\n %a@." M2l.pp h
 
-let m2l _ _ ppf param f =
+let m2l_info _ _ ppf param f =
   let param = param.analyzer in
   let start = to_m2l param.policy param.sig_only f in
   let open Option in
@@ -62,8 +60,8 @@ let m2l _ _ ppf param f =
   >>| Pp.fp ppf  "%a@." M2l.pp
   >< ()
 
-let m2l_sexp filename (writer:Io.writer) ppf param f =
-  let fmt = param.format in
+let m2l filename (writer:Io.writer) ppf param f =
+  let fmt = param.internal_format in
   let param = param.analyzer in
   let start = to_m2l param.policy param.sig_only f in
   let open Option in
@@ -80,5 +78,5 @@ let m2l_sexp filename (writer:Io.writer) ppf param f =
 let eval = function
   | Approx_file -> approx_file
   | One_pass -> one_pass
+  | M2l_info -> m2l_info
   | M2l -> m2l
-  | M2l_sexp -> m2l_sexp

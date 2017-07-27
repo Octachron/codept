@@ -7,7 +7,8 @@ type t = {
   no_include : bool;
   may_approx : bool;
   nested:bool;
-  format: Schematic.format
+  internal_format: Schematic.format;
+  external_format: Schematic.format;
 }
 
 (** Lens module for accessing nested record in params *)
@@ -49,5 +50,6 @@ module L :
     val sig_only : (t, bool) l
     val policy : (t, Fault.Policy.t) l
     val nested : (t,bool) l
-    val fmt: (t, Schematic.format) l
+    val inner_fmt : (t, Schematic.format) l
+    val ext_fmt : (t,Schematic.format) l
   end

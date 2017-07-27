@@ -35,7 +35,7 @@ let ufile (u:Unit.r) = str Paths.Pkg.pp u.src
 let upath (u:Unit.r) = Namespaced.flatten u.path
 
 let structured fmt _ _ ppf param units =
-  let fmt = Option.default param.format fmt in
+  let fmt = Option.default param.external_format fmt in
   let pp = let open Schematic in
     match fmt with Json -> json Schema.x | Sexp -> sexp Schema.x in
   let udeps (u:Unit.r) =
@@ -120,7 +120,7 @@ let signature filename writer ppf param {Unit.mli; _} =
              )
   in
   let mds = List.map md mli in
-  writer.Io.sign L.(param.[fmt]) filename ppf mds
+  writer.Io.sign param.internal_format filename ppf mds
 
 
 let dependencies ?filter sort (u:Unit.r) =

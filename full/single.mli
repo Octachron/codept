@@ -3,8 +3,8 @@
 type t =
   | Approx_file
   | One_pass
+  | M2l_info
   | M2l
-  | M2l_sexp
 
 type single = string -> Io.writer -> Format.formatter -> Params.t
   -> Common.info * string * Namespaced.t option -> unit
@@ -17,9 +17,10 @@ val approx_file: single
 val one_pass: single
 
 (** Display an human-readable representation of the m2l ast *)
-val m2l: single
+val m2l_info: single
 
-(** Display a machine-readable s-expression for the m2l ast *)
-val m2l_sexp: single
+(** Display a machine-readable version of the m2l ast using the currently
+    selected inner format *)
+val m2l: single
 
 val eval: t -> single

@@ -6,7 +6,8 @@ type t =
     no_include:bool;
     may_approx:bool;
     nested: bool;
-    format: Schematic.format
+    internal_format: Schematic.format;
+    external_format: Schematic.format
   }
 
 module L = struct
@@ -39,7 +40,11 @@ module L = struct
   let may_approx = create
       (fun x -> x.may_approx) (fun x y -> { x with may_approx = y})
 
-  let fmt = create (fun x -> x.format) (fun x y -> { x with format = y } )
+  let inner_fmt = create (fun x -> x.internal_format)
+      (fun x y -> { x with internal_format = y } )
+
+  let ext_fmt = create (fun x -> x.external_format)
+      (fun x y -> { x with external_format = y } )
 
   open Makefile
   let all = makefile % create (fun x-> x.all) (fun x y -> { x with all = y })
