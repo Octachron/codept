@@ -1,5 +1,15 @@
 open Schematic
 
+let m2l = { Schematic.title = "codept/m2l/0.10";
+            description = "module level ocaml file skeleton";
+            sch = M2l.sch
+          }
+
+let sign = { Schematic.title = "codept/sig/0.10";
+             description = "module level ocaml signature";
+             sch = Array Module.Schema.module'
+           }
+
 module Module = Label(struct let l = "module" end)
 module Ml = Label(struct let l = "ml" end)
 module Mli = Label(struct let l = "mli" end)

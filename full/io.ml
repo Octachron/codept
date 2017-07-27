@@ -35,7 +35,7 @@ let expand task query =
 end
 
 let parse_sig lexbuf=
-  Schematic.retype (Array Module.sch) @@ Sparser.main Slex.main lexbuf
+  Schematic.retype Schema.sign.sch @@ Sparser.main Slex.main lexbuf
 
 let read_sigfile filename =
   let chan = open_in filename in
@@ -45,15 +45,6 @@ let read_sigfile filename =
   sigs
 
 
-let sm2l = { Schematic.title = "codept/m2l/0.10";
-            description = "module level ocaml file skeleton";
-            sch = M2l.sch
-          }
-
-let ssign = { Schematic.title = "codept/sig/0.10";
-             description = "module level ocaml signature";
-             sch = Array Module.sch
-           }
 
 
 let direct = {
@@ -66,15 +57,15 @@ let direct = {
   writer = {
     m2l =  (fun format _filename ppf m2l ->
         match format with
-        | Json -> Schematic.minify ppf "%a@.\n" (Schematic.json sm2l) m2l
-        | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp sm2l) m2l
+        | Json -> Schematic.minify ppf "%a@.\n" (Schematic.json Schema.m2l) m2l
+        | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp Schema.m2l) m2l
 
       );
     sign =
       (fun format _ ppf (mds: Module.t list) ->
          match format with
-         | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp ssign) mds
-         | Json ->  Schematic.minify ppf "%a@.\n" (Schematic.json ssign) mds
+         | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp Schema.sign) mds
+         | Json ->  Schematic.minify ppf "%a@.\n" (Schematic.json Schema.sign) mds
       )
   }
 }
