@@ -328,8 +328,6 @@ let args action param task fquery version =
     "-m2l-info", Unit (set_iter Single.M2l), ": print m2l ast";
     "-m2l", Unit (set_iter Single.M2l_sexp),
     ": print m2l ast in structured format";
-    "-m2l-sexp", Unit (set_iter Single.M2l_sexp),
-    ": print m2l ast in structured format";
     "-one-pass", Unit (set_iter Single.One_pass), ": print m2l ast after one pass";
     "-sig", Unit (mode Modes.Signature), ": print inferred signature";
     "-sig-only", set_t sig_only,
