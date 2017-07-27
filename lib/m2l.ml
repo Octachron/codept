@@ -144,7 +144,7 @@ module Sch = struct
                           id = "M2l.expr.ext";
                         }
   and m2l = Array expr_loc
-  and access = Custom {sch=access_raw;fwd=access_fwd;rev=access_rev;id="M2l/access"}
+  and access = Custom {sch=access_raw;fwd=access_fwd;rev=access_rev;id="M2l.access"}
   and access_raw = Array [Paths.S.sch; Loc.Sch.t; Deps.Edge.sch]
   and access_fwd x =
     Paths.S.Map.fold (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x L.[]
