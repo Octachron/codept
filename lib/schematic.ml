@@ -102,8 +102,90 @@ let p ppf (key,data)=
 
 let ty ppf data = p ppf ("type",data)
 
-let rec json_type: type a. Format.formatter -> a t -> unit =
-  fun ppf -> function
+
+type 'a tree = Item of 'a | M of 'a forest
+and 'a forest = 'a tree Name.map
+
+let arbitrary_name ctx = "id" ^ string_of_int ctx, ctx + 1
+
+let find_nearly name map =
+ let find k arg name =
+    match Name.Map.find name map with
+    | exception Not_found -> name, Name.Map.empty
+    | Item _ -> k arg
+    | M m -> name, m in
+ let rec loop n =
+   let name = name ^ string_of_int n in
+   find loop (n+1) name in
+ find loop 2 name
+
+module Path_map=
+  Map.Make(struct
+    type t= string list
+    let compare (x:string list) y = compare x y
+  end)
+type dyn = Dyn: 'a t -> dyn
+type effective_paths = (string list * int) list Path_map.t
+type context = { stamp:int; mapped: effective_paths  }
+let id x = Hashtbl.hash x
+
+let add_path (type a) path (x:a t) (ctx,map) =
+  let open L in
+  let rec add_path ctx path x map =
+    match path with
+    | [] -> let name, ctx = arbitrary_name ctx in add_path ctx [name] x map
+    | [name] ->
+      let name, m = find_nearly name map in
+      if m = Name.Map.empty then
+        ctx, [name], Name.Map.add name (Item (Dyn x)) map
+      else
+        let ctx, q, m = add_path ctx [] x m in
+        ctx, name :: q, Name.Map.add name (M m) map
+    | a :: q->
+      let a, m = find_nearly a map in
+      let ctx, q, v = add_path ctx q x m in
+      ctx, a :: q, Name.Map.add a (M v) map in
+  match Path_map.find path ctx.mapped with
+  | exception Not_found ->
+    let stamp, effective_path, map = add_path ctx.stamp path x map in
+    let  mapped = Path_map.add path [effective_path, id x] ctx.mapped in
+    {stamp;mapped}, map
+  | l when List.exists (fun (_,d) -> (d = id x)) l ->
+    ctx, map
+  | l ->
+    let stamp, effective_path, map = add_path ctx.stamp path x map in
+    let mapped =
+      Path_map.add path ( (effective_path, id x) :: l ) ctx.mapped in
+    { stamp; mapped}, map
+
+let mem (path,x) ctx = match Path_map.find path ctx.mapped with
+  | exception Not_found -> false
+  | l -> List.exists (fun (_,h) -> h = id x) l
+
+let find_path (path,x) mapped =
+  String.concat "/" @@ fst
+  @@ List.find (fun (_,idy) -> id x = idy) @@ Path_map.find path mapped
+
+let extract_def s =
+  let rec extract_def:
+    type a. a t -> (context * dyn forest) -> (context * dyn forest)  =
+    fun sch data -> match sch with
+      | Float -> data | Int -> data | String -> data | Bool -> data | Void -> data
+      | Array t -> data |> extract_def t
+      | Obj [] -> data
+      | Obj ( (_,_,x) :: q ) ->
+        data |> extract_def x |> extract_def (Obj q)
+      | [] -> data
+      | a :: q -> data |> extract_def a |> extract_def q
+      | Sum [] -> data
+      | Sum ((_,a) :: q) -> data |> extract_def a |> extract_def (Sum q)
+      | Custom{id; sch; _ } ->
+        if mem ([id],sch) (fst data) then data
+        else data |> add_path [id] sch |> extract_def sch
+  in extract_def s ({stamp=1;mapped=Path_map.empty}, Name.Map.empty)
+
+let rec json_type: type a. effective_paths -> Format.formatter -> a t -> unit =
+  fun epaths ppf -> function
     | Float -> ty ppf "number"
     | Int -> ty ppf "number"
     | String -> ty ppf "string"
@@ -111,40 +193,43 @@ let rec json_type: type a. Format.formatter -> a t -> unit =
     | Void -> ()
     | Array t -> Pp.fp ppf
                    "%a,@;@[<hov 2>%a : {@ %a@ }@]"
-                   ty "array" k "items" json_type t
+                   ty "array" k "items" (json_type epaths) t
     | [] -> ()
     | _ :: _ as l ->
       Pp.fp ppf "%a,@; @[<hov 2>%a :[@ %a@ ]@]" ty "array" k "items"
-        json_schema_tuple l
+        (json_schema_tuple epaths) l
     | Obj r ->
       Pp.fp ppf "%a,@;@[<v 2>%a : {@ %a@ }@],@;@[<hov 2>%a@ :@ [@ %a@ ]@]"
         ty "object"
         k "properties"
-        json_properties r
+        (json_properties epaths) r
         k "required"
         (json_required true) r
-    | Custom { id ; _ }->
-      Pp.fp ppf "@[<hov 2>%a@ :@ \"#/definitions/%s\"@]" k "$ref" id
+    | Custom { id ; sch;  _ } ->
+      Pp.fp ppf "@[<hov 2>%a@ :@ \"#/definitions/%s\"@]" k "$ref"
+        (find_path ([id],sch) epaths)
     | Sum decl ->
       Pp.fp ppf "@[<hov 2>%a :[%a]@]"
-        k "oneOf" (json_sum true 0) decl
-and json_schema_tuple: type a. Format.formatter -> a tuple t -> unit =
-  fun ppf -> function
+        k "oneOf" (json_sum epaths true 0) decl
+and json_schema_tuple:
+  type a. effective_paths -> Format.formatter -> a tuple t -> unit =
+  fun epath ppf -> function
     | [] -> ()
     | [a] -> Pp.fp ppf {|@[<hov 2>{@ %a@ }@]|}
-               json_type a
+               (json_type epath) a
     | a :: q ->
       Pp.fp ppf {|@[<hov 2>{@ %a@ }@],@; %a|}
-        json_type a json_schema_tuple q
+        (json_type epath) a (json_schema_tuple epath) q
     | Custom _ -> assert false
-and json_properties: type a. Format.formatter -> a record_declaration -> unit =
-  fun ppf -> function
+and json_properties:
+  type a. effective_paths -> Format.formatter -> a record_declaration -> unit =
+  fun epath ppf -> function
   | [] -> ()
   | [_, n, a] -> Pp.fp ppf {|@[<hov 2>"%s" : {@ %a@ }@]|}
-      (show n) json_type a
+      (show n) (json_type epath) a
   | (_, n, a) :: q ->
      Pp.fp ppf {|@[<hov 2>"%s" : {@ %a@ }@],@;%a|}
-       (show n) json_type a json_properties q
+       (show n) (json_type epath) a (json_properties epath) q
 and json_required: type a. bool ->Format.formatter -> a record_declaration
   -> unit =
   fun first ppf -> function
@@ -155,43 +240,30 @@ and json_required: type a. bool ->Format.formatter -> a record_declaration
       (show n)
       (json_required false) q
   | _ :: q -> json_required first ppf q
-and json_sum: type a. bool -> int -> Format.formatter -> a sum_decl -> unit =
-  fun first n ppf -> function
+and json_sum:
+  type a. effective_paths -> bool -> int -> Format.formatter -> a sum_decl -> unit =
+  fun epaths first n ppf -> function
     | [] -> ()
     | (s, Void) :: q  ->
       if not first then Pp.fp ppf ",@,";
-      Pp.fp ppf "@[{%a@ :@ [\"%s\"]}@]%a" k "enum" s (json_sum false @@ n + 1) q
+      Pp.fp ppf "@[{%a@ :@ [\"%s\"]}@]%a" k "enum" s
+        (json_sum epaths false @@ n + 1) q
     | (s,a)::q ->
       if not first then Pp.fp ppf ",@,";
       let module N = Label(struct let l = s end) in
-      Pp.fp ppf "{%a}%a" json_type (Obj[Req,N.l,a]) (json_sum false @@ n + 1) q
+      Pp.fp ppf "{%a}%a" (json_type epaths) (Obj[Req,N.l,a])
+        (json_sum epaths false @@ n + 1) q
 
-let json_definitions ppf sch =
-  let rec json_definitions:
-    type a.  bool * S.t -> Format.formatter -> a t ->  bool * S.t =
-    fun (first,set as st) ppf -> function
-      | Float -> st | Int -> st | String -> st | Bool -> st | Void -> st
-      | Array t -> json_definitions st ppf t
-      | Obj [] -> st
-      | Obj ( (_,_,x) :: q ) ->
-        let st = json_definitions st ppf x in
-        json_definitions st ppf (Obj q)
-      | [] -> st
-      | a :: q ->
-        let st = json_definitions st ppf a in
-        json_definitions st ppf q
-      | Sum [] -> st
-      | Sum ((_,a) :: q) ->
-        let st = json_definitions st ppf a in
-        json_definitions st ppf (Sum q)
-      | Custom{id; _ } when S.mem id set -> st
-      | Custom{id; sch; _ } ->
-        if not first then Pp.fp ppf ",@,";
-        Pp.fp ppf "@[<hov 2>%a@ :{@;%a@;}@]" k id json_type sch;
-        let set = S.add id set in
-        json_definitions (false,set) ppf sch
-  in
-  ignore @@ json_definitions (true,S.empty) ppf sch
+
+let json_definitions epaths ppf map =
+  let rec json_def ppf name x not_first =
+    if not_first then Pp.fp ppf ",@,";
+    match x with
+    | Item (Dyn x) -> Pp.fp ppf "@[%a@ :@ %a]" k name (json_type epaths) x; true
+    | M m ->
+      Pp.fp ppf "@[%a@ :@ {@ %a@ }@ }@]" k name json_defs m; true
+  and json_defs ppf m = ignore (Name.Map.fold (json_def ppf) m false) in
+  json_defs ppf map
 
 let rec json: type a. a t -> Format.formatter -> a -> unit =
   fun sch ppf x -> match sch, x with
@@ -242,6 +314,7 @@ and json_obj: type a.
 
 let json s = json s.sch
 let json_schema ppf s =
+  let ctx, map = extract_def s.sch in
   Pp.fp ppf
     "@[<v 2>{@ \
      %a,@;\
@@ -253,8 +326,8 @@ let json_schema ppf s =
      p ("$schema", "http://json-schema.org/schema#")
      p ("title", s.title)
      p ("description", s.description)
-     k "definitions" json_definitions s.sch
-     json_type s.sch
+     k "definitions" (json_definitions ctx.mapped) map
+     (json_type ctx.mapped) s.sch
 
 let cstring ppf s =
   begin try
