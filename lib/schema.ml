@@ -1,13 +1,28 @@
 open Schematic
 
-let m2l = { Schematic.title = "codept/m2l/0.10";
+module Lbl = struct
+  module M2l = Label(struct let l = "m2l" end)
+  module Deps = Label(struct let l = "deps" end)
+  module Sig = Label(struct let l = "sig" end)
+  type m2l = M2l.t
+  type deps = Deps.t
+  type sig' = Sig.t
+end
+
+let version = { Version.major = 0; minor=10; patch=0 }
+
+let m2l = { Schematic.Full.title = "codept/m2l/0.10";
             description = "module level ocaml file skeleton";
-            sch = M2l.sch
+            version;
+            label = Lbl.M2l.l;
+            inner = M2l.sch
           }
 
-let sign = { Schematic.title = "codept/sig/0.10";
+let sign = { Schematic.Full.title = "codept/sig/0.10";
              description = "module level ocaml signature";
-             sch = Array Module.Schema.module'
+             version;
+             label = Lbl.Sig.l;
+             inner = Array Module.Schema.module'
            }
 
 module Module = Label(struct let l = "module" end)
@@ -67,9 +82,11 @@ let deps = Obj [
   ]
 
 let x  = {
-  title ="codept.0.10/deps";
+  Full.title ="codept.0.10/deps";
   description = "dependencies and module mapping of ocaml project";
-  sch = deps
+  label = Lbl.Deps.l;
+  version;
+  inner = deps;
 }
 
 let schema = x

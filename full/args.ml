@@ -177,9 +177,9 @@ let print_policy param ()=
 
 let print_json_schema  =
   function
-  | "sig" -> Schematic.json_schema Pp.std Schema.sign
-  | "m2l" -> Schematic.json_schema Pp.std Schema.m2l
-  | "deps" -> Schematic.json_schema Pp.std Schema.x
+  | "sig" -> Schematic.Full.json_schema Pp.std Schema.sign
+  | "m2l" -> Schematic.Full.json_schema Pp.std Schema.m2l
+  | "deps" -> Schematic.Full.json_schema Pp.std Schema.x
   | _ -> ()
 
 let set_p param lens value =

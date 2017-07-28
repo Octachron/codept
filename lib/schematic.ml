@@ -87,14 +87,22 @@ and (_,_) cons =
 
 and 'a sum = C: ('a, 'elt ) cons -> 'a sum
 
-(*
-type ('m,'a,'b) field = 'a name * ('m, 'b) elt*)
+type 'a schematic = 'a t
 
-type 'a s = {
-  title: string;
-  description: string;
-  sch: 'a t;
-}
+let custom id sch fwd rev = Custom {fwd;rev; sch; id}
+module Version = struct
+  type t = { major:int; minor:int; patch:int }
+  module Lbl = Label(struct let l = "version" end)
+  type lbl = Lbl.t
+
+  let sch =
+  custom ["version"] [Int;Int;Int]
+    (fun x -> [x.major;x.minor;x.patch])
+    (fun [major;minor;patch] -> {major;minor;patch})
+
+end
+
+let ($=) field x = field, x
 
 let k ppf name = Pp.fp ppf {|"%s"|} name
 let p ppf (key,data)=
@@ -314,22 +322,6 @@ and json_obj: type a.
     | (Opt,_,_) :: q, (_, None ) :: xs ->
       json_obj not_first q ppf xs
 
-let json s = json s.sch
-let json_schema ppf s =
-  let ctx, map = extract_def s.sch in
-  Pp.fp ppf
-    "@[<v 2>{@ \
-     %a,@;\
-     %a,@;\
-     %a,@;\
-     @[%a :@ {%a},@]@;\
-     %a\
-      @ }@]@."
-     p ("$schema", "http://json-schema.org/schema#")
-     p ("title", s.title)
-     p ("description", s.description)
-     k "definitions" (json_definitions ctx.mapped) map
-     (json_type ctx.mapped) s.sch
 
 let cstring ppf s =
   begin try
@@ -385,9 +377,6 @@ and sexp_obj: type a.
 
     | (Opt,_,_) :: q, (_, None ) :: xs -> sexp_obj q ppf xs
 
-let sexp x = sexp x.sch
-
-let ($=) field x = field, x
 let skip name = name, None
 
 let ($=?) field x = match x with
@@ -395,7 +384,6 @@ let ($=?) field x = match x with
   | None -> skip field
 
 let obj (x:_ record)= x
-let custom id sch fwd rev = Custom {fwd;rev; sch; id}
 
 module Untyped = struct
 type t =
@@ -503,3 +491,58 @@ let option (type a) name (sch:a t) =
   custom ["Option.";name] (Sum ["None", Void; "Some", sch])
     (function None -> C E | Some x -> C (S(Z x)))
     (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
+
+
+module Full = struct
+
+  type ('lbl,'a) full ={
+    title: string;
+    description: string;
+    version: Version.t;
+    label: 'lbl label;
+    inner: 'a t;
+  }
+
+
+  let schema sch: _ t =
+    Obj[ Req, Version.Lbl.l, Version.sch; Req, sch.label, sch.inner ]
+
+
+  let json s ppf x = json (schema s) ppf [Version.Lbl.l $= s.version; s.label $= x]
+  let json_schema ppf s =
+  let ctx, map = extract_def (schema s) in
+  Pp.fp ppf
+    "@[<v 2>{@ \
+     %a,@;\
+     %a,@;\
+     %a,@;\
+     @[%a :@ {%a},@]@;\
+     %a\
+      @ }@]@."
+     p ("$schema", "http://json-schema.org/schema#")
+     p ("title", s.title)
+     p ("description", s.description)
+     k "definitions" (json_definitions ctx.mapped) map
+     (json_type ctx.mapped) (schema s)
+
+  let sexp x ppf y = sexp (schema x) ppf
+      [ Version.Lbl.l $= x.version; x.label $= y]
+
+
+  let rec strict s =
+    function
+    | Obj [ version, v; name, data ]
+      when version = show Version.Lbl.l && name = show s.label ->
+      let open Option in
+      retype Version.sch v >>= fun v ->
+      if v = s.version then
+        retype s.inner data
+      else None
+    | List l ->
+      let open Option in
+      promote_to_obj l >>= fun ol -> strict s (Obj ol)
+    | Array _ | Atom _ | Obj _ -> None
+
+  type ('a,'b) t = ('a,'b) full
+
+end

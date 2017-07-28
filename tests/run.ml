@@ -602,16 +602,18 @@ let result =
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
           "read.mli", (["M2l"; "Name"],["Syntaxerr"],[]);
-          "read.ml", (["Ast_converter"; "Cmi"; "M2l"; "Schematic" ],
+          "read.ml", (["Ast_converter"; "Cmi"; "M2l"; "Schema"; "Schematic" ],
                       ["Filename"; "Format"; "Lexing"; "Location";
                        "Parsing"; "Pparse"; "String"; "Syntaxerr"],
                       ["Sparser";"Slex"]);
           "mresult.mli", ([],[],[]);
           "mresult.ml", ([],["List"],[]);
+          "schema.ml", (["M2l"; "Module"; "Schematic"], [],  []);
+          "schema.mli", (["M2l"; "Module"; "Schematic"], [], []);
           "schematic.mli", (["Name"],
                        [ "Format"], [] );
           "schematic.ml", (["Name"; "Option"; "Pp"],
-                        [ "Format";"String"], [] );
+                       ["Format"; "Hashtbl"; "List"; "Map"; "String"], [] );
           "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";
                           "Namespaced"; "Read";
                           "Summary"; "Outliner"; "Paths"],

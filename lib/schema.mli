@@ -1,7 +1,13 @@
 open Schematic
 
-val sign: Module.t list s
-val m2l: M2l.t s
+module Lbl: sig
+  type deps
+  type m2l
+  type sig'
+end
+
+val sign: (Lbl.sig', Module.t list) Full.t
+val m2l: (Lbl.m2l, M2l.t) Full.t
 
 
 type m val m: m label
@@ -58,5 +64,5 @@ type deps = (
 ) Record.t
 val deps: deps t
 
-val x: deps s
-val schema: deps s
+val x: (Lbl.deps, deps) Full.t
+val schema: (Lbl.deps, deps) Full.t

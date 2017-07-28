@@ -2,14 +2,12 @@ let lex src = Lexing.from_string src
 
 let parse x =  Sparser.main Slex.main (lex x)
 
-let wrap s = {Schematic.title = "test"; description=""; sch = s}
-
 let counter = ref 0
 
 
 let round_trip sch x =
   incr counter;
-  let print scheme ppf x = Schematic.minify ppf "%a" (scheme @@ wrap sch) x in
+  let print scheme ppf x = Schematic.minify ppf "%a" (scheme sch) x in
   let s scheme = Format.asprintf "%a" (print scheme) x in
   let map2 f (x,y) = (f x, f y) in
   let j, s = map2 s Schematic.(json,sexp) in
@@ -40,7 +38,7 @@ let round_trip' sch src trip =
       match Schematic.retype sch u with
       | None -> Format.printf "failure, typing error (%s)@." src
       | Some x ->
-        let print ppf x = Schematic.minify ppf "%a" (next @@ wrap sch) x in
+        let print ppf x = Schematic.minify ppf "%a" (next sch) x in
         let s = Format.asprintf "%a" print x in
         round_trip' start sch s rest in
   round_trip' src sch src trip;

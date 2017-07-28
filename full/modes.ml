@@ -37,7 +37,7 @@ let upath (u:Unit.r) = Namespaced.flatten u.path
 let structured fmt _ _ ppf param units =
   let fmt = Option.default param.external_format fmt in
   let pp = let open Schematic in
-    match fmt with Json -> json Schema.x | Sexp -> sexp Schema.x in
+    match fmt with Json -> Full.json Schema.x | Sexp -> Full.sexp Schema.x in
   let udeps (u:Unit.r) =
     let add_dep (loc,lib,unknw) ((p:Paths.P.t), mps) =
       let mps = Paths.S.Set.elements mps in

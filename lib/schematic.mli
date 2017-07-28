@@ -73,15 +73,17 @@ and (_,_) cons =
 
 and 'a sum = C: ('a, 'elt ) cons -> 'a sum
 
-type 'a s = {
-  title: string;
-  description: string;
-  sch: 'a t;
-}
+type 'a schematic = 'a t
 
-val json: 'a s -> Format.formatter -> 'a -> unit
-val sexp: 'a s  -> Format.formatter -> 'a -> unit
-val json_schema:  Format.formatter -> 'a s -> unit
+module Version: sig
+  type lbl
+  type t = { major:int; minor:int; patch:int }
+  val sch: t schematic
+end
+
+
+val json: 'a t -> Format.formatter -> 'a -> unit
+val sexp: 'a t  -> Format.formatter -> 'a -> unit
 
 val ($=): 'a label -> 'b -> ('a label * 'b)
 val skip: 'a label -> ('a label * 'b option)
@@ -105,3 +107,21 @@ val minify: Format.formatter -> ('a, Format.formatter, unit, unit) format4 -> 'a
 
 val default: 'a -> 'a -> 'a option
 val option: Name.t -> 'a t -> 'a option t
+
+
+module Full: sig
+type ('lbl,'a) full = {
+  title: string;
+  description: string;
+  version: Version.t;
+  label: 'lbl label;
+  inner: 'a t;
+}
+type ('a,'b) t = ('a,'b) full
+
+val json: ('lbl,'a) full -> Format.formatter -> 'a -> unit
+val sexp: ('lbl,'a) full  -> Format.formatter -> 'a -> unit
+val json_schema:  Format.formatter -> ('lbl, 'a) full -> unit
+
+val strict: ('lbl,'a) full -> Untyped.t -> 'a option
+end

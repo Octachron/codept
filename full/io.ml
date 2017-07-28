@@ -35,7 +35,7 @@ let expand task query =
 end
 
 let parse_sig lexbuf=
-  Schematic.retype Schema.sign.sch @@ Sparser.main Slex.main lexbuf
+  Schematic.Full.strict Schema.sign @@ Sparser.main Slex.main lexbuf
 
 let read_sigfile filename =
   let chan = open_in filename in
@@ -57,15 +57,17 @@ let direct = {
   writer = {
     m2l =  (fun format _filename ppf m2l ->
         match format with
-        | Json -> Schematic.minify ppf "%a@.\n" (Schematic.json Schema.m2l) m2l
-        | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp Schema.m2l) m2l
+        | Json -> Schematic.minify ppf "%a@.\n" (Schematic.Full.json Schema.m2l) m2l
+        | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.Full.sexp Schema.m2l) m2l
 
       );
     sign =
       (fun format _ ppf (mds: Module.t list) ->
          match format with
-         | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.sexp Schema.sign) mds
-         | Json ->  Schematic.minify ppf "%a@.\n" (Schematic.json Schema.sign) mds
+         | Sexp ->  Schematic.minify ppf "%a@.\n"
+                      (Schematic.Full.sexp Schema.sign) mds
+         | Json ->  Schematic.minify ppf "%a@.\n"
+                      (Schematic.Full.json Schema.sign) mds
       )
   }
 }
