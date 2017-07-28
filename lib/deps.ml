@@ -5,7 +5,7 @@ module Edge = struct
   let min x y = if x = Normal then x else y
 
   let sch = let open Schematic in
-    custom "Deps.edge" (Sum["Normal", Void; "Epsilon", Void ])
+    custom ["Deps"; "edge"] (Sum["Normal", Void; "Epsilon", Void ])
       (function Normal -> C E | Epsilon -> C (S E))
       (function C E -> Normal | C S E -> Epsilon | _ -> . )
 

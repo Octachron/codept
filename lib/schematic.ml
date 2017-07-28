@@ -70,7 +70,7 @@ type 'hole t =
   | Custom: ('a,'b) custom -> 'a t
   | Sum: 'a sum_decl -> 'a sum t
 
-and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; id:string }
+and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; id:string list }
 and 'a record_declaration =
   | []: void record_declaration
   | (::): ( ('m,'x,'fx) modal * 'a label * 'x t) * 'c record_declaration
@@ -180,8 +180,8 @@ let extract_def s =
       | Sum [] -> data
       | Sum ((_,a) :: q) -> data |> extract_def a |> extract_def (Sum q)
       | Custom{id; sch; _ } ->
-        if mem ([id],sch) (fst data) then data
-        else data |> add_path [id] sch |> extract_def sch
+        if mem (id,sch) (fst data) then data
+        else data |> add_path id sch |> extract_def sch
   in extract_def s ({stamp=1;mapped=Path_map.empty}, Name.Map.empty)
 
 let rec json_type: type a. effective_paths -> Format.formatter -> a t -> unit =
@@ -207,7 +207,7 @@ let rec json_type: type a. effective_paths -> Format.formatter -> a t -> unit =
         (json_required true) r
     | Custom { id ; sch;  _ } ->
       Pp.fp ppf "@[<hov 2>%a@ :@ \"#/definitions/%s\"@]" k "$ref"
-        (find_path ([id],sch) epaths)
+        (find_path (id,sch) epaths)
     | Sum decl ->
       Pp.fp ppf "@[<hov 2>%a :[%a]@]"
         k "oneOf" (json_sum epaths true 0) decl
@@ -259,9 +259,11 @@ let json_definitions epaths ppf map =
   let rec json_def ppf name x not_first =
     if not_first then Pp.fp ppf ",@,";
     match x with
-    | Item (Dyn x) -> Pp.fp ppf "@[%a@ :@ %a]" k name (json_type epaths) x; true
+    | Item (Dyn x) ->
+      Pp.fp ppf "@[%a@ :@ {@ %a@ }@]" k name (json_type epaths) x;
+      true
     | M m ->
-      Pp.fp ppf "@[%a@ :@ {@ %a@ }@ }@]" k name json_defs m; true
+      Pp.fp ppf "@[%a@ :@ {@ %a@ }@ @]" k name json_defs m; true
   and json_defs ppf m = ignore (Name.Map.fold (json_def ppf) m false) in
   json_defs ppf map
 
@@ -498,6 +500,6 @@ let minify ppf =
 let default x y = if x = y then None else Some y
 
 let option (type a) name (sch:a t) =
-  custom ("Option."^name) (Sum ["None", Void; "Some", sch])
+  custom ["Option.";name] (Sum ["None", Void; "Some", sch])
     (function None -> C E | Some x -> C (S(Z x)))
     (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )

@@ -12,7 +12,7 @@ module Arg = struct
   let sch name sign = let open Schematic.Tuple in
     let fwd arg = [arg.name; arg.signature] in
     let rev [name;signature] = {name;signature} in
-    Schematic.custom ("Module.Arg." ^ name) Schematic.[String; sign] fwd rev
+    Schematic.custom ["Module"; "Arg"; name] Schematic.[String; sign] fwd rev
 
   let reflect pp ppf = function
     | Some arg ->
@@ -74,7 +74,7 @@ module Divergence= struct
 
   let sch_origin =
     let open Schematic in
-    custom "Module.Divergence.origin"
+    custom ["Module"; "Divergence"; "origin" ]
       (Sum[ "First_class_module",  Void; "External", Void])
       (function
         | First_class_module -> C E
@@ -85,7 +85,7 @@ module Divergence= struct
       | _ -> .)
 
   let sch = let open Schematic in let open Tuple in
-    custom "Module.Divergence.t"
+    custom ["Module"; "Divergence"; "t"]
       Schematic.[String; sch_origin; [Paths.P.sch; Loc.Sch.t ]]
       (fun r -> [r.root;r.origin; [fst r.loc; snd r.loc] ])
       (fun [root;origin;[s;l]] -> {root;origin;loc=(s,l)} )
@@ -123,7 +123,7 @@ module Origin = struct
             "Submodule", Void; "First_class", Void; "Arg", Void;
             "Phantom", [ Bool; Divergence.sch]]
     let t = let open Tuple in
-      custom "Module.Origin.t" raw
+      custom ["Module"; "Origin"; "t"] raw
         (function
           | Unit {source; path} -> C (Z [source;path])
           | Submodule -> C (S E)
@@ -455,11 +455,11 @@ module Schema = struct
     ]
   and opt_m =
     Custom { fwd=ofwd ; rev = orev ; sch= Sum ["None",Void;"Some", m];
-             id="Module.Option.m" }
+             id=["Module"; "Option"; "m"] }
   and args = Array opt_m
   and ofwd: m option -> 'a = function None -> C E | Some x -> C(S(Z x))
   and orev: 'a -> m option = function C E -> None | C S Z x-> Some x | _ -> .
-  and m = Custom { fwd; rev; sch = schr; id = "Module.m" }
+  and m = Custom { fwd; rev; sch = schr; id = ["Module"; "m"] }
   and fwd x =
     let s = flatten x.signature in
     Record.[
@@ -477,7 +477,7 @@ module Schema = struct
     Custom { fwd = fwdm; rev=revm;
              sch = Sum[ "M", m; "Alias", [String;Paths.S.sch];
                         "Namespace", [String; Array module']];
-             id = "Module.module" }
+             id = ["Module"; "module"] }
   and fwdm = function
     | M m -> C (Z m)
     | Alias x -> C (S (Z (Tuple.[x.name; Namespaced.flatten x.path ])))
@@ -508,7 +508,7 @@ module Def = struct
   let pp = pp_definition
 
   let sch = let open Schematic in let open Schema in
-    custom "Module.Def.t"
+    custom ["Module"; "Def"; "t"]
       (Obj[Opt,Modules.l, Array module'; Opt, Module_types.l, Array module'])
       (fun x -> [ Modules.l $=? l(to_list x.modules);
                   Module_types.l $=? (l @@ to_list x.module_types)] )
@@ -575,7 +575,7 @@ module Sig = struct
   type t = signature
 
   let sch = let open Schematic in let open Schema in
-    custom "Module.signature"
+    custom ["Module"; "signature"]
       (Obj [Opt, Modules.l, Array module'; Opt, Module_types.l, Array module'])
       (fun x -> let s = flatten x in let l x = l(to_list x) in
         Record.[ Modules.l $=? l s.modules; Module_types.l $=? l s.module_types ])
@@ -643,7 +643,7 @@ module Partial = struct
           ]
 
     let (><) = Option.(><)
-    let partial = custom "Module.partial" raw
+    let partial = custom ["Module"; "partial"] raw
         (fun {args;origin;result} ->
            Record.[ S.Origin_f.l $=? default Origin.Submodule origin;
                     S.Args.l $=? (S.l args);
