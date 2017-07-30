@@ -406,9 +406,9 @@ let promote_to_obj l =
 let rec retype: type a. a t -> untyped -> a option =
   let open Option in
   fun sch u -> match sch, u with
-    | Int, Atom u -> int_of_string_opt u
-    | Float, Atom u -> float_of_string_opt u
-    | Bool, Atom u -> bool_of_string_opt u
+    | Int, Atom u -> Support.opt int_of_string u
+    | Float, Atom u -> Support.opt float_of_string u
+    | Bool, Atom u -> Support.opt bool_of_string u
     | String, Atom s -> Some s
     | Array t, (Array ul | List ul) ->
       Option.List'.map (retype t) ul

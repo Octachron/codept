@@ -29,3 +29,5 @@ let split_on_char sep s =
       split l last (pos-1) in
   let n = String.length s in
   split [] n (n-1)
+
+let opt conv s = try Some(conv s) with Failure _ -> None
