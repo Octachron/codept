@@ -321,9 +321,14 @@ let mask fileset request =
 let approx name =
   Module.mockup name ~path:{Paths.P.source=Unknown; file=[name]}
 
-let open_world request =
-  debug "open world: requesting %s" request;
-  Ok (Query.create(M.md @@ approx request) [unknown Module request]  )
+let open_world () =
+  let mem = ref Name.Set.empty in
+  let warn request =
+    if Name.Set.mem request !mem then [] else
+      (mem := Name.Set.add request !mem; [unknown Module request] ) in
+  fun request ->
+    debug "open world: requesting %s" request;
+    Ok (Query.create(M.md @@ approx request) (warn request)  )
 
 module Libraries = struct
 
@@ -414,7 +419,7 @@ let start ?(open_approximation=true) root_sets libs predefs =
   let core = Core.start @@ M.Def.modules predefs in
   let providers =
     (if not (libs = []) then [Libraries.provider libs] else [])
-    @ (if open_approximation  then [open_world] else [] ) in
+    @ (if open_approximation  then [open_world ()] else [] ) in
   let providers = if providers = [] then [] else
       mask root_sets :: providers in
   { core with providers }

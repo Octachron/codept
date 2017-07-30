@@ -22,7 +22,7 @@ end
 
 val mask: Name.set -> module_provider
 val libs: Name.t list -> module_provider
-val open_world: module_provider
+val open_world: unit -> module_provider
 
 val start:
   ?open_approximation:bool -> Name.set -> Name.t list -> Module.Dict.t ->
