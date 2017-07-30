@@ -37,7 +37,7 @@ let read_file polycy kind filename path : s =
   let precision, code = match code with
     | Ok c -> Exact, c
     | Error M2l ->
-      Fault.handle polycy Standard_faults.m2l_syntaxerr filename;
+      Fault.handle polycy Standard_faults.parsing_error "m2l" filename;
         Approx, []
     | Error (Ocaml msg) ->
       Fault.handle polycy Standard_faults.syntaxerr msg;

@@ -21,7 +21,10 @@ let default =
   |> register_err syntaxerr
   |> set_err (discordant_approximation, warning)
   |> set_err (concordant_approximation, notification)
-  |> set_err (m2l_syntaxerr, error)
+  |> set_err (future_version, error)
+  |> set_err (wrong_file_kind, error)
+  |> set_err (unknown_file_format, error)
+  |> set_err (parsing_error, error)
   |> set (["typing"], Some "Typing faults", warning)
   |> set_err (applied_structure, warning)
   |> set_err (structure_expected,warning)

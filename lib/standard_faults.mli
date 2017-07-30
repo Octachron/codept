@@ -37,5 +37,8 @@ val discordant_approximation :
   (Paths.Pkg.t -> Paths.S.t list -> Paths.S.t list -> unit) Fault.t
 val syntaxerr : (Syntaxerr.error -> unit) Fault.t
 
-(** Syntax error when parsing serialized m2l file *)
-val m2l_syntaxerr: (string -> unit) Fault.t
+(** Syntax error when parsing internal files *)
+val unknown_file_format: (string -> string -> unit) Fault.t
+val future_version: ((int * int * int) -> (int * int * int) -> unit) Fault.t
+val wrong_file_kind: (string -> string -> unit) Fault.t
+val parsing_error: (string -> string -> unit) Fault.t

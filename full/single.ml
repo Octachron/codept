@@ -25,7 +25,7 @@ let to_m2l policy sig_only (k,f,_n) =
       Fault.handle policy Standard_faults.syntaxerr msg;
       None
     | _, Error M2l ->
-      Fault.handle policy Standard_faults.m2l_syntaxerr f; None
+      Fault.handle policy Standard_faults.parsing_error "m2l" f; None
 
 
 let approx_file _ _ ppf _param (_,f,_) =

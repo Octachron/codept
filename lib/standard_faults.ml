@@ -199,11 +199,39 @@ let syntaxerr =
       )
   }
 
-let m2l_syntaxerr =
-  { path = ["parsing"; "m2l"];
-    expl = "Parsing fault: syntax error when parsing a m2l serialized file.";
-    log = (fun lvl -> log lvl
-              "Parsing fault: syntax error when parsing the m2l serialized \
-               file @{<loc>%s@}, this should not happen."
+
+(** Codept internal file format errors *)
+
+let unknown_file_format =
+  { path = ["parsing"; "internal"; "unknown"; "format"];
+    expl = "unknown file format, an internal serialized file was expected";
+    log = (fun lvl kind name -> log lvl
+              "unknown file format when parsing the supposedly \
+               serialized %s file @{<loc>%s@}" kind name
           )
+  }
+
+let future_version =
+  { path = ["parsing"; "internal"; "futur"; "version"];
+    expl = "file format from the futur";
+    log = (fun lvl (mj,mn,p) (mj',mn',p') -> log lvl
+              "file format version (%d.%d.%d) is more recent
+               than codept own version (%d.%d.%d)." mj mn p mj' mn' p'
+          )
+  }
+
+let wrong_file_kind =
+  { path = ["parsing"; "internal"; "wrong"; "kind"];
+    expl = "file type mismatch";
+    log = (fun lvl got expected ->  log lvl
+              "file type, %s, does not match the expected type, %s."
+              got expected);
+  }
+
+
+let parsing_error =
+  { path = ["parsing"; "internal"; "error"];
+    expl = "parsing error";
+    log = (fun lvl kind filename ->  log lvl
+              "failed to parse %s file %s" kind filename);
   }
