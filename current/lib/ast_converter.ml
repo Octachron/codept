@@ -46,11 +46,21 @@ module H = struct
     let x = from_lid @@ txt lid in
     let loc =  extract_loc lid in
     match x with
-    | A _ -> Annot.empty
+    | A _ | T -> Annot.empty
     | S(p,_) ->
       List.fold_left (fun annot data -> Annot.(merge annot @@ access {data; loc }))
         Annot.empty (multiples p)
-    | T | F _ -> assert false
+    | F _ -> assert false
+
+
+  let me_access lid =
+    let open Paths.Expr in
+    let x = from_lid @@ txt lid in
+    let loc =  extract_loc lid in
+    List.fold_left (fun annot data -> Annot.(merge annot @@ access {data; loc }))
+      Annot.empty (multiples x)
+
+
 
   let do_open lid =
     [{ Loc.data = M2l.Open (npath lid); loc = extract_loc lid} ]
@@ -643,8 +653,9 @@ and with_more (dels,access) =
   | Pwith_type (_,td)(* with type X.t = ... *) ->
     dels, merge access (type_declaration td)
   | Pwith_module (_,l) (* with module X.Y = Z *) ->
-    dels, merge access (H.access l)
-  | Pwith_modsubst (name, _) -> Name.Set.add (txt name) dels, access
+    dels, merge access (H.me_access l)
+  | Pwith_modsubst (name, me) ->
+    Name.Set.add (txt name) dels, merge access (H.me_access me)
 and extension n =
   Extension_node (extension_core n)
 and extension_core (name,payload) =
