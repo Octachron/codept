@@ -24,8 +24,8 @@ let to_m2l policy sig_only (k,f,_n) =
     | _, Error (Ocaml msg) ->
       Fault.handle policy Standard_faults.syntaxerr msg;
       None
-    | _, Error M2l ->
-      Fault.handle policy Standard_faults.parsing_error "m2l" f; None
+    | _, Error (Serialized e) ->
+      Standard_faults.schematic_errors policy (f,"m2l",e); None
 
 
 let approx_file _ _ ppf _param (_,f,_) =

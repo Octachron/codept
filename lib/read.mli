@@ -12,7 +12,7 @@ type format =
 type kind = { format: format; kind: M2l.kind }
 
 (** error type *)
-type error = Ocaml of Syntaxerr.error | M2l
+type error = Ocaml of Syntaxerr.error | Serialized of Schematic.Ext.error
 
 
 val name: string -> Name.t

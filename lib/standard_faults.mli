@@ -39,6 +39,10 @@ val syntaxerr : (Syntaxerr.error -> unit) Fault.t
 
 (** Syntax error when parsing internal files *)
 val unknown_file_format: (string -> string -> unit) Fault.t
-val future_version: ((int * int * int) -> (int * int * int) -> unit) Fault.t
-val wrong_file_kind: (string -> string -> unit) Fault.t
+val future_version:
+  (string -> (int * int * int) -> (int * int * int) -> unit) Fault.t
+val wrong_file_kind: (string -> string -> string -> unit) Fault.t
 val parsing_error: (string -> string -> unit) Fault.t
+
+val schematic_errors:
+  Fault.Policy.t -> string * Name.t * Schematic.Ext.error -> unit

@@ -109,19 +109,28 @@ val default: 'a -> 'a -> 'a option
 val option: Name.t -> 'a t -> 'a option t
 
 
-module Full: sig
-type ('lbl,'a) full = {
+module Ext: sig
+type ('lbl,'a) ext = {
   title: string;
   description: string;
   version: Version.t;
   label: 'lbl label;
   inner: 'a t;
 }
-type ('a,'b) t = ('a,'b) full
+type ('a,'b) t = ('a,'b) ext
 
-val json: ('lbl,'a) full -> Format.formatter -> 'a -> unit
-val sexp: ('lbl,'a) full  -> Format.formatter -> 'a -> unit
-val json_schema:  Format.formatter -> ('lbl, 'a) full -> unit
 
-val strict: ('lbl,'a) full -> Untyped.t -> 'a option
+type 'a diff = {expected: 'a; got:'a}
+type error =
+  | Future_version of Version.t diff
+  | Mismatched_kind of string diff
+  | Unknown_format
+  | Parse_error
+
+
+val json: ('lbl,'a) t -> Format.formatter -> 'a -> unit
+val sexp: ('lbl,'a) t  -> Format.formatter -> 'a -> unit
+val json_schema:  Format.formatter -> ('lbl, 'a) t -> unit
+
+val strict: ('lbl,'a) t -> Untyped.t -> ('a, error) result
 end

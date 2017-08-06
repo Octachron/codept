@@ -1,6 +1,6 @@
 
 type reader = {
-  sign: string -> Module.t list option;
+  sign: string -> (Module.t list, Schematic.Ext.error) result;
   m2l: Fault.Policy.t -> Read.kind -> string
     -> Namespaced.t -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
@@ -35,7 +35,10 @@ let expand task query =
 end
 
 let parse_sig lexbuf=
-  Schematic.Full.strict Schema.sign @@ Sparser.main Slex.main lexbuf
+  try
+    Schematic.Ext.strict Schema.sign @@ Sparser.main Slex.main lexbuf
+  with
+  Sparser.Error -> Error Unknown_format
 
 let read_sigfile filename =
   let chan = open_in filename in
@@ -57,17 +60,17 @@ let direct = {
   writer = {
     m2l =  (fun format _filename ppf m2l ->
         match format with
-        | Json -> Schematic.minify ppf "%a@.\n" (Schematic.Full.json Schema.m2l) m2l
-        | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.Full.sexp Schema.m2l) m2l
+        | Json -> Schematic.minify ppf "%a@.\n" (Schematic.Ext.json Schema.m2l) m2l
+        | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.Ext.sexp Schema.m2l) m2l
 
       );
     sign =
       (fun format _ ppf (mds: Module.t list) ->
          match format with
          | Sexp ->  Schematic.minify ppf "%a@.\n"
-                      (Schematic.Full.sexp Schema.sign) mds
+                      (Schematic.Ext.sexp Schema.sign) mds
          | Json ->  Schematic.minify ppf "%a@.\n"
-                      (Schematic.Full.json Schema.sign) mds
+                      (Schematic.Ext.json Schema.sign) mds
       )
   }
 }

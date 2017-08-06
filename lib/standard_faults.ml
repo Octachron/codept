@@ -206,26 +206,26 @@ let unknown_file_format =
   { path = ["parsing"; "internal"; "unknown"; "format"];
     expl = "unknown file format, an internal serialized file was expected";
     log = (fun lvl kind name -> log lvl
-              "unknown file format when parsing the supposedly \
+              "unknown file format,@ when parsing the supposedly \
                serialized %s file @{<loc>%s@}" kind name
           )
   }
 
 let future_version =
-  { path = ["parsing"; "internal"; "futur"; "version"];
-    expl = "file format from the futur";
-    log = (fun lvl (mj,mn,p) (mj',mn',p') -> log lvl
-              "file format version (%d.%d.%d) is more recent
-               than codept own version (%d.%d.%d)." mj mn p mj' mn' p'
+  { path = ["parsing"; "internal"; "future"; "version"];
+    expl = "file format from the future";
+    log = (fun lvl name (mj,mn,p) (mj',mn',p') -> log lvl
+              "file @{<loc>%s@}@ format version (%d.%d.%d) is more recent
+               than codept own version (%d.%d.%d)." name mj' mn' p' mj mn p
           )
   }
 
 let wrong_file_kind =
   { path = ["parsing"; "internal"; "wrong"; "kind"];
     expl = "file type mismatch";
-    log = (fun lvl got expected ->  log lvl
-              "file type, %s, does not match the expected type, %s."
-              got expected);
+    log = (fun lvl filename got expected ->  log lvl
+              "@{<loc>%s@},@ file type %s does not match the expected type %s."
+              filename got expected);
   }
 
 
@@ -233,5 +233,24 @@ let parsing_error =
   { path = ["parsing"; "internal"; "error"];
     expl = "parsing error";
     log = (fun lvl kind filename ->  log lvl
-              "failed to parse %s file %s" kind filename);
+              "file @{<loc>%s@},@ failed to parse %s" filename kind);
   }
+
+
+let schematic_errors policy (filename,kind,e) =
+  begin match e with
+        | Schematic.Ext.Future_version {expected;got} ->
+          Fault.handle policy future_version
+            filename
+            (expected.major,expected.minor,expected.patch)
+            (got.major,got.minor,got.patch)
+        | Unknown_format ->
+          Fault.handle policy unknown_file_format
+            kind filename
+        | Parse_error ->
+          Fault.handle policy parsing_error
+            kind filename
+        | Mismatched_kind {expected;got} ->
+          Fault.handle policy wrong_file_kind
+            filename got expected
+      end

@@ -493,9 +493,9 @@ let option (type a) name (sch:a t) =
     (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
 
 
-module Full = struct
+module Ext = struct
 
-  type ('lbl,'a) full ={
+  type ('lbl,'a) ext = {
     title: string;
     description: string;
     version: Version.t;
@@ -503,6 +503,12 @@ module Full = struct
     inner: 'a t;
   }
 
+  type 'a diff = {expected: 'a; got:'a}
+  type error =
+    | Future_version of Version.t diff
+    | Mismatched_kind of string diff
+    | Unknown_format
+    | Parse_error
 
   let schema sch: _ t =
     Obj[ Req, Version.Lbl.l, Version.sch; Req, sch.label, sch.inner ]
@@ -529,20 +535,25 @@ module Full = struct
       [ Version.Lbl.l $= x.version; x.label $= y]
 
 
-  let rec strict s =
+  let optr = function
+    | None -> Error Parse_error
+    | Some x -> Ok x
+
+  let opt f x y = optr (f x y)
+  let rec strict s = let open Mresult.Ok in
     function
     | Obj [ version, v; name, data ]
       when version = show Version.Lbl.l && name = show s.label ->
-      let open Option in
-      retype Version.sch v >>= fun v ->
+      opt retype Version.sch v >>= fun v ->
       if v = s.version then
-        retype s.inner data
-      else None
+        opt retype s.inner data
+      else Error (Future_version { expected=s.version; got=v })
     | List l ->
-      let open Option in
-      promote_to_obj l >>= fun ol -> strict s (Obj ol)
-    | Array _ | Atom _ | Obj _ -> None
+      optr (promote_to_obj l) >>= fun ol -> strict s (Obj ol)
+    | Obj [ version, v; name, data ] when version = show Version.Lbl.l ->
+      Error (Mismatched_kind { expected = show s.label; got = name  } )
+    | Array _ | Atom _ | Obj _ -> Error Unknown_format
 
-  type ('a,'b) t = ('a,'b) full
+  type ('a,'b) t = ('a,'b) ext
 
 end

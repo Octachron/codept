@@ -45,7 +45,7 @@ let default_path f =
 
 
 let info_split (io:Io.reader) = function
-  | {Common.kind=Signature; _ }, f, _ -> Right (io.sign f)
+  | {Common.kind=Signature; _ }, f, _ -> Right (io.sign f, f)
   | {Common.kind=Implementation;format}, f, n ->
     Left ({ Read.kind = Structure; format}, f, default_path f n )
   | {Common.kind=Interface;format}, f, n ->
@@ -59,10 +59,17 @@ let pair_split l =
   List.fold_left folder {ml=[];mli=[]} l
 
 (** organisation **)
-let pre_organize io files =
+let signature_error policy = function
+  | Ok x, _ -> Some x
+  | Error e, filename ->
+    Standard_faults.schematic_errors policy (filename,"sig",e);
+    None
+
+let pre_organize policy io files =
   let units, signatures = split (info_split io) files in
   let signatures =
-    List.flatten @@ Option.List'.filter signatures in
+    List.flatten @@ Option.List'.filter
+    @@ List.map (signature_error policy) signatures in
   units, signatures
 
 let load_file (io:Io.reader) policy sig_only opens (info,file,n) =
@@ -82,7 +89,7 @@ let log_conflict policy proj (path, units) =
 
 
 let organize io policy sig_only opens files =
-  let units, signatures = pre_organize io files in
+  let units, signatures = pre_organize policy io files in
   let units = List.map (load_file io policy sig_only opens) units in
   let units, errs = Unit.Groups.Unit.(split % group) @@ pair_split units in
   List.iter (log_conflict policy @@ fun (u:Unit.s) -> u.src ) errs;
@@ -225,7 +232,7 @@ let main_std io param (task:Common.task) =
 (** Analysis step *)
 let main_seed io param (task:Common.task) =
   let units, signatures =
-    pre_organize io task.files in
+    pre_organize param.policy io task.files in
   let file_set = List.fold_left (fun s (_k,_x,p) ->
       Name.Set.add (Nms.head p) s
     ) Name.Set.empty units in

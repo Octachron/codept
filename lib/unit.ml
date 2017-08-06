@@ -32,15 +32,15 @@ let proj {src;path;kind;precision;code; _ }: s=
   {src;path;kind;precision;code}
 
 
-let read_file polycy kind filename path : s =
+let read_file policy kind filename path : s =
   let _name, code = Read.file kind filename in
   let precision, code = match code with
     | Ok c -> Exact, c
-    | Error M2l ->
-      Fault.handle polycy Standard_faults.parsing_error "m2l" filename;
-        Approx, []
+    | Error (Serialized e) ->
+      Standard_faults.schematic_errors policy (filename,"m2l",e);
+      Approx, []
     | Error (Ocaml msg) ->
-      Fault.handle polycy Standard_faults.syntaxerr msg;
+      Fault.handle policy Standard_faults.syntaxerr msg;
       Approx, Approx_parser.lower_bound filename
   in
       { path;

@@ -11,7 +11,7 @@ type format =
 type kind = { format: format; kind: M2l.kind }
 
 
-type error = Ocaml of Syntaxerr.error | M2l
+type error = Ocaml of Syntaxerr.error | Serialized of Schematic.Ext.error
 
 let name filename = String.capitalize_ascii @@
   Filename.chop_extension @@ Filename.basename filename
@@ -46,9 +46,10 @@ let file {format;kind} filename =
     let lex = Lexing.from_channel file in
     begin
       (*    match M2l.sexp.parse @@ Sexp_parse.many Sexp_lex.main lex with*)
-      match Schematic.Full.strict Schema.m2l @@ Sparser.main Slex.main lex with
-      | Some m2l -> close_in file; ok m2l
-      | None -> close_in file; Error M2l
-      | exception Parsing.Parse_error -> close_in file; Error M2l
+      match Schematic.Ext.strict Schema.m2l @@ Sparser.main Slex.main lex with
+      | Ok m2l -> close_in file; ok m2l
+      | Error e -> close_in file; Error (Serialized e)
+      | exception Parsing.Parse_error -> close_in file;
+        Error (Serialized Schematic.Ext.Unknown_format)
     end
   | Cmi  -> ok @@ Cmi.m2l filename

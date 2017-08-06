@@ -2,7 +2,7 @@
 (** System interaction functions *)
 
 type reader = {
-  sign: string -> Module.t list option;
+  sign: string -> (Module.t list, Schematic.Ext.error) result ;
   m2l: Fault.Policy.t -> Read.kind -> string -> Namespaced.t
     -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
@@ -20,6 +20,6 @@ type t = {
 }
 
 (** Read signature file *)
-val read_sigfile: string -> Module.t list option
+val read_sigfile: string -> (Module.t list, Schematic.Ext.error) result
 
 val direct: t
