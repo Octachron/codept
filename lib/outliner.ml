@@ -19,11 +19,15 @@ type answer =
 module type envt = sig
   type t
   val eq: t -> t -> bool
-  val is_exterior: Paths.Simple.t -> t -> bool
   val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t -> t ->
     answer query_result
+
   val (>>) : t -> Y.t -> t
+
+  val is_exterior: Paths.Simple.t -> t -> bool
   val resolve_alias: Paths.Simple.t -> t -> Namespaced.t option
+  val expand_path: Paths.Simple.t -> t -> Paths.Simple.t
+
   val add_unit: t -> ?namespace:Paths.Simple.t -> Module.t -> t
   val add_namespace: t -> Namespaced.t -> t
 
@@ -192,18 +196,18 @@ module Make(Envt:envt)(Param:param) = struct
     | (Ident p:M2l.module_expr)
     | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
       begin
-      let m = Module.Alias
-          { name = b.name; path = Namespaced.of_path p;
-            weak=false; phantom = None } in
-      let r = Ok ( Some (Y.define [m]) ) in
-      if not transparent_aliases then
-        (* trigger dependency tracking *)
-        match bind state module_expr b with
-        | Error _ as e -> e
-        | Ok _ -> r
-      else
-        r
-    end
+        let path = Namespaced.of_path @@ Envt.expand_path p state in
+        let m = Module.Alias
+            { name = b.name; path; weak=false; phantom = None } in
+        let r = Ok ( Some (Y.define [m]) ) in
+        if not transparent_aliases then
+          (* trigger dependency tracking *)
+          match bind state module_expr b with
+          | Error _ as e -> e
+          | Ok _ -> r
+        else
+          r
+      end
     | _ -> bind state module_expr b
 
 

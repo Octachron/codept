@@ -307,6 +307,19 @@ module Core = struct
         | M.Alias _ -> false
         | _ -> false
 
+  let expand_path path envt =
+    match path with
+    | [] -> []
+    | a :: q ->
+      match find_name Module a envt.current with
+      | None -> path
+      | Some m ->
+        match m.main with
+        | Namespace _ -> path
+        | M { origin = Unit {path=p; _ } ; _ } -> p @ q
+        | M.Alias {path;_} -> Namespaced.flatten path @ q
+        | _ -> path
+
 
   let pp ppf x = pp_context ppf x.current
 end

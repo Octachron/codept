@@ -10,11 +10,15 @@ type answer =
 module type envt = sig
   type t
   val eq: t -> t -> bool
-  val is_exterior: Paths.Simple.t -> t -> bool
   val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t -> t ->
     answer query_result
+
   val (>>) : t -> Summary.t -> t
+
+  val is_exterior: Paths.Simple.t -> t -> bool
   val resolve_alias: Paths.Simple.t -> t -> Namespaced.t option
+  val expand_path: Paths.Simple.t -> t -> Paths.Simple.t
+
   val add_unit: t -> ?namespace:Paths.S.t -> Module.t -> t
   val add_namespace: t -> Namespaced.t -> t
 
