@@ -491,7 +491,14 @@ let result =
 
         ]
     end
-
+    && begin Sys.chdir "../alias_path_with_namespaces";
+      both ["Inner.B"] @@ dl
+        [
+          "inner/a.mli", [];
+          "inner/a.ml", l["inner/b.mli"] @ u["C"];
+          "inner/b.mli", []
+        ]
+    end
 
     (* Cycle tests *)
     && (
