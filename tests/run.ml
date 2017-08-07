@@ -601,7 +601,7 @@ let result =
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
-          "read.mli", (["M2l"; "Name"],["Syntaxerr"],[]);
+          "read.mli", (["M2l"; "Name"; "Schematic"],["Syntaxerr"],[]);
           "read.ml", (["Ast_converter"; "Cmi"; "M2l"; "Schema"; "Schematic" ],
                       ["Filename"; "Format"; "Lexing"; "Location";
                        "Parsing"; "Pparse"; "String"; "Syntaxerr"],
@@ -612,7 +612,7 @@ let result =
           "schema.mli", (["M2l"; "Module"; "Schematic"], [], []);
           "schematic.mli", (["Name"],
                        [ "Format"], [] );
-          "schematic.ml", (["Name"; "Option"; "Pp"],
+          "schematic.ml", (["Name"; "Mresult"; "Pp";"Support";"Option"],
                        ["Format"; "Hashtbl"; "List"; "Map"; "String"], [] );
           "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";
                           "Namespaced"; "Read";
@@ -625,10 +625,10 @@ let result =
              "Standard_faults"],
             ["List"; "Map"; "Set";"Format"],[]);
           "standard_faults.ml", (
-            ["Fault"; "Module"; "Namespaced"; "Paths"; "Pp"; "Loc" ],
+            ["Fault"; "Module"; "Namespaced"; "Paths"; "Pp"; "Loc"; "Schematic" ],
             ["Format"; "Location"; "Syntaxerr"],[]);
           "standard_faults.mli", (
-            ["Fault"; "Name"; "Namespaced"; "Module"; "Paths" ],
+            ["Fault"; "Name"; "Namespaced"; "Module"; "Paths"; "Schematic" ],
             ["Syntaxerr"],[]);
           "standard_policies.ml", (["Fault"; "Standard_faults"; "Solver"],[],[]);
           "standard_policies.mli", (["Fault"],[],[]);
