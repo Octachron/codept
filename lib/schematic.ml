@@ -482,7 +482,7 @@ let minify ppf =
              out_string } in
   Format.pp_set_formatter_out_functions ppf basic;
   Format.kfprintf (fun _ -> Format.pp_set_formatter_out_functions ppf f;
-                    Format.pp_flush_formatter ppf) ppf
+                    Format.pp_print_flush ppf ()) ppf
 
 
 let default x y = if x = y then None else Some y

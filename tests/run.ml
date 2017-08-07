@@ -285,7 +285,6 @@ let result =
     ["nothing.ml", [] ];
     ["unknown_arg.ml", u["Ext"] ];
     ["opens.ml", u["A";"B"] ];
-    ["pattern_open.ml", u["A'";"E1"; "E2"; "E3";"E4"] ];
     ["phantom_maze.ml", u["External"; "B"; "C";"D"; "E"; "X"; "Y" ] ];
     ["phantom_maze_2.ml", u["E"; "D"]];
     ["phantom_maze_3.ml", u["B"; "X"] ];

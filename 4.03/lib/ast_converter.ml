@@ -46,9 +46,21 @@ module H = struct
     let x = from_lid @@ txt lid in
     let loc =  extract_loc lid in
     match x with
-    | A _ -> Annot.empty
-    | S(p,_) -> Annot.access {data = prefix p; loc }
-    | T | F _ -> assert false
+    | A _ | T -> Annot.empty
+    | S(p,_) ->
+      List.fold_left (fun annot data -> Annot.(merge annot @@ access {data; loc }))
+        Annot.empty (multiples p)
+    | F _ -> assert false
+
+
+  let me_access lid =
+    let open Paths.Expr in
+    let x = from_lid @@ txt lid in
+    let loc =  extract_loc lid in
+    List.fold_left (fun annot data -> Annot.(merge annot @@ access {data; loc }))
+      Annot.empty (multiples x)
+
+
 
   let do_open lid =
     [{ Loc.data = M2l.Open (npath lid); loc = extract_loc lid} ]
@@ -68,7 +80,6 @@ module H = struct
     | a :: q -> (f a) @ gen_mmap (@) f q
 
   let mmap f = gen_mmap (@%) f
-  let gmmap f = gen_mmap (@) f
 
   let (%) f g x = f (g x)
 
@@ -113,7 +124,7 @@ module Pattern = struct
 
   let open_ m { annot={ data = {values; packed; access}; loc } ; binds} =
     let values =
-      ( if Name.Map.cardinal access > 0 then
+      ( if Paths.S.Map.cardinal access > 0 then
           M2l.[{ Loc.data = Minor {Annot.empty.data with access}; loc }]
         else
           []
@@ -578,8 +589,9 @@ and module_type (mt:Parsetree.module_type) =
       arg >>| module_type >>| fun s -> { Arg.name = txt name; signature = s} in
     Fun { arg; body = module_type res }
   | Pmty_with (mt, wlist) (* MT with ... *) ->
-    let deletions = Name.Set.of_list @@  gmmap dels wlist in
-    With { body = module_type mt; deletions }
+    let deletions, access =
+      List.fold_left with_more (Name.Set.empty,Annot.Access.empty) wlist in
+    With { body = module_type mt; deletions; access }
   | Pmty_typeof me (* module type of ME *) ->
     Of (module_expr me)
   | Pmty_extension ext (* [%id] *) ->
@@ -630,14 +642,16 @@ and recmodules mbs =
   let loc = List.fold_left Loc.merge Nowhere @@
     List.map (fun mb -> from_loc mb.pmb_loc) mbs in
   [ Loc.create loc @@ Bind_rec (List.map module_binding_raw mbs)]
-and dels  =
+and with_more (dels,access) =
+  let merge x y = Annot.Access.merge x y.Loc.data.access in
   function
-  | Pwith_typesubst _ (* with type t := ... *)
-  | Pwith_type _(* with type X.t = ... *) -> []
-  | Pwith_module _ (* with module X.Y = Z *) -> []
-  | Pwith_modsubst (name, _) ->
-    let name = txt name in
-    [name]
+  | Pwith_typesubst td (* with type t := ... *)
+  | Pwith_type (_,td)(* with type X.t = ... *) ->
+    dels, merge access (type_declaration td)
+  | Pwith_module (_,l) (* with module X.Y = Z *) ->
+    dels, merge access (H.me_access l)
+  | Pwith_modsubst (name, me) ->
+    Name.Set.add (txt name) dels, merge access (H.me_access me)
 and extension n =
   Extension_node (extension_core n)
 and extension_core (name,payload) =

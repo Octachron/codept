@@ -19,7 +19,6 @@ main:
   | a = ATOM EOF { Atom a }
 
 slist:
-  |                { [] }
   | l = list(sexp) { l  }
 
 sexp:
@@ -27,11 +26,9 @@ sexp:
   | L l=slist R { List l }
 
 j_array:
-  |                                { [] }
   | a = separated_list(COMMA,json) { a  }
 
 j_obj:
-  |                                 { [] }
   | l = separated_list(COMMA,field) {  l }
 
 field:
