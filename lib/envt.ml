@@ -212,7 +212,7 @@ module Core = struct
       | Alias { weak = true; _ } when absolute_path -> None
       | Alias {path; weak = true; _ } ->
         find [] ~absolute_path:true ~root:true ~edge level
-          (Namespaced.flatten path) (top env)
+          (Namespaced.flatten path @ q) (top env)
       | M.M m ->
         debug "found module %s" m.name;
         begin
