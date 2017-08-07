@@ -13,12 +13,12 @@ module Sh = Cache.Shared
 let sign filename =
   let cached = Sh.get cache in
   match Name.Map.find_opt filename cached.signatures with
-  | Some _ as s -> s
+  | Some s -> Ok s
   | None ->
     let s = Io.read_sigfile filename in
     begin match s with
-      | None -> ()
-      | Some s -> Sh.map (fun (cached:Cache.t) ->
+      | Error _ -> ()
+      | Ok s -> Sh.map (fun (cached:Cache.t) ->
         let map = Name.Map.add filename s cached.signatures in
         { cached with signatures = map }
         ) cache
