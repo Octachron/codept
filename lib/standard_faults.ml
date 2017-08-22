@@ -215,7 +215,7 @@ let future_version =
   { path = ["parsing"; "internal"; "future"; "version"];
     expl = "file format from the future";
     log = (fun lvl name (mj,mn,p) (mj',mn',p') -> log lvl
-              "file @{<loc>%s@}@ format version (%d.%d.%d) is more recent
+              "file @{<loc>%s@}@ format version (%d.%d.%d) is more recent \
                than codept own version (%d.%d.%d)." name mj' mn' p' mj mn p
           )
   }

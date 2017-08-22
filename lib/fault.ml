@@ -40,6 +40,7 @@ let mark_open_tag tag =
   | 2 -> b ^ "\x1b[35m"
   | 1 -> b ^ "\x1b[36m"
   | _ -> match tag with
+    | "em" -> b (* "\x1b[3m" *)
     | "loc" -> b
     | "title" -> b
     | "m" -> b

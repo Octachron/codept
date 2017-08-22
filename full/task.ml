@@ -116,7 +116,7 @@ let add_seed _param task seed = (* TODO: namespaced seed *)
     @@ Support.remove_extension seed in
   task := { !task with seeds = seed :: (!task).seeds }
 
-let add_file k policy synonyms task (name,pre,path) =
+let add_file ?(explicit=false) k policy synonyms task (name,pre,path) =
   if Sys.file_exists name then
     match Common.classify policy synonyms name with
     | None when Sys.is_directory name -> k name
@@ -131,6 +131,8 @@ let add_file k policy synonyms task (name,pre,path) =
       add_intf format task (name,pre,path)
     | Some { kind = Signature; _ } ->
       add_sig task name
+  else if explicit then
+    Fault.handle policy Codept_policies.nonexisting_file name
 
 
 let rec add_file_rec ~prefix:(mpre0,mpre1,fpre) ~start ~cycle_guard param task
@@ -142,7 +144,8 @@ let rec add_file_rec ~prefix:(mpre0,mpre1,fpre) ~start ~cycle_guard param task
   let k name = if Sys.is_directory name then
         add_dir ~prefix:(mpre0, mpre1, fpre) start
           ~cycle_guard param task ~dir_name:name0 ~abs_name:name in
-  add_file k lax L.(!param.[synonyms]) task (name, mpre0 @ List.rev mpre1, path)
+  add_file ~explicit:start k lax L.(!param.[synonyms]) task
+    (name, mpre0 @ List.rev mpre1, path)
 
 and add_dir ~prefix:(mpre0,mpre1,fpre) first ~cycle_guard param task
     ~dir_name ~abs_name =
