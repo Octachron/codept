@@ -55,6 +55,7 @@ type 'hole t =
   | Obj:'a record_declaration -> 'a Record.t t
   | Custom: ('a,'b) custom -> 'a t
   | Sum: 'a sum_decl -> 'a sum t
+  | Description: string * 'hole t -> 'hole t
 
 and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; id: string list}
 and 'a record_declaration =
@@ -107,7 +108,7 @@ val minify: Format.formatter -> ('a, Format.formatter, unit, unit) format4 -> 'a
 
 val default: 'a -> 'a -> 'a option
 val option: Name.t -> 'a t -> 'a option t
-
+val (<?>): 'a t -> string -> 'a t
 
 module Ext: sig
 type ('lbl,'a) ext = {

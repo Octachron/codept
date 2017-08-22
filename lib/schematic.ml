@@ -69,6 +69,8 @@ type 'hole t =
   | Obj:'a record_declaration -> 'a record t
   | Custom: ('a,'b) custom -> 'a t
   | Sum: 'a sum_decl -> 'a sum t
+  | Description: string * 'hole t -> 'hole t
+
 
 and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; id:string list }
 and 'a record_declaration =
@@ -111,7 +113,9 @@ let p ppf (key,data)=
 let ty ppf data = p ppf ("type",data)
 
 
-type 'a tree = Item of 'a | M of 'a forest
+type 'a tree =
+  | Item of string list * 'a
+  | M of 'a forest
 and 'a forest = 'a tree Name.map
 
 let arbitrary_name ctx = "id" ^ string_of_int ctx, ctx + 1
@@ -137,7 +141,8 @@ type effective_paths = (string list * int) list Path_map.t
 type context = { stamp:int; mapped: effective_paths  }
 let id x = Hashtbl.hash x
 
-let add_path (type a) path (x:a t) (ctx,map) =
+type def = { desc: string list; ctx: context; map: dyn forest }
+let add_path (type a) path (x:a t) {desc;ctx;map} =
   let open L in
   let rec add_path ctx path x map =
     match path with
@@ -145,7 +150,7 @@ let add_path (type a) path (x:a t) (ctx,map) =
     | [name] ->
       let name, m = find_nearly name map in
       if m = Name.Map.empty then
-        ctx, [name], Name.Map.add name (Item (Dyn x)) map
+        ctx, [name], Name.Map.add name (Item (desc,Dyn x)) map
       else
         let ctx, q, m = add_path ctx [] x m in
         ctx, name :: q, Name.Map.add name (M m) map
@@ -157,14 +162,14 @@ let add_path (type a) path (x:a t) (ctx,map) =
   | exception Not_found ->
     let stamp, effective_path, map = add_path ctx.stamp path x map in
     let  mapped = Path_map.add path [effective_path, id x] ctx.mapped in
-    {stamp;mapped}, map
+    { desc = L.[]; ctx = {stamp;mapped}; map }
   | l when List.exists (fun (_,d) -> (d = id x)) l ->
-    ctx, map
+    { desc = L.[]; ctx; map}
   | l ->
     let stamp, effective_path, map = add_path ctx.stamp path x map in
     let mapped =
       Path_map.add path ( (effective_path, id x) :: l ) ctx.mapped in
-    { stamp; mapped}, map
+    { desc = L.[]; ctx = { stamp; mapped}; map }
 
 let mem (path,x) ctx = match Path_map.find path ctx.mapped with
   | exception Not_found -> false
@@ -176,7 +181,7 @@ let find_path (path,x) mapped =
 
 let extract_def s =
   let rec extract_def:
-    type a. a t -> (context * dyn forest) -> (context * dyn forest)  =
+    type a. a t -> def -> def =
     fun sch data -> match sch with
       | Float -> data | Int -> data | String -> data | Bool -> data | Void -> data
       | Array t -> data |> extract_def t
@@ -188,27 +193,41 @@ let extract_def s =
       | Sum [] -> data
       | Sum ((_,a) :: q) -> data |> extract_def a |> extract_def (Sum q)
       | Custom{id; sch; _ } ->
-        if mem (id,sch) (fst data) then data
+        if mem (id,sch) data.ctx then data
         else data |> add_path id sch |> extract_def sch
-  in extract_def s ({stamp=1;mapped=Path_map.empty}, Name.Map.empty)
+      | Description (_,x) -> extract_def x data
+  in extract_def s
+    { desc = L.[];
+      ctx = {stamp=1;mapped=Path_map.empty};
+      map = Name.Map.empty
+    }
 
-let rec json_type: type a. effective_paths -> Format.formatter -> a t -> unit =
-  fun epaths ppf -> function
-    | Float -> ty ppf "number"
-    | Int -> ty ppf "number"
-    | String -> ty ppf "string"
-    | Bool -> ty ppf "string"
+let pp_descr ppf l =
+  if l = L.[] then ()
+  else
+    Pp.fp ppf {|"description":%S,@ |}
+      (String.concat " " @@ List.rev l)
+
+let tyd ppf (dl,typ) = Pp.fp ppf "%a%a" pp_descr dl ty typ
+
+let rec json_type: type a. effective_paths
+  -> string list -> Format.formatter -> a t -> unit =
+  fun epaths descr ppf -> function
+    | Float -> tyd ppf (descr,"number")
+    | Int -> tyd ppf (descr,"number")
+    | String -> tyd ppf (descr,"string")
+    | Bool -> tyd ppf (descr,"string")
     | Void -> ()
     | Array t -> Pp.fp ppf
                    "%a,@;@[<hov 2>%a : {@ %a@ }@]"
-                   ty "array" k "items" (json_type epaths) t
+                   tyd (descr,"array") k "items" (json_type epaths L.[]) t
     | [] -> ()
     | _ :: _ as l ->
-      Pp.fp ppf "%a,@; @[<hov 2>%a :[@ %a@ ]@]" ty "array" k "items"
+      Pp.fp ppf "%a,@; @[<hov 2>%a :[@ %a@ ]@]" tyd (descr,"array") k "items"
         (json_schema_tuple epaths) l
     | Obj r ->
       Pp.fp ppf "%a,@;@[<v 2>%a : {@ %a@ }@],@;@[<hov 2>%a@ :@ [@ %a@ ]@]"
-        ty "object"
+        tyd (descr,"object")
         k "properties"
         (json_properties epaths) r
         k "required"
@@ -217,27 +236,30 @@ let rec json_type: type a. effective_paths -> Format.formatter -> a t -> unit =
       Pp.fp ppf "@[<hov 2>%a@ :@ \"#/definitions/%s\"@]" k "$ref"
         (find_path (id,sch) epaths)
     | Sum decl ->
-      Pp.fp ppf "@[<hov 2>%a :[%a]@]"
+      Pp.fp ppf "@[<hov 2>%a%a :[%a]@]"
+        pp_descr descr
         k "oneOf" (json_sum epaths true 0) decl
+    | Description (d, sch) -> json_type epaths L.(d::descr) ppf sch
 and json_schema_tuple:
   type a. effective_paths -> Format.formatter -> a tuple t -> unit =
   fun epath ppf -> function
     | [] -> ()
     | [a] -> Pp.fp ppf {|@[<hov 2>{@ %a@ }@]|}
-               (json_type epath) a
+               (json_type epath L.[]) a
     | a :: q ->
       Pp.fp ppf {|@[<hov 2>{@ %a@ }@],@; %a|}
-        (json_type epath) a (json_schema_tuple epath) q
+        (json_type epath L.[]) a (json_schema_tuple epath) q
     | Custom _ -> assert false
+    | Description _ -> assert false
 and json_properties:
   type a. effective_paths -> Format.formatter -> a record_declaration -> unit =
   fun epath ppf -> function
   | [] -> ()
   | [_, n, a] -> Pp.fp ppf {|@[<hov 2>"%s" : {@ %a@ }@]|}
-      (show n) (json_type epath) a
+      (show n) (json_type epath L.[]) a
   | (_, n, a) :: q ->
      Pp.fp ppf {|@[<hov 2>"%s" : {@ %a@ }@],@;%a|}
-       (show n) (json_type epath) a (json_properties epath) q
+       (show n) (json_type epath L.[]) a (json_properties epath) q
 and json_required: type a. bool ->Format.formatter -> a record_declaration
   -> unit =
   fun first ppf -> function
@@ -259,7 +281,7 @@ and json_sum:
     | (s,a)::q ->
       if not first then Pp.fp ppf ",@,";
       let module N = Label(struct let l = s end) in
-      Pp.fp ppf "{%a}%a" (json_type epaths) (Obj[Req,N.l,a])
+      Pp.fp ppf "{%a}%a" (json_type epaths L.[]) (Obj[Req,N.l,a])
         (json_sum epaths false @@ n + 1) q
 
 
@@ -267,8 +289,9 @@ let json_definitions epaths ppf map =
   let rec json_def ppf name x not_first =
     if not_first then Pp.fp ppf ",@,";
     match x with
-    | Item (Dyn x) ->
-      Pp.fp ppf "@[%a@ :@ {@ %a@ }@]" k name (json_type epaths) x;
+    | Item (d, Dyn x) ->
+      Pp.fp ppf "@[%a%a@ :@ {@ %a@ }@]" pp_descr d
+        k name (json_type epaths L.[]) x;
       true
     | M m ->
       Pp.fp ppf "@[%a@ :@ {@ %a@ }@ @]" k name json_defs m; true
@@ -290,6 +313,7 @@ let rec json: type a. a t -> Format.formatter -> a -> unit =
     | Obj sch, x -> Pp.fp ppf "@[<hv>{@ %a@ }@]" (json_obj false sch) x
     | Custom c, x -> json c.sch ppf (c.fwd x)
     | Sum q, x -> json_sum 0 q ppf x
+    | Description(_,sch), x -> json sch ppf x
 and json_sum: type a. int -> a sum_decl -> Format.formatter -> a sum -> unit =
   fun n sch ppf x -> match sch, x with
     | (n,a) :: _ , C Z x ->
@@ -306,6 +330,7 @@ and json_tuple: type a. a tuple t -> Format.formatter -> a tuple -> unit =
     | [a], [x] -> json a ppf x
     | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json a) x (json_tuple q) xs
     | Custom _, _ -> assert false
+    | Description _, _ -> assert false
 
 and json_obj: type a.
   bool -> a record_declaration -> Format.formatter -> a record -> unit =
@@ -346,12 +371,14 @@ let rec sexp: type a. a t -> Format.formatter -> a -> unit =
     | _ :: _ as tu, t -> Pp.fp ppf "@[<hov>(@;%a@;)@]" (sexp_tuple tu) t
     | Custom r, x -> sexp r.sch ppf (r.fwd x)
     | Sum s, x -> sexp_sum 0 s ppf x
+    | Description(_,sch), x -> sexp sch ppf x
 and sexp_tuple: type a. a Tuple.t t -> Format.formatter -> a Tuple.t -> unit =
   fun ty ppf t -> match ty, t with
     | [], [] -> ()
     | [a], [x] -> sexp a ppf x
     | a :: q, x :: xs -> Pp.fp ppf "%a@ %a" (sexp a) x (sexp_tuple q) xs
     | Custom _, _ -> assert false
+    | Description _, _ -> assert false
 and sexp_sum: type a. int -> a sum_decl -> Format.formatter -> a sum -> unit =
   fun n decl ppf x -> match decl, x with
     | (n,a) :: _ , C Z x -> sexp [String;a] ppf Tuple.[n;x]
@@ -492,6 +519,7 @@ let option (type a) name (sch:a t) =
     (function None -> C E | Some x -> C (S(Z x)))
     (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
 
+let (<?>) x y = Description(y,x)
 
 module Ext = struct
 
@@ -516,7 +544,7 @@ module Ext = struct
 
   let json s ppf x = json (schema s) ppf [Version.Lbl.l $= s.version; s.label $= x]
   let json_schema ppf s =
-  let ctx, map = extract_def (schema s) in
+  let {ctx; map; _ } = extract_def (schema s) in
   Pp.fp ppf
     "@[<v 2>{@ \
      %a,@;\
@@ -529,7 +557,7 @@ module Ext = struct
      p ("title", s.title)
      p ("description", s.description)
      k "definitions" (json_definitions ctx.mapped) map
-     (json_type ctx.mapped) (schema s)
+     (json_type ctx.mapped L.[]) (schema s)
 
   let sexp x ppf y = sexp (schema x) ppf
       [ Version.Lbl.l $= x.version; x.label $= y]
@@ -550,7 +578,7 @@ module Ext = struct
       else Error (Future_version { expected=s.version; got=v })
     | List l ->
       optr (promote_to_obj l) >>= fun ol -> strict s (Obj ol)
-    | Obj [ version, v; name, data ] when version = show Version.Lbl.l ->
+    | Obj [ version, _; name, _ ] when version = show Version.Lbl.l ->
       Error (Mismatched_kind { expected = show s.label; got = name  } )
     | Array _ | Atom _ | Obj _ -> Error Unknown_format
 
