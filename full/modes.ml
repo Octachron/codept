@@ -41,25 +41,24 @@ let structured fmt _ _ ppf param units =
   let udeps (u:Unit.r) =
     let add_dep (loc,lib,unknw) ((p:Paths.P.t), mps) =
       let mps = Paths.S.Set.elements mps in
+      let local file path: Schema.local = {file;path} in
+      let libs pkg file path = { Schema.lib = pkg; file = file; path } in
       let dup mk l =
         List.fold_left (fun l x -> mk x :: l ) l mps in
-      let pair f p = Schematic.Tuple.[f;p] in
-        match p.source with
-        | Paths.P.Local -> dup (pair p.file) loc, lib, unknw
-        | Paths.P.Pkg pkg ->
-          let mk pth = Schematic.Tuple.[pkg; p.file; pth] in
-          loc, dup mk lib, unknw
-        | Paths.P.Unknown -> loc, lib, dup (fun x -> x) unknw
-        | Paths.P.Special _ -> loc, lib, unknw in
-      List.fold_left add_dep ([],[],[])
-        (Deps.Forget.to_list u.dependencies) in
+      match p.source with
+      | Paths.P.Local -> dup (local p.file) loc, lib, unknw
+      | Paths.P.Pkg pkg ->
+        loc, dup (libs pkg p.file) lib, unknw
+      | Paths.P.Unknown -> loc, lib, dup (fun x -> x) unknw
+      | Paths.P.Special _ -> loc, lib, unknw in
+    List.fold_left add_dep ([],[],[])
+      (Deps.Forget.to_list u.dependencies) in
 
   let open Schematic in
   let open Schema in
   let groups = Unit.Groups.R.group units in
   let assoc (_, x) =
     let x, _  = Unit.Groups.R.flatten x in
-    let m, ml, mli = Schema.(m,ml,mli) in
     let x = match x.mli, x.ml with
       | Some ({ kind = M2l.Structure; _ } as u) , None ->
         { Unit.ml = Some u; mli = None }
@@ -67,25 +66,19 @@ let structured fmt _ _ ppf param units =
     match x.mli, x.ml with
     | Some u, _ | None, Some u ->
       L.[
-        let p = upath u in
-        obj [ m $= p;
-              ml $=? Option.fmap ufile x.ml;
-              mli $=? Option.fmap ufile x.mli
-            ]
+        let module_path = upath u in
+        { module_path; ml = Option.fmap ufile x.ml ; mli = Option.fmap ufile x.mli }
       ]
     | _ -> [] in
-  let atl =
+  let atlas =
     List.fold_left(fun l x -> assoc x @ l)[](Paths.S.Map.bindings groups) in
   let dep (u:Unit.r) =
-    let loc, libs, unkns =  udeps u in
-    let wrap l = if l = L.[] then None else Some l in
+    let local, lib, unknown =  udeps u in
     let all_deps =
-      obj [ local $=? wrap loc; lib $=? wrap libs; unknown $=? wrap unkns ] in
-    obj [ file $= ufile u; dependencies $= all_deps ] in
-  let ud = List.map dep units.ml @ List.map dep units.mli in
-  let data = let open Schematic in
-    obj [ atlas $= atl; dependencies $= ud ] in
-  Pp.fp ppf "%a@." pp data
+      { local; lib; unknown } in
+    { file = ufile u; dependencies = all_deps } in
+  let dependencies = List.map dep units.ml @ List.map dep units.mli in
+  Pp.fp ppf "%a@." pp {atlas;dependencies}
 
 
 let export name _ _ ppf _param {Unit.mli; _} =
