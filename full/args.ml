@@ -329,7 +329,7 @@ let args action param task fquery version =
     "-makefile", Unit (makefile_c action), ": print makefile depend file(default)";
     "-approx-m2l", Unit (set_iter Single.Approx_file),
     ": print approximated m2l ast";
-    "-m2l-info", Unit (set_iter Single.M2l), ": print m2l ast";
+    "-m2l-info", Unit (set_iter Single.M2l_info), ": print m2l ast";
     "-m2l", Unit (set_iter Single.M2l),
     ": print m2l ast in structured format";
     "-one-pass", Unit (set_iter Single.One_pass), ": print m2l ast after one pass";
