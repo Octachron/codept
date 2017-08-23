@@ -2,6 +2,7 @@ Codept intends to be a dependency solver for OCaml projects and an alternative t
 
 * whole project analysis
 * extensive warning and error messages
+* json or s-expression format for dependencies
 * uniform handling of delayed alias dependencies
 * full support for nested module hierarchy
 * (experimental) full dependencies, when dependencies up to transitive closure are not enough
@@ -15,8 +16,8 @@ Moreover, codept will emit warning messages any time it encounters a source of p
 
 Another important point is that codept's whole project analysis feature makes it possible to handle uniformly the delayed dependency aspect of module aliases introduced by the compiler `-no-alias-deps` option.
 
-Nested module hierarchy is also fully supported by codept starting from version 0.10.
-In particular, when the `-nested` option is enabled, a file with path
+Nested module hierarchy is also fully supported by codept starting with
+version 0.10. In particular, when the `-nested` option is enabled, a file with path
 `dir_1/…/dir_N/a.ml` will be mapped to the module `Dir_1. … . Dir_n. A ` instead
 of just `A`.
 
@@ -73,7 +74,8 @@ By default, this error is a fatal error and codept stops here.
 When prototyping, it can be useful to ignore this setback and compute approximate
 dependencies even in presence of cycle. This can be achieved using
 the `-k` option that sets up `codept` to ignore any somehow recoverable errors.
-Note that the cycle approximation is not yet specified ans is especially unwieldy combined with the `-no-alias-deps` option.
+Note that the cycle approximation is not yet specified ans is especially unwieldy
+combined with the `-no-alias-deps` option.
 
 
 
@@ -109,13 +111,17 @@ In more details, `codept` works by combining together three main ingredients:
   presence of non-resolved dependencies, a simplified m2l ast.
   (see [Outliner](lib/outliner.mli))
 
-- a family of environment modules that can for instance track dependencies on the
-  fly, search for signature of included library toplevel modules, or approximate
-  unknowable modules (see [Envts](lib/envts.mli)).
+- an environment module that tracks resolved names, external module sources and
+  dependencies. (see [Envts](lib/envts.mli)).
 
-Currently, these three elements are then used in one of the two basic solvers implemented (see [Solver](lib/solver.mli)). Given a list of ".ml" and ".mli" files and a starting environment, the default solver iterates over the list of unresolved files and try to compute their signature.
+Currently, these three elements are then used in one of the two basic solvers implemented (see [Solver](lib/solver.mli)).
 
+
+Given a list of ".ml" and ".mli" files and a starting environment, the default solver iterates over the list of unresolved files and try to compute their signature.
 If the computation is successful, the resulting signature is added to the current environment and the current file is removed from the list of unresolved files. Otherwise the solver continues its iteration.
+
+The directed solved start with a list of leaf modules and then trace back the
+ancestors of those leaf modules.
 
 Cycles and non-resolvable dependencies are detected when the solver does not make any progress after one cycle of iterations over unresolved files.
 
@@ -165,6 +171,26 @@ the analysis try to go on by ignoring the submodule structure of cycle when insi
 
 ## Codept-only options
 
+### Structured output
+
+Some new options enables to serialize files in s-expression format for ulterior
+uses by codept:
+
+  * *`-deps`, `-json`, `-sexp`
+  print the inferred module using either a json or a s-expression format.
+  By default `-deps` uses `json`. The corresponding json schema can be found
+  at [json-schemata/deps].
+
+  * `-sig`
+  export the inferred module signatures in a structured format that can
+  be read directly by codept (default:s-expression)
+
+  * `-m2l`
+  export the m2l ast in a structured format (that can be parsed by codept)
+  (default:s-expression)
+
+### Solver and outliner options
+
 Some new options modify the behavior of either the solver or the outliner used
 by codept
 
@@ -189,7 +215,7 @@ by codept
    * `-o filename`
      set the output file for the subsequent modes. Multiple outputs can be specified for the same invocation of codept.
 
-   * `-only-ancestors-of modulename`
+   * `-ancestors-of modulename`
      only analyze files which are an ancestor of the module `modulename`.Note that the input name is capitalized and extension are removed to avoid some discomfort.
 
 
@@ -200,27 +226,20 @@ by codept
   * `-sig-only`
   delete the information that are not necessary for computing signatures
 
+### Findlib options
 
 All options available with `ocamlfind ocamldep` are also available for `codept`, in particular:
 
   * `-pkg <module_name>` or `package <module_name> `
     equivalent to `-L $(ocamlfind query module_name)`
 
-Some new options enables to serialize files in s-expression format for ulterior
-uses by codept:
 
-  * `-sig`
-  export the inferred module signatures in a sexp format that can
-  be read directly by codept
-
-  * `-m2l-sexp`
-  export the m2l ast in sexp format (that can be parsed by codept)
-
+### Miscellaneous output
 
 Other new options explore codept possibilities and intermediary representations
 
-  * ` -m2l`
-    print the `m2l` intermediary representation of the source files
+  * ` -m2l-info`
+    print a human-readable `m2l` intermediary representation of the source files
     rather than their dependencies
 
   * `-info`
@@ -240,6 +259,8 @@ Other new options explore codept possibilities and intermediary representations
       *  unknown modules are the one that could not be resolved.
 
 
+### Warning and error messages
+
 Warning and error messages, referred together as fault messages can be controled
 extensively:
 
@@ -247,7 +268,7 @@ extensively:
 
   * `-fault-doc` lists all possible fault messages
 
-  * `-fault path.name=level` set the level of the fault from
+  * `-fault path.name=level` set the level of the fault, level can vary from
             `info`, `notification`, `warning`, `error` to `critical`.
 
   * `-verbosity level` selects the minimal level of displayed fault messages.
@@ -371,20 +392,3 @@ let g x =
   ()
 
 ```
-
-# To do
-
-* Uniformize fault messages
-
-* Improved exterior API for integration in build tools:
-  * structured output: WIP
-
-* Portability:
-  * Mac, BSD: ~, ?
-  * Windows: ?
-
-* Bugs tracking
-
-* Proper library documentation
-
-* Improved library packaging
