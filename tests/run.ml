@@ -296,7 +296,7 @@ let result =
     ["tuple.ml", u["A"; "B"; "C"]];
     ["unknown_arg.ml", u["Ext"] ];
     ["with.ml", u["Ext"]];
-    ["with_more.ml", u["Ext"]]
+    ["with_more.ml", u["Ext";"Ext3"]]
   ]
 
   && ( Version.( v < v_4_04) ||
