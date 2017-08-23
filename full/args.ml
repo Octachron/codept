@@ -394,7 +394,7 @@ let args action param task fquery version =
     ^ "\n\nGeneric IO settings:\n";
 
     "-format", String (format param),
-    "<format>: use <format> for input and output files";
+    "<format>: use <format> for input and output files\n\nMisc generic options:";
   ]
 
 
