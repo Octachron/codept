@@ -5,7 +5,9 @@
 
 .SH DESCRIPTION
 \fBcodept(1)\fR is an alternative dependency solver for OCaml.
-\fBcodept(1)\fR scans OCaml source files, directories or codept serialized files to compute both the dependency graph and module level outlines of the input source files.
+\fBcodept(1)\fR scans OCaml source files, directories or codept serialized files
+to compute both the dependency graph and module level outlines of the input source
+files.
 
 Multiple outputs are available, and are intended to be used in either Makefile or other build systems.
 
@@ -156,7 +158,7 @@ set the output file for the subsequent modes. Multiple outputs
 can be specified for the same invocation of \fBcodept\fR.
 
 .TP
-.BI -only-ancestors-of \ modulename
+.BI -ancestors-of \ modulename
 only analyze files which are an ancestor of \fImodulename\fR
 Note that the input name is capitalized and extension are removed to avoid
 some discomfort.
@@ -177,8 +179,24 @@ outlines analysis performed by codept. These different modes can be combined
 together using the \fB-o\fR option to control the output files for each mode.
 
 .TP
+.B \-deps
+print dependencies using the currently selected structured format (default:json)
+
+.TP
 .B \-info
 print detailed (and human-readable) information
+
+.TP
+.B \-json
+print dependencies in json format
+
+.TP
+.BI \-json-schema \ mode
+print the json schema for the corresponding \fImode\fR output (deps,sig,m2l)
+
+.TP
+.B \-sexp
+print dependencies in a s-expression format
 
 .TP
 .B \-export
@@ -198,11 +216,11 @@ print approximated m2l ast for each files
 
 .TP
 .B -m2l
-print m2l ast for each files
+print m2l ast in the current structured format for each files
 
 .TP
-.B -m2l-sexp
-export m2l ast in a s-expression format for each files
+.B -m2l-info
+print m2l ast for each files
 
 .TP
 .B -one-pass
@@ -297,6 +315,12 @@ with \fIlevel\fR ∈{info,notification,warning,error,critical}
 
 
 .SH "Misc options"
+
+.TP
+.BI \-format \ format
+Use \fIformat\fR(eitheir sexp or json) for structured output
+The default is to use sexp for m2l and signature files and json
+for deps.
 
 .TP
 .B -no-implicits
