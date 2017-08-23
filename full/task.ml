@@ -33,7 +33,7 @@ let sub s start stop = String.sub s start (stop-start+1)
 exception Invalid_file_group of string
 
 let parse_name name =
-  match Support.split_on_char '@' name with
+  match Support.split_on_char ':' name with
   | [_] -> name, [], None
   | [a;b] ->
     a, [], Some (Namespaced.of_path @@ Support.split_on_char '.' b)
