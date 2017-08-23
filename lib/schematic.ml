@@ -9,7 +9,6 @@ module L = struct
     | [  ]
     | (::) of 'a * 'a t
 end
-module S = Name.Set
 
 module Tuple = struct
   type 'a tuple =
