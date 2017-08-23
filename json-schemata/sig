@@ -1,0 +1,112 @@
+{
+  "$schema" : "http://json-schema.org/schema#",
+  "title" : "codept/sig/0.10",
+  "description" : "module level ocaml signature",
+  "definitions" :
+  {"Loc" : {
+   "t" : {
+   "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
+     "properties" : {
+       "Simple" : { "type" : "array",
+          "items" :[ { "type" : "number" },  { "type" : "number" },
+             { "type" : "number" } ] }
+       }, "required" : [ "Simple" ]},{"type" : "object",
+     "properties" : {
+       "Multiline" : { "type" : "array",
+          "items" :[
+            { "type" : "array",
+               "items" :[ { "type" : "number" },  { "type" : "number" } ] },
+             { "type" : "array",
+                "items" :[ { "type" : "number" },  { "type" : "number" } ] }
+            ] }
+       }, "required" : [ "Multiline" ]}]
+   } } ,
+  "Module" : {
+  "Divergence" : {
+  "origin" : {
+  "oneOf" :[{"enum" : ["First_class_module"]},{"enum" : ["External"]}] },
+  "t" : { "type" : "array",
+   "items" :[ { "type" : "string" },
+      { "$ref" : "#/definitions/Module/Divergence/origin" },
+      { "type" : "array",
+         "items" :[ { "$ref" : "#/definitions/Paths/Pkg/t" },
+            { "$ref" : "#/definitions/Loc/t" } ] } ]
+  } } ,
+  "Option" : {
+  "m" : {
+  "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+    "properties" : {
+      "Some" : { "$ref" : "#/definitions/Module/m" }
+      }, "required" : [ "Some" ]}]
+  } } ,
+  "Origin" : {
+  "t" : {
+  "oneOf" :[{"type" : "object",
+    "properties" : {
+      "Unit" : { "type" : "array",
+         "items" :[ { "$ref" : "#/definitions/Paths/Pkg/t" },
+            { "type" : "array", "items" : { "type" : "string" } } ] }
+      }, "required" : [ "Unit" ]},{"enum" : ["Submodule"]},
+    {"enum" : ["First_class"]},{"enum" : ["Arg"]},{"type" : "object",
+    "properties" : {
+      "Phantom" : { "type" : "array",
+         "items" :[ { "type" : "string" },
+            { "$ref" : "#/definitions/Module/Divergence/t" } ] }
+      }, "required" : [ "Phantom" ]}]
+  } } ,
+  "m" : { "type" : "object",
+  "properties" : {
+    "name" : { "type" : "string" },
+    "origin" : { "$ref" : "#/definitions/Module/Origin/t" },
+    "args" : { "type" : "array",
+      "items" : { "$ref" : "#/definitions/Module/Option/m" } },
+    "modules" : { "type" : "array",
+      "items" : { "$ref" : "#/definitions/Module/module" } },
+    "module_types" : { "type" : "array",
+      "items" : { "$ref" : "#/definitions/Module/module" } }
+    },
+  "required" : [ "name" ] },
+  "module" : {
+  "oneOf" :[{"type" : "object",
+    "properties" : {
+      "M" : { "$ref" : "#/definitions/Module/m" }
+      }, "required" : [ "M" ]},{"type" : "object",
+    "properties" : {
+      "Alias" : { "type" : "array",
+         "items" :[ { "type" : "string" },
+            { "type" : "array", "items" : { "type" : "string" } } ] }
+      }, "required" : [ "Alias" ]},{"type" : "object",
+    "properties" : {
+      "Namespace" : { "type" : "array",
+         "items" :[ { "type" : "string" },
+            { "type" : "array",
+              "items" : { "$ref" : "#/definitions/Module/module" } } ] }
+      }, "required" : [ "Namespace" ]}]
+  } } ,
+  "Paths" : {
+  "Pkg" : {
+  "source" : {
+  "oneOf" :[{"enum" : ["Local"]},{"enum" : ["Unknown"]},{"type" : "object",
+    "properties" : {
+      "Pkg" : { "type" : "array", "items" : { "type" : "string" } }
+      }, "required" : [ "Pkg" ]},{"type" : "object",
+    "properties" : {
+      "Special" : { "type" : "string" }
+      }, "required" : [ "Special" ]}]
+  },
+  "t" : { "type" : "array",
+   "items" :[ { "$ref" : "#/definitions/Paths/Pkg/source" },
+      { "type" : "array", "items" : { "type" : "string" } } ]
+  } }  } ,
+  "version" : { "type" : "array",
+   "items" :[ { "type" : "number" },  { "type" : "number" },
+      { "type" : "number" } ]
+  }},
+  "type" : "object",
+  "properties" : {
+    "version" : { "$ref" : "#/definitions/version" },
+    "sig" : { "type" : "array",
+      "items" : { "$ref" : "#/definitions/Module/module" } }
+    },
+  "required" : [ "version", "sig" ]
+  }

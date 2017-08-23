@@ -1,0 +1,71 @@
+{
+  "$schema" : "http://json-schema.org/schema#",
+  "title" : "codept.0.10/deps",
+  "description" : "dependencies and module-to-files mapping of ocaml project",
+  "definitions" :
+  {"deps" : {
+   "assoc" : {
+   "description":"This type keeps track of which implementation file (.ml) and interface file (.mli) provided a toplevel module",
+   "type" : "object",
+   "properties" : {
+     "module" : { "description":"Toplevel module", "type" : "array",
+       "items" : { "type" : "string" } },
+     "ml" : { "description":"Implementation (.ml) file", "type" : "string" },
+     "mli" : { "description":"Interface (.mli) file", "type" : "string" }
+     },
+   "required" : [ "module" ] },
+   "main" : { "type" : "object",
+   "properties" : {
+     "dependencies" : { "description":"Infered dependencies",
+       "type" : "array",
+       "items" : { "$ref" : "#/definitions/deps/unit/item" } },
+     "atlas" : { "description":"Mapping between toplevel modules and files",
+       "type" : "array", "items" : { "$ref" : "#/definitions/deps/assoc" } }
+     },
+   "required" : [ "dependencies", "atlas" ] },
+   "unit" : {
+   "dep" : {
+   "lib" : {
+   "description":"Library dependency: module path followed by the library file path and the relative file path of the specific module",
+   "type" : "array",
+    "items" :[ { "type" : "array", "items" : { "type" : "string" } },
+       { "type" : "array", "items" : { "type" : "string" } },
+       { "type" : "array", "items" : { "type" : "string" } } ]
+   },
+   "local" : {
+   "description":"Local dependency: toplevel module followed by the associated file path",
+   "type" : "array",
+    "items" :[ { "type" : "array", "items" : { "type" : "string" } },
+       { "type" : "array", "items" : { "type" : "string" } } ]
+   } } ,
+   "deps" : {
+   "description":"Dependencies for a unit file are divided in three groups: local dependencies, library dependencies, and unknown dependencies.",
+   "type" : "object",
+   "properties" : {
+     "local" : { "type" : "array",
+       "items" : { "$ref" : "#/definitions/deps/unit/dep/local" } },
+     "lib" : { "type" : "array",
+       "items" : { "$ref" : "#/definitions/deps/unit/dep/lib" } },
+     "unknown" : {
+       "description":"List of unknown toplevel modules appearing in the input files",
+       "type" : "array",
+       "items" : { "type" : "array", "items" : { "type" : "string" } } }
+     },
+   "required" : [  ] },
+   "item" : { "description":"Dependencies for a file", "type" : "object",
+   "properties" : {
+     "file" : { "description":"File name", "type" : "string" },
+     "dependencies" : { "$ref" : "#/definitions/deps/unit/deps" }
+     },
+   "required" : [ "file", "dependencies" ] } }  } ,
+  "version" : { "type" : "array",
+   "items" :[ { "type" : "number" },  { "type" : "number" },
+      { "type" : "number" } ]
+  }},
+  "type" : "object",
+  "properties" : {
+    "version" : { "$ref" : "#/definitions/version" },
+    "deps" : { "$ref" : "#/definitions/deps/main" }
+    },
+  "required" : [ "version", "deps" ]
+  }
