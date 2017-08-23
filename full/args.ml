@@ -225,10 +225,10 @@ let usage_msg =
    a ⟨.sig⟩ extension.\n\
    These two files format are useful to save persistent information between \
    multiple calls to codept.\n\n\
-   — files can be submitted as file groups. File groups allows to easily isolate\
+   — files can be submitted as file groups. File groups allows to easily isolate \
     a subset of files in a separated namespace. For instance, in \
-    codept A[a.ml,b.ml] c.ml \
-    the compilation units a.ml and b.ml would be mapped to A.A and B.B.\
+    ⟨codept A[a.ml,b.ml] c.ml⟩ \
+    the compilation units ⟨a.ml⟩ and ⟨b.ml⟩ would be mapped to ⟨A.A⟩ and ⟨B.B⟩.\
    More precisely, a file group consists in a non-empty comma-separated list \
    of file elements. \
    A file element consists either in a single name or in a subgroup.\
