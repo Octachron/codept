@@ -26,7 +26,7 @@ codept: lib/*.ml lib/*.mli full/*.ml full/*.mli precomputed/*.ml
 
 codept_ocamlbuild: ocamlbuild_plugin/codept_ocamlbuild.ml
 	cd ocamlbuild_plugin \
-	&& ocamlbuild -no-ocamlfind -use-ocamldep -cflags -I,$(OCAMLBUILD) \
+	&& ocamlbuild -no-ocamlfind -cflags -I,$(OCAMLBUILD) \
 	codept_ocamlbuild.otarget
 
 clean:
@@ -53,10 +53,10 @@ doc: codept
 
 self_test:
 	ln -s ocamlbuild/myocamlbuild_cs.ml myocamlbuild.ml; \
-	ocamlbuild $(OPTS) -use-ocamldep codept.native; \
+	ocamlbuild $(OPTS) codept.native; \
 	rm myocamlbuild.ml
 
-self_ref: OPTS = -use-ocamlfind -use-ocamldep
+self_ref: OPTS = -use-ocamlfind
 
 self_ref:codept
 
