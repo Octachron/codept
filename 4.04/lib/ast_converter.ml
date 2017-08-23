@@ -451,7 +451,7 @@ and core_type ct : M2l.Annot.t =
     access name
     ++ Annot.union_map core_type cts
   | Ptyp_object (lbls, _ ) (* < l1:T1; ...; ln:Tn[; ..] > *) ->
-    Annot.union_map  (function Otag (_,_,t) | Oinherit t -> core_type t) lbls
+    Annot.union_map  (fun  (_,_,t) -> core_type t) lbls
   | Ptyp_poly (_, ct)
   | Ptyp_alias (ct,_) (* T as 'a *) -> core_type ct
 
@@ -488,11 +488,6 @@ and class_type ct = match ct.pcty_desc with
     Annot.( class_type clt ++ core_type ct)
   | Pcty_extension ext (* [%ext] *) ->
     Annot.value [[ with_loc ct.pcty_loc @@ extension ext ]]
-  | Pcty_open (_,module',cty) ->
-    Annot.value [
-      do_open module'
-      @ [with_loc ct.pcty_loc @@ Minor (data @@ class_type cty)]
-    ]
 and class_signature cs = Annot.union_map class_type_field cs.pcsig_fields
 and class_type_field ctf = match ctf.pctf_desc with
   | Pctf_inherit ct -> class_type ct
@@ -546,12 +541,6 @@ and class_expr ce =
     class_type ct ++ class_expr ce
   | Pcl_extension ext ->
     Annot.value [[ with_loc loc @@ extension ext ]]
-  | Pcl_open(_,module',cl) ->
-    Annot.value [
-      do_open module'
-      @ [with_loc cl.pcl_loc @@ Minor (data @@ class_expr cl)]
-    ]
-
 and class_field_kind = function
   | Cfk_virtual ct -> core_type ct
   | Cfk_concrete (_, e) -> expr e
