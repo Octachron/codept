@@ -27,4 +27,3 @@ val to_upper_bound: M2l.t -> M2l.t
 
 (** [file filename] yields [module_name × lower bound × upper bound] *)
 val file: string -> string * M2l.t * M2l.t
-

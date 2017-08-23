@@ -13,6 +13,9 @@ module Pkg = Paths.Pkg
 open Params
 open M2l
 
+(** approx *)
+let approx filename = Approx_parser.(to_upper_bound @@ lower_bound filename)
+
 (** Printing directly from source file *)
 let to_m2l policy sig_only (k,f,_n) =
   match Common.classic k with
@@ -23,13 +26,12 @@ let to_m2l policy sig_only (k,f,_n) =
       if sig_only then Some (k, M2l.Sig_only.filter x) else Some (k,x)
     | _, Error (Ocaml (Syntax msg)) ->
       Fault.handle policy Standard_faults.syntaxerr msg;
-      None
+      Some(k, approx f)
     | _, Error (Ocaml (Lexer msg)) ->
       Fault.handle policy Standard_faults.lexerr !Location.input_name msg;
-      None
+      Some(k, approx f)
     | _, Error (Serialized e) ->
       Standard_faults.schematic_errors policy (f,"m2l",e); None
-
 
 let approx_file _ _ ppf _param (_,f,_) =
   let _name, lower, upper = Approx_parser.file f in
