@@ -12,7 +12,8 @@ type format =
 type kind = { format: format; kind: M2l.kind }
 
 (** error type *)
-type error = Ocaml of Syntaxerr.error | Serialized of Schematic.Ext.error
+type ocaml_parsing_error = Syntax of Syntaxerr.error | Lexer of Lexer.error
+type error = Ocaml of ocaml_parsing_error | Serialized of Schematic.Ext.error
 
 
 val name: string -> Name.t

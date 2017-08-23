@@ -200,6 +200,13 @@ let syntaxerr =
   }
 
 
+let lexerr =
+  { path = ["parsing"; "lexer"];
+    expl = "Parsing fault: not lexically valid input file.";
+    log = (fun lvl file _error -> log lvl "Lexer error in file @{<loc>%s@}" file )
+  }
+
+
 (** Codept internal file format errors *)
 
 let unknown_file_format =

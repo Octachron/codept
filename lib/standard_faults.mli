@@ -36,6 +36,8 @@ val concordant_approximation : (Paths.Pkg.t -> unit) Fault.t
 val discordant_approximation :
   (Paths.Pkg.t -> Paths.S.t list -> Paths.S.t list -> unit) Fault.t
 val syntaxerr : (Syntaxerr.error -> unit) Fault.t
+val lexerr : (string -> Lexer.error -> unit) Fault.t
+
 
 (** Syntax error when parsing internal files *)
 val unknown_file_format: (string -> string -> unit) Fault.t

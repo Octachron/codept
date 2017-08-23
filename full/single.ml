@@ -21,8 +21,11 @@ let to_m2l policy sig_only (k,f,_n) =
     match Read.file k f with
     | _name, Ok x ->
       if sig_only then Some (k, M2l.Sig_only.filter x) else Some (k,x)
-    | _, Error (Ocaml msg) ->
+    | _, Error (Ocaml (Syntax msg)) ->
       Fault.handle policy Standard_faults.syntaxerr msg;
+      None
+    | _, Error (Ocaml (Lexer msg)) ->
+      Fault.handle policy Standard_faults.lexerr !Location.input_name msg;
       None
     | _, Error (Serialized e) ->
       Standard_faults.schematic_errors policy (f,"m2l",e); None

@@ -39,9 +39,13 @@ let read_file policy kind filename path : s =
     | Error (Serialized e) ->
       Standard_faults.schematic_errors policy (filename,"m2l",e);
       Approx, []
-    | Error (Ocaml msg) ->
+    | Error (Ocaml (Syntax msg)) ->
       Fault.handle policy Standard_faults.syntaxerr msg;
       Approx, Approx_parser.lower_bound filename
+    | Error (Ocaml (Lexer msg)) ->
+      Fault.handle policy Standard_faults.lexerr !Location.input_name msg;
+      Approx, Approx_parser.lower_bound filename
+
   in
       { path;
         kind = kind.kind;

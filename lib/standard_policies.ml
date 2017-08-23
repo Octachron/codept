@@ -19,6 +19,7 @@ let default =
   |> set_err (local_module_conflict, Level.error)
   |> set (["parsing"], Some "Parsing faults",  error)
   |> register_err syntaxerr
+  |> set_err (lexerr, error)
   |> set_err (discordant_approximation, warning)
   |> set_err (concordant_approximation, notification)
   |> set_err (future_version, error)

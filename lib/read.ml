@@ -10,8 +10,8 @@ type format =
 (** Extend M2l.kind to include the format of read file *)
 type kind = { format: format; kind: M2l.kind }
 
-
-type error = Ocaml of Syntaxerr.error | Serialized of Schematic.Ext.error
+type ocaml_parsing_error = Syntax of Syntaxerr.error | Lexer of Lexer.error
+type error = Ocaml of ocaml_parsing_error | Serialized of Schematic.Ext.error
 
 let name filename = String.capitalize_ascii @@
   Filename.chop_extension @@ Filename.basename filename
@@ -30,8 +30,9 @@ let source_file kind filename =
       | M2l.Signature ->
         Ast_converter.signature @@
         Pparse.parse_interface Format.err_formatter ~tool_name:"codept" input_file
-    with Syntaxerr.Error msg ->
-      Error (Ocaml msg)
+    with
+    | Syntaxerr.Error msg -> Error (Ocaml (Syntax msg))
+    | Lexer.Error(e,_) -> Error (Ocaml (Lexer e))
   in
   Pparse.remove_preprocessed input_file;
   code
