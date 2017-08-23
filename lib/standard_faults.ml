@@ -5,15 +5,15 @@ let extension_ignored =
   { path = ["extension"; "ignored"];
     expl = "The payload of an extension node was ignored";
   log = (fun lvl ->
-      log lvl "%a, extension node @{<m>%s@} ignored." loc)
+      log lvl "%a, extension node @{<em>%s@} ignored." loc)
 }
 
 let extension_traversed =
   { path = ["extension"; "traversed"];
-    expl = "The payload of the extension node was handled has a standard \
+    expl = "The payload of the extension node was handled as a standard \
            OCaml code.";
   log = (fun lvl  ->
-      log lvl "%a, @ extension node @{<m>%s@} traversed." loc)
+      log lvl "%a, @ extension node @{<em>%s@} traversed." loc)
 }
 
 
@@ -22,7 +22,7 @@ let opened_first_class =
   { path = ["first_class"; "open"];
     expl= "A first-class module was opened while its signature was deemed \
            unresolved. Consequently, inferred dependendencies after this \
-           point may be an over-approximation.";
+           point may be a superset of the real dependencies.";
     log = (fun lvl ->
       log lvl "%a,@ first-class module @{<m>%s@} was opened while its signature was \
                unknown." loc
@@ -33,7 +33,7 @@ let included_first_class =
   { path = ["first_class"; "included"];
     expl = "A first-class module was included while its signature was deemed \
            unresolved. Consequently, inferred dependendencies after this \
-           point may be an over-approximation.";
+           point may be a superset of the real dependencies";
     log = (fun lvl ->
         log lvl
           "%a, @ first-class module was included while its signature was unknown."
