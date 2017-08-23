@@ -112,7 +112,7 @@ In more details, `codept` works by combining together three main ingredients:
   (see [Outliner](lib/outliner.mli))
 
 - an environment module that tracks resolved names, external module sources and
-  dependencies. (see [Envts](lib/envts.mli)).
+  dependencies. (see [Envt](lib/envt.mli)).
 
 Currently, these three elements are then used in one of the two basic solvers implemented (see [Solver](lib/solver.mli)).
 
