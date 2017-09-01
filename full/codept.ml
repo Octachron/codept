@@ -1,7 +1,7 @@
 (** Utility functions and module *)
 open Params
 let tool_name = "codept"
-let version = 0.9
+let version = 0.10
 let stderr= Format.err_formatter
 let std = Format.std_formatter
 
