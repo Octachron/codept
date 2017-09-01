@@ -12,6 +12,7 @@ let () =
   Fault.enable_colors Pp.std;
   let query = Args.process version Sys.argv in
   let task = io.reader.findlib query.task query.findlib in
+  Compenv.readenv stderr Before_link;
   List.iter (Args.eval_single out io.writer query.params query.task)
     query.action.singles;
   if not (query.action.modes = [] && query.action.makefiles = [] ) then

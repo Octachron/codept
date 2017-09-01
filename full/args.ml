@@ -424,7 +424,6 @@ let process version ?(extra=[]) argv =
         (print_endline msg; exit 2)
     end
   ; if not !params.no_include then add_include params "."
-  ; Compenv.readenv stderr Before_link
   ; if !action = action0 then
     makefile_c action ()
   ; { params= !params; task = !task; findlib = !findlib_query; action = !action }
