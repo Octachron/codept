@@ -85,6 +85,33 @@ module Make(Envt:envt)(Param:param) = struct
         else
           p (* we guessed the arg wrong *)
 
+  (* Remove deleted modules with `with A.B.C.D := …` *)
+  let rec remove_path_from path = function
+    | M.Blank -> M.Blank
+    | Divergence d ->
+      Divergence { d with
+                   before = remove_path_from path d.before;
+                   after = remove_path_from_sig path d.after
+                 }
+    | Exact defs -> Exact (remove_path_from_sig path defs)
+  and remove_path_from_sig path defs = match path with
+    | [] -> defs
+    | [a] -> { defs with modules = Name.Map.remove a defs.modules }
+    | a :: rest -> let open Option in
+      let mods = defs.modules in
+      Name.Map.find_opt a mods
+      >>| ( function
+          | Namespace _ | Alias _ -> defs
+          | M m ->
+            let m =
+              M.M{ m with signature = remove_path_from rest m.signature }
+            in
+            { defs with modules = Name.Map.add a m mods }
+        ) >< defs
+
+  let with_deletions dels d =
+    Paths.S.Set.fold remove_path_from dels d
+
 
    let filename loc = fst loc
 
@@ -375,15 +402,7 @@ module Make(Envt:envt)(Param:param) = struct
             match module_type loc state w.body with
             | Error mt -> Error ( With { w with body = mt } )
             | Ok d ->
-              let remove_from d = Name.Set.fold Name.Map.remove w.deletions d in
-              let rec remove = function
-                | M.Blank -> M.Blank
-                | Exact d -> M.Exact { d with modules = remove_from d.modules }
-                | Divergence p ->
-                  let after =
-                    { p.after with modules = remove_from p.after.modules } in
-                  Divergence { p with before = remove p.before; after } in
-              Ok { d with result = remove d.result }
+              Ok { d with result = with_deletions w.deletions d.result }
           end
       end
         | Fun {arg;body} ->

@@ -20,7 +20,8 @@ module Version = struct
   v.major < v2.major
   || (v.major = v2.major && v.minor <= v2.minor)
 
-  let v_4_04 = { minor = 4; major = 4}
+  let v_4_04 = { minor = 4; major = 4 }
+  let v_4_06 = { minor = 6; major = 6 }
 end
 
 
@@ -263,6 +264,7 @@ let result =
     ["bindings.ml", []];
     ["bug.ml", std ["Sys"] ];
     ["case.ml", u["A"; "B";"C";"D";"F"]];
+    ["destructive_substitutions.ml", u["Ext"]];
     ["even_more_functor.ml", u["E"; "A"]];
     ["first-class-modules.ml", u["Mark";"B"] ];
     ["first_class_more.ml", [] ];
@@ -301,6 +303,9 @@ let result =
 
   && ( Version.( v < v_4_04) ||
        Std.deps_test_single [d"pattern_open.ml", u["A'";"E1"; "E2"; "E3";"E4"]] )
+
+  && ( Version.( v < v_4_06 ) ||
+       Std.deps_test_single [d"destructive_substitutions.ml", u["Ext"; "Ext2"]] )
 
   (* Note the inferred dependencies is wrong, but there is not much
      (or far too much ) to do here *)
@@ -540,8 +545,7 @@ let result =
         (Some ~:["Solver"; "Standard_policies"])
         (dl[
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
-          "ast_converter.ml", ( ["Loc"; "M2l"; "Name"; "Option"; "Module";
-                                 "Paths"],
+          "ast_converter.ml", ( ["Loc"; "M2l"; "Option"; "Module"; "Paths"],
                                 ["List";"Longident"; "Location"; "Lexing";
                                  "Parsetree"], [] );
           "approx_parser.mli", (["M2l"], [],[]);
@@ -586,7 +590,8 @@ let result =
                           ["Array"; "Format"],[]);
           "fault.mli", (["Loc"; "Paths"; "Name"],
                           ["Format"],[]);
-
+          "format_compat.mli", ([],["Format"],[]);
+          "format_compat.ml", ([],["Format"],[]);
           "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Schematic"],
                           ["Format"], [] );
           "module.ml", ( ["Loc";"Paths";"Name"; "Namespaced"; "Option"; "Pp"
@@ -607,9 +612,9 @@ let result =
                        ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
-          "read.mli", (["M2l"; "Name"; "Schematic"],["Syntaxerr"],[]);
+          "read.mli", (["M2l"; "Name"; "Schematic"],["Lexer";"Syntaxerr"],[]);
           "read.ml", (["Ast_converter"; "Cmi"; "M2l"; "Schema"; "Schematic" ],
-                      ["Filename"; "Format"; "Lexing"; "Location";
+                      ["Filename"; "Format"; "Lexer"; "Lexing"; "Location";
                        "Parsing"; "Pparse"; "String"; "Syntaxerr"],
                       ["Sparser";"Slex"]);
           "mresult.mli", ([],[],[]);
@@ -619,7 +624,8 @@ let result =
           "schema.mli", (["M2l"; "Module"; "Name"; "Paths"; "Schematic"], [], []);
           "schematic.mli", (["Name"],
                        [ "Format"], [] );
-          "schematic.ml", (["Name"; "Mresult"; "Pp";"Support";"Option"],
+          "schematic.ml", (["Format_compat"; "Name"; "Mresult"; "Pp";
+                            "Support";"Option"],
                        ["Format"; "Hashtbl"; "List"; "Map"; "String"], [] );
           "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";
                           "Namespaced"; "Read";
@@ -636,7 +642,7 @@ let result =
             ["Format"; "Location"; "Syntaxerr"],[]);
           "standard_faults.mli", (
             ["Fault"; "Name"; "Namespaced"; "Module"; "Paths"; "Schematic" ],
-            ["Syntaxerr"],[]);
+            ["Lexer";"Syntaxerr"],[]);
           "standard_policies.ml", (["Fault"; "Standard_faults"; "Solver"],[],[]);
           "standard_policies.mli", (["Fault"],[],[]);
           "unit.mli", (["Deps";"Paths"; "M2l"; "Module"; "Namespaced";
@@ -646,7 +652,7 @@ let result =
             ["Approx_parser"; "Deps"; "M2l"; "Module"; "Namespaced";
              "Fault"; "Option"; "Paths"; "Pp"; "Read";
              "Standard_faults"],
-            [ "List"; "Set"],
+            [ "List"; "Location"; "Set"],
             []);
           "support.ml", ([],["String"],[]);
           "support.mli", ([],[],[]);

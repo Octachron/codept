@@ -502,10 +502,7 @@ let minify ppf =
       f.out_string " " 0 1;
     f.out_string s start stop;
     space_needed := not (special s.[stop-1]) in
-  let basic =
-    { f with Format.out_newline = (fun () -> ());
-             out_spaces = (fun _ -> ());
-             out_string } in
+  let basic = Format_compat.transform f out_string in
   Format.pp_set_formatter_out_functions ppf basic;
   Format.kfprintf (fun _ -> Format.pp_set_formatter_out_functions ppf f;
                     Format.pp_print_flush ppf ()) ppf

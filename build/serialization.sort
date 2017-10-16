@@ -1,1 +1,1 @@
- serializationSORT = lib/mresult.ml lib/pp.ml lib/name.ml lib/option.ml lib/support.ml lib/schematic.ml lib/sparser.mli lib/slex.ml lib/paths.ml lib/deps.ml lib/loc.ml lib/namespaced.ml lib/module.ml lib/summary.ml lib/m2l.ml tests/serialization.ml
+ serializationSORT = lib/format_compat.ml lib/mresult.ml lib/pp.ml lib/name.ml lib/option.ml lib/support.ml lib/schematic.ml lib/sparser.mli lib/slex.ml lib/paths.ml lib/deps.ml lib/loc.ml lib/namespaced.ml lib/module.ml lib/summary.ml lib/m2l.ml tests/serialization.ml

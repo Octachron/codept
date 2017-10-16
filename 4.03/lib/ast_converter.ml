@@ -590,7 +590,7 @@ and module_type (mt:Parsetree.module_type) =
     Fun { arg; body = module_type res }
   | Pmty_with (mt, wlist) (* MT with ... *) ->
     let deletions, access =
-      List.fold_left with_more (Name.Set.empty,Annot.Access.empty) wlist in
+      List.fold_left with_more (Paths.S.Set.empty,Annot.Access.empty) wlist in
     With { body = module_type mt; deletions; access }
   | Pmty_typeof me (* module type of ME *) ->
     Of (module_expr me)
@@ -651,7 +651,7 @@ and with_more (dels,access) =
   | Pwith_module (_,l) (* with module X.Y = Z *) ->
     dels, merge access (H.me_access l)
   | Pwith_modsubst (name, me) ->
-    Name.Set.add (txt name) dels, merge access (H.me_access me)
+    Paths.S.Set.add [txt name] dels, merge access (H.me_access me)
 and extension n =
   Extension_node (extension_core n)
 and extension_core (name,payload) =

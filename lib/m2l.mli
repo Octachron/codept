@@ -113,7 +113,7 @@ and module_type =
   | Fun of module_type fn (** [functor (X:S) → M] *)
   | With of {
       body: module_type;
-      deletions: Name.set;
+      deletions: Paths.S.set;
       access:access
       (** equalities: type t= A.M.x N.y -> {A.M; N} *)
     }

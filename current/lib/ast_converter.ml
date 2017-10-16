@@ -605,7 +605,7 @@ and module_type (mt:Parsetree.module_type) =
     Fun { arg; body = module_type res }
   | Pmty_with (mt, wlist) (* MT with ... *) ->
     let deletions, access =
-      List.fold_left with_more (Name.Set.empty,Annot.Access.empty) wlist in
+      List.fold_left with_more (Paths.S.Set.empty,Annot.Access.empty) wlist in
     With { body = module_type mt; deletions; access }
   | Pmty_typeof me (* module type of ME *) ->
     Of (module_expr me)
@@ -660,13 +660,13 @@ and recmodules mbs =
 and with_more (dels,access) =
   let merge x y = Annot.Access.merge x y.Loc.data.access in
   function
-  | Pwith_typesubst td (* with type t := ... *)
+  | Pwith_typesubst (_,td) (* with type X.t := ... *)
   | Pwith_type (_,td)(* with type X.t = ... *) ->
     dels, merge access (type_declaration td)
   | Pwith_module (_,l) (* with module X.Y = Z *) ->
     dels, merge access (H.me_access l)
-  | Pwith_modsubst (name, me) ->
-    Name.Set.add (txt name) dels, merge access (H.me_access me)
+  | Pwith_modsubst (l, me) ->
+    Paths.S.Set.add (H.npath l) dels, merge access (H.me_access me)
 and extension n =
   Extension_node (extension_core n)
 and extension_core (name,payload) =

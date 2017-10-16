@@ -75,7 +75,7 @@ and module_type =
   | Fun of module_type fn (** [functor (X:S) → M] *)
   | With of {
       body: module_type;
-      deletions: Name.set;
+      deletions: Paths.S.set;
       access: access
     }
   (** [S with module N := …]
@@ -100,7 +100,7 @@ let annot_empty = { access= Paths.S.Map.empty; values = []; packed = [] }
 
 (** Schematic serialization *)
 module Sch = struct
-  module S = Name.Set
+  module S = Paths.S.Set
   open Schematic
 
   let l x = if x = L.[] then None else Some x
@@ -173,26 +173,27 @@ module Sch = struct
     | Abstract -> C(S(S(S(S(S(S(S(S E))))))))
     | Unpacked -> C(S(S(S(S(S(S(S(S(S E)))))))))
     | Open_me r -> C(S(S(S(S(S(S(S(S(S(S(Z [r.resolved;r.opens;r.expr])))))))))))
-  and me_rev = let open Tuple in function
-      | C Z x -> Resolved x
-      | C S Z x -> Ident x
-      | C S S Z [f;x] -> Apply{f;x}
-      | C S S S Z [arg;body] -> Fun{arg;body}
-      | C S S S S Z [x;y] -> Constraint(x,y)
-      | C S S S S S Z x -> Str x
-      | C S S S S S S Z x -> Val x
-      | C S S S S S S S Z x -> Extension_node x
-      | C S S S S S S S S E -> Abstract
-      | C S S S S S S S S S E -> Unpacked
-      | C S S S S S S S S S S Z [resolved;opens;expr] ->
-        Open_me {resolved;opens;expr}
-      | _ -> .
+  and me_rev = let open Tuple in
+    function
+    | C Z x -> Resolved x
+    | C S Z x -> Ident x
+    | C S S Z [f;x] -> Apply{f;x}
+    | C S S S Z [arg;body] -> Fun{arg;body}
+    | C S S S S Z [x;y] -> Constraint(x,y)
+    | C S S S S S Z x -> Str x
+    | C S S S S S S Z x -> Val x
+    | C S S S S S S S Z x -> Extension_node x
+    | C S S S S S S S S E -> Abstract
+    | C S S S S S S S S S E -> Unpacked
+    | C S S S S S S S S S S Z [resolved;opens;expr] ->
+      Open_me {resolved;opens;expr}
+    | _ -> .
   and module_type =
     Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev; id=["M2l"; "module_type"]}
   and mt_sch =
     Sum [ "Resolved",Module.Partial.sch; "Alias",Paths.S.sch;"Ident",Paths.E.sch;
           "Sig",m2l;"Fun",[ arg; module_type ];
-          "With",[ module_type; Array String; access ];
+          "With",[ module_type; Array (Array String); access ];
           "Of", module_expr; "Extension_node", extension; "Abstract", Void ]
   and mt_fwd = let open Tuple in function
       | Resolved x -> C (Z x)
@@ -517,7 +518,7 @@ and pp_mt ppf = function
   | Sig m2l -> Pp.fp ppf "@,sig@, %a end" pp m2l
   | Fun { arg; body } ->  Pp.fp ppf "%a@,→%a" (Arg.pp pp_mt) arg pp_mt body
   | With {body; deletions;access} ->
-    Pp.fp ppf "%a@,/%a (%a)" pp_mt body Name.Set.pp deletions pp_access access
+    Pp.fp ppf "%a@,/%a (%a)" pp_mt body Paths.S.Set.pp deletions pp_access access
   | Of me -> Pp.fp ppf "module type of@, %a" pp_me me
   | Extension_node ext -> Pp.fp ppf "%a" pp_extension ext
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
