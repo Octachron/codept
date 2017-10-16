@@ -165,8 +165,9 @@
     "properties" : {
       "With" : { "type" : "array",
          "items" :[ { "$ref" : "#/definitions/M2l/module_type" },
-            { "type" : "array", "items" : { "type" : "string" } },
-            { "$ref" : "#/definitions/M2l/access" } ] }
+            { "type" : "array",
+              "items" : { "type" : "array", "items" : { "type" : "string" } }
+              },  { "$ref" : "#/definitions/M2l/access" } ] }
       }, "required" : [ "With" ]},{"type" : "object",
     "properties" : {
       "Of" : { "$ref" : "#/definitions/M2l/module_expr" }
