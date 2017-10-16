@@ -1,3 +1,13 @@
+# Version 0.10.1
+
+## Support:
+
+  * OCaml 4.06
+
+## Bugs:
+
+        * Fix "-ppx" option, which could be ignored
+
 # Version 0.10
 
 ## Features:
