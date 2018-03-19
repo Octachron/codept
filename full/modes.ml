@@ -198,13 +198,22 @@ let local_dependencies sort unit =
 
 
 let dot _ _ ppf param {Unit.mli; _ } =
+  let escaped = Name.Set.of_list
+      [ "Graph"; "Digraph"; "Subgraph"; "Edge"; "Node"; "Strict" ] in
+  let escape ppf s =
+    if Name.Set.mem s escaped then
+      Pp.fp ppf {|"%s"|} s
+    else
+      Pp.string ppf s in
   let open Unit in
   let sort = sort mname param mli in
   Pp.fp ppf "digraph G {\n";
   List.iter (fun u ->
       List.iter (fun p ->
-          Pp.fp ppf "%a -> %s \n"
-            Namespaced.pp u.path @@ Pkg.module_name p)
+          Pp.fp ppf "%a -> %a \n"
+            escape (Namespaced.to_string u.path)
+            escape (Pkg.module_name p)
+        )
         (local_dependencies sort u)
     ) mli;
   Pp.fp ppf "}\n"

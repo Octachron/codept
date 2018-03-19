@@ -1,3 +1,9 @@
+# Version 0.10.2
+
+## Bug fixes:
+
+  * dot output: escape graphviz keywords
+
 # Version 0.10.1
 
 ## Support:

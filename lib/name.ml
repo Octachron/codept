@@ -9,6 +9,7 @@ include Core
 module Set = struct
   include Set.Make(Core)
   let pp ppf s = Pp.(clist Core.pp) ppf (elements s)
+  let of_list = List.fold_left (fun set x -> add x set) empty
 end
 type set = Set.t
 
