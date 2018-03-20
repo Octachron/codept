@@ -199,9 +199,9 @@ let local_dependencies sort unit =
 
 let dot _ _ ppf param {Unit.mli; _ } =
   let escaped = Name.Set.of_list
-      [ "Graph"; "Digraph"; "Subgraph"; "Edge"; "Node"; "Strict" ] in
+      [ "graph"; "digraph"; "subgraph"; "edge"; "node"; "strict" ] in
   let escape ppf s =
-    if Name.Set.mem s escaped then
+    if Name.Set.mem (String.lowercase_ascii s) escaped then
       Pp.fp ppf {|"%s"|} s
     else
       Pp.string ppf s in
