@@ -1,11 +1,8 @@
-
 type context =
   | Signature of Module.signature
   | In_namespace of Module.dict
 
-type negative_membership = Not_found | Negative
-type module_provider = Name.t ->
-  (Module.t Outliner.query_result, negative_membership) result
+type module_provider = Name.t -> Module.t Outliner.query_result option
 
 module Core :
 sig
@@ -20,10 +17,8 @@ sig
   val start: Module.definition -> t
 end
 
-val mask: Name.set -> module_provider
 val libs: Name.t list -> module_provider
 val open_world: unit -> module_provider
 
 val start:
-  ?open_approximation:bool -> Name.set -> Name.t list -> Module.Dict.t ->
-  Core.t
+  ?open_approximation:bool -> Name.t list -> Module.Dict.t -> Core.t

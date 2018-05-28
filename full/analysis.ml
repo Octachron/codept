@@ -116,14 +116,13 @@ let base_sign io signatures =
 type 'a envt_kind = (module Outliner.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
-let start_env io param libs signatures fileset =
+let start_env io param libs signatures _fileset =
   let signs = Name.Set.fold stdlib_pkg param.precomputed_libs [] in
   let signs = List.flatten
     @@ List.map( fun x -> List.map snd @@ Name.Map.bindings x) signs in
   let base_sign = base_sign io signs in
   let env =
-    Envt.start ~open_approximation:(not param.closed_world)
-      fileset libs base_sign in
+    Envt.start ~open_approximation:(not param.closed_world) libs base_sign in
   let add u env = Envt.Core.add_unit u env in
   let env = List.fold_left add env signatures in
     E ((module Envt.Core: Outliner.envt_with_deps with type t = Envt.Core.t ) ,
@@ -171,8 +170,8 @@ module Collisions = struct
 
   (** Compute local/libraries collisions *)
   let libs (task:Common.task) units =
-    let env = Envt.start ~open_approximation:false
-        Name.Set.empty task.libs Module.Dict.empty in
+    let env =
+      Envt.start ~open_approximation:false task.libs Module.Dict.empty in
     let m = Nms.Map.empty in
     List.fold_left (fun m (u:Unit.s) ->
         match Envt.Core.find M.Module (Nms.flatten u.path) env with

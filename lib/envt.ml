@@ -30,8 +30,7 @@ module Query = struct
 
 end
 
-type negative_membership = Not_found | Negative
-type module_provider = Name.t -> (Module.t Query.t, negative_membership) result
+type module_provider = Name.t -> Module.t Query.t option
 let last l = List.hd @@ List.rev l
 
 let to_context s = Signature (Exact s)
@@ -108,9 +107,8 @@ module Core = struct
       | [] -> None
       | f :: q ->
         match f name with
-        | Ok q -> Some q
-        | Error Negative -> None
-        | Error Not_found -> request name q in
+        | Some _ as q -> q
+        | None -> request name q in
     if lvl = M.Module then
       request name env.providers
     else None
@@ -305,7 +303,7 @@ module Core = struct
         match m.main with
         | Namespace _ -> true
         | M { origin = Unit _; _ } -> true
-        | M.Alias _ -> false
+        | M.Alias a -> a.weak
         | _ -> false
 
   let expand_path path envt =
@@ -335,7 +333,7 @@ let open_world () =
       (mem := Name.Set.add request !mem; [unknown Module request] ) in
   fun request ->
     debug "open world: requesting %s" request;
-    Ok (Query.create(M.md @@ approx request) (warn request)  )
+    Some (Query.create(M.md @@ approx request) (warn request)  )
 
 module Libraries = struct
 
@@ -417,16 +415,14 @@ module Libraries = struct
     fun name ->
       debug "library layer: requesting %s" name;
       match pkgs_find name pkgs with
-      | exception Not_found -> Error Not_found
-      | q -> Ok (Query.pure q)
+      | exception Not_found -> None
+      | q -> Some (Query.pure q)
 end
 let libs = Libraries.provider
 
-let start ?(open_approximation=true) root_sets libs predefs =
-  let core = Core.start @@ M.Def.modules predefs in
+let start ?(open_approximation=true) libs  predefs =
+  let env = Core.start @@ M.Def.modules @@ predefs in
   let providers =
     (if not (libs = []) then [Libraries.provider libs] else [])
     @ (if open_approximation  then [open_world ()] else [] ) in
-  let providers = if providers = [] then [] else
-      mask root_sets :: providers in
-  { core with providers }
+  { env with providers }
