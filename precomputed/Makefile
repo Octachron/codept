@@ -4,6 +4,6 @@ o-%:
 	../codept -o std_$*.ml -export stdlib/$* $(OCAMLSRC)/otherlibs/$*/*.mli
 
 stdlib:
-	../codept -o stdlib.ml -export stdlib $(OCAMLSRC)/stdlib/*.mli
+	../codept -o stdlib.ml -export stdlib_data $(OCAMLSRC)/stdlib/*.mli
 
 

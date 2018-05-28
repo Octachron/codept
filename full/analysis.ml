@@ -97,7 +97,7 @@ let organize io policy sig_only opens files =
 
 
 let stdlib_pkg s l = match s with
-  | "stdlib" -> Stdlib.modules :: l
+  | "stdlib" -> Stdlib_data.modules :: l
   | "unix" -> Std_unix.modules :: l
   | "bigarray" -> Std_bigarray.modules :: l
   | "dynlink" -> Std_dynlink.modules :: l

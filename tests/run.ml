@@ -41,7 +41,7 @@ let organize policy files =
 let version = Sys.ocaml_version
 
 let start_env includes fileset =
-  Envt.start ~open_approximation:true fileset includes Stdlib.modules
+  Envt.start ~open_approximation:true fileset includes Stdlib_data.modules
 
 
 module Branch(Param:Outliner.param) = struct
@@ -554,7 +554,7 @@ let result =
           "cmi.mli", (["M2l"], [], []);
 
           "cmi.ml", (["Loc"; "M2l";"Module"; "Option"; "Paths"],
-                     ["Cmi_format"; "List"; "Path";"Types"], []);
+                     ["Cmi_format"; "List"; "Path";"Types";"Ident"], []);
           "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic"],["List"],[]);
           "summary.mli", (
             ["Module";"Paths";"Schematic"],
@@ -598,11 +598,11 @@ let result =
                          ; "Schematic"  ],
                          ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
-          "name.ml", ( ["Pp"], ["Set";"Map"], [] );
+          "name.ml", ( ["Pp"], ["Set";"Map";"List"], [] );
           "namespaced.mli", ( ["Name";"Paths"; "Pp"],
                               ["Set";"Map"], [] );
           "namespaced.ml", ( ["Name"; "Paths"; "Pp"],
-                             ["List"; "Set";"Map"], [] );
+                             ["Format";"List"; "Set";"Map"], [] );
           "loc.mli", ( ["Name";"Schematic"], ["Format"], []);
           "loc.ml", ( ["Pp";"Schematic"], ["List"], []);
           "option.mli", ([],["Lazy"],[]);

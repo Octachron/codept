@@ -1,7 +1,7 @@
 lib/slex.cmo : lib/sparser.cmi
 lib/slex.cmx : lib/sparser.cmx
 lib/sparser.cmi : lib/schematic.cmi
-full/analysis.cmo : lib/unit.cmi precomputed/stdlib.cmo \
+full/analysis.cmo : lib/unit.cmi precomputed/stdlib_data.cmo \
     precomputed/std_unix.cmo precomputed/std_threads.cmo \
     precomputed/std_num.cmo precomputed/std_graph.cmo \
     precomputed/std_dynlink.cmo precomputed/std_bigarray.cmo \
@@ -9,7 +9,7 @@ full/analysis.cmo : lib/unit.cmi precomputed/stdlib.cmo \
     lib/outliner.cmi lib/option.cmi lib/namespaced.cmi lib/name.cmi \
     lib/module.cmi lib/m2l.cmi full/io.cmi lib/fault.cmi lib/envt.cmi \
     full/common.cmi full/analysis.cmi
-full/analysis.cmx : lib/unit.cmx precomputed/stdlib.cmx \
+full/analysis.cmx : lib/unit.cmx precomputed/stdlib_data.cmx \
     precomputed/std_unix.cmx precomputed/std_threads.cmx \
     precomputed/std_num.cmx precomputed/std_graph.cmx \
     precomputed/std_dynlink.cmx precomputed/std_bigarray.cmx \
@@ -283,13 +283,13 @@ precomputed/std_threads.cmo : lib/module.cmi
 precomputed/std_threads.cmx : lib/module.cmx
 precomputed/std_unix.cmo : lib/module.cmi
 precomputed/std_unix.cmx : lib/module.cmx
-precomputed/stdlib.cmo : lib/module.cmi
-precomputed/stdlib.cmx : lib/module.cmx
-tests/run.cmo : lib/unit.cmi lib/support.cmi precomputed/stdlib.cmo \
+precomputed/stdlib_data.cmo : lib/module.cmi
+precomputed/stdlib_data.cmx : lib/module.cmx
+tests/run.cmo : lib/unit.cmi lib/support.cmi precomputed/stdlib_data.cmo \
     lib/standard_policies.cmi lib/solver.cmi lib/read.cmi lib/pp.cmi \
     lib/paths.cmi lib/outliner.cmi lib/option.cmi lib/namespaced.cmi \
     lib/name.cmi lib/m2l.cmi lib/envt.cmi lib/deps.cmi
-tests/run.cmx : lib/unit.cmx lib/support.cmx precomputed/stdlib.cmx \
+tests/run.cmx : lib/unit.cmx lib/support.cmx precomputed/stdlib_data.cmx \
     lib/standard_policies.cmx lib/solver.cmx lib/read.cmx lib/pp.cmx \
     lib/paths.cmx lib/outliner.cmx lib/option.cmx lib/namespaced.cmx \
     lib/name.cmx lib/m2l.cmx lib/envt.cmx lib/deps.cmx
