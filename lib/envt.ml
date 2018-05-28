@@ -260,12 +260,13 @@ module Core = struct
     top { env with top = t }
 
   let add_namespace env (nms:Namespaced.t) =
+    let add x = top M.Dict.{ env with top = union env.top @@ of_list [x] } in
     debug "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
       env.current;
-    if nms.namespace = [] then env else
-    let t = M.Dict.( union env.top @@ of_list [Module.namespace nms] ) in
-    debug "result: %a" M.pp_mdict t;
-    top { env with top = t }
+    if nms.namespace = [] then
+      add (M.Alias { name= nms.name; path=nms; phantom = None; weak = true })
+    else
+      add (Module.namespace nms)
 
   let rec resolve_alias_md path def =
     match path with
@@ -323,13 +324,6 @@ module Core = struct
 
   let pp ppf x = pp_context ppf x.current
 end
-
-let mask fileset request =
-   debug "masked file %s:%b" request (Name.Set.mem request fileset);
-  if Name.Set.mem request fileset then
-    Error Negative
-  else
-    Error Not_found
 
 let approx name =
   Module.mockup name ~path:{Paths.P.source=Unknown; file=[name]}
