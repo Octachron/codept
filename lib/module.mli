@@ -134,6 +134,7 @@ module Dict: sig
   val empty: t
   val of_list: modul_ list -> t
   val union: t -> t -> t
+  val weak_union: t -> t -> t
 end
 
 val spirit_away: Divergence.t -> t -> t
@@ -189,6 +190,9 @@ module Def: sig
 
   val merge: definition -> definition -> definition
 
+  (** [weak_merge x y] never redefines values in [x] *)
+  val weak_merge: definition -> definition -> definition
+
   val pp: Format.formatter -> definition -> unit
   val sch: definition Schematic.t
   type t = definition
@@ -199,6 +203,10 @@ module Sig :
   sig
     val card : signature -> int
     val merge : signature -> signature -> signature
+
+    (** [weak_merge x y] never redefines values in [x] *)
+    val weak_merge: signature -> signature -> signature
+
     val flatten: signature -> definition
     val is_exact: signature -> bool
 

@@ -216,6 +216,17 @@ module Dict = struct
       | _, r -> Some r in
     Name.Map.union merge
 
+  let weak_union =
+    let rec merge _k x y = match x, y with
+      | Namespace n, Namespace n' ->
+        Some (
+          Namespace { name = n.name;
+                      modules = Name.Map.union merge n.modules n'.modules
+                    }
+        )
+      | x, _ -> Some x in
+    Name.Map.union merge
+
 end
 
 (* TODO: Behavior with weak aliases *)
@@ -354,8 +365,9 @@ let reflect_modules ppf dict =
     (Name.Map.bindings dict)
 
 let rec pp ppf = function
-  | Alias {name;path;phantom;weak=_} ->
-    Pp.fp ppf "%s≡%s%a" name (if phantom=None then "" else "(👻)" )
+  | Alias {name;path;phantom;weak} ->
+    Pp.fp ppf "%s≡%s%s%a" name (if phantom=None then "" else "(👻)" )
+      (if weak then "(∗)" else "" )
       Namespaced.pp path
   | M m -> pp_m ppf m
   | Namespace n -> Pp.fp ppf "Namespace %s=@[[%a]@]" n.name
@@ -413,8 +425,8 @@ let namespace (path:Namespaced.t) =
       let placeholder =
         Alias { name= global.name; path=global; phantom = None; weak = true } in
       Namespace { name; modules = Dict.of_list[placeholder] }
-  | name :: rest ->
-    Namespace {name; modules = Dict.of_list [namespace global rest] }
+    | name :: rest ->
+      Namespace {name; modules = Dict.of_list [namespace global rest] }
   in
   namespace path path.namespace
 
@@ -499,6 +511,9 @@ module Def = struct
 
   let modules dict = { empty with modules=dict }
   let merge = sig_merge
+  let weak_merge (s1:definition) (s2:definition) =
+    { module_types = Dict.weak_union s1.module_types s2.module_types;
+      modules = Dict.weak_union s1.modules s2.modules }
   let add sg x = { sg with modules = sg.modules |+> x }
   let add_type sg x = { sg with module_types = sg.module_types |+> x }
   let add_gen level = match level with
@@ -531,13 +546,16 @@ module Sig = struct
 
   let (|+>) m x = Name.Map.add (name x) x m
 
-  let rec merge s1 s2 = match s1, s2 with
+  let rec gen_merge def_merge s1 s2 = match s1, s2 with
     | Blank, s | s, Blank -> s
-    | Exact s1, Exact s2 ->  Exact (Def.merge s1 s2)
+    | Exact s1, Exact s2 ->  Exact (def_merge s1 s2)
     | Divergence p , Exact s ->
-      Divergence { p with after = Def.merge p.after s }
+      Divergence { p with after = def_merge p.after s }
     | s, Divergence p ->
-      Divergence { p with before = merge s p.before }
+      Divergence { p with before = gen_merge def_merge s p.before }
+
+  let merge x = gen_merge Def.merge x
+  let weak_merge x = gen_merge Def.weak_merge x
 
   let flatten = flatten
 
