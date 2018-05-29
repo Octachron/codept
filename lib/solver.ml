@@ -279,8 +279,7 @@ module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
     List.fold_left (fun state (u:Unit.s) ->
         match u.precision with
         | Exact ->
-          let env = Envt.add_namespace state.env u.path in
-          { state with pending = make u :: state.pending; env }
+          { state with pending = make u :: state.pending }
         | Approx ->
           let mock = Module.mockup u.path.name ~path:u.src in
           let env = Envt.add_unit state.env
@@ -603,8 +602,6 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
       |> Unit.unimap (Option.fmap load_file)
 
   let start loader files env roots =
-    let add env (_,_,nms) = Envt.add_namespace env nms in
-    let env = List.fold_left add env files in
     debug "starting env:%a" Envt.pp env;
     let gen = generator loader files in
     {

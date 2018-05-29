@@ -21,4 +21,5 @@ val libs: Name.t list -> module_provider
 val open_world: unit -> module_provider
 
 val start:
-  ?open_approximation:bool -> Name.t list -> Module.Dict.t -> Core.t
+  ?open_approximation:bool -> Name.t list -> Namespaced.t list
+  -> Module.Dict.t -> Core.t

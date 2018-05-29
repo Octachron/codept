@@ -40,8 +40,8 @@ let organize policy files =
 
 let version = Sys.ocaml_version
 
-let start_env includes =
-  Envt.start ~open_approximation:true includes Stdlib_data.modules
+let start_env includes files =
+  Envt.start ~open_approximation:true includes files Stdlib_data.modules
 
 
 module Branch(Param:Outliner.param) = struct
@@ -50,7 +50,8 @@ module Branch(Param:Outliner.param) = struct
 
   let organize pkgs files =
     let units: _  Unit.pair = organize policy files in
-    let env = start_env pkgs in
+    let fileset = List.map (fun (u:Unit.s) -> u.path) units.mli in
+    let env = start_env pkgs fileset in
     env, units
 
   let analyze_k pkgs files roots =
@@ -561,7 +562,7 @@ let result =
             ["Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
             ["List"], []);
           "envt.mli", (
-            ["Deps"; "Module";"Name"; "Outliner"], [], []);
+            ["Deps"; "Module";"Name"; "Namespaced"; "Outliner"], [], []);
           "envt.ml", (
             ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
              "Module"; "Name"; "Namespaced"; "Paths";

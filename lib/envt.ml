@@ -84,6 +84,9 @@ module Core = struct
       Pp.fp ppf "namespace [%a]@." Module.pp_mdict modules
     | Signature sg -> Pp.fp ppf "[%a]@." Module.pp_signature sg
 
+  let pp ppf x = Pp.fp ppf "@[top=%a@ context=%a@]"
+      M.pp_mdict x.top pp_context x.current
+
   module D = struct
     let path_record edge mp p env =
       env.deps := Deps.update p edge (Paths.S.Set.singleton mp) !(env.deps)
@@ -320,7 +323,7 @@ module Core = struct
         | _ -> path
 
 
-  let pp ppf x = pp_context ppf x.current
+  let pp ppf x = pp ppf x
 end
 
 let approx name =
@@ -420,8 +423,14 @@ module Libraries = struct
 end
 let libs = Libraries.provider
 
-let start ?(open_approximation=true) libs  predefs =
-  let env = Core.start @@ M.Def.modules @@ predefs in
+let start ?(open_approximation=true) libs namespace  predefs =
+  let empty = Core.start M.Def.empty in
+  let files_in_namespace =
+    List.fold_left Core.add_namespace empty namespace in
+  let env =
+    (* predefs should not override existing files *)
+    Core.start @@ M.Def.modules
+    @@ M.Dict.weak_union files_in_namespace.top predefs in
   let providers =
     (if not (libs = []) then [Libraries.provider libs] else [])
     @ (if open_approximation  then [open_world ()] else [] ) in

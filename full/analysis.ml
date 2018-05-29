@@ -97,7 +97,10 @@ let organize io policy sig_only opens files =
 
 
 let stdlib_pkg s l = match s with
-  | "stdlib" -> Stdlib_data.modules :: l
+  | "stdlib" ->
+    let modules = Stdlib_data.modules in
+    Module.Dict.of_list [Module.Namespace {name="Stdlib"; modules}]
+    :: modules :: l
   | "unix" -> Std_unix.modules :: l
   | "bigarray" -> Std_bigarray.modules :: l
   | "dynlink" -> Std_dynlink.modules :: l
@@ -116,13 +119,17 @@ let base_sign io signatures =
 type 'a envt_kind = (module Outliner.envt_with_deps with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
-let start_env io param libs signatures _fileset =
+let start_env io param libs signatures fileset =
   let signs = Name.Set.fold stdlib_pkg param.precomputed_libs [] in
   let signs = List.flatten
     @@ List.map( fun x -> List.map snd @@ Name.Map.bindings x) signs in
   let base_sign = base_sign io signs in
   let env =
-    Envt.start ~open_approximation:(not param.closed_world) libs base_sign in
+    Envt.start ~open_approximation:(not param.closed_world)
+      libs
+      fileset
+      base_sign
+  in
   let add u env = Envt.Core.add_unit u env in
   let env = List.fold_left add env signatures in
     E ((module Envt.Core: Outliner.envt_with_deps with type t = Envt.Core.t ) ,
@@ -171,7 +178,7 @@ module Collisions = struct
   (** Compute local/libraries collisions *)
   let libs (task:Common.task) units =
     let env =
-      Envt.start ~open_approximation:false task.libs Module.Dict.empty in
+      Envt.start ~open_approximation:false task.libs [] Module.Dict.empty in
     let m = Nms.Map.empty in
     List.fold_left (fun m (u:Unit.s) ->
         match Envt.Core.find M.Module (Nms.flatten u.path) env with
@@ -194,15 +201,12 @@ module Collisions = struct
 
   (** Compute local/local collisions *)
   let local units =
-    let potential_collisions, set =
+    let potential_collisions =
     List.fold_left
-      (fun (collisions, name_set) (u:Unit.s) ->
-         add u.path u.src collisions,
-         Name.Set.add (Nms.head u.path) name_set
-      )
-      (empty,Name.Set.empty) units in
+      (fun collisions (u:Unit.s) -> add u.path u.src collisions )
+      empty units in
     Nms.Map.filter (fun _k s -> Paths.P.Set.cardinal s > 1)
-      potential_collisions, set
+      potential_collisions
 
 end
 
@@ -218,11 +222,12 @@ let main_std io param (task:Common.task) =
   if not @@ Fault.is_silent param.policy F.module_conflict then
     Collisions.libs task units.mli
     |> Collisions.handle param.policy F.module_conflict;
-  let collisions, file_set = Collisions.local units.mli in
+  let collisions = Collisions.local units.mli in
+  let namespace = List.map (fun (u:Unit.s) -> u.path) units.mli in
   let () =
     if not @@ Fault.is_silent param.policy F.local_module_conflict then
       Collisions.handle param.policy F.local_module_conflict collisions in
-  let e = start_env io param task.libs signatures file_set in
+  let e = start_env io param task.libs signatures namespace in
   let {Unit.ml; mli} = solve param e units in
   let ml = remove_units task.invisibles ml in
   let mli = remove_units task.invisibles mli in
@@ -232,11 +237,9 @@ let main_std io param (task:Common.task) =
 let main_seed io param (task:Common.task) =
   let units, signatures =
     pre_organize param.policy io task.files in
-  let file_set = List.fold_left (fun s (_k,_x,p) ->
-      Name.Set.add (Nms.head p) s
-    ) Name.Set.empty units in
+  let file_list = List.map (fun (_k,_x,p) -> p) units in
   let load_file = load_file io param.policy param.sig_only task.opens in
-  let e = start_env io param task.libs signatures file_set in
+  let e = start_env io param task.libs signatures file_list in
   let units = solve_from_seeds task.seeds load_file units param e in
   let units = remove_units task.invisibles units in
   let units = List.fold_left (fun (pair: _ Unit.pair) (u:Unit.r)->
