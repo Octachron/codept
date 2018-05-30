@@ -18,15 +18,24 @@ let name filename = String.capitalize_ascii @@
 
 let ok x = Ok x
 
+let parse_implementation input =
+  try
+    Pparse.parse_implementation Format.err_formatter ~tool_name:"codept" input
+  with
+  | Syntaxerr.Error _ ->
+    let ast = Parse.use_file (Lexing.from_channel @@ open_in input) in
+    let drop_directive x l = match x with
+      | Parsetree.Ptop_def x -> x @ l
+      | Ptop_dir _ -> l in
+    List.(fold_right drop_directive ast [])
+
 let source_file kind filename =
   Location.input_name := filename;
   let input_file = Pparse.preprocess filename in
   let code =  try ok @@
       match kind with
       | M2l.Structure ->
-        Ast_converter.structure @@
-        Pparse.parse_implementation Format.err_formatter ~tool_name:"codept"
-          input_file
+        Ast_converter.structure @@ parse_implementation input_file
       | M2l.Signature ->
         Ast_converter.signature @@
         Pparse.parse_interface Format.err_formatter ~tool_name:"codept" input_file
