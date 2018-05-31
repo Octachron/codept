@@ -97,10 +97,7 @@ let organize io policy sig_only opens files =
 
 
 let stdlib_pkg s l = match s with
-  | "stdlib" ->
-    let modules = Stdlib_data.modules in
-    Module.Dict.of_list [Module.Namespace {name="Stdlib"; modules}]
-    :: modules :: l
+  | "stdlib" -> Stdlib_data.modules :: Prefixed_stdlib.modules :: l
   | "unix" -> Std_unix.modules :: l
   | "bigarray" -> Std_bigarray.modules :: l
   | "dynlink" -> Std_dynlink.modules :: l

@@ -16,14 +16,14 @@ esac
 simplify () {
   local name=$1
   local ifs=$IFS
-  IFS="."
+  IFS=".+"
   set -- ${name}
   version="$1.$2"
   IFS=${ifs}
 }
 
 copy () {
-for dir in lib full; do 
+for dir in lib full precomputed; do 
 	if [ -d "$1/${dir}" ]; then
 		cp -R $1/${dir}/*.ml ${dir}/;
 	fi done

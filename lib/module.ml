@@ -317,7 +317,7 @@ let rec reflect ppf = function
     Pp.fp ppf "Namespace {name=%a; modules=%a}"
       Pp.estring name reflect_mdict modules
   |  Alias {name;path;phantom;weak} ->
-    Pp.fp ppf "Alias {name=%a;path=[%a];phantom=%a;weak=%b}"
+    Pp.fp ppf "Alias {name=%a;path=%a;phantom=%a;weak=%b}"
       Pp.estring name
       reflect_namespaced path
       reflect_phantom phantom
@@ -327,7 +327,7 @@ and reflect_namespaced ppf nd =
     Pp.fp ppf "Namespaced.make %a"
       Pp.estring nd.name
   else
-    Pp.fp ppf "Namespaced.make ~namespace:(%a) %a"
+    Pp.fp ppf "Namespaced.make ~nms:[%a] %a"
       Pp.(list ~sep:(s";@ ") @@ estring) nd.namespace
       Pp.estring nd.name
 and reflect_m ppf {name;args;origin;signature} =
@@ -350,18 +350,18 @@ and reflect_definition ppf {modules; module_types} =
       reflect_mdict modules
       reflect_mdict module_types
 and reflect_mdict ppf dict =
-      Pp.(list ~sep:(s "; @,") @@ reflect_pair) ppf (Name.Map.bindings dict)
+      Pp.(list ~sep:(s ";@ ") @@ reflect_pair) ppf (Name.Map.bindings dict)
 and reflect_pair ppf (_,md) = reflect ppf md
 and reflect_opt reflect ppf = function
   | None -> Pp.string ppf "None"
   | Some x -> Pp.fp ppf "Some %a" reflect x
 and reflect_arg ppf arg = Pp.fp ppf "%a" (reflect_opt reflect_m) arg
 and reflect_args ppf args =
-  Pp.fp ppf "[%a]" (Pp.(list ~sep:(s "; @,") ) @@ reflect_arg ) args
+  Pp.fp ppf "[%a]" (Pp.(list ~sep:(s ";@ ") ) @@ reflect_arg ) args
 
 let reflect_modules ppf dict =
   Pp.fp ppf "Dict.of_list @[<v 2>[%a]@]"
-    (Pp.list ~sep:(Pp.s "; @,") @@ fun ppf (_,m) -> reflect ppf m)
+    (Pp.list ~sep:(Pp.s ";@ ") @@ fun ppf (_,m) -> reflect ppf m)
     (Name.Map.bindings dict)
 
 let rec pp ppf = function

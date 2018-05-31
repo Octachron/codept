@@ -5,18 +5,18 @@ full/analysis.cmo : lib/unit.cmi precomputed/stdlib_data.cmo \
     precomputed/std_unix.cmo precomputed/std_threads.cmo \
     precomputed/std_num.cmo precomputed/std_graph.cmo \
     precomputed/std_dynlink.cmo precomputed/std_bigarray.cmo \
-    lib/standard_faults.cmi lib/solver.cmi lib/read.cmi lib/paths.cmi \
-    lib/outliner.cmi lib/option.cmi lib/namespaced.cmi lib/name.cmi \
-    lib/module.cmi lib/m2l.cmi full/io.cmi lib/fault.cmi lib/envt.cmi \
-    full/common.cmi full/analysis.cmi
+    lib/standard_faults.cmi lib/solver.cmi lib/read.cmi \
+    precomputed/prefixed_stdlib.cmo lib/paths.cmi lib/outliner.cmi \
+    lib/option.cmi lib/namespaced.cmi lib/name.cmi lib/module.cmi lib/m2l.cmi \
+    full/io.cmi lib/fault.cmi lib/envt.cmi full/common.cmi full/analysis.cmi
 full/analysis.cmx : lib/unit.cmx precomputed/stdlib_data.cmx \
     precomputed/std_unix.cmx precomputed/std_threads.cmx \
     precomputed/std_num.cmx precomputed/std_graph.cmx \
     precomputed/std_dynlink.cmx precomputed/std_bigarray.cmx \
-    lib/standard_faults.cmx lib/solver.cmx lib/read.cmx lib/paths.cmx \
-    lib/outliner.cmx lib/option.cmx lib/namespaced.cmx lib/name.cmx \
-    lib/module.cmx lib/m2l.cmx full/io.cmx lib/fault.cmx lib/envt.cmx \
-    full/common.cmx full/analysis.cmi
+    lib/standard_faults.cmx lib/solver.cmx lib/read.cmx \
+    precomputed/prefixed_stdlib.cmx lib/paths.cmx lib/outliner.cmx \
+    lib/option.cmx lib/namespaced.cmx lib/name.cmx lib/module.cmx lib/m2l.cmx \
+    full/io.cmx lib/fault.cmx lib/envt.cmx full/common.cmx full/analysis.cmi
 full/analysis.cmi : lib/unit.cmi lib/outliner.cmi lib/name.cmi full/io.cmi \
     lib/fault.cmi full/common.cmi
 full/args.cmo : full/task.cmi lib/support.cmi full/single.cmi \
@@ -157,7 +157,8 @@ lib/envt.cmx : lib/summary.cmx lib/standard_policies.cmx \
     lib/standard_faults.cmx lib/pp.cmx lib/paths.cmx lib/outliner.cmx \
     lib/option.cmx lib/namespaced.cmx lib/name.cmx lib/module.cmx lib/m2l.cmx \
     lib/fault.cmx lib/deps.cmx lib/cmi.cmx lib/envt.cmi
-lib/envt.cmi : lib/outliner.cmi lib/name.cmi lib/module.cmi lib/deps.cmi
+lib/envt.cmi : lib/outliner.cmi lib/namespaced.cmi lib/name.cmi \
+    lib/module.cmi lib/deps.cmi
 lib/fault.cmo : lib/pp.cmi lib/paths.cmi lib/option.cmi lib/name.cmi \
     lib/loc.cmi lib/fault.cmi
 lib/fault.cmx : lib/pp.cmx lib/paths.cmx lib/option.cmx lib/name.cmx \
@@ -271,6 +272,8 @@ lib/unit.cmx : lib/standard_faults.cmx lib/read.cmx lib/pp.cmx lib/paths.cmx \
     lib/fault.cmx lib/deps.cmx lib/approx_parser.cmx lib/unit.cmi
 lib/unit.cmi : lib/read.cmi lib/paths.cmi lib/namespaced.cmi lib/module.cmi \
     lib/m2l.cmi lib/fault.cmi lib/deps.cmi
+precomputed/prefixed_stdlib.cmo : lib/namespaced.cmi lib/module.cmi
+precomputed/prefixed_stdlib.cmx : lib/namespaced.cmx lib/module.cmx
 precomputed/std_bigarray.cmo : lib/module.cmi
 precomputed/std_bigarray.cmx : lib/module.cmx
 precomputed/std_dynlink.cmo : lib/module.cmi
