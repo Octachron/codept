@@ -11,17 +11,19 @@ let classify filename =  match Support.extension filename with
   | ext -> raise (Invalid_argument ("unknown extension: "^ext))
 
 module Version = struct
+  include Version
   type t = {major:int; minor:int}
-  let v =
-    Scanf.sscanf Sys.ocaml_version "%1d.%02d"
-    (fun k l -> {major=k;minor=l} )
+  let v = { major; minor }
 
   let (<=) v v2 =
   v.major < v2.major
   || (v.major = v2.major && v.minor <= v2.minor)
 
+  let (>=) v v2 = v2 <= v
+
   let v_4_04 = { minor = 4; major = 4 }
-  let v_4_06 = { minor = 6; major = 6 }
+  let v_4_06 = { minor = 6; major = 4 }
+  let v_4_07 = { minor = 7; major = 4 }
 end
 
 
@@ -40,9 +42,20 @@ let organize policy files =
 
 let version = Sys.ocaml_version
 
-let start_env includes files =
-  Envt.start ~open_approximation:true includes files Stdlib_data.modules
+let prefixed_stdlib () =
+  let open Module in
+  let modules = Stdlib_data.modules in
+  if Version.( v <= v_4_06 ) then
+    Dict.of_list [Namespace{ name = "Stdlib"; modules }]
+  else
+    modules
 
+let start_env includes files =
+  Envt.start ~open_approximation:true
+    ~libs:includes
+    ~namespace:files
+    ~implicits:[["Stdlib"], prefixed_stdlib ()]
+    Module.Dict.empty
 
 module Branch(Param:Outliner.param) = struct
   module S = Solver.Make(Envt.Core)(Param)
@@ -237,8 +250,17 @@ let both root x =
 
 let l = List.map Paths.P.local
 let u = List.map (fun x -> Paths.P.{(local x) with source=Unknown})
-let std = List.map
-    (fun x -> Paths.P.{(local x) with source=Special "stdlib"})
+
+let stn =
+     if Version.( v <= v_4_06 ) then
+       fun x -> x
+     else
+       fun x -> "Stdlib__" ^String.uncapitalize_ascii x
+
+let std =
+  let localize x = local (stn x) in
+  List.map
+    (fun x -> Paths.P.{(localize x) with source=Special "stdlib"})
 
 let d x =
   x,
@@ -251,6 +273,7 @@ let (/) p x =
   x, Namespaced.of_filename ~nms:[p] x
 
 let dl x = List.map (fun (f,deps) -> d f, deps) x
+let (!) = stn
 
 let result =
   Sys.chdir "tests/cases";
@@ -299,11 +322,8 @@ let result =
     ["with_more.ml", u["Ext";"Ext3"]]
   ]
 
-  && ( Version.( v < v_4_04) ||
+  && ( Version.( v >= v_4_04) ||
        Std.deps_test_single [d"pattern_open.ml", u["A'";"E1"; "E2"; "E3";"E4"]] )
-
-  && ( Version.( v < v_4_06 ) ||
-       Std.deps_test_single [d"destructive_substitutions.ml", u["Ext"; "Ext2"]] )
 
   (* Note the inferred dependencies is wrong, but there is not much
      (or far too much ) to do here *)
@@ -544,100 +564,105 @@ let result =
         (dl[
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
           "ast_converter.ml", ( ["Loc"; "M2l"; "Option"; "Module"; "Paths"],
-                                ["List";"Longident"; "Location"; "Lexing";
-                                 "Parsetree"], [] );
+                                [!"List"; "Longident"; "Location";
+                                 !"Lexing"; "Parsetree"], [] );
           "approx_parser.mli", (["M2l"], [],[]);
           "approx_parser.ml", (["Deps"; "Loc"; "Read";"M2l";"Paths"],
-                               ["Lexer"; "Parser"; "Lexing";"List"],[]);
+                               ["Lexer"; "Parser";!"Lexing";!"List"],[]);
           "cmi.mli", (["M2l"], [], []);
 
           "cmi.ml", (["Loc"; "M2l";"Module"; "Option"; "Paths"],
-                     ["Cmi_format"; "List"; "Path";"Types";"Ident"], []);
-          "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic"],["List"],[]);
+                     ["Cmi_format"; !"List"; "Path";"Types";"Ident"], []);
+          "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic"],[!"List"],[]);
           "summary.mli", (
             ["Module";"Paths";"Schematic"],
-            ["Format"],
+            [!"Format"],
             [] );
           "summary.ml", (
             ["Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
-            ["List"], []);
+            [!"List"], []);
           "envt.mli", (
-            ["Deps"; "Module";"Name"; "Namespaced"; "Outliner"], [], []);
+            ["Deps"; "Module";"Name"; "Namespaced"; "Outliner"; "Paths"],
+            [], []);
           "envt.ml", (
             ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
              "Module"; "Name"; "Namespaced"; "Paths";
              "Standard_faults";"Standard_policies";"Option";"Pp"],
-            ["Array"; "Filename"; "List";"Sys"; "Format"],
+            [!"Array"; !"Filename";!"List";!"Sys"; !"Format"],
             []);
           "outliner.mli", (
             ["Deps"; "Fault"; "Module"; "Namespaced";  "Name";
              "Paths";"M2l"; "Summary"],
-            ["Format"],[]);
+            [!"Format"],[]);
           "outliner.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Namespaced";
              "Option"; "Paths"; "Mresult"; "Fault"; "Standard_faults";
              "Deps"]
-          ,["List";"Format"],[]);
+          ,[!"List";!"Format"],[]);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";
                        "Schematic" ],
-                      ["Format"],[]);
+                      [!"Format"],[]);
           "m2l.ml", (["Loc"; "Deps"; "Module"; "Mresult"; "Name";
                       "Option";"Summary";"Paths"; "Pp"; "Schematic" ],
-                     ["List"],[]);
+                     [!"List"],[]);
           "fault.ml", (["Loc"; "Option"; "Name";"Paths"; "Pp"],
-                          ["Array"; "Format"],[]);
+                          [!"Array"; !"Format"],[]);
           "fault.mli", (["Loc"; "Paths"; "Name"],
-                          ["Format"],[]);
-          "format_compat.mli", ([],["Format"],[]);
-          "format_compat.ml", ([],["Format"],[]);
+                          [!"Format"],[]);
+          "format_compat.mli", ([],[!"Format"],[]);
+          "format_compat.ml", ([],[!"Format"],[]);
           "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Schematic"],
-                          ["Format"], [] );
+                          [!"Format"], [] );
           "module.ml", ( ["Loc";"Paths";"Name"; "Namespaced"; "Option"; "Pp"
                          ; "Schematic"  ],
-                         ["List"], [] );
-          "name.mli", ( [], ["Format";"Set";"Map"], [] );
-          "name.ml", ( ["Pp"], ["Set";"Map";"List"], [] );
+                         [!"List"], [] );
+          "name.mli", ( [], [!"Format";!"Set";!"Map"], [] );
+          "name.ml", ( ["Pp"], [!"Set";!"Map";!"List"], [] );
           "namespaced.mli", ( ["Name";"Paths"; "Pp"],
-                              ["Set";"Map"], [] );
+                              [!"Set";!"Map"], [] );
           "namespaced.ml", ( ["Name"; "Paths"; "Pp"],
-                             ["Format";"List"; "Set";"Map"], [] );
-          "loc.mli", ( ["Name";"Schematic"], ["Format"], []);
-          "loc.ml", ( ["Pp";"Schematic"], ["List"], []);
-          "option.mli", ([],["Lazy"],[]);
-          "option.ml", ([],["List"; "Lazy"],[]);
-          "paths.mli", (["Name"; "Schematic"], ["Map";"Set";"Format"],[]);
+                             [!"Format";!"List";!"Set";!"Map"], [] );
+          "loc.mli", ( ["Name";"Schematic"], [!"Format"], []);
+          "loc.ml", ( ["Pp";"Schematic"], [!"List"], []);
+          "option.mli", ([],[!"Lazy"],[]);
+          "option.ml", ([],[!"List";!"Lazy"],[]);
+          "paths.mli", (["Name"; "Schematic"], [!"Map";!"Set";!"Format"],[]);
           "paths.ml", (["Name"; "Pp"; "Schematic"; "Support" ],
-                       ["Filename";"List";"Map";"Set";"Format"; "String"],[]);
-          "pp.mli", ([], ["Format"],[]);
-          "pp.ml", ([], ["Format"],[]);
+                       [!"Filename";!"List";!"Map";!"Set";
+                        !"Format"; !"String"],[]);
+          "pp.mli", ([], [!"Format"],[]);
+          "pp.ml", ([], [!"Format"],[]);
           "read.mli", (["M2l"; "Name"; "Schematic"],["Lexer";"Syntaxerr"],[]);
           "read.ml", (["Ast_converter"; "Cmi"; "M2l"; "Schema"; "Schematic" ],
-                      ["Filename"; "Format"; "Lexer"; "Lexing"; "Location";
-                       "Parsing"; "Pparse"; "String"; "Syntaxerr"],
+                      [!"Filename"; !"Format"; "Lexer"; !"Lexing"; !"List";
+                       "Location";
+                       "Parse"; "Parsetree"; !"Parsing"; "Pparse"; !"String";
+                       "Syntaxerr"],
                       ["Sparser";"Slex"]);
           "mresult.mli", ([],[],[]);
-          "mresult.ml", ([],["List"],[]);
+          "mresult.ml", ([],[!"List"],[]);
           "schema.ml", (["M2l"; "Module";"Name"; "Option"; "Paths"; "Schematic"],
                         [],  []);
           "schema.mli", (["M2l"; "Module"; "Name"; "Paths"; "Schematic"], [], []);
           "schematic.mli", (["Name"],
-                       [ "Format"], [] );
+                       [ !"Format"], [] );
           "schematic.ml", (["Format_compat"; "Name"; "Mresult"; "Pp";
                             "Support";"Option"],
-                       ["Format"; "Hashtbl"; "List"; "Map"; "String"], [] );
+                           [!"Format"; !"Hashtbl"; !"List"; !"Map"; !"String"],
+                           [] );
           "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";
                           "Namespaced"; "Read";
                           "Summary"; "Outliner"; "Paths"],
-                         ["Format";"Map";"Set"],[]);
+                         [!"Format";!"Map";!"Set"],[]);
           "solver.ml", (
             ["Approx_parser"; "Deps"; "Summary"; "Outliner"; "Loc";
              "M2l"; "Module"; "Mresult"; "Namespaced";
              "Option"; "Pp"; "Paths"; "Read"; "Unit"; "Fault";
              "Standard_faults"],
-            ["List"; "Map"; "Set";"Format"],[]);
+            [!"List"; !"Map"; !"Set";!"Format"],[]);
           "standard_faults.ml", (
             ["Fault"; "Module"; "Namespaced"; "Paths"; "Pp"; "Loc"; "Schematic" ],
-            ["Format"; "Location"; "Syntaxerr"],[]);
+            [!"Format"; "Location"; "Syntaxerr"],[]);
           "standard_faults.mli", (
             ["Fault"; "Name"; "Namespaced"; "Module"; "Paths"; "Schematic" ],
             ["Lexer";"Syntaxerr"],[]);
@@ -645,14 +670,14 @@ let result =
           "standard_policies.mli", (["Fault"],[],[]);
           "unit.mli", (["Deps";"Paths"; "M2l"; "Module"; "Namespaced";
                         "Fault"; "Read"],
-                       ["Format";"Set"],[]);
+                       [!"Format";!"Set"],[]);
           "unit.ml", (
             ["Approx_parser"; "Deps"; "M2l"; "Module"; "Namespaced";
              "Fault"; "Option"; "Paths"; "Pp"; "Read";
              "Standard_faults"],
-            [ "List"; "Location"; "Set"],
+            [ !"List"; "Location"; !"Set"],
             []);
-          "support.ml", ([],["String"],[]);
+          "support.ml", ([],[!"String"],[]);
           "support.mli", ([],[],[]);
         ])
       )

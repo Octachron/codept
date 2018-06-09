@@ -97,7 +97,6 @@ let organize io policy sig_only opens files =
 
 
 let stdlib_pkg s l = match s with
-  | "stdlib" -> Stdlib_data.modules :: Prefixed_stdlib.modules :: l
   | "unix" -> Std_unix.modules :: l
   | "bigarray" -> Std_bigarray.modules :: l
   | "dynlink" -> Std_dynlink.modules :: l
@@ -106,6 +105,12 @@ let stdlib_pkg s l = match s with
   | "threads" -> Std_threads.modules :: l
   | _ -> l
 
+let prefixed_stdlib () =
+  let modules = Stdlib_data.modules in
+  if Version.(major,minor) < (4,7) then
+    M.Dict.of_list [M.(Namespace {name="Stdlib"; modules })]
+  else
+    modules
 
 let base_sign io signatures =
   let (++) dict m = Name.Map.add (Module.name m) m dict in
@@ -121,10 +126,17 @@ let start_env io param libs signatures fileset =
   let signs = List.flatten
     @@ List.map( fun x -> List.map snd @@ Name.Map.bindings x) signs in
   let base_sign = base_sign io signs in
+  let implicits =
+    if Name.Set.mem "stdlib" param.precomputed_libs then
+      [["Stdlib"], prefixed_stdlib ()]
+    else
+      [] in
   let env =
-    Envt.start ~open_approximation:(not param.closed_world)
-      libs
-      fileset
+    Envt.start
+      ~open_approximation:(not param.closed_world)
+      ~libs
+      ~namespace:fileset
+      ~implicits
       base_sign
   in
   let add u env = Envt.Core.add_unit u env in
@@ -175,7 +187,12 @@ module Collisions = struct
   (** Compute local/libraries collisions *)
   let libs (task:Common.task) units =
     let env =
-      Envt.start ~open_approximation:false task.libs [] Module.Dict.empty in
+      Envt.start
+        ~open_approximation:false
+        ~libs:task.libs
+        ~implicits:[]
+        ~namespace:[]
+        Module.Dict.empty in
     let m = Nms.Map.empty in
     List.fold_left (fun m (u:Unit.s) ->
         match Envt.Core.find M.Module (Nms.flatten u.path) env with

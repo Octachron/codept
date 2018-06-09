@@ -20,6 +20,7 @@ module Query = struct
   let pure main = { Outliner.main; msgs = [] }
   let create main msgs : _ t = {main; msgs}
 
+  let (>>|) x f = { x with Outliner.main = f x.Outliner.main }
   let (>>?) (x: _ t option) f =
     Option.( x >>= fun x ->
              f x.main >>| fun q ->
@@ -173,9 +174,15 @@ module Core = struct
                   else None)
 
 
-  let rec find current ~absolute_path ?(edge=Edge.Normal) ~root level path env =
+  let rec find
+      ~approx_submodule
+      current
+      ~absolute_path ?(edge=Edge.Normal)
+      ~root level
+      path
+      env =
     debug "looking for %a" Paths.S.pp path;
-    debug "in %a" pp_context env.current;
+    debug "in %a, sub-approx: %B" pp_context env.current approx_submodule;
     match path with
     | [] ->
       raise (Invalid_argument "Envt.find cannot find empty path")
@@ -184,9 +191,9 @@ module Core = struct
       let open Query in
       let r =
         match find_name lvl a env.current with
-        | None when not root || lvl = Module_type ->
+        | None when (not root || lvl = Module_type) && approx_submodule ->
           begin
-            debug "approximate %s" (last path);
+            debug "submodule approximate %s" (last path);
             Some (create (M.md @@ M.mockup @@ last path)
                     [nosubmodule current lvl a])
           end
@@ -206,13 +213,15 @@ module Core = struct
                 else [] in
             (* aliases link only to compilation units *)
             Option.(
-              find (a::current) ~absolute_path:false ~root:true ~edge
+              find (a::current)
+                ~approx_submodule
+                ~absolute_path:false ~root:true ~edge
                 level (Namespaced.flatten path @ q) (top env)
               >>| Query.add_msg msgs
             )
       | Alias { weak = true; _ } when absolute_path -> None
       | Alias {path; weak = true; _ } ->
-        find [] ~absolute_path:true ~root:true ~edge level
+        find [] ~absolute_path:true ~approx_submodule ~root:true ~edge level
           (Namespaced.flatten path @ q) (top env)
       | M.M m ->
         debug "found module %s" m.name;
@@ -221,7 +230,8 @@ module Core = struct
           if q = [] then
             Some ((create (M m) faults))
           else
-            find (a::current) ~absolute_path:false ~root:false level q
+            find (a::current) ~approx_submodule
+              ~absolute_path:false ~root:false level q
             @@ restrict env @@ Signature m.signature
         end
       | Namespace {name;modules} ->
@@ -230,19 +240,24 @@ module Core = struct
           if q = [] then
             Some (Query.pure (Namespace {name;modules}))
           else
-            find (a::current) ~absolute_path ~root:true level q
+            find (a::current) ~approx_submodule ~absolute_path
+              ~root:true level q
             @@ restrict env @@ In_namespace modules
 
         end
       end
 
-  let find ?edge level path envt =
-    match find [] ~absolute_path:false ?edge ~root:true level path envt with
+  let find sub ?edge level path envt =
+    match find [] ~approx_submodule:sub ~absolute_path:false
+            ?edge ~root:true level path envt with
     | None -> raise Not_found
     | Some x -> x
 
-    let deps env = !(env.deps)
-    let reset_deps env = env.deps := P.Map.empty
+  let find_implicit = find false
+  let find = find true
+
+  let deps env = !(env.deps)
+  let reset_deps env = env.deps := P.Map.empty
 
   let to_sign = function
     | Signature s -> s
@@ -353,7 +368,8 @@ module Libraries = struct
     let cmis_map =
       Array.fold_left (fun m x ->
           if Filename.check_suffix x ".cmi" then
-            let p = {P.source = P.Pkg origin; file = Paths.S.parse_filename x} in
+            let p =
+              {P.source = P.Pkg origin; file = Paths.S.parse_filename x} in
             Name.Map.add (P.module_name p) p m
           else m
         )
@@ -423,7 +439,29 @@ module Libraries = struct
 end
 let libs = Libraries.provider
 
-let start ?(open_approximation=true) libs namespace  predefs =
+module Implicit_namespace = struct
+
+  let provider (namespace,modules) =
+    let open Query in
+    let wrap = function
+        | M m -> M.M m
+        | Namespace {name;modules} ->
+          M.Namespace {name; modules} in
+    let env = Core.start (M.Def.modules modules) in
+    fun name ->
+      try
+          Some(Core.find_implicit M.Module [name] env >>| wrap)
+      with Not_found ->
+      try
+        Some(Core.find_implicit M.Module (namespace @ [name]) env >>| wrap)
+      with Not_found -> None
+
+end
+let implicit_namespace = Implicit_namespace.provider
+
+
+let start ?(open_approximation=true)
+    ~libs ~namespace ~implicits predefs  =
   let empty = Core.start M.Def.empty in
   let files_in_namespace =
     List.fold_left Core.add_namespace empty namespace in
@@ -431,7 +469,7 @@ let start ?(open_approximation=true) libs namespace  predefs =
     (* predefs should not override existing files *)
     Core.start @@ M.Def.modules
     @@ M.Dict.weak_union files_in_namespace.top predefs in
-  let providers =
-    (if not (libs = []) then [Libraries.provider libs] else [])
-    @ (if open_approximation  then [open_world ()] else [] ) in
-  { env with providers }
+  let implicits = List.map implicit_namespace implicits in
+  let libs = if not (libs = []) then [Libraries.provider libs] else [] in
+  let open_approx = if open_approximation  then [open_world ()] else [] in
+  { env with providers= libs @ implicits @ open_approx }

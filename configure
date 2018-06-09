@@ -18,6 +18,8 @@ simplify () {
   local ifs=$IFS
   IFS=".+"
   set -- ${name}
+  major="$1"
+  minor="$2"
   version="$1.$2"
   IFS=${ifs}
 }
@@ -34,3 +36,4 @@ copy "current";
 if [ -d "${version}" ]; then
 	copy "${version}"
 fi
+echo "let major=${major} let minor=${minor}" > full/version.ml
