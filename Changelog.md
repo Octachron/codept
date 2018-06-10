@@ -1,5 +1,17 @@
 # Version 0.10.2
 
+## Features
+
+  * Improved priority order for module resolution:
+    local files, libraries, standard library
+  * support for ocaml script syntax,
+    `#open` and `#require` are not taken in account yet.
+
+## OCaml version support:
+
+  * OCaml 4.07:
+    * prefixed standard library
+
 ## Bug fixes:
 
   * dot output: escape graphviz keywords
