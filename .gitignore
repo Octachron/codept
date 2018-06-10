@@ -9,5 +9,7 @@ tests/star/m*.mli
 docs/*.html
 lib/ast_converter.ml
 lib/cmi.ml
+lib/format_compat.ml
+full/version.ml
 full/extended_args.ml
 #*#
