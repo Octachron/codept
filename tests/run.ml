@@ -15,12 +15,6 @@ module Version = struct
   type t = {major:int; minor:int}
   let v = { major; minor }
 
-  let (<=) v v2 =
-  v.major < v2.major
-  || (v.major = v2.major && v.minor <= v2.minor)
-
-  let (>=) v v2 = v2 <= v
-
   let v_4_04 = { minor = 4; major = 4 }
   let v_4_06 = { minor = 6; major = 4 }
   let v_4_07 = { minor = 7; major = 4 }
@@ -322,7 +316,7 @@ let result =
     ["with_more.ml", u["Ext";"Ext3"]]
   ]
 
-  && ( Version.( v >= v_4_04) ||
+  && ( Version.( v <= v_4_04) ||
        Std.deps_test_single [d"pattern_open.ml", u["A'";"E1"; "E2"; "E3";"E4"]] )
 
   (* Note the inferred dependencies is wrong, but there is not much
