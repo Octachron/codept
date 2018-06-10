@@ -1,11 +1,11 @@
 let modules= let open Module in  let open Sig in 
-Dict.of_list [M {name="CamlinternalFormat"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["CamlinternalFormat"]};path=["CamlinternalFormat"]}; args=[]; signature=empty};
-               M {name="CamlinternalFormatBasics"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["CamlinternalFormatBasics"]};path=["CamlinternalFormatBasics"]}; args=[]; signature=empty};
-               M {name="CamlinternalLazy"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["CamlinternalLazy"]};path=["CamlinternalLazy"]}; args=[]; signature=empty};
-               M {name="CamlinternalMod"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["CamlinternalMod"]};path=["CamlinternalMod"]}; args=[]; signature=empty};
-               M {name="CamlinternalOO"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["CamlinternalOO"]};path=["CamlinternalOO"]}; args=[]; signature=empty};
-               M {name="Std_exit"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Std_exit"]};path=["Std_exit"]}; args=[]; signature=empty};
-               M {name="Stdlib"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib"]};path=["Stdlib"]}; args=[]; signature=of_list 
+Dict.of_list [M {name="CamlinternalFormat"; origin=Unit {source={source=Special "stdlib"; file=["CamlinternalFormat"]};path=["CamlinternalFormat"]}; args=[]; signature=empty};
+               M {name="CamlinternalFormatBasics"; origin=Unit {source={source=Special "stdlib"; file=["CamlinternalFormatBasics"]};path=["CamlinternalFormatBasics"]}; args=[]; signature=empty};
+               M {name="CamlinternalLazy"; origin=Unit {source={source=Special "stdlib"; file=["CamlinternalLazy"]};path=["CamlinternalLazy"]}; args=[]; signature=empty};
+               M {name="CamlinternalMod"; origin=Unit {source={source=Special "stdlib"; file=["CamlinternalMod"]};path=["CamlinternalMod"]}; args=[]; signature=empty};
+               M {name="CamlinternalOO"; origin=Unit {source={source=Special "stdlib"; file=["CamlinternalOO"]};path=["CamlinternalOO"]}; args=[]; signature=empty};
+               M {name="Std_exit"; origin=Unit {source={source=Special "stdlib"; file=["Std_exit"]};path=["Std_exit"]}; args=[]; signature=empty};
+               M {name="Stdlib"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib"]};path=["Stdlib"]}; args=[]; signature=of_list 
                  [Alias {name="Arg";path=Namespaced.make "Stdlib__arg";phantom=None;weak=false};
                  Alias {name="Array";path=Namespaced.make "Stdlib__array";phantom=None;weak=false};
                  Alias {name="ArrayLabels";path=Namespaced.make "Stdlib__arrayLabels";phantom=None;weak=false};
@@ -57,25 +57,25 @@ Dict.of_list [M {name="CamlinternalFormat"; origin=Unit {source={source=Special 
                  Alias {name="Sys";path=Namespaced.make "Stdlib__sys";phantom=None;weak=false};
                  Alias {name="Uchar";path=Namespaced.make "Stdlib__uchar";phantom=None;weak=false};
                  Alias {name="Weak";path=Namespaced.make "Stdlib__weak";phantom=None;weak=false}]};
-               M {name="Stdlib__arg"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__arg"]};path=["Stdlib__arg"]}; args=[]; signature=empty};
-               M {name="Stdlib__array"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__array"]};path=["Stdlib__array"]}; args=[]; signature=of_list 
+               M {name="Stdlib__arg"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__arg"]};path=["Stdlib__arg"]}; args=[]; signature=empty};
+               M {name="Stdlib__array"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__array"]};path=["Stdlib__array"]}; args=[]; signature=of_list 
                  [M {name="Floatarray"; origin=Submodule; args=[]; signature=empty}]};
-               M {name="Stdlib__arrayLabels"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__arrayLabels"]};path=["Stdlib__arrayLabels"]}; args=[]; signature=of_list 
+               M {name="Stdlib__arrayLabels"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__arrayLabels"]};path=["Stdlib__arrayLabels"]}; args=[]; signature=of_list 
                  [M {name="Floatarray"; origin=Submodule; args=[]; signature=empty}]};
-               M {name="Stdlib__bigarray"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__bigarray"]};path=["Stdlib__bigarray"]}; args=[]; signature=of_list 
+               M {name="Stdlib__bigarray"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__bigarray"]};path=["Stdlib__bigarray"]}; args=[]; signature=of_list 
                  [M {name="Array0"; origin=Submodule; args=[]; signature=empty};
                  M {name="Array1"; origin=Submodule; args=[]; signature=empty};
                  M {name="Array2"; origin=Submodule; args=[]; signature=empty};
                  M {name="Array3"; origin=Submodule; args=[]; signature=empty};
                  M {name="Genarray"; origin=Submodule; args=[]; signature=empty}]};
-               M {name="Stdlib__buffer"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__buffer"]};path=["Stdlib__buffer"]}; args=[]; signature=empty};
-               M {name="Stdlib__bytes"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__bytes"]};path=["Stdlib__bytes"]}; args=[]; signature=empty};
-               M {name="Stdlib__bytesLabels"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__bytesLabels"]};path=["Stdlib__bytesLabels"]}; args=[]; signature=empty};
-               M {name="Stdlib__callback"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__callback"]};path=["Stdlib__callback"]}; args=[]; signature=empty};
-               M {name="Stdlib__char"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__char"]};path=["Stdlib__char"]}; args=[]; signature=empty};
-               M {name="Stdlib__complex"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__complex"]};path=["Stdlib__complex"]}; args=[]; signature=empty};
-               M {name="Stdlib__digest"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__digest"]};path=["Stdlib__digest"]}; args=[]; signature=empty};
-               M {name="Stdlib__ephemeron"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__ephemeron"]};path=["Stdlib__ephemeron"]}; args=[]; signature=
+               M {name="Stdlib__buffer"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__buffer"]};path=["Stdlib__buffer"]}; args=[]; signature=empty};
+               M {name="Stdlib__bytes"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__bytes"]};path=["Stdlib__bytes"]}; args=[]; signature=empty};
+               M {name="Stdlib__bytesLabels"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__bytesLabels"]};path=["Stdlib__bytesLabels"]}; args=[]; signature=empty};
+               M {name="Stdlib__callback"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__callback"]};path=["Stdlib__callback"]}; args=[]; signature=empty};
+               M {name="Stdlib__char"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__char"]};path=["Stdlib__char"]}; args=[]; signature=empty};
+               M {name="Stdlib__complex"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__complex"]};path=["Stdlib__complex"]}; args=[]; signature=empty};
+               M {name="Stdlib__digest"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__digest"]};path=["Stdlib__digest"]}; args=[]; signature=empty};
+               M {name="Stdlib__ephemeron"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__ephemeron"]};path=["Stdlib__ephemeron"]}; args=[]; signature=
                  (merge 
                  (of_list [M {name="GenHashTable"; origin=Submodule; args=[]; signature=of_list 
                              [M {name="MakeSeeded"; origin=Submodule; args=[Some 
@@ -97,13 +97,13 @@ Dict.of_list [M {name="CamlinternalFormat"; origin=Unit {source={source=Special 
                  (of_list_type [M {name="S"; origin=Submodule; args=[]; signature=empty};
                  M {name="SeededS"; origin=Submodule; args=[]; signature=empty}])
                   )};
-               M {name="Stdlib__filename"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__filename"]};path=["Stdlib__filename"]}; args=[]; signature=empty};
-               M {name="Stdlib__float"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__float"]};path=["Stdlib__float"]}; args=[]; signature=of_list 
+               M {name="Stdlib__filename"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__filename"]};path=["Stdlib__filename"]}; args=[]; signature=empty};
+               M {name="Stdlib__float"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__float"]};path=["Stdlib__float"]}; args=[]; signature=of_list 
                  [M {name="Array"; origin=Submodule; args=[]; signature=empty}]};
-               M {name="Stdlib__format"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__format"]};path=["Stdlib__format"]}; args=[]; signature=empty};
-               M {name="Stdlib__gc"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__gc"]};path=["Stdlib__gc"]}; args=[]; signature=empty};
-               M {name="Stdlib__genlex"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__genlex"]};path=["Stdlib__genlex"]}; args=[]; signature=empty};
-               M {name="Stdlib__hashtbl"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__hashtbl"]};path=["Stdlib__hashtbl"]}; args=[]; signature=
+               M {name="Stdlib__format"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__format"]};path=["Stdlib__format"]}; args=[]; signature=empty};
+               M {name="Stdlib__gc"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__gc"]};path=["Stdlib__gc"]}; args=[]; signature=empty};
+               M {name="Stdlib__genlex"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__genlex"]};path=["Stdlib__genlex"]}; args=[]; signature=empty};
+               M {name="Stdlib__hashtbl"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__hashtbl"]};path=["Stdlib__hashtbl"]}; args=[]; signature=
                  (merge 
                  (of_list [M {name="Make"; origin=Submodule; args=[Some 
                              {name="H"; origin=Submodule; args=[]; signature=empty}]; signature=empty};
@@ -113,20 +113,20 @@ Dict.of_list [M {name="CamlinternalFormat"; origin=Unit {source={source=Special 
                  M {name="SeededHashedType"; origin=Submodule; args=[]; signature=empty};
                  M {name="SeededS"; origin=Submodule; args=[]; signature=empty}])
                   )};
-               M {name="Stdlib__int32"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__int32"]};path=["Stdlib__int32"]}; args=[]; signature=empty};
-               M {name="Stdlib__int64"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__int64"]};path=["Stdlib__int64"]}; args=[]; signature=empty};
-               M {name="Stdlib__lazy"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__lazy"]};path=["Stdlib__lazy"]}; args=[]; signature=empty};
-               M {name="Stdlib__lexing"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__lexing"]};path=["Stdlib__lexing"]}; args=[]; signature=empty};
-               M {name="Stdlib__list"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__list"]};path=["Stdlib__list"]}; args=[]; signature=empty};
-               M {name="Stdlib__listLabels"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__listLabels"]};path=["Stdlib__listLabels"]}; args=[]; signature=empty};
-               M {name="Stdlib__map"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__map"]};path=["Stdlib__map"]}; args=[]; signature=
+               M {name="Stdlib__int32"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__int32"]};path=["Stdlib__int32"]}; args=[]; signature=empty};
+               M {name="Stdlib__int64"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__int64"]};path=["Stdlib__int64"]}; args=[]; signature=empty};
+               M {name="Stdlib__lazy"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__lazy"]};path=["Stdlib__lazy"]}; args=[]; signature=empty};
+               M {name="Stdlib__lexing"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__lexing"]};path=["Stdlib__lexing"]}; args=[]; signature=empty};
+               M {name="Stdlib__list"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__list"]};path=["Stdlib__list"]}; args=[]; signature=empty};
+               M {name="Stdlib__listLabels"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__listLabels"]};path=["Stdlib__listLabels"]}; args=[]; signature=empty};
+               M {name="Stdlib__map"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__map"]};path=["Stdlib__map"]}; args=[]; signature=
                  (merge 
                  (of_list [M {name="Make"; origin=Submodule; args=[Some 
                              {name="Ord"; origin=Submodule; args=[]; signature=empty}]; signature=empty}]) 
                  (of_list_type [M {name="OrderedType"; origin=Submodule; args=[]; signature=empty};
                  M {name="S"; origin=Submodule; args=[]; signature=empty}]) )};
-               M {name="Stdlib__marshal"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__marshal"]};path=["Stdlib__marshal"]}; args=[]; signature=empty};
-               M {name="Stdlib__moreLabels"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__moreLabels"]};path=["Stdlib__moreLabels"]}; args=[]; signature=of_list 
+               M {name="Stdlib__marshal"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__marshal"]};path=["Stdlib__marshal"]}; args=[]; signature=empty};
+               M {name="Stdlib__moreLabels"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__moreLabels"]};path=["Stdlib__moreLabels"]}; args=[]; signature=of_list 
                  [M {name="Hashtbl"; origin=Submodule; args=[]; signature=
                     (merge 
                     (of_list [M {name="Make"; origin=Submodule; args=[Some 
@@ -152,42 +152,42 @@ Dict.of_list [M {name="CamlinternalFormat"; origin=Unit {source={source=Special 
                    (of_list_type [M {name="OrderedType"; origin=Submodule; args=[]; signature=empty};
                    M {name="S"; origin=Submodule; args=[]; signature=empty}])
                     )}]};
-               M {name="Stdlib__nativeint"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__nativeint"]};path=["Stdlib__nativeint"]}; args=[]; signature=empty};
-               M {name="Stdlib__obj"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__obj"]};path=["Stdlib__obj"]}; args=[]; signature=of_list 
+               M {name="Stdlib__nativeint"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__nativeint"]};path=["Stdlib__nativeint"]}; args=[]; signature=empty};
+               M {name="Stdlib__obj"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__obj"]};path=["Stdlib__obj"]}; args=[]; signature=of_list 
                  [M {name="Ephemeron"; origin=Submodule; args=[]; signature=empty}]};
-               M {name="Stdlib__oo"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__oo"]};path=["Stdlib__oo"]}; args=[]; signature=empty};
-               M {name="Stdlib__parsing"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__parsing"]};path=["Stdlib__parsing"]}; args=[]; signature=empty};
-               M {name="Stdlib__printexc"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__printexc"]};path=["Stdlib__printexc"]}; args=[]; signature=of_list 
+               M {name="Stdlib__oo"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__oo"]};path=["Stdlib__oo"]}; args=[]; signature=empty};
+               M {name="Stdlib__parsing"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__parsing"]};path=["Stdlib__parsing"]}; args=[]; signature=empty};
+               M {name="Stdlib__printexc"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__printexc"]};path=["Stdlib__printexc"]}; args=[]; signature=of_list 
                  [M {name="Slot"; origin=Submodule; args=[]; signature=empty}]};
-               M {name="Stdlib__printf"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__printf"]};path=["Stdlib__printf"]}; args=[]; signature=empty};
-               M {name="Stdlib__queue"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__queue"]};path=["Stdlib__queue"]}; args=[]; signature=empty};
-               M {name="Stdlib__random"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__random"]};path=["Stdlib__random"]}; args=[]; signature=of_list 
+               M {name="Stdlib__printf"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__printf"]};path=["Stdlib__printf"]}; args=[]; signature=empty};
+               M {name="Stdlib__queue"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__queue"]};path=["Stdlib__queue"]}; args=[]; signature=empty};
+               M {name="Stdlib__random"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__random"]};path=["Stdlib__random"]}; args=[]; signature=of_list 
                  [M {name="State"; origin=Submodule; args=[]; signature=empty}]};
-               M {name="Stdlib__scanf"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__scanf"]};path=["Stdlib__scanf"]}; args=[]; signature=of_list 
+               M {name="Stdlib__scanf"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__scanf"]};path=["Stdlib__scanf"]}; args=[]; signature=of_list 
                  [M {name="Scanning"; origin=Submodule; args=[]; signature=empty}]};
-               M {name="Stdlib__seq"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__seq"]};path=["Stdlib__seq"]}; args=[]; signature=empty};
-               M {name="Stdlib__set"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__set"]};path=["Stdlib__set"]}; args=[]; signature=
+               M {name="Stdlib__seq"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__seq"]};path=["Stdlib__seq"]}; args=[]; signature=empty};
+               M {name="Stdlib__set"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__set"]};path=["Stdlib__set"]}; args=[]; signature=
                  (merge 
                  (of_list [M {name="Make"; origin=Submodule; args=[Some 
                              {name="Ord"; origin=Submodule; args=[]; signature=empty}]; signature=empty}]) 
                  (of_list_type [M {name="OrderedType"; origin=Submodule; args=[]; signature=empty};
                  M {name="S"; origin=Submodule; args=[]; signature=empty}]) )};
-               M {name="Stdlib__sort"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__sort"]};path=["Stdlib__sort"]}; args=[]; signature=empty};
-               M {name="Stdlib__spacetime"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__spacetime"]};path=["Stdlib__spacetime"]}; args=[]; signature=of_list 
+               M {name="Stdlib__sort"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__sort"]};path=["Stdlib__sort"]}; args=[]; signature=empty};
+               M {name="Stdlib__spacetime"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__spacetime"]};path=["Stdlib__spacetime"]}; args=[]; signature=of_list 
                  [M {name="Series"; origin=Submodule; args=[]; signature=empty};
                  M {name="Snapshot"; origin=Submodule; args=[]; signature=empty}]};
-               M {name="Stdlib__stack"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__stack"]};path=["Stdlib__stack"]}; args=[]; signature=empty};
-               M {name="Stdlib__stdLabels"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__stdLabels"]};path=["Stdlib__stdLabels"]}; args=[]; signature=of_list 
+               M {name="Stdlib__stack"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__stack"]};path=["Stdlib__stack"]}; args=[]; signature=empty};
+               M {name="Stdlib__stdLabels"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__stdLabels"]};path=["Stdlib__stdLabels"]}; args=[]; signature=of_list 
                  [Alias {name="Array";path=Namespaced.make ~nms:["Stdlib"] "ArrayLabels";phantom=None;weak=false};
                  Alias {name="Bytes";path=Namespaced.make ~nms:["Stdlib"] "BytesLabels";phantom=None;weak=false};
                  Alias {name="List";path=Namespaced.make ~nms:["Stdlib"] "ListLabels";phantom=None;weak=false};
                  Alias {name="String";path=Namespaced.make ~nms:["Stdlib"] "StringLabels";phantom=None;weak=false}]};
-               M {name="Stdlib__stream"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__stream"]};path=["Stdlib__stream"]}; args=[]; signature=empty};
-               M {name="Stdlib__string"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__string"]};path=["Stdlib__string"]}; args=[]; signature=empty};
-               M {name="Stdlib__stringLabels"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__stringLabels"]};path=["Stdlib__stringLabels"]}; args=[]; signature=empty};
-               M {name="Stdlib__sys"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__sys"]};path=["Stdlib__sys"]}; args=[]; signature=empty};
-               M {name="Stdlib__uchar"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__uchar"]};path=["Stdlib__uchar"]}; args=[]; signature=empty};
-               M {name="Stdlib__weak"; origin=Unit {source={source=Special "prefixed_stdlib"; file=["Stdlib__weak"]};path=["Stdlib__weak"]}; args=[]; signature=
+               M {name="Stdlib__stream"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__stream"]};path=["Stdlib__stream"]}; args=[]; signature=empty};
+               M {name="Stdlib__string"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__string"]};path=["Stdlib__string"]}; args=[]; signature=empty};
+               M {name="Stdlib__stringLabels"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__stringLabels"]};path=["Stdlib__stringLabels"]}; args=[]; signature=empty};
+               M {name="Stdlib__sys"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__sys"]};path=["Stdlib__sys"]}; args=[]; signature=empty};
+               M {name="Stdlib__uchar"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__uchar"]};path=["Stdlib__uchar"]}; args=[]; signature=empty};
+               M {name="Stdlib__weak"; origin=Unit {source={source=Special "stdlib"; file=["Stdlib__weak"]};path=["Stdlib__weak"]}; args=[]; signature=
                  (merge 
                  (of_list [M {name="Make"; origin=Submodule; args=[Some 
                              {name="H"; origin=Submodule; args=[]; signature=empty}]; signature=empty}]) 

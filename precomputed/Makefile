@@ -7,7 +7,7 @@ stdlib:
 	../codept -o stdlib_data.ml -export stdlib $(OCAMLSRC)/stdlib/*.mli
 
 prefixed_stdlib:
-	../codept -no-alias-deps -o prefixed_stdlib.ml -export prefixed_stdlib \
+	../codept -no-alias-deps -o stdlib_data.ml -export stdlib \
 		$(OCAMLSRC)/stdlib/*.cmi
 
 
