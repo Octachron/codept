@@ -1,17 +1,25 @@
 #!/usr/bin/env sh
 
-case $1 in
+for arg in "$@"
+do
+case $arg in
 	"--enable-ocamlbuild")
-		echo "OCAMLBUILD=enabled" > Makefile.config
+		echo "OCAMLBUILD=enabled" >> Makefile.config
 		;;
 	"--disable-ocamlbuild") 
-		echo "OCAMLBUILD=disabled" > Makefile.config
+		echo "OCAMLBUILD=disabled" >> Makefile.config
+		;;
+	"--enable-dune")
+		echo "DUNE=enabled" >> Makefile.config
+		;;
+	"--disable-ocamlbuild") 
+		echo "DUNE=disabled" >> Makefile.config
 		;;
 	*) 
-		echo "OCAMLBUILD=auto" > Makefile.config
 		;;
 
 esac
+done
 
 simplify () {
   local name=$1
@@ -36,4 +44,4 @@ copy "current";
 if [ -d "${version}" ]; then
 	copy "${version}"
 fi
-echo "let major=${major} let minor=${minor}" > full/version.ml
+echo "let major=${major} let minor=${minor}" > lib/version.ml

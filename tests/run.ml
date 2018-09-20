@@ -2,6 +2,8 @@ module Pth = Paths.Pkg
 
 let local = Pth.local
 
+let root = if Array.length Sys.argv > 0 then Some (Sys.argv.(1)) else None
+
 let (%) f g x = f (g x)
 let (~:) = List.map Namespaced.make
 
@@ -269,8 +271,12 @@ let (/) p x =
 let dl x = List.map (fun (f,deps) -> d f, deps) x
 let (!) = stn
 
+let chdir x = Sys.chdir x
+let () = match root with None -> () | Some root -> chdir root
+
+
 let result =
-  Sys.chdir "tests/cases";
+  chdir "tests/cases";
   List.for_all Std.deps_test_single @@ List.map dl [
     ["abstract_module_type.ml", []];
     ["alias_map.ml", u["Aliased__B"; "Aliased__C"] ];
@@ -328,7 +334,7 @@ let result =
     ["broken2.ml", u["A"; "Ext"; "Ext2" ]];
     ["broken3.ml", []];
   ]
-  &&( Sys.chdir "../mixed";
+  &&( chdir "../mixed";
       both ["A"] @@ dl
         ["a.ml", l["d.mli"];
          "a.mli", l["b.ml"; "d.mli"];
@@ -337,7 +343,7 @@ let result =
          "d.mli", []
         ]
     )
-  && ( Sys.chdir "../aliases";
+  && ( chdir "../aliases";
        both ["User"] @@ dl
          [ "amap.ml", l["long__B.ml"];
            "user.ml", l["amap.ml"; "long__A.ml"];
@@ -345,7 +351,7 @@ let result =
            "long__B.ml", []
          ]
      )
-  && ( Sys.chdir "../aliases2";
+  && ( chdir "../aliases2";
        both ["A";"C";"E"] @@ dl
          [ "a.ml", l["b.ml"; "d.ml" ];
            "b.ml", [];
@@ -354,7 +360,7 @@ let result =
            "e.ml", []
          ]
      )
-  && (Sys.chdir "../aliases_and_map";
+  && (chdir "../aliases_and_map";
       both ["n__C"; "n__D"] @@ dl
         ["n__A.ml", l["m.ml"];
          "n__B.ml", l["m.ml"];
@@ -369,7 +375,7 @@ let result =
         ]
      )
 
-  && (Sys.chdir "../alias_values";
+  && (chdir "../alias_values";
       both ["C"] @@ dl
         ["a.ml", l[];
          "b.ml", l[];
@@ -377,20 +383,20 @@ let result =
         ]
      )
   &&
-  ( Sys.chdir "../broken_network";
+  ( chdir "../broken_network";
     both ["A"] @@ dl [
       "a.ml", (l["broken.ml"; "c.ml"] @ u["B"]);
       "broken.ml", u["B"];
       "c.ml", u["Extern"] ]
   )
   &&
-  ( Sys.chdir "../network";
+  ( chdir "../network";
     both ["C"] @@ dl
       ["a.ml", l["b.ml"]@ u ["Extern"];
        "b.ml", []; "c.ml", l["a.ml"] ]
   )
   &&
-  ( Sys.chdir "../collision";
+  ( chdir "../collision";
     both ["A";"C";"D"] @@ dl
       ["a.ml", l["b.ml"] @ u ["Ext"];
        "b.ml", [];
@@ -398,11 +404,11 @@ let result =
        "d.ml", l["b.ml"] ]
   )
   &&
-  ( Sys.chdir "../pair";
+  ( chdir "../pair";
   both ["A"] [d"a.ml", l["b.ml"];  d"b.ml", u["Extern"] ]
   )
   &&
-  ( Sys.chdir "../namespaced";
+  ( chdir "../namespaced";
     both ["NAME__a"; "NAME__c"] @@ dl [
       "NAME__a.ml", l["main.ml"; "NAME__b.ml"];
       "NAME__b.ml", l["main.ml"; "NAME__c.ml"];
@@ -411,12 +417,12 @@ let result =
     ]
   )
   &&
-  ( Sys.chdir "../module_types";
+  ( chdir "../module_types";
   both ["B"] @@ dl ["a.mli", u["E"]; "b.ml", l["a.mli"] ]
   )
   &&
   (
-    Sys.chdir "../5624";
+    chdir "../5624";
     Eps.deps_test
       (Some ["C"],
        [ d"a.mli", [];
@@ -427,7 +433,7 @@ let result =
   )
   &&
   (
-    Sys.chdir "../deep-eps";
+    chdir "../deep-eps";
     Eps.deps_test
       (Some ["C"] ,
        dl [
@@ -443,7 +449,7 @@ let result =
   && (
     let n = 100 in
     let dep = l[ Printf.sprintf "m%d.mli" n ] in
-    Sys.chdir "../star";
+    chdir "../star";
     ignore @@ Sys.command (Printf.sprintf "ocaml generator.ml %d" 100);
     let rec deps k =
       if k >= n then
@@ -453,7 +459,7 @@ let result =
     both ["M001"] @@ dl @@ deps 1
   )
     &&
-  ( Sys.chdir "../stops";
+  ( chdir "../stops";
     both ["A"] @@ dl
       [ "a.ml", l["b.ml"; "c.ml"; "d.ml"; "e.ml"; "f.ml"]
       ; "b.ml", l["z.ml"]
@@ -470,7 +476,7 @@ let result =
   )
 
     (*Namespace related tests *)
-    && ( Sys.chdir "../uncoupled";
+    && ( chdir "../uncoupled";
          both ["A";"C"]
            [
              d"a.ml", l["b.ml"];
@@ -479,7 +485,7 @@ let result =
            ]
        )
 
-    && begin Sys.chdir "../any_m";
+    && begin chdir "../any_m";
         both ["M.F"; "M.D"] @@ dl
         [
           "a/m.ml", l["b/m.ml"];
@@ -491,7 +497,7 @@ let result =
         ]
     end
 
-    && begin Sys.chdir "../siblings";
+    && begin chdir "../siblings";
         both ["L.L.A"; "A"; "L.A"; "R.R.A"; "R.R.B" ] @@ dl
         [
           "L/L/a.ml", l["L/L/b.ml"; "L/R/a.ml"];
@@ -507,7 +513,7 @@ let result =
 
         ]
     end
-    && begin Sys.chdir "../alias_path_with_namespaces";
+    && begin chdir "../alias_path_with_namespaces";
       both ["Inner.B"] @@ dl
         [
           "inner/a.mli", [];
@@ -518,12 +524,12 @@ let result =
 
     (* Cycle tests *)
     && (
-      Sys.chdir "../cases";
+      chdir "../cases";
       Std.cycle_test [["Self_cycle"]] ["self_cycle.ml"]
     )
     &&
     (
-      Sys.chdir "../ω-cycle";
+      chdir "../ω-cycle";
       Std.cycle_test [["C1";"C2";"C3";"C4";"C5"]] [
         "a.ml"
       ; "b.ml"
@@ -538,21 +544,21 @@ let result =
       ]
     )
     && (
-      Sys.chdir "../2+2-cycles";
+      chdir "../2+2-cycles";
       Std.cycle_test [["A";"B"]; ["C";"D"]] [ "a.ml" ; "b.ml"; "c.ml"; "d.ml"]
     )
     && (
-      Sys.chdir "../8-cycles";
+      chdir "../8-cycles";
       Std.cycle_test [ ["A";"B";"C";"D"]; ["A"; "H"; "G"; "F"; "E"]]
         [ "a.ml" ; "b.ml"; "c.ml"; "d.ml"; "e.ml"; "f.ml"; "g.ml"; "h.ml"]
     )
     && (
-      Sys.chdir "../aliased_cycle";
+      chdir "../aliased_cycle";
       Std.cycle_test [ ["A"; "B"; "C"]]
         [ "a.ml" ; "b.ml"; "c.ml"; "atlas.ml"]
     )
     &&
-    ( Sys.chdir "../../lib";
+    ( chdir "../../lib";
       Std.gen_deps_test (Std.ocamlfind "compiler-libs") Std.precise_deps_test
         (Some ~:["Solver"; "Standard_policies"])
         (dl[

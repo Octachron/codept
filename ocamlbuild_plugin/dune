@@ -1,0 +1,7 @@
+(library
+  (public_name codept.ocamlbuild)
+  (name ocamlbuild_plugin)
+  (optional)
+  (wrapped false)
+  (libraries ocamlbuild)
+)

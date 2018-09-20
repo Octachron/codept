@@ -1,0 +1,6 @@
+(library
+  (name precomputed)
+  (libraries codept_lib)
+  (flags (:standard -w -33))
+  (wrapped false)
+)

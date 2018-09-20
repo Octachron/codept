@@ -1,0 +1,9 @@
+(executable
+  (public_name codept)
+  (libraries unix codept_lib precomputed)
+)
+
+(install
+  (section man)
+  (files ../docs/codept.1)
+)

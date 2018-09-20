@@ -1,0 +1,9 @@
+(ocamllex (modules slex))
+(menhir (modules sparser))
+
+(library
+  (name codept_lib)
+  (wrapped false)
+  (libraries compiler-libs.common)
+  (flags (:standard -w -30))
+)

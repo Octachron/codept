@@ -8,14 +8,14 @@ bug-reports: "https://github.com/Octachron/codept/issues"
 license: "gpl-3"
 dev-repo: "https://github.com/Octachron/codept.git"
 build: [
-  ["./configure" "--%{ocamlbuild:enable}%-ocamlbuild"]
+  ["./configure" "--%{ocamlbuild:enable}%-ocamlbuild" "--%{dune:enable}%-dune"]
   [make "all"]
 ]
 build-test: [
-  [make "alt2-tests"]
+  [make "tests"]
 ]
 build-doc: [
-  [make "alt2-docs"]
+  [make "docs"]
 ]
 depopts:["ocamlbuild"]
 depends: []
