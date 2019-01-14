@@ -41,7 +41,7 @@ type m2l = expression Loc.ext list
 (** The [expression] type is the basic building block of the m2l AST *)
 and expression =
   | Defs of Summary.t (** Resolved module actions M = … / include … / open … *)
-  | Open of Paths.Simple.t (** [open A.B.C] ⇒ [Open [A;B;C]]  *)
+  | Open of module_expr (** [open A.B.C] ⇒ [Open [A;B;C]]  *)
   | Include of module_expr (** [struct include A end] *)
   | SigInclude of module_type
   (** [struct include A end] *)
@@ -55,7 +55,7 @@ and expression =
       Invariant: for any pure outliner [f], [ f (Minor m :: q ) ≡ f q ],
       i.e, this expression constructor is only meaningful for dependencies
       tracking.
- *)
+  *)
   | Extension_node of extension
   (** [[%ext …]] *)
 
@@ -179,7 +179,8 @@ end
 module Build: sig
   val ghost: expression -> expression Loc.ext
   val access: Paths.Expr.t Loc.ext -> expression Loc.ext
-  val open_: Paths.Simple.t Loc.ext -> expression Loc.ext
+  val open_path: Paths.Simple.t Loc.ext -> expression Loc.ext
+  val open_: module_expr Loc.ext -> expression Loc.ext
   val value: m2l list -> expression Loc.ext
   val pack: module_expr Loc.ext list Loc.ext -> expression Loc.ext
 

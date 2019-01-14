@@ -4,7 +4,7 @@ let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 type i = { input: Unit.s; code: M2l.t; deps: Deps.t }
 let make (input:Unit.s) =
   let open_namespace = List.map
-      (fun name -> Loc.nowhere @@ M2l.Open [name]) input.path.namespace in
+      (fun name -> Loc.nowhere @@ M2l.Open (Ident [name])) input.path.namespace in
   { input; code = open_namespace @ input.code; deps = Deps.empty }
 
 module Mp = Namespaced.Map module Sp = Namespaced.Set
@@ -509,7 +509,7 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
       | None ->
         assert false (* we failed to eval the m2l code due to something *)
       | Some { Loc.data = y, path; _ } ->
-        debug "blocked at :%a" Paths.S.pp path;
+        debug "blocked at :%a@ %a" Paths.S.pp path M2l.pp m2l;
         let first_parent = alias_resolver state y path in
         debug "first parent:%a" Namespaced.pp first_parent;
         (* are we cycling? *)

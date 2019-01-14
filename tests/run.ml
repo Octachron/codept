@@ -591,8 +591,7 @@ let result =
             [!"Array"; !"Filename";!"List";!"Sys"; !"Format"],
             []);
           "outliner.mli", (
-            ["Deps"; "Fault"; "Module"; "Namespaced";  "Name";
-             "Paths";"M2l"; "Summary"],
+            ["Deps"; "Fault"; "Module"; "Namespaced"; "Paths";"M2l"; "Summary"],
             [!"Format"],[]);
           "outliner.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Namespaced";

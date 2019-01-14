@@ -63,7 +63,7 @@ module H = struct
 
 
   let do_open lid =
-    [{ Loc.data = M2l.Open (npath lid); loc = extract_loc lid} ]
+    [{ Loc.data = M2l.Open (Ident (npath lid)); loc = extract_loc lid} ]
 
 
   let (@%) l l' =
@@ -121,25 +121,6 @@ module Pattern = struct
 
   let bind loc name sign =
     { empty with binds = [Loc.create loc {M2l.name; expr = sign }] }
-
-  let open_ m { annot={ data = {values; packed; access}; loc } ; binds} =
-    let values =
-      ( if Paths.S.Map.cardinal access > 0 then
-          M2l.[{ Loc.data = Minor {Annot.empty.data with access}; loc }]
-        else
-          []
-      )
-      :: values in
-    let op x = M2l.Open x in
-    let values = List.map( List.cons (Loc.fmap op m) ) values in
-    let packed = List.map (Loc.fmap @@ B.open_me [m.data]) packed in
-    let binds = List.map
-        (fun {Loc.data={name;expr};loc} ->
-           Loc.create (Loc.merge m.loc loc) {name; expr = B.open_me [m.data] expr } )
-        binds in
-    let access = Annot.Access.empty in
-    let loc = Loc.merge m.loc loc in
-    { annot={ data = {values;access;packed}; loc } ; binds }
 
   let bind_fmod p inner =
     let minor x = Minor x in

@@ -14,7 +14,7 @@ type 'a query_result =
 
 type answer =
   | M of Module.m
-  | Namespace of { name:Name.t; modules:Module.dict }
+  | Namespace of M.namespace_content
 
 module type envt = sig
   type t
@@ -59,7 +59,6 @@ module type param = sig
 end
 
 module Make(Envt:envt)(Param:param) = struct
-
 
   include Param
   let fault x = Fault.handle policy x
@@ -113,7 +112,7 @@ module Make(Envt:envt)(Param:param) = struct
     Paths.S.Set.fold remove_path_from dels d
 
 
-   let filename loc = fst loc
+  let filename loc = fst loc
 
   let of_partial loc p =
     match Y.of_partial p with
@@ -170,34 +169,33 @@ module Make(Envt:envt)(Param:param) = struct
       Ok x
     | _ -> Error path
 
-  let open_diverge_module loc x = let open Module in
-    match x.origin, x.signature with
+  let open_diverge_module loc x = let open P in
+    match x.origin, x.result with
     | _, Blank | Phantom _, _ ->
       let kind =
         match x.origin with
         | First_class -> (fault Faults.opened_first_class loc x.name;
-                          Divergence.First_class_module)
-        | Unit _ -> Divergence.External
+                          Module.Divergence.First_class_module)
+        | Unit _ -> Module.Divergence.External
         | Phantom (_,d) -> d.origin
-        | Submodule | Arg -> Divergence.External  (*FIXME?*) in
-      let point = { Divergence.root = x.name; origin=kind; loc } in
+        | Submodule | Arg | Namespace -> Module.Divergence.External in
+      let point =
+        { Module.Divergence.root = x.name; origin=kind; loc } in
       Y.View.see @@ Y.View.make @@ S.merge
             (Divergence
                { before = S.empty; point; after = Module.Def.empty}
             )
-            x.signature
+            x.result
     | _, Divergence _ | _, Exact _ ->
-      Y.View.see @@ Y.View.make @@ x.signature
+      Y.View.see @@ Y.View.make @@ x.result
 
   let open_diverge loc = function
-    | M x -> open_diverge_module loc x
+    | M x -> open_diverge_module loc (P.of_module x)
     | Namespace {modules;_} -> (* FIXME: type error *)
       Y.View.(see @@ make @@ M.Exact { M.Def.empty with modules })
 
-  let open_ loc state path =
-    match find loc Module path state with
-    | x -> Ok(open_diverge loc x)
-    | exception Not_found -> Error (Open path)
+  let open_ loc x =
+    Ok(open_diverge_module loc x)
 
   let gen_include loc unbox box i = match unbox i with
     | Error h -> Error (box h)
@@ -238,15 +236,12 @@ module Make(Envt:envt)(Param:param) = struct
     | _ -> bind state module_expr b
 
 
-
-
   let bind_sig state module_type {name;expr} =
     match module_type state expr with
     | Error h -> Error ( Bind_sig {name; expr = h} )
     | Ok d ->
       let m = P.to_module ~origin:Submodule name d in
       Ok (Some(Y.define ~level:M.Module_type [M.M m]))
-
 
   let bind_rec state module_expr module_type bs =
     let pair name expr = {name;expr} in
@@ -330,7 +325,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Ident i ->
       begin match find loc Module i state with
         | M x -> Ok (P.of_module x)
-        | Namespace _ -> (* FIXME: type error *) Error (Ident i: module_expr)
+        | Namespace n -> Ok (P.pseudo_module n)
         | exception Not_found -> Error (Ident i: module_expr)
       end
     | Apply {f;x} ->
@@ -442,7 +437,11 @@ module Make(Envt:envt)(Param:param) = struct
     let reloc = Mresult.Error.fmap @@ Loc.create e.loc in
     match e.data with
     | Defs d -> Ok (Some d)
-    | Open p -> reloc @@ Mresult.Ok.fmap some @@ open_ loc state p
+    | Open me ->
+      reloc
+      @@ Mresult.fmap (fun x -> Open x) some
+      @@ Mresult.Ok.bind (fun x -> open_ loc x)
+      @@ module_expr loc state me
     | Include i -> reloc @@ include_ loc state module_expr i
     | SigInclude i -> reloc @@ sig_include loc state module_type i
     | Bind b -> reloc @@ bind state (module_expr loc) b

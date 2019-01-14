@@ -63,7 +63,7 @@ module H = struct
 
 
   let do_open lid =
-    [{ Loc.data = M2l.Open (npath lid); loc = extract_loc lid} ]
+    [{ Loc.data = M2l.Open (Ident(npath lid)); loc = extract_loc lid} ]
 
 
   let (@%) l l' =
@@ -130,7 +130,7 @@ module Pattern = struct
           []
       )
       :: values in
-    let op x = M2l.Open x in
+    let op x = M2l.Open (Ident x) in
     let values = List.map( List.cons (Loc.fmap op m) ) values in
     let packed = List.map (Loc.fmap @@ B.open_me [m.data]) packed in
     let binds = List.map

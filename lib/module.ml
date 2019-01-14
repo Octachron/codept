@@ -29,7 +29,7 @@ module Divergence= struct
   type origin =
     | First_class_module
     | External
-  type t =  { root: Name.t; origin:origin; loc: Paths.Pkg.t * Loc.t }
+  type t =  { root: Name.t option; origin:origin; loc: Paths.Pkg.t * Loc.t }
 
   let pp_origin ppf s =
     Pp.fp ppf "%s" @@
@@ -61,14 +61,15 @@ module Divergence= struct
     Pp.decorate "(" ")" @@ Pp.pair Paths.P.reflect rloc
 
   let divergence ppf {root;loc;origin} =
-    Pp.fp ppf "{root=%a;loc=%a;origin=%a}" Pp.estring root floc loc origin_r origin
+    Pp.fp ppf "{root=%a;loc=%a;origin=%a}" Pp.estring Option.(root><"")
+      floc loc origin_r origin
 
   end
   let reflect = Reflect.divergence
 
   let pp ppf {root; origin; loc= (path,loc) } =
     Pp.fp ppf "open %s at %a:%a (%a)"
-      root
+      Option.(root><"")
       Paths.Pkg.pp path Loc.pp loc
       pp_origin origin
 
@@ -86,7 +87,7 @@ module Divergence= struct
 
   let sch = let open Schematic in let open Tuple in
     custom ["Module"; "Divergence"; "t"]
-      Schematic.[String; sch_origin; [Paths.P.sch; Loc.Sch.t ]]
+      Schematic.[option "name" String; sch_origin; [Paths.P.sch; Loc.Sch.t ]]
       (fun r -> [r.root;r.origin; [fst r.loc; snd r.loc] ])
       (fun [root;origin;[s;l]] -> {root;origin;loc=(s,l)} )
 
@@ -99,6 +100,7 @@ module Origin = struct
     | Unit of {source:Paths.P.t; path:Paths.S.t}
     (** aka toplevel module *)
     | Submodule
+    | Namespace (** Temporary module from namespace *)
     | First_class (** Not resolved first-class module *)
     | Arg (** functor argument *)
     | Phantom of bool * Divergence.t
@@ -113,6 +115,7 @@ module Origin = struct
         | Special n -> Pp.fp ppf "*(%s)" n
       end
     | Submodule -> Pp.fp ppf "."
+    | Namespace -> Pp.fp ppf "(nms)"
     | First_class -> Pp.fp ppf "'"
     | Arg -> Pp.fp ppf "§"
     | Phantom _ -> Pp.fp ppf "👻"
@@ -121,7 +124,9 @@ module Origin = struct
     let raw =
       Sum [ "Unit", [Paths.P.sch; Paths.S.sch];
             "Submodule", Void; "First_class", Void; "Arg", Void;
-            "Phantom", [ Bool; Divergence.sch]]
+            "Phantom", [ Bool; Divergence.sch];
+            "Namespace", Void
+          ]
     let t = let open Tuple in
       custom ["Module"; "Origin"; "t"] raw
         (function
@@ -130,6 +135,7 @@ module Origin = struct
           | First_class -> C (S (S E))
           | Arg -> C(S (S (S E)))
           | Phantom (b,div) -> C (S (S (S (S(Z [b;div])))))
+          | Namespace -> C (S (S (S (S (S E)))))
         )
         (function
           | C Z [source;path] -> Unit {source;path}
@@ -137,6 +143,7 @@ module Origin = struct
           | C S S E -> First_class
           | C S S S E -> Arg
           | C S S S S Z [b;d] -> Phantom(b,d)
+          | C S S S S S E -> Namespace
           | _ -> .
         )
   end let sch = Sch.t
@@ -148,10 +155,11 @@ module Origin = struct
     | First_class -> Pp.fp ppf "First_class"
     | Arg -> Pp.fp ppf "Arg"
     | Phantom (root,b) -> Pp.fp ppf "Phantom (%b,%a)" root Divergence.reflect b
+    | Namespace -> Pp.fp ppf "Namespace"
 
 
   let at_most max v = match max, v with
-    | (First_class|Arg ) , _ -> max
+    | (First_class|Arg|Namespace) , _ -> max
     | Unit _ , v -> v
     | Submodule, Unit _ -> Submodule
     | Phantom _, Submodule -> Submodule
@@ -173,13 +181,14 @@ and t =
         path:Namespaced.t;
         phantom: Divergence.t option;
         weak:bool }
-  | Namespace of {name: Name.t; modules: dict}
+  | Namespace of namespace_content
 and definition = { modules : dict; module_types : dict }
 and signature =
   | Blank
   | Exact of definition
   | Divergence of { point: Divergence.t; before:signature; after:definition}
 and dict = t Name.Map.t
+and namespace_content = {name: Name.t; modules: dict}
 
 type arg = definition Arg.t
 type modul_ = t
@@ -195,7 +204,6 @@ let name = function
   | Alias {name; _ } -> name
   | M {name; _ } -> name
   | Namespace {name; _ } -> name
-
 
 module Dict = struct
   type t = dict
@@ -604,10 +612,12 @@ end
 
 module Partial = struct
   type nonrec t =
-    { origin: Origin.t;
+    {
+      name: string option;
+      origin: Origin.t;
       args: m option list;
       result: signature }
-  let empty = { origin = Submodule; args = []; result= Sig.empty }
+  let empty = { name=None; origin = Submodule; args = []; result= Sig.empty }
   let simple defs = { empty with result = defs }
   let is_exact x = Sig.is_exact x.result
 
@@ -619,7 +629,7 @@ module Partial = struct
         pp_signature x.result
         Origin.pp x.origin
 
-  let no_arg x = { origin = Submodule; args = []; result = x }
+  let no_arg x = { origin = Submodule; name = None; args = []; result = x }
 
   let drop_arg (p:t) = match  p.args with
     | _ :: args -> Some { p with args }
@@ -638,15 +648,20 @@ module Partial = struct
      args = p.args;
      signature = p.result }
 
-  let of_module {args;signature;origin; _} =
-    {origin;result=signature;args}
+  let of_module {args;signature;origin;name} =
+    {name=Some name;origin;result=signature;args}
+
+  let pseudo_module (x:namespace_content) =
+  let origin = Origin.Namespace in
+  let signature =
+    Exact {modules = x.modules; module_types = Dict.empty } in
+  of_module { name = x.name; args = []; signature; origin }
 
   let is_functor x = x.args <> []
 
   let to_sign fdefs =
     if fdefs.args <> [] then
       Error fdefs.result
-
     else
       Ok fdefs.result
 
@@ -662,13 +677,13 @@ module Partial = struct
 
     let (><) = Option.(><)
     let partial = custom ["Module"; "partial"] raw
-        (fun {args;origin;result} ->
+        (fun {args;origin;result;_} ->
            Record.[ S.Origin_f.l $=? default Origin.Submodule origin;
                     S.Args.l $=? (S.l args);
                     Result.l $=? default Def.empty (flatten result);
                   ])
         (let open Record in fun [_,origin; _, args;_,result] ->
-            { args = args >< []; origin = origin >< Submodule;
+            { name= None; args = args >< []; origin = origin >< Submodule;
               result = Exact(result>< Def.empty) }
         )
   end let sch = Sch.partial

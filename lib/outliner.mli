@@ -4,7 +4,7 @@
 type 'a query_result = { main:'a; msgs: (Fault.loc -> unit ) Fault.t list }
 type answer =
   | M of Module.m
-  | Namespace of { name:Name.t; modules:Module.dict }
+  | Namespace of Module.namespace_content
 
 (** Input type *)
 module type envt = sig

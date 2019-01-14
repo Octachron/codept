@@ -6,7 +6,7 @@ val extension_ignored : ( Fault.loc -> string -> unit) Fault.t
 val extension_traversed : (Fault.loc -> string -> unit) Fault.t
 
 (** {2 First-class module faults} *)
-val opened_first_class : (Fault.loc -> string -> unit) Fault.t
+val opened_first_class : (Fault.loc -> string option -> unit) Fault.t
 val included_first_class : (Fault.loc -> unit) Fault.t
 
 (** {2 Typing faults} *)

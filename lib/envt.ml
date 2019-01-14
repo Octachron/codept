@@ -8,7 +8,7 @@ let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
 type answer = Out.answer =
   | M of Module.m
-  | Namespace of { name:Name.t; modules:Module.dict }
+  | Namespace of Module.namespace_content
 
 type context =
   | Signature of M.signature

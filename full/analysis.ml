@@ -23,7 +23,7 @@ let open_within opens unit =
         unit
       | m ->
         { unit with
-          code = (M2l.Build.ghost @@ M2l.Open m) :: unit.code }
+          code = (M2l.Build.ghost @@ M2l.Open (Ident m)) :: unit.code }
     ) opens unit
 
 type ('a,'b) either = Left of 'a | Right of 'b
@@ -201,7 +201,7 @@ module Collisions = struct
           (add u.path p.source @@ add u.path u.src m)
         | { msgs = _ :: _ ; _ }
         | { main = Namespace _ | M { M.origin =
-                       (Phantom _ |Arg|Submodule|First_class); _ }; _ }
+                       (Phantom _ |Arg|Submodule|First_class|Namespace); _ }; _ }
           -> m
 
       ) m units

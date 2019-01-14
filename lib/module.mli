@@ -35,7 +35,10 @@ module Divergence: sig
     | First_class_module
     | External
 
-  type t = { root: Name.t; origin:origin; loc: Paths.Pkg.t * Loc.t}
+  type t = { root: Name.t option;
+             origin:origin;
+             loc: Paths.Pkg.t * Loc.t
+           }
 
   val pp: Format.formatter -> t -> unit
 
@@ -48,6 +51,7 @@ module Origin: sig
     | Unit of {source:Paths.Pkg.t; path:Paths.S.t}
     (** toplevel module mapped from a unit file *)
     | Submodule (** non top-level module *)
+    | Namespace (** temporary module from namespace *)
     | First_class (** unpacked first-class module *)
     | Arg (** module created for functor application *)
     | Phantom of bool * Divergence.t
@@ -100,7 +104,9 @@ and t =
         *)
         weak:bool (** Weak alias are used as placehoder in namespace *)
       }
-  | Namespace of {name: Name.t; modules:dict}
+  | Namespace of namespace_content
+
+and  namespace_content = {name: Name.t; modules:dict}
   (** Namespace support: Namespace are bundles of modules, used for
       packs or as an higher-level views of the alias atlas idiom *)
 
@@ -233,6 +239,7 @@ module Sig :
 module Partial :
   sig
     type nonrec t = {
+      name : string option;
       origin : origin;
       args : m option list;
       result : signature;
@@ -251,6 +258,7 @@ module Partial :
     val to_module : ?origin:origin -> string -> t -> m
     val to_arg : string -> t -> m
     val of_module : m -> t
+    val pseudo_module: namespace_content -> t
     val is_functor : t -> bool
     val to_sign : t -> (signature,signature) result
 

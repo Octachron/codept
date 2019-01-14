@@ -23,9 +23,13 @@ let opened_first_class =
     expl= "A first-class module was opened while its signature was deemed \
            unresolved. Consequently, inferred dependendencies after this \
            point may be a superset of the real dependencies.";
-    log = (fun lvl ->
-      log lvl "%a,@ first-class module @{<m>%s@} was opened while its signature was \
-               unknown." loc
+    log = (fun lvl lc name -> match name with
+        | None ->
+          log lvl "%a,@a first-class module was opened while its signature was \
+                   unknown." loc lc
+        | Some name ->
+          log lvl "%a,@ first-class module @{<m>%s@} was opened while \
+                   its signature was unknown." loc lc name
       )
   }
 
@@ -82,12 +86,19 @@ let applied_unknown =
   }
 
 
+let maybe_module qual ppf = function
+  | Some s -> Pp.fp ppf "the@ %t@ module @{<m>%s@}" qual s
+  | None -> Pp.fp ppf "a@ %t@ module" qual
+
 let pp_divergence l ppf (d:Module.Divergence.t) =
-  let f x = Pp.fp ppf "the@ opening@ of@ the@ %s@ module @{<m>%s@},@ at@ location \
+  let f x = Pp.fp ppf "the@ opening@ of@ %a,@ at@ location \
                        @{<loc>%a@}"
-      (match d.origin with
-       | First_class_module -> "first class"
-       | External -> "external")
+      (maybe_module (fun ppf ->
+           (match d.origin with
+            | First_class_module -> Pp.fp ppf "first class"
+            | External -> Pp.fp ppf "external")
+         )
+      )
       d.root x in
   if fst d.loc = fst l then
     f Loc.pp (snd d.loc)

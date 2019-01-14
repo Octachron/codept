@@ -12,7 +12,7 @@ type kind = Structure | Signature
 
 type expression =
   | Defs of Summary.t (** Resolved module actions M = … / include … / open … *)
-  | Open of Paths.Simple.t (** [open A.B.C] ⇒ [Open [A;B;C]]  *)
+  | Open of module_expr (** [open A.B.C] ⇒ [Open [A;B;C]]  *)
   | Include of module_expr (** [struct include A end] *)
   | SigInclude of module_type
   (** [struct include A end] *)
@@ -111,7 +111,7 @@ module Sch = struct
 
 
   let rec raw_expr =
-    Sum [ "Defs", Summary.sch; "Open", Paths.S.sch; "Include_me", module_expr;
+    Sum [ "Defs", Summary.sch; "Open", module_expr; "Include_me", module_expr;
           "SigInclude", module_type; "Bind", [String; module_expr];
           "Bind_sig", [String; module_type]; "Bind_rec", Array [String;module_expr];
           "Minor", annotation; "Extension_node", extension ]
@@ -318,10 +318,10 @@ module Block = struct
     | Extension_node _
     | Abstract -> err
   and expr defs  =
-    let err = Error defs and ok name = Ok(defs, name) in
+    let err = Error defs in
     function
     | Defs d -> Error ( defs +| d )
-    | Open p -> ok p
+    | Open p -> me defs p
     | Include e -> me defs e
     | SigInclude t -> mt defs t
     | Bind {expr;_} -> me defs expr
@@ -421,6 +421,8 @@ module Build = struct
     Loc.fmap minor @@ Annot.access @@ Loc.fmap Paths.Expr.concrete path
 
   let open_ path = Loc.fmap (fun x -> Open x) path
+  let open_path x = open_ (Loc.fmap (fun x -> Ident x) x)
+
   let value v = Loc.fmap minor @@ Annot.value v
   let pack o = Loc.fmap minor @@ Annot.pack o
 
@@ -453,7 +455,7 @@ let rec pp_expression ppf = function
   | Defs defs -> Pp.fp ppf "define %a" Summary.pp defs
 
   | Minor annot -> pp_annot ppf annot
-  | Open npath -> Pp.fp ppf "@[<hv>open %a@]" Paths.Simple.pp npath
+  | Open me -> Pp.fp ppf "@[<hv>open [%a]@]" pp_me me
   | Include me -> Pp.fp ppf "@[<hv>include [%a]@]" pp_me me
   | SigInclude mt -> Pp.fp ppf "@[<hv>include type [%a]@]" pp_mt mt
 

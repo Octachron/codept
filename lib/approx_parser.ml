@@ -88,7 +88,7 @@ and inf_open lexbuf =
     let loc = locate lexbuf in
     let rest = !inf_path_at_dot lexbuf in
     let loc = Loc.merge loc rest.loc in
-    M2l.{ data = Open ( name :: rest.data ); loc }  :: inf_start lexbuf
+    M2l.{ data = Open (Ident(name :: rest.data)); loc }  :: inf_start lexbuf
   | Parser.EOF -> []
   | _ -> inf_start lexbuf
 and inf_include lexbuf =
@@ -143,7 +143,7 @@ let to_upper_bound m2l =
         let locate x = Loc.create elt.loc x in
         match elt.data with
         | Minor { access; _ } -> union (locate access) s
-        | Open path -> add (locate path) s
+        | Open (Ident path) -> add (locate path) s
         | Bind {expr = Ident path; _}
         | Include (Ident path) -> add (locate path) s
         | _ -> s
