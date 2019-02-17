@@ -51,6 +51,3 @@ ODOC = $(patsubst $S/lib/%,docs/%, $(LIBDOC))
 define tocmx
         $(addsuffix .cmx, $(basename $(1)))
 endef
-
-lib/slex.ml: $S/lib/slex.mll
-	ocamllex $< -o $@

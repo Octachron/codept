@@ -1,18 +1,11 @@
 
 module Level = struct
-type t = int
-let info = 0
-let notification = 1
-let warning = 2
-let error = 3
-let critical = 4
-
-let of_int n = if n < info then
-    info
-  else if n > critical then
-    critical
-  else
-    n
+type t = Format_tags.t
+let info = Format_tags.Info
+let notification = Format_tags.Notification
+let warning = Format_tags.Warning
+let error = Format_tags.Error
+let critical = Format_tags.Critical
 
 let of_string =
   function
@@ -23,68 +16,45 @@ let of_string =
   | "critical" | "4" -> critical
   | _ -> info
 
-let to_string =
-  function
-  | 0 -> "info"
-  | 1 -> "notification"
-  | 2 -> "warning"
-  | 3 -> "error"
-  | 4 -> "critical"
-  | _ -> "info"
+let to_int = function
+  | Format_tags.Info -> 0
+  | Format_tags.Notification -> 1
+  | Format_tags.Warning -> 2
+  | Format_tags.Error -> 3
+  | Format_tags.Critical -> 4
+  | _ -> 0
 
-let mark_open_tag tag =
-  let b = "\x1b[1m" in
-  match of_string tag with
-  | 4 -> b ^ "\x1b[91m"
-  | 3 -> b ^ "\x1b[31m"
-  | 2 -> b ^ "\x1b[35m"
-  | 1 -> b ^ "\x1b[36m"
-  | _ -> match tag with
-    | "em" -> b (* "\x1b[3m" *)
-    | "loc" -> b
-    | "title" -> b
-    | "m" -> b
-    | _ -> b
+  let to_string = Format_tags.to_string
 
-let mark_close_tag _tag =
-  "\x1b[0m"
 end
 
 module Log = struct
 
   type 'k status =
-    | Ok: ('a -> unit) status
-    | Fail: ('a -> 'b) status
+    | Ok: (Format.formatter -> unit) status
+    | Fail: (Format.formatter -> 'b) status
 
   let kont (type k): k status -> k = function
     | Ok -> ignore
     | Fail -> (fun _x -> exit 1)
 
-  let kf st = Format.kfprintf (kont st) Format.err_formatter
+  let kf k st = Format.kfprintf (fun ppf -> k ppf; kont st ppf)
+      Format.err_formatter
 
+  let msg (type a) lvl simple fatal (st: (_->a) status) (fmt: (_,_,_,a) format4) =
+    let title = match st with
+      | Ok -> simple
+      | Fail -> fatal in
+    Format.eprintf "@[[%a]: "
+      (Format_tags.tagged lvl) title;
+    kf (fun ppf -> Format.fprintf ppf "@]@.") st fmt
 
+  let kcritical x = msg Level.critical "Critical error" "Critical error" x
 
-  let kcritical k fmt =
-    kf k @@
-      ("@[[@{<critical>Critical error@}]: "^^fmt ^^"@]@." )
-
-  let kerror k fmt =
-    kf k
-    ("@[[@{<error>%s@}]: "^^fmt^^"@]@.")
-    (if k = Ok then "Error" else "Fatal error")
-
-  let kwarning k fmt = kf k
-    ("@[[@{<warning>%s@}]: " ^^ fmt ^^"@]@." )
-    (if k = Ok then "Warning" else "Fatal warning")
-
-  let knotification k fmt = kf k
-    ("@[[@{<notification>%s@}]: " ^^ fmt ^^"@]@.")
-      (if k = Ok then "Notification" else "Fatal notification")
-
-
-  let kinfo k fmt = kf k
-    ("@[[@{<info>%s@}]: " ^^ fmt ^^"@]@.")
-    (if k = Ok then "Miscellaneous" else "Fatal accident")
+  let kerror x = msg Level.error "Error" "Fatal error" x
+  let kwarning x = msg Level.warning "Warning" "Fatal warning" x
+  let knotification x = msg Level.notification "Notification" "Fatal notification" x
+  let kinfo x = msg Level.info "Misc" "Fatal accident" x
 
   let critical fmt = kcritical Fail fmt
   let error fmt = kerror Ok fmt
@@ -107,7 +77,7 @@ let log i fmt =
           Log.Fail
         else
           Log.Ok  in
-      fns.(i.level) k fmt
+      fns.(Level.to_int i.level) k fmt
     end
 
 type explanation = string
@@ -115,14 +85,9 @@ type 'a fault = { path: Paths.S.t; expl: explanation; log: log_info -> 'a }
 type 'a t = 'a fault
 
 type loc = Paths.Pkg.t * Loc.t
-let loc ppf (path,x)= Pp.fp ppf "@{<loc>%a:%a@}" Paths.Pkg.pp path Loc.pp x
-
-let enable_colors ppf =
-  Format.pp_set_tags ppf true;
-  Format.pp_set_mark_tags ppf true;
-  Format.pp_set_formatter_tag_functions ppf
-    Level.{ (Format.pp_get_formatter_tag_functions ppf ()) with
-      mark_open_tag; mark_close_tag }
+let loc ppf =
+  let sub ppf (path,x) = Pp.fp ppf "%a:%a" Paths.Pkg.pp path Loc.pp x in
+  Format_tags.(with_tag Loc) sub ppf
 
 module Policy = struct
 
@@ -173,21 +138,17 @@ module Policy = struct
     | None -> ()
     | Some lvl ->
       let name = Level.to_string lvl in
-      Pp.fp ppf "[";
-      Format.open_tag name;
-      Pp.string ppf name;
-      Format.close_tag ();
-      Pp.fp ppf "]"
+      Pp.fp ppf "[%a]" Format_tags.(tagged lvl) name
 
   let rec pp_map ppf = function
     | name, Level {expl; lvl} ->
-      Pp.fp ppf "@;−@{<title>%s@}%a:@;@[<hov>%a@]"
-        name
+      Pp.fp ppf "@;−%a%a:@;@[<hov>%a@]"
+        Format_tags.(tagged Title) name
         pp_lvl lvl
         Format.pp_print_text expl
     | name, Map { lvl; expl; map } ->
-      Pp.fp ppf "@;−@{<title>%s@}%a:%s@; @[<v2> %a @]"
-        name
+      Pp.fp ppf "@;−%a%a:%s@; @[<v2> %a @]"
+        Format_tags.(tagged Title) name
         pp_lvl lvl
         expl
         Pp.( list ~sep:(s "@;") @@ pp_map) (Name.Map.bindings map)

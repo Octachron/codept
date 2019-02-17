@@ -4,16 +4,20 @@ open Fault
 let extension_ignored =
   { path = ["extension"; "ignored"];
     expl = "The payload of an extension node was ignored";
-  log = (fun lvl ->
-      log lvl "%a, extension node @{<em>%s@} ignored." loc)
+  log = (fun lvl l ->
+        log lvl "%a, extension node %a ignored." loc l
+          Format_tags.(tagged Em)
+      )
 }
 
 let extension_traversed =
   { path = ["extension"; "traversed"];
     expl = "The payload of the extension node was handled as a standard \
            OCaml code.";
-  log = (fun lvl  ->
-      log lvl "%a, @ extension node @{<em>%s@} traversed." loc)
+  log = (fun lvl l ->
+        log lvl "%a, @ extension node %a traversed." loc l
+          Format_tags.(tagged Em)
+      )
 }
 
 
@@ -28,8 +32,9 @@ let opened_first_class =
           log lvl "%a,@a first-class module was opened while its signature was \
                    unknown." loc lc
         | Some name ->
-          log lvl "%a,@ first-class module @{<m>%s@} was opened while \
-                   its signature was unknown." loc lc name
+          log lvl "%a,@ first-class module %a was opened while \
+                   its signature was unknown." loc lc
+            Format_tags.(tagged M) name
       )
   }
 
@@ -66,10 +71,10 @@ let nonexisting_submodule =
     {
       path = ["typing"; "non_existing"; "submodule"];
       log = (fun lvl l path level name ->
-          log lvl "%a,@ module @{<m>%a@} does not contain any %s @{<m>%s@}"
-            loc l Paths.S.pp path
+          log lvl "%a,@ module %a does not contain any %s %a"
+            loc l Format_tags.(with_tag M Paths.S.pp) path
             (if level=Module.Module_type then "module type" else "submodule")
-            name
+            Format_tags.(tagged M) name
         );
       expl="Signature fault: there was an error when looking for a non-existing \
              submodule of a known module"
@@ -87,19 +92,19 @@ let applied_unknown =
 
 
 let maybe_module qual ppf = function
-  | Some s -> Pp.fp ppf "the@ %t@ module @{<m>%s@}" qual s
+  | Some s -> Pp.fp ppf "the@ %t@ module %a" qual Format_tags.(tagged M) s
   | None -> Pp.fp ppf "a@ %t@ module" qual
 
 let pp_divergence l ppf (d:Module.Divergence.t) =
   let f x = Pp.fp ppf "the@ opening@ of@ %a,@ at@ location \
-                       @{<loc>%a@}"
+                       %a"
       (maybe_module (fun ppf ->
            (match d.origin with
             | First_class_module -> Pp.fp ppf "first class"
             | External -> Pp.fp ppf "external")
          )
       )
-      d.root x in
+      d.root Format_tags.(with_tag Loc x) in
   if fst d.loc = fst l then
     f Loc.pp (snd d.loc)
   else
@@ -110,19 +115,21 @@ let ambiguous =
     expl = "Signature fault: a module resolution was ambiguous, leading \
       to potential spurious dependencies in the future";
     log = (fun lvl l name div -> log lvl
-              "%a,@;name resolution for @{<m>%s@}@ was@ ambiguous,@ due@ to@ %a.@ \
+              "%a,@;name resolution for %a@ was@ ambiguous,@ due@ to@ %a.@ \
                Spurious@ dependencies@ might@ be@ inferred@ due@ to@ this@ ambiguity."
               loc l
-              name (pp_divergence l) div
+              Format_tags.(tagged M) name (pp_divergence l) div
           )
   }
 
 let unknown_approximated =
   { path = ["typing"; "unknown"; "approximation"];
     log = (fun lvl mlvl name l ->
-        log lvl "%a,@ a non-resolvable module%s, @{<m>%s@}, has been \
+        log lvl "%a,@ a non-resolvable module%s, %a, has been \
                  replaced by an approximation"
-          loc l (if mlvl = Module.Module_type then " type" else "") name );
+          loc l
+          (if mlvl = Module.Module_type then " type" else "")
+          Format_tags.(tagged M) name );
     expl = "Signature fault: an unknown module was approximated, possibly \
             leading to an over-approximation of dependencies";
   }
@@ -137,9 +144,10 @@ let module_conflict =
             only the first one will be used in the following \
             analysis.";
     log = (fun lvl name paths -> log lvl
-              "Global module conflict,@; Module @{<m>%a@} is provided \
-               simultaneously by %a" Namespaced.pp name
-              Pp.(in_text_list @@ with_tag "m" Paths.P.pp) paths
+              "Global module conflict,@; Module %a is provided \
+               simultaneously by %a"
+              Format_tags.(with_tag M Namespaced.pp) name
+              (Pp.in_text_list Format_tags.(with_tag M Paths.P.pp)) paths
           )
   }
 
@@ -152,9 +160,9 @@ let local_module_conflict =
             only the first one will be used in the following \
             analysis.";
     log = (fun lvl name paths -> log lvl
-              "Local module conflict,@; Module @{<m>%a@} is provided \
-               simultaneously by %a" Namespaced.pp name
-              Pp.(in_text_list @@ with_tag "m" Paths.P.pp) paths
+              "Local module conflict,@; Module %a is provided \
+               simultaneously by %a" Format_tags.(with_tag M Namespaced.pp) name
+              Pp.(in_text_list Format_tags.(with_tag M Paths.P.pp)) paths
           )
   }
 
@@ -214,7 +222,8 @@ let syntaxerr =
 let lexerr =
   { path = ["parsing"; "lexer"];
     expl = "Parsing fault: not lexically valid input file.";
-    log = (fun lvl file _error -> log lvl "Lexer error in file @{<loc>%s@}" file )
+    log = (fun lvl file _error -> log lvl "Lexer error in file %a"
+              Format_tags.(tagged Loc) file )
   }
 
 
@@ -225,7 +234,7 @@ let unknown_file_format =
     expl = "unknown file format, an internal serialized file was expected";
     log = (fun lvl kind name -> log lvl
               "unknown file format,@ when parsing the supposedly \
-               serialized %s file @{<loc>%s@}" kind name
+               serialized %s file %a" kind Format_tags.(tagged Loc) name
           )
   }
 
@@ -233,8 +242,9 @@ let future_version =
   { path = ["parsing"; "internal"; "future"; "version"];
     expl = "file format from the future";
     log = (fun lvl name (mj,mn,p) (mj',mn',p') -> log lvl
-              "file @{<loc>%s@}@ format version (%d.%d.%d) is more recent \
-               than codept own version (%d.%d.%d)." name mj' mn' p' mj mn p
+              "file %a@ format version (%d.%d.%d) is more recent \
+               than codept own version (%d.%d.%d)."
+              Format_tags.(tagged Loc) name mj' mn' p' mj mn p
           )
   }
 
@@ -242,8 +252,8 @@ let wrong_file_kind =
   { path = ["parsing"; "internal"; "wrong"; "kind"];
     expl = "file type mismatch";
     log = (fun lvl filename got expected ->  log lvl
-              "@{<loc>%s@},@ file type %s does not match the expected type %s."
-              filename got expected);
+              "%a,@ file type %s does not match the expected type %s."
+              Format_tags.(tagged Loc) filename got expected);
   }
 
 
@@ -251,7 +261,8 @@ let parsing_error =
   { path = ["parsing"; "internal"; "error"];
     expl = "parsing error";
     log = (fun lvl kind filename ->  log lvl
-              "file @{<loc>%s@},@ failed to parse %s" filename kind);
+              "file %a,@ failed to parse %s"
+              Format_tags.(tagged Loc) filename kind);
   }
 
 

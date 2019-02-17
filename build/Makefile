@@ -1,4 +1,7 @@
+
+
 include Makefile.common
+
 
 all: dirs tests $S/codept-server $S/codept-client $S/codept
 
@@ -62,5 +65,9 @@ $(ODOC):docs/%.odoc: $S/lib/%.mli | dirs
 docs: $S/docs/index.html | dirs
 $S/docs/index.html: $(ODOC)
 	@ocamldoc $(addprefix -load , $(ODOC)) -html -charset utf-8 -d $S/docs
+
+
+lib/slex.ml: $S/lib/slex.mll
+	ocamllex $< -o $@
 
 include codept.sort codept_server.sort codept_client.sort run.sort serialization.sort .depends

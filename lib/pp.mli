@@ -47,9 +47,6 @@ val decorate :
   string ->
   (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
 
-val with_tag:
-  string -> (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
-
 
 val pair :
   ?sep:string ->

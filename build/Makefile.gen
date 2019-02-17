@@ -1,6 +1,10 @@
 all: depend
 include Makefile.common
 
+
+lib/slex.ml: $S/lib/slex.mll
+	ocamllex $< -o $@
+
 lib/sparser.mli : $S/lib/sparser.mly
 	menhir $< --base lib/sexp/sparser
 

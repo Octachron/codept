@@ -8,8 +8,8 @@ let std = Format.std_formatter
 let io = Io.direct
 let out = Pp.std
 let () =
-  Fault.enable_colors Pp.err;
-  Fault.enable_colors Pp.std;
+  Format_tags.enable Pp.err;
+  Format_tags.enable Pp.std;
   let query = Args.process version Sys.argv in
   let task = io.reader.findlib query.task query.findlib in
   Compenv.readenv stderr Before_link;
