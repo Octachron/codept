@@ -1,0 +1,2 @@
+open A
+open Local

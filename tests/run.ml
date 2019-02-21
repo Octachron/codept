@@ -20,6 +20,8 @@ module Version = struct
   let v_4_04 = { minor = 4; major = 4 }
   let v_4_06 = { minor = 6; major = 4 }
   let v_4_07 = { minor = 7; major = 4 }
+  let v_4_08 = { minor = 8; major = 4 }  
+
 end
 
 
@@ -557,6 +559,13 @@ let result =
       Std.cycle_test [ ["A"; "B"; "C"]]
         [ "a.ml" ; "b.ml"; "c.ml"; "atlas.ml"]
     )
+    && ( Version.( v < v_4_08) || (
+         chdir "../local_module_subst";
+         both ["A";"B";"E"] @@ dl [
+           "a.mli", [];
+           "b.mli", l["a.mli"] @ u["Local"] ;
+         ])
+       )
     &&
     ( chdir "../../lib";
       Std.gen_deps_test (Std.ocamlfind "compiler-libs") Std.precise_deps_test
@@ -604,10 +613,12 @@ let result =
           "m2l.ml", (["Loc"; "Deps"; "Module"; "Mresult"; "Name";
                       "Option";"Summary";"Paths"; "Pp"; "Schematic" ],
                      [!"List"],[]);
-          "fault.ml", (["Loc"; "Option"; "Name";"Paths"; "Pp"],
+          "fault.ml", (["Format_tags"; "Loc"; "Option"; "Name";"Paths"; "Pp"],
                           [!"Array"; !"Format"],[]);
           "fault.mli", (["Loc"; "Paths"; "Name"],
                           [!"Format"],[]);
+          "format_tags.mli", ([],[!"Format"],[]);
+          "format_tags.ml", ([],[!"Format"],[]);
           "format_compat.mli", ([],[!"Format"],[]);
           "format_compat.ml", ([],[!"Format"],[]);
           "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Schematic"],
@@ -625,6 +636,8 @@ let result =
           "loc.ml", ( ["Pp";"Schematic"], [!"List"], []);
           "option.mli", ([],[!"Lazy"],[]);
           "option.ml", ([],[!"List";!"Lazy"],[]);
+          "pparse_compat.mli", ([], ["Parsetree"], []);
+          "pparse_compat.ml", ([], [!"Format"; "Pparse"], []);
           "paths.mli", (["Name"; "Schematic"], [!"Map";!"Set";!"Format"],[]);
           "paths.ml", (["Name"; "Pp"; "Schematic"; "Support" ],
                        [!"Filename";!"List";!"Map";!"Set";
@@ -632,9 +645,9 @@ let result =
           "pp.mli", ([], [!"Format"],[]);
           "pp.ml", ([], [!"Format"],[]);
           "read.mli", (["M2l"; "Name"; "Schematic"],["Lexer";"Syntaxerr"],[]);
-          "read.ml", (["Ast_converter"; "Cmi"; "M2l"; "Schema"; "Schematic" ],
-                      [!"Filename"; !"Format"; "Lexer"; !"Lexing"; !"List";
-                       "Location";
+          "read.ml", (["Ast_converter"; "Cmi"; "M2l"; "Pparse_compat";"Schema"
+                      ; "Schematic" ],
+                      [!"Filename"; "Lexer"; !"Lexing"; !"List"; "Location";
                        "Parse"; "Parsetree"; !"Parsing"; "Pparse"; !"String";
                        "Syntaxerr"],
                       ["Sparser";"Slex"]);
@@ -660,7 +673,8 @@ let result =
              "Standard_faults"],
             [!"List"; !"Map"; !"Set";!"Format"],[]);
           "standard_faults.ml", (
-            ["Fault"; "Module"; "Namespaced"; "Paths"; "Pp"; "Loc"; "Schematic" ],
+            ["Fault"; "Format_tags"; "Module"; "Namespaced"; "Paths"; "Pp"
+            ; "Loc"; "Schematic" ],
             [!"Format"; "Location"; "Syntaxerr"],[]);
           "standard_faults.mli", (
             ["Fault"; "Name"; "Namespaced"; "Module"; "Paths"; "Schematic" ],

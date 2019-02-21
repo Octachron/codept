@@ -1,4 +1,4 @@
-type t = ..
+type t =  ..
 type t +=
   | Info | Notification | Warning | Error | Critical
   | Em | Loc | Title | M

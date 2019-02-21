@@ -219,10 +219,15 @@ lib/paths.cmi : lib/schematic.cmi lib/name.cmi
 lib/pp.cmo : lib/pp.cmi
 lib/pp.cmx : lib/pp.cmi
 lib/pp.cmi :
+lib/pparse_compat.cmo : lib/pparse_compat.cmi
+lib/pparse_compat.cmx : lib/pparse_compat.cmi
+lib/pparse_compat.cmi :
 lib/read.cmo : lib/sparser.cmi lib/slex.cmo lib/schematic.cmi \
-    lib/schema.cmi lib/m2l.cmi lib/cmi.cmi lib/ast_converter.cmi lib/read.cmi
+    lib/schema.cmi lib/pparse_compat.cmi lib/m2l.cmi lib/cmi.cmi \
+    lib/ast_converter.cmi lib/read.cmi
 lib/read.cmx : lib/sparser.cmx lib/slex.cmx lib/schematic.cmx \
-    lib/schema.cmx lib/m2l.cmx lib/cmi.cmx lib/ast_converter.cmx lib/read.cmi
+    lib/schema.cmx lib/pparse_compat.cmx lib/m2l.cmx lib/cmi.cmx \
+    lib/ast_converter.cmx lib/read.cmi
 lib/read.cmi : lib/schematic.cmi lib/name.cmi lib/m2l.cmi
 lib/schema.cmo : lib/schematic.cmi lib/paths.cmi lib/option.cmi lib/name.cmi \
     lib/module.cmi lib/m2l.cmi lib/schema.cmi
