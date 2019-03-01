@@ -13,6 +13,24 @@ end
 
 type t = (Edge.t * Paths.S.set) Paths.P.map
 
+let sch: t Schematic.t =
+  let open Schematic in
+  let sset = custom [ "Paths"; "S"; "set"]
+      (Array Paths.S.sch)
+      Paths.S.Set.elements
+      Paths.S.Set.of_list in
+  let from_list =
+    let open Tuple in
+    List.fold_left (fun m [k; x; y] ->
+        Paths.P.Map.add k (x,y) m)
+      Paths.P.Map.empty in
+  let to_list m =
+    List.map (fun (k, (x,y)) -> Tuple.[k;x;y])
+      (Paths.P.Map.bindings m) in
+  custom ["Deps"; "t"] (Array [Paths.P.sch; Edge.sch; sset])
+    to_list
+    from_list
+
 module Pth = Paths.S
 module P = Paths.P
 

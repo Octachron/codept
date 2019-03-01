@@ -12,6 +12,8 @@ end
 type t = (Edge.t * Paths.S.set) Paths.P.map
 
 val empty: t
+val sch: t Schematic.t
+
 
 (** Add a new path to a dependency map or
     promote the type of an existing path to {!Edge.Epsilon} *)
