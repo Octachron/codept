@@ -9,10 +9,9 @@ sig
   type t = {
     top: Module.Dict.t;
     current: context;
-    deps: Deps.t ref;
     providers: module_provider list;
   }
-  include Outliner.envt_with_deps with type t := t
+  include Outliner.envt with type t := t
   val empty: t
   val start: Module.definition -> t
 end

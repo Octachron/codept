@@ -1,7 +1,7 @@
 (** Monotonic outliner for m2l ast *)
 
 (** Input fault type *)
-type 'a query_result = { main:'a; msgs: (Fault.loc -> unit ) Fault.t list }
+type 'a query_result = { main:'a; deps: Deps.t; msgs: (Fault.loc -> unit ) Fault.t list }
 type answer =
   | M of Module.m
   | Namespace of Module.namespace_content
@@ -10,8 +10,9 @@ type answer =
 module type envt = sig
   type t
   val eq: t -> t -> bool
-  val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t -> t ->
-    answer query_result
+  val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t
+    -> t
+    -> answer query_result
 
   val (>>) : t -> Summary.t -> t
 
@@ -25,17 +26,6 @@ module type envt = sig
   val pp: Format.formatter -> t -> unit
 end
 
-module type with_deps = sig
-  type t
-  val deps: t -> Deps.t
-  val reset_deps: t -> unit
-end
-
-module type envt_with_deps = sig
-  type t
-  include envt with type t := t
-  include with_deps with type t := t
-end
 
 (** Interpreter parameter *)
 module type param =
@@ -50,7 +40,7 @@ end
 module type s =
 sig
   type envt
-  val m2l : Paths.P.t -> envt -> M2l.t -> (envt * Module.Sig.t, M2l.t) result
+  val m2l : Paths.P.t -> envt -> M2l.t -> (envt * Deps.t * Module.Sig.t, M2l.t) result
 end
 
 (** Create an outliner adapted for the environment type *)

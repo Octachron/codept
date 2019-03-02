@@ -20,7 +20,7 @@ module Version = struct
   let v_4_04 = { minor = 4; major = 4 }
   let v_4_06 = { minor = 6; major = 4 }
   let v_4_07 = { minor = 7; major = 4 }
-  let v_4_08 = { minor = 8; major = 4 }  
+  let v_4_08 = { minor = 8; major = 4 }
 
 end
 
@@ -584,14 +584,14 @@ let result =
                      ["Cmi_format"; !"List"; "Path";"Types";"Ident"], []);
           "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic"],[!"List"],[]);
           "summary.mli", (
-            ["Module";"Paths";"Schematic"],
+            ["Deps";"Module";"Paths";"Schematic"],
             [!"Format"],
             [] );
           "summary.ml", (
-            ["Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
+            ["Deps";"Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
             [!"List"], []);
           "envt.mli", (
-            ["Deps"; "Module";"Name"; "Namespaced"; "Outliner"; "Paths"],
+            ["Module";"Name"; "Namespaced"; "Outliner"; "Paths"],
             [], []);
           "envt.ml", (
             ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
@@ -662,7 +662,7 @@ let result =
                             "Support";"Option"],
                            [!"Format"; !"Hashtbl"; !"List"; !"Map"; !"String"],
                            [] );
-          "solver.mli", (["Deps"; "Fault"; "Loc"; "Unit";"M2l";
+          "solver.mli", (["Fault"; "Loc"; "Unit";"M2l";
                           "Namespaced"; "Read";
                           "Summary"; "Outliner"; "Paths"],
                          [!"Format";!"Map";!"Set"],[]);

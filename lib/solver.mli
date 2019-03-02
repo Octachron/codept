@@ -1,6 +1,6 @@
 (** Basic solver *)
 
-type i = { input: Unit.s; code: M2l.t; deps: Deps.t }
+type i = { input: Unit.s; code: M2l.t }
 (** In-processing state for unit files *)
 
 
@@ -51,7 +51,7 @@ val fault:
 (** Create a solver using the environment module [Envt] for
     name resolution and dependendy tracking and
     the parameter module [Param] *)
-module Make(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
+module Make(Envt:Outliner.envt)(Param : Outliner.param):
   sig
 
     type state = { resolved: Unit.r Paths.P.map;
@@ -102,7 +102,7 @@ module Make(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
     end
 
 (** Alternative solver *)
-module Directed(Envt:Outliner.envt_with_deps)(Param : Outliner.param):
+module Directed(Envt:Outliner.envt)(Param : Outliner.param):
 sig
   type state
 

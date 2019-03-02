@@ -118,7 +118,7 @@ let base_sign io signatures =
   Name.Map.union' m io.Io.env
 
 (** Environment *)
-type 'a envt_kind = (module Outliner.envt_with_deps with type t = 'a)
+type 'a envt_kind = (module Outliner.envt with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
 let start_env io param libs signatures fileset =
@@ -141,8 +141,7 @@ let start_env io param libs signatures fileset =
   in
   let add u env = Envt.Core.add_unit u env in
   let env = List.fold_left add env signatures in
-    E ((module Envt.Core: Outliner.envt_with_deps with type t = Envt.Core.t ) ,
-       env )
+    E ((module Envt.Core), env)
 
 (** Solver step *)
 
@@ -197,7 +196,7 @@ module Collisions = struct
     List.fold_left (fun m (u:Unit.s) ->
         match Envt.Core.find M.Module (Nms.flatten u.path) env with
         | exception Not_found -> m
-        | { main = M { M.origin = Unit p; _ }; msgs= [] } ->
+        | { main = M { M.origin = Unit p; _ }; msgs= []; _ } ->
           (add u.path p.source @@ add u.path u.src m)
         | { msgs = _ :: _ ; _ }
         | { main = Namespace _ | M { M.origin =

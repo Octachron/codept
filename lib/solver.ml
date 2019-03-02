@@ -1,11 +1,11 @@
 
 let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
-type i = { input: Unit.s; code: M2l.t; deps: Deps.t }
+type i = { input: Unit.s; code: M2l.t }
 let make (input:Unit.s) =
   let open_namespace = List.map
       (fun name -> Loc.nowhere @@ M2l.Open (Ident [name])) input.path.namespace in
-  { input; code = open_namespace @ input.code; deps = Deps.empty }
+  { input; code = open_namespace @ input.code }
 
 module Mp = Namespaced.Map module Sp = Namespaced.Set
 
@@ -211,11 +211,11 @@ let fault =
   let eval_bounded policy eval (unit:Unit.s) =
     let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
     let r, r' = eval unit, eval unit' in
-    let lower, upper = fst r, fst r' in
-    let sign = match snd r, snd r' with
-      | _ , Ok (_,sg)
-      | Ok(_,sg) , Error _  ->  sg
-      | Error _, Error _ -> Module.Sig.empty
+    let lower, sign, upper = match r, r' with
+      | Ok(_,lower, _) , Ok (_,upper,sg) -> lower, sg, upper
+      | Ok(_,lower,sg) , Error _  -> lower, sg, lower
+      | Error _, Ok(_,upper,sg)  -> upper, sg, upper
+      | Error _, Error _ -> Deps.empty, Module.Sig.empty, Deps.empty
         (* something bad happened but we are already parsing
            problematic input *) in
     let elts m = List.map fst @@ Paths.P.Map.bindings m in
@@ -260,7 +260,7 @@ let expand_and_add expand  =
     fun resolved (unit:Unit.r) ->
       Paths.P.Map.add unit.src unit resolved
 
-module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
+module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
   open Unit
 
   module Eval = Outliner.Make(Envt)(Param)
@@ -292,17 +292,14 @@ module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
         resolved = Paths.P.Map.empty } units
 
   let compute_more env (u:i) =
-    let result = Eval.m2l u.input.src env u.code in
-    let deps = Envt.deps env in
-    Envt.reset_deps env;
-    deps, result
+    Eval.m2l u.input.src env u.code
 
 
   let expand_and_add = expand_and_add Param.epsilon_dependencies
 
   let eval ?(learn=true) state unit =
     match compute_more state.env unit with
-    | deps, Ok (_,sg) ->
+    | Ok (_,deps,sg) ->
       let env =
         if learn then begin
           let input = unit.input in
@@ -316,12 +313,10 @@ module Make(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
         else
           state.env
       in
-      let deps = Deps.merge unit.deps deps in
       let unit = Unit.lift sg deps unit.input in
       { state with env; resolved = expand_and_add state.resolved unit }
-    | deps, Error code ->
-      let deps = Deps.merge unit.deps deps in
-      let unit = { unit with deps; code } in
+    | Error code ->
+      let unit = { unit with code } in
       { state with pending = unit :: state.pending }
 
   let eval_bounded core =
@@ -391,7 +386,7 @@ end
 
 
 
-module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
+module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
   open Unit
 
   module Eval = Outliner.Make(Envt)(Param)
@@ -438,10 +433,7 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
     { state with pending }
 
   let compute state i =
-    let result = Eval.m2l i.input.src state.env i.code in
-    let deps =Deps.( i.deps + Envt.deps state.env) in
-    Envt.reset_deps state.env;
-    deps, result
+    Eval.m2l i.input.src state.env i.code
 
   let add_unit (u:Unit.s) state =
     match u.precision with
@@ -478,7 +470,7 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
     let not_ancestors = Namespaced.Set.add path state.not_ancestors in
     let state = { state with not_ancestors } in
     match compute state i with
-    | deps, Ok(_,sg) ->
+    | Ok(_,deps,sg) ->
       let more, pending = remove path state.pending in
       let state = { state with pending } in
       let state =
@@ -501,9 +493,9 @@ module Directed(Envt:Outliner.envt_with_deps)(Param:Outliner.param) = struct
             Namespaced.Set.remove path state.not_ancestors
         } in
       Option.(more >>| eval_depth state >< Ok state )
-    | deps, Error m2l ->
+    | Error m2l ->
       (* first, we update the work-in-progress map *)
-      let state = update_pending { i with deps; code = m2l } state in
+      let state = update_pending { i with code = m2l } state in
       (* we check the first missing module *)
       match M2l.Block.m2l m2l with
       | None ->

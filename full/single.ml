@@ -49,8 +49,8 @@ let one_pass _ _ ppf param (_,filename,_ as x) =
                    Envt.Core.empty )
   with
   | None -> ()
-  | Some (Ok (_state,d)) ->
-    Pp.fp ppf "Computation finished:\n %a@." Module.Sig.pp d
+  | Some (Ok (_state, deps, d)) ->
+    Pp.fp ppf "Computation finished:@ %a@ %a@." Deps.pp deps Module.Sig.pp d
   | Some (Error h) ->
     Pp.fp ppf "Computation halted at:\n %a@." M2l.pp h
 

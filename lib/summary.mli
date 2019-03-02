@@ -5,6 +5,7 @@ type view
 type t = {
   defined: view; (** modules and module types defined in scope *)
   visible: view; (** in scope but not defined *)
+  deps: Deps.t;
 }
 type summary = t
 

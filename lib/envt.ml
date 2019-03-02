@@ -17,8 +17,8 @@ type context =
 module Query = struct
 
   type 'a t = 'a Outliner.query_result
-  let pure main = { Outliner.main; msgs = [] }
-  let create main msgs : _ t = {main; msgs}
+  let pure main = { Outliner.main; deps = Deps.empty; msgs = [] }
+  let create main ?(deps=Deps.empty) msgs : _ t = {main; deps; msgs}
 
   let (>>|) x f = { x with Outliner.main = f x.Outliner.main }
   let (>>?) (x: _ t option) f =
@@ -27,7 +27,9 @@ module Query = struct
              { q with Out.msgs = q.Out.msgs @ x.msgs }
            )
 
-  let add_msg msgs (q: _ t) = { q with msgs = msgs @ q.msgs }
+  let add_msg ?(deps=Deps.empty) msgs (q: _ t) =
+    { q with deps = Deps.merge deps q.deps;
+             msgs = msgs @ q.msgs }
 
 end
 
@@ -62,21 +64,18 @@ module Core = struct
   type t = {
     top: M.Dict.t;
     current: context;
-    deps: Deps.t ref;
     providers: module_provider list;
   }
 
   let empty = {
     top = Name.Map.empty;
     current = Signature(Exact(M.Def.empty));
-    deps = ref P.Map.empty;
     providers = []
   }
 
   let eq x y= x.top = y.top
   let start s =
     { top = s.M.modules; current = to_context s;
-      deps = ref P.Map.empty;
       providers = []
     }
 
@@ -89,21 +88,21 @@ module Core = struct
       M.pp_mdict x.top pp_context x.current
 
   module D = struct
-    let path_record edge mp p env =
-      env.deps := Deps.update p edge (Paths.S.Set.singleton mp) !(env.deps)
+    let path_record edge mp p deps =
+      Deps.update p edge (Paths.S.Set.singleton mp) deps
 
-    let phantom_record name env =
-      path_record Edge.Normal [name] { P.source = Unknown; file = [name] } env
+    let phantom_record name deps =
+      path_record Edge.Normal [name] { P.source = Unknown; file = [name] } deps
 
 
-    let record edge root env (m:Module.m) =
+    let record edge root deps (m:Module.m) =
       match m.origin with
       | M.Origin.Unit p ->
-        path_record edge p.path p.source env; []
+        path_record edge p.path p.source deps, []
       | Phantom (phantom_root, b) ->
         if root && not phantom_root then
-          (phantom_record m.name env; [ambiguity m.name b] ) else []
-      | _ -> []
+          (phantom_record m.name deps, [ambiguity m.name b] ) else deps, []
+      | _ -> deps, []
   end open D
 
   let request lvl name env =
@@ -180,6 +179,7 @@ module Core = struct
       ~absolute_path ?(edge=Edge.Normal)
       ~root level
       path
+      deps
       env =
     debug "looking for %a" Paths.S.pp path;
     debug "in %a, sub-approx: %B" pp_context env.current approx_submodule;
@@ -204,34 +204,35 @@ module Core = struct
       function
       | Alias {path; phantom; name; weak = false } ->
             debug "alias to %a" Namespaced.pp path;
-            let msgs =
+            let deps, msgs =
               match phantom with
-              | None -> []
+              | None -> deps, []
               | Some b ->
                 if root then
-                  (phantom_record name env; [ambiguity name b])
-                else [] in
+                  (phantom_record name deps, [ambiguity name b])
+                else deps, [] in
             (* aliases link only to compilation units *)
             Option.(
               find (a::current)
                 ~approx_submodule
                 ~absolute_path:false ~root:true ~edge
-                level (Namespaced.flatten path @ q) (top env)
-              >>| Query.add_msg msgs
+                level (Namespaced.flatten path @ q) deps (top env)
+              >>| Query.add_msg ~deps msgs
             )
       | Alias { weak = true; _ } when absolute_path -> None
       | Alias {path; weak = true; _ } ->
         find [] ~absolute_path:true ~approx_submodule ~root:true ~edge level
-          (Namespaced.flatten path @ q) (top env)
+          (Namespaced.flatten path @ q) deps (top env)
       | M.M m ->
         debug "found module %s" m.name;
         begin
-          let faults = record edge root env m in
+          let deps, faults = record edge root deps m in
           if q = [] then
-            Some ((create (M m) faults))
+            Some ((create (M m) ~deps faults))
           else
             find (a::current) ~approx_submodule
               ~absolute_path:false ~root:false level q
+              deps
             @@ restrict env @@ Signature m.signature
         end
       | Namespace {name;modules} ->
@@ -241,23 +242,21 @@ module Core = struct
             Some (Query.pure (Namespace {name;modules}))
           else
             find (a::current) ~approx_submodule ~absolute_path
-              ~root:true level q
+              ~root:true level q deps
             @@ restrict env @@ In_namespace modules
 
         end
       end
 
   let find sub ?edge level path envt =
+    let deps = Deps.empty in
     match find [] ~approx_submodule:sub ~absolute_path:false
-            ?edge ~root:true level path envt with
+            ?edge ~root:true level path deps envt with
     | None -> raise Not_found
     | Some x -> x
 
   let find_implicit = find false
   let find = find true
-
-  let deps env = !(env.deps)
-  let reset_deps env = env.deps := P.Map.empty
 
   let to_sign = function
     | Signature s -> s
@@ -402,7 +401,7 @@ module Libraries = struct
             let code' = Cmi.m2l @@ P.filename path' in
             track source ( (name', path', code') :: (name, path, code) :: q )
         end
-      | Ok (_, sg) ->
+      | Ok (_,_deps, sg) ->
         let md = M.create
             ~origin:(M.Origin.Unit {source=path;path=[name]}) name sg in
         source.resolved <- Core.add_unit source.resolved (M.M md);
