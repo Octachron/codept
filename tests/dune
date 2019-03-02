@@ -8,6 +8,11 @@
   (libraries unix codept_lib precomputed)
 )
 
+(executable
+  (name integrated) (modules Integrated)
+  (libraries unix)
+)
+
 
 (alias
  (name   runtest)
@@ -17,4 +22,10 @@
 (alias
  (name   runtest)
  (action (run %{exe:serialization.exe}))
+)
+
+
+(alias
+ (name   runtest)
+ (action (run %{exe:integrated.exe}))
 )

@@ -166,12 +166,13 @@ module Make(Envt:envt)(Param:param) = struct
     let paths = Paths.Expr.multiples path in
     let d, mt, rest = match paths with
       | a :: q ->
-        let d, mt = mt_ident loc Module_type state a in
         let resolve (d,l) x =
           let d', x = mt_ident loc Module state x in
           Deps.(d+d'), x::l in
-        let d, rest = List.fold_left resolve (with_deps d []) q in
-        d, Some mt, rest
+        let d, rest =
+          List.fold_left resolve (with_deps Deps.empty []) q in
+        let d', mt = mt_ident loc Module_type state a in
+        Deps.(d + d'), Some mt, rest
       | [] -> Deps.empty, None, []
     in
     with_deps d @@
@@ -348,7 +349,9 @@ module Make(Envt:envt)(Param:param) = struct
         | exception Not_found -> no_deps @@ Error (Ident i: module_expr)
       end
     | Apply {f;x} ->
-      begin match module_expr loc state f <+> module_expr loc state x with
+      let f = module_expr loc state f in
+      let x = module_expr loc state x in
+      begin match  f <+> x with
         | d, Ok f, Ok _ -> with_deps d (Ok (drop_arg loc f))
         | d, Error f, Error x -> with_deps d @@ Error (Apply {f;x} )
         | d, Error f, Ok x -> with_deps d @@ Error (Apply {f; x = Resolved x})
@@ -385,7 +388,9 @@ module Make(Envt:envt)(Param:param) = struct
       end
 
   and constraint_ loc state me mt =
-    match module_expr loc state me <+> module_type loc state mt with
+    let me = module_expr loc state me in
+    let mt = module_type loc state mt in
+    match  me <+> mt with
     | d, Ok _, (Ok _ as r) -> d, r
     | d, Ok me, Error mt ->
       d, Error (Constraint(Resolved me, mt) )
