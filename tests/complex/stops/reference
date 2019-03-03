@@ -1,0 +1,85 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "stops/a.ml",
+     "dependencies" :
+       {
+       "local" :
+         [[["F"], ["stops", "f.ml"]], [["E"], ["stops", "e.ml"]],
+         [["D"], ["stops", "d.ml"]], [["C"], ["stops", "c.ml"]],
+         [["B"], ["stops", "b.ml"]]]
+       }
+     },
+    {
+    "file" : "stops/b.ml",
+    "dependencies" : { "local" : [[["Z"], ["stops", "z.ml"]]] }
+    },
+    {
+    "file" : "stops/c.ml",
+    "dependencies" : { "local" : [[["Y"], ["stops", "y.ml"]]] }
+    },
+    {
+    "file" : "stops/d.ml",
+    "dependencies" : { "local" : [[["X"], ["stops", "x.ml"]]] }
+    },
+    {
+    "file" : "stops/e.ml",
+    "dependencies" : { "local" : [[["W"], ["stops", "w.ml"]]] }
+    },
+    {
+    "file" : "stops/f.ml",
+    "dependencies" : { "local" : [[["V"], ["stops", "v.ml"]]] }
+    },
+    {
+    "file" : "stops/g.ml",
+    "dependencies" : { "local" : [[["F"], ["stops", "f.ml"]]] }
+    },
+    {
+    "file" : "stops/h.ml",
+    "dependencies" : { "local" : [[["G"], ["stops", "g.ml"]]] }
+    },
+    {
+    "file" : "stops/i.ml",
+    "dependencies" : { "local" : [[["H"], ["stops", "h.ml"]]] }
+    },
+    {
+    "file" : "stops/j.ml",
+    "dependencies" : { "local" : [[["I"], ["stops", "i.ml"]]] }
+    },
+    {
+    "file" : "stops/v.ml",
+    "dependencies" : { "local" : [[["E"], ["stops", "e.ml"]]] }
+    },
+    {
+    "file" : "stops/w.ml",
+    "dependencies" : { "local" : [[["D"], ["stops", "d.ml"]]] }
+    },
+    {
+    "file" : "stops/x.ml",
+    "dependencies" : { "local" : [[["C"], ["stops", "c.ml"]]] }
+    },
+    {
+    "file" : "stops/y.ml",
+    "dependencies" : { "local" : [[["B"], ["stops", "b.ml"]]] }
+    }, { "file" : "stops/z.ml", "dependencies" : {  } }],
+  "atlas" :
+    [{ "module" : ["Z"], "ml" : "stops/z.ml" },
+    { "module" : ["Y"], "ml" : "stops/y.ml" },
+    { "module" : ["X"], "ml" : "stops/x.ml" },
+    { "module" : ["W"], "ml" : "stops/w.ml" },
+    { "module" : ["V"], "ml" : "stops/v.ml" },
+    { "module" : ["J"], "ml" : "stops/j.ml" },
+    { "module" : ["I"], "ml" : "stops/i.ml" },
+    { "module" : ["H"], "ml" : "stops/h.ml" },
+    { "module" : ["G"], "ml" : "stops/g.ml" },
+    { "module" : ["F"], "ml" : "stops/f.ml" },
+    { "module" : ["E"], "ml" : "stops/e.ml" },
+    { "module" : ["D"], "ml" : "stops/d.ml" },
+    { "module" : ["C"], "ml" : "stops/c.ml" },
+    { "module" : ["B"], "ml" : "stops/b.ml" },
+    { "module" : ["A"], "ml" : "stops/a.ml" }]
+  }
+}

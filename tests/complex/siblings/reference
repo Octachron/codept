@@ -1,0 +1,74 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "siblings/L/L/a.ml",
+     "dependencies" :
+       {
+       "local" :
+         [[["L", "R", "A"], ["siblings", "L", "R", "a.ml"]],
+         [["L", "L", "B"], ["siblings", "L", "L", "b.ml"]]]
+       }
+     },
+    {
+    "file" : "siblings/L/L/b.ml",
+    "dependencies" :
+      { "local" : [[["L", "R", "B"], ["siblings", "L", "R", "b.ml"]]] }
+    },
+    {
+    "file" : "siblings/L/R/a.ml",
+    "dependencies" :
+      { "local" : [[["L", "R", "B"], ["siblings", "L", "R", "b.ml"]]] }
+    }, { "file" : "siblings/L/R/b.ml", "dependencies" : {  } },
+    {
+    "file" : "siblings/L/a.ml",
+    "dependencies" :
+      {
+      "local" :
+        [[["L", "R", "A"], ["siblings", "L", "R", "a.ml"]],
+        [["L", "L", "A"], ["siblings", "L", "L", "a.ml"]]]
+      }
+    },
+    {
+    "file" : "siblings/R/L/a.ml",
+    "dependencies" :
+      { "local" : [[["R", "L", "B"], ["siblings", "R", "L", "b.ml"]]] }
+    }, { "file" : "siblings/R/L/b.ml", "dependencies" : {  } },
+    {
+    "file" : "siblings/R/R/a.ml",
+    "dependencies" :
+      {
+      "local" :
+        [[["R", "R", "B"], ["siblings", "R", "R", "b.ml"]],
+        [["R", "L", "A"], ["siblings", "R", "L", "a.ml"]]]
+      }
+    },
+    {
+    "file" : "siblings/R/R/b.ml",
+    "dependencies" :
+      { "local" : [[["R", "L", "B"], ["siblings", "R", "L", "b.ml"]]] }
+    },
+    {
+    "file" : "siblings/a.ml",
+    "dependencies" :
+      {
+      "local" :
+        [[["R", "R", "B"], ["siblings", "R", "R", "b.ml"]],
+        [["L", "L", "A"], ["siblings", "L", "L", "a.ml"]]]
+      }
+    }],
+  "atlas" :
+    [{ "module" : ["A"], "ml" : "siblings/a.ml" },
+    { "module" : ["R", "R", "B"], "ml" : "siblings/R/R/b.ml" },
+    { "module" : ["R", "R", "A"], "ml" : "siblings/R/R/a.ml" },
+    { "module" : ["R", "L", "B"], "ml" : "siblings/R/L/b.ml" },
+    { "module" : ["R", "L", "A"], "ml" : "siblings/R/L/a.ml" },
+    { "module" : ["L", "A"], "ml" : "siblings/L/a.ml" },
+    { "module" : ["L", "R", "B"], "ml" : "siblings/L/R/b.ml" },
+    { "module" : ["L", "R", "A"], "ml" : "siblings/L/R/a.ml" },
+    { "module" : ["L", "L", "B"], "ml" : "siblings/L/L/b.ml" },
+    { "module" : ["L", "L", "A"], "ml" : "siblings/L/L/a.ml" }]
+  }
+}

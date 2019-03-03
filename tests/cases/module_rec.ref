@@ -1,0 +1,9 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{ "file" : "cases/module_rec.ml", "dependencies" : {  } }],
+  "atlas" : [{ "module" : ["Module_rec"], "ml" : "cases/module_rec.ml" }]
+  }
+}

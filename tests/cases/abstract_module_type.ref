@@ -1,0 +1,13 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{ "file" : "cases/abstract_module_type.ml", "dependencies" : {  } }],
+  "atlas" :
+    [{
+     "module" : ["Abstract_module_type"],
+     "ml" : "cases/abstract_module_type.ml"
+     }]
+  }
+}

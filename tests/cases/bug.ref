@@ -1,0 +1,8 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" : [{ "file" : "cases/bug.ml", "dependencies" : {  } }],
+  "atlas" : [{ "module" : ["Bug"], "ml" : "cases/bug.ml" }]
+  }
+}

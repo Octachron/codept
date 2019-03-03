@@ -1,0 +1,14 @@
+[[1m[36mNotification[0m]: [1mcases/module_types.ml:l12.9−12[0m,
+a non-resolvable module, [1mB[0m, has been replaced by an approximation
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "cases/module_types.ml",
+     "dependencies" : { "unknown" : [["B"]] }
+     }],
+  "atlas" : [{ "module" : ["Module_types"], "ml" : "cases/module_types.ml" }]
+  }
+}

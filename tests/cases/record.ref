@@ -1,0 +1,18 @@
+[[1m[36mNotification[0m]: [1mcases/record.ml:l3.9−13[0m,
+a non-resolvable module, [1mE2[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [1mcases/record.ml:l5.10−14[0m,
+a non-resolvable module, [1mE3[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [1mcases/record.ml:l1.6−11[0m,
+a non-resolvable module, [1mExt[0m, has been replaced by an approximation
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "cases/record.ml",
+     "dependencies" : { "unknown" : [["Ext"], ["E3"], ["E2"]] }
+     }],
+  "atlas" : [{ "module" : ["Record"], "ml" : "cases/record.ml" }]
+  }
+}

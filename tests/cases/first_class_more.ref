@@ -1,0 +1,10 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{ "file" : "cases/first_class_more.ml", "dependencies" : {  } }],
+  "atlas" :
+    [{ "module" : ["First_class_more"], "ml" : "cases/first_class_more.ml" }]
+  }
+}

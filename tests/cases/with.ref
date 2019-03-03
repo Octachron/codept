@@ -1,0 +1,11 @@
+[[1m[36mNotification[0m]: [1mcases/with.ml:l1.20−33[0m,
+a non-resolvable module, [1mExt[0m, has been replaced by an approximation
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{ "file" : "cases/with.ml", "dependencies" : { "unknown" : [["Ext"]] } }],
+  "atlas" : [{ "module" : ["With"], "ml" : "cases/with.ml" }]
+  }
+}

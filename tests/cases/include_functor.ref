@@ -1,0 +1,15 @@
+[[1m[36mNotification[0m]: [1mcases/include_functor.ml:l1.0−13[0m,
+a non-resolvable module, [1mA[0m, has been replaced by an approximation
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "cases/include_functor.ml",
+     "dependencies" : { "unknown" : [["A"]] }
+     }],
+  "atlas" :
+    [{ "module" : ["Include_functor"], "ml" : "cases/include_functor.ml" }]
+  }
+}

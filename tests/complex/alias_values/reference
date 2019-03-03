@@ -1,0 +1,22 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{ "file" : "alias_values/a.ml", "dependencies" : {  } },
+    { "file" : "alias_values/b.ml", "dependencies" : {  } },
+    {
+    "file" : "alias_values/c.ml",
+    "dependencies" :
+      {
+      "local" :
+        [[["B"], ["alias_values", "b.ml"]],
+        [["A"], ["alias_values", "a.ml"]]]
+      }
+    }],
+  "atlas" :
+    [{ "module" : ["C"], "ml" : "alias_values/c.ml" },
+    { "module" : ["B"], "ml" : "alias_values/b.ml" },
+    { "module" : ["A"], "ml" : "alias_values/a.ml" }]
+  }
+}

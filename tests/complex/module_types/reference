@@ -1,0 +1,22 @@
+[[1m[36mNotification[0m]: [1mmodule_types/a.mli:l1.0−11[0m,
+a non-resolvable module, [1mE[0m, has been replaced by an approximation
+[[1m[35mWarning[0m]: [1mmodule_types/b.ml:l3.2−13[0m,
+module [1mA[0m does not contain any module type [1mB[0m
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "module_types/a.mli",
+     "dependencies" : { "unknown" : [["E"]] }
+     },
+    {
+    "file" : "module_types/b.ml",
+    "dependencies" : { "local" : [[["A"], ["module_types", "a.mli"]]] }
+    }],
+  "atlas" :
+    [{ "module" : ["B"], "ml" : "module_types/b.ml" },
+    { "module" : ["A"], "mli" : "module_types/a.mli" }]
+  }
+}

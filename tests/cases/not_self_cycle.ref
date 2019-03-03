@@ -1,0 +1,17 @@
+[[1m[36mNotification[0m]: [1mcases/not_self_cycle.ml:l1.5−6[0m,
+a non-resolvable module, [1mE[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [1mcases/not_self_cycle.ml:l2.0−30[0m,
+a non-resolvable module type, [1mNot_self_cycle[0m, has been replaced by an approximation
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "cases/not_self_cycle.ml",
+     "dependencies" : { "unknown" : [["E"]] }
+     }],
+  "atlas" :
+    [{ "module" : ["Not_self_cycle"], "ml" : "cases/not_self_cycle.ml" }]
+  }
+}

@@ -10,9 +10,8 @@
 
 (executable
   (name integrated) (modules Integrated)
-  (libraries unix)
+  (libraries unix codept_lib)
 )
-
 
 (alias
  (name   runtest)
@@ -27,5 +26,6 @@
 
 (alias
  (name   runtest)
+ (deps ../full/codept.exe)
  (action (run %{exe:integrated.exe}))
 )

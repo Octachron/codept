@@ -1,3 +1,5 @@
+[@@@if 4.04]
+
 module M = struct module type s = sig module A: sig end end end
 
 let f (M.((module N:s))) =

@@ -1,0 +1,43 @@
+[[1m[35mWarning[0m]: Syntax error
+ File "", line 2, characters 0-4
+[[1m[36mNotification[0m]: [1mbroken_network/a.ml:l2.5−6[0m,
+a non-resolvable module, [1mB[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [1mbroken_network/c.ml:l1.5−11[0m,
+a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
+[[1m[35mWarning[0m]: [1mbroken_network/a.ml:l3.5−6[0m, name resolution for [1mC[0m was ambiguous,
+due to the opening of the external module [1mB[0m, at location [1ml2.5−6[0m. Spurious
+dependencies might be inferred due to this ambiguity.
+[[1m[35mWarning[0m]: [1mbroken_network/a.ml:l3.5−6[0m, name resolution for [1mC[0m was ambiguous,
+due to the opening of the external module [1mBroken[0m, at location [1ml1.5−11[0m.
+Spurious dependencies might be inferred due to this ambiguity.
+[[1m[35mWarning[0m]: Approximate parsing of broken_network/broken.ml.
+Computed dependencies: at least {}, maybe: {B}
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "broken_network/a.ml",
+     "dependencies" :
+       {
+       "local" :
+         [[["C"], ["broken_network", "c.ml"]],
+         [["Broken"], ["broken_network", "broken.ml"]]],
+       "unknown" : [["B"]]
+       }
+     },
+    {
+    "file" : "broken_network/broken.ml",
+    "dependencies" : { "unknown" : [["B"]] }
+    },
+    {
+    "file" : "broken_network/c.ml",
+    "dependencies" : { "unknown" : [["Extern"]] }
+    }],
+  "atlas" :
+    [{ "module" : ["C"], "ml" : "broken_network/c.ml" },
+    { "module" : ["Broken"], "ml" : "broken_network/broken.ml" },
+    { "module" : ["A"], "ml" : "broken_network/a.ml" }]
+  }
+}

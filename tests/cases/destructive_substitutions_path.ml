@@ -1,3 +1,4 @@
+[@@@if 4.07]
 module type s = sig
   module Ext: sig end
   module Middle:sig module Deep_inner: sig end module Ext2: sig end end

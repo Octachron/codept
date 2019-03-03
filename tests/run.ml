@@ -336,7 +336,7 @@ let result =
     ["broken2.ml", u["A"; "Ext"; "Ext2" ]];
     ["broken3.ml", []];
   ]
-  &&( chdir "../mixed";
+  &&( chdir "../complex/mixed";
       both ["A"] @@ dl
         ["a.ml", l["d.mli"];
          "a.mli", l["b.ml"; "d.mli"];
@@ -526,12 +526,12 @@ let result =
 
     (* Cycle tests *)
     && (
-      chdir "../cases";
+      chdir "../../cases";
       Std.cycle_test [["Self_cycle"]] ["self_cycle.ml"]
     )
     &&
     (
-      chdir "../ω-cycle";
+      chdir "../complex/ω-cycle";
       Std.cycle_test [["C1";"C2";"C3";"C4";"C5"]] [
         "a.ml"
       ; "b.ml"
@@ -567,7 +567,7 @@ let result =
          ])
        )
     &&
-    ( chdir "../../lib";
+    ( chdir "../../../lib";
       Std.gen_deps_test (Std.ocamlfind "compiler-libs") Std.precise_deps_test
         (Some ~:["Solver"; "Standard_policies"])
         (dl[

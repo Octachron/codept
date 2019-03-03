@@ -1,0 +1,21 @@
+[[1m[36mNotification[0m]: [1mlocal_module_subst/b.mli:l2.0−10[0m,
+a non-resolvable module, [1mLocal[0m, has been replaced by an approximation
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{ "file" : "local_module_subst/a.mli", "dependencies" : {  } },
+    {
+    "file" : "local_module_subst/b.mli",
+    "dependencies" :
+      {
+      "local" : [[["A"], ["local_module_subst", "a.mli"]]],
+      "unknown" : [["Local"]]
+      }
+    }],
+  "atlas" :
+    [{ "module" : ["B"], "mli" : "local_module_subst/b.mli" },
+    { "module" : ["A"], "mli" : "local_module_subst/a.mli" }]
+  }
+}

@@ -1,0 +1,30 @@
+[[1m[36mNotification[0m]: [1mcollision/a.ml:l3.5−8[0m,
+a non-resolvable module, [1mExt[0m, has been replaced by an approximation
+[[1m[35mWarning[0m]: [1mcollision/a.ml:l4.0−9[0m, name resolution for [1mD[0m was ambiguous, due
+to the opening of the external module [1mExt[0m, at location [1ml3.5−8[0m. Spurious
+dependencies might be inferred due to this ambiguity.
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "collision/a.ml",
+     "dependencies" :
+       { "local" : [[["B"], ["collision", "b.ml"]]], "unknown" : [["Ext"]] }
+     }, { "file" : "collision/b.ml", "dependencies" : {  } },
+    {
+    "file" : "collision/c.ml",
+    "dependencies" : { "local" : [[["B"], ["collision", "b.ml"]]] }
+    },
+    {
+    "file" : "collision/d.ml",
+    "dependencies" : { "local" : [[["B"], ["collision", "b.ml"]]] }
+    }],
+  "atlas" :
+    [{ "module" : ["D"], "ml" : "collision/d.ml" },
+    { "module" : ["C"], "ml" : "collision/c.ml" },
+    { "module" : ["B"], "ml" : "collision/b.ml" },
+    { "module" : ["A"], "ml" : "collision/a.ml" }]
+  }
+}

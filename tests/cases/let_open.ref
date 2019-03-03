@@ -1,0 +1,8 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" : [{ "file" : "cases/let_open.ml", "dependencies" : {  } }],
+  "atlas" : [{ "module" : ["Let_open"], "ml" : "cases/let_open.ml" }]
+  }
+}

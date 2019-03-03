@@ -1,0 +1,8 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" : [{ "file" : "cases/bindings.ml", "dependencies" : {  } }],
+  "atlas" : [{ "module" : ["Bindings"], "ml" : "cases/bindings.ml" }]
+  }
+}

@@ -1,6 +1,7 @@
 *~
 **/_build/**
-tests/star/m*.mli
+**/.merlin
+tests/complex/star/m*.mli
 *.cm[ioax]
 *.cmxa
 *.cmt
@@ -10,6 +11,10 @@ docs/*.html
 lib/ast_converter.ml
 lib/cmi.ml
 lib/format_compat.ml
-full/version.ml
+lib/format_tags.ml
+lib/version.ml
+lib/pparse_compat.ml
 full/extended_args.ml
+precomputed/std_num.ml
+precomputed/stdlib_data.ml
 #*#

@@ -1,0 +1,76 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{ "file" : "aliases_and_map/m.ml", "dependencies" : {  } },
+    {
+    "file" : "aliases_and_map/n__A.ml",
+    "dependencies" : { "local" : [[["M"], ["aliases_and_map", "m.ml"]]] }
+    },
+    {
+    "file" : "aliases_and_map/n__B.ml",
+    "dependencies" : { "local" : [[["M"], ["aliases_and_map", "m.ml"]]] }
+    },
+    {
+    "file" : "aliases_and_map/n__C.ml",
+    "dependencies" :
+      {
+      "local" :
+        [[["N__A"], ["aliases_and_map", "n__A.ml"]],
+        [["M"], ["aliases_and_map", "m.ml"]]]
+      }
+    },
+    {
+    "file" : "aliases_and_map/n__D.ml",
+    "dependencies" :
+      {
+      "local" :
+        [[["N__B"], ["aliases_and_map", "n__B.ml"]],
+        [["M"], ["aliases_and_map", "m.ml"]]]
+      }
+    }, { "file" : "aliases_and_map/m.mli", "dependencies" : {  } },
+    {
+    "file" : "aliases_and_map/n__A.mli",
+    "dependencies" : { "local" : [[["M"], ["aliases_and_map", "m.mli"]]] }
+    },
+    {
+    "file" : "aliases_and_map/n__B.mli",
+    "dependencies" : { "local" : [[["M"], ["aliases_and_map", "m.mli"]]] }
+    },
+    {
+    "file" : "aliases_and_map/n__C.mli",
+    "dependencies" : { "local" : [[["M"], ["aliases_and_map", "m.mli"]]] }
+    },
+    {
+    "file" : "aliases_and_map/n__D.mli",
+    "dependencies" : { "local" : [[["M"], ["aliases_and_map", "m.mli"]]] }
+    }],
+  "atlas" :
+    [{
+     "module" : ["N__D"],
+     "ml" : "aliases_and_map/n__D.ml",
+     "mli" : "aliases_and_map/n__D.mli"
+     },
+    {
+    "module" : ["N__C"],
+    "ml" : "aliases_and_map/n__C.ml",
+    "mli" : "aliases_and_map/n__C.mli"
+    },
+    {
+    "module" : ["N__B"],
+    "ml" : "aliases_and_map/n__B.ml",
+    "mli" : "aliases_and_map/n__B.mli"
+    },
+    {
+    "module" : ["N__A"],
+    "ml" : "aliases_and_map/n__A.ml",
+    "mli" : "aliases_and_map/n__A.mli"
+    },
+    {
+    "module" : ["M"],
+    "ml" : "aliases_and_map/m.ml",
+    "mli" : "aliases_and_map/m.mli"
+    }]
+  }
+}

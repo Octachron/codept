@@ -1,0 +1,14 @@
+[[1m[36mNotification[0m]: [1mcases/unknown_arg.ml:l1.0−l3.3[0m,
+a non-resolvable module, [1mExt[0m, has been replaced by an approximation
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "cases/unknown_arg.ml",
+     "dependencies" : { "unknown" : [["Ext"]] }
+     }],
+  "atlas" : [{ "module" : ["Unknown_arg"], "ml" : "cases/unknown_arg.ml" }]
+  }
+}

@@ -1,0 +1,24 @@
+[[1m[31mError[0m]: Solver failure 
+   −Circular dependencies: 
+      A −([1m2+2-cycles/a.ml:l1.5−6[0m)⟶ B −([1m2+2-cycles/b.ml:l1.5−6[0m)⟶ A
+
+   −Circular dependencies: 
+      C −([1m2+2-cycles/c.ml:l1.5−6[0m)⟶ D −([1m2+2-cycles/d.ml:l1.5−6[0m)⟶ C
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "2+2-cycles/c.ml",
+     "dependencies" : { "local" : [[["D"], ["2+2-cycles", "d.ml"]]] }
+     },
+    {
+    "file" : "2+2-cycles/d.ml",
+    "dependencies" : { "local" : [[["C"], ["2+2-cycles", "c.ml"]]] }
+    }],
+  "atlas" :
+    [{ "module" : ["D"], "ml" : "2+2-cycles/d.ml" },
+    { "module" : ["C"], "ml" : "2+2-cycles/c.ml" }]
+  }
+}

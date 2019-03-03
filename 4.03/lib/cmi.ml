@@ -58,3 +58,6 @@ and module_type  = function
 let m2l path =
   let cm2i = cmi_infos path in
   List.map Loc.nowhere @@ signature @@ cm2i.cmi_sign
+
+(** fixes dependencies accross versions *)
+let x = Ident.equal

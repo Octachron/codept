@@ -1,0 +1,58 @@
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "deep-eps/a.mli",
+     "dependencies" :
+       {
+       "local" :
+         [[["Z"], ["deep-eps", "z.mli"]], [["W"], ["deep-eps", "w.mli"]],
+         [["K"], ["deep-eps", "k.ml"]]]
+       }
+     },
+    {
+    "file" : "deep-eps/b.mli",
+    "dependencies" :
+      {
+      "local" :
+        [[["Z"], ["deep-eps", "z.mli"]], [["W"], ["deep-eps", "w.mli"]],
+        [["A"], ["deep-eps", "a.mli"]]]
+      }
+    },
+    {
+    "file" : "deep-eps/c.ml",
+    "dependencies" :
+      {
+      "local" :
+        [[["Z"], ["deep-eps", "z.mli"]], [["W"], ["deep-eps", "w.mli"]],
+        [["B"], ["deep-eps", "b.mli"]], [["A"], ["deep-eps", "a.mli"]]]
+      }
+    },
+    {
+    "file" : "deep-eps/k.ml",
+    "dependencies" :
+      {
+      "local" :
+        [[["Z"], ["deep-eps", "z.mli"]], [["W"], ["deep-eps", "w.mli"]]]
+      }
+    },
+    {
+    "file" : "deep-eps/w.mli",
+    "dependencies" : { "local" : [[["Y"], ["deep-eps", "y.mli"]]] }
+    }, { "file" : "deep-eps/y.mli", "dependencies" : {  } },
+    {
+    "file" : "deep-eps/z.mli",
+    "dependencies" : { "local" : [[["W"], ["deep-eps", "w.mli"]]] }
+    }],
+  "atlas" :
+    [{ "module" : ["Z"], "mli" : "deep-eps/z.mli" },
+    { "module" : ["Y"], "mli" : "deep-eps/y.mli" },
+    { "module" : ["W"], "mli" : "deep-eps/w.mli" },
+    { "module" : ["K"], "ml" : "deep-eps/k.ml" },
+    { "module" : ["C"], "ml" : "deep-eps/c.ml" },
+    { "module" : ["B"], "mli" : "deep-eps/b.mli" },
+    { "module" : ["A"], "mli" : "deep-eps/a.mli" }]
+  }
+}

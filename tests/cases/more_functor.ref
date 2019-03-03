@@ -1,0 +1,16 @@
+[[1m[36mNotification[0m]: [1mcases/more_functor.ml:l5.0−41[0m,
+a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [1mcases/more_functor.ml:l5.0−41[0m,
+a non-resolvable module, [1mExt[0m, has been replaced by an approximation
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "cases/more_functor.ml",
+     "dependencies" : { "unknown" : [["Ext2"], ["Ext"]] }
+     }],
+  "atlas" : [{ "module" : ["More_functor"], "ml" : "cases/more_functor.ml" }]
+  }
+}

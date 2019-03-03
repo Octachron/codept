@@ -1,0 +1,16 @@
+[[1m[31mError[0m]: Solver failure 
+   −Circular dependencies: 
+      Self_cycle −([1mcases/self_cycle.ml:l1.5−15[0m)⟶ Self_cycle
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "cases/self_cycle.ml",
+     "dependencies" :
+       { "local" : [[["Self_cycle"], ["cases", "self_cycle.ml"]]] }
+     }],
+  "atlas" : [{ "module" : ["Self_cycle"], "ml" : "cases/self_cycle.ml" }]
+  }
+}

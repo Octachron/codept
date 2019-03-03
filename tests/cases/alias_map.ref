@@ -1,0 +1,16 @@
+[[1m[36mNotification[0m]: [1mcases/alias_map.ml:l5.0−11[0m,
+a non-resolvable module, [1mAliased__C[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [1mcases/alias_map.ml:l6.5−6[0m,
+a non-resolvable module, [1mAliased__B[0m, has been replaced by an approximation
+{
+"version" : [0, 10, 0],
+"deps" :
+  {
+  "dependencies" :
+    [{
+     "file" : "cases/alias_map.ml",
+     "dependencies" : { "unknown" : [["Aliased__C"], ["Aliased__B"]] }
+     }],
+  "atlas" : [{ "module" : ["Alias_map"], "ml" : "cases/alias_map.ml" }]
+  }
+}
