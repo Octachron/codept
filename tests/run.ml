@@ -325,8 +325,12 @@ let result =
     ["with_more.ml", u["Ext";"Ext3"]]
   ]
 
-  && ( Version.( v <= v_4_04) ||
+  && ( Version.( v < v_4_04) ||
        Std.deps_test_single [d"pattern_open.ml", u["A'";"E1"; "E2"; "E3";"E4"]] )
+
+  && ( Version.( v < v_4_08) ||
+       Std.deps_test_single [d"option_monad.ml", u["Ext";"Ext3";"Ext4"]]
+     )
 
   (* Note the inferred dependencies is wrong, but there is not much
      (or far too much ) to do here *)
