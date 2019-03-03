@@ -588,7 +588,7 @@ and value_bindings vbs expr =
   if List.length p.binds > 0 then
     let v = List.fold_left ( fun inner b -> Loc.fmap (fun x -> Bind x) b :: inner )
         (minor' expr) p.binds in
-    Annot.value [v]
+    Pattern.to_annot p ++ Annot.value [v]
   else
     Pattern.to_annot p ++ expr
 

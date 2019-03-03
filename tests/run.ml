@@ -291,6 +291,7 @@ let result =
     ["even_more_functor.ml", u["E"; "A"]];
     ["first-class-modules.ml", u["Mark";"B"] ];
     ["first_class_more.ml", [] ];
+    ["first_class_encore.ml", u["Ext"] ];
     ["foreign_arg_sig.ml", u["Ext";"Ext2"] ];
     ["functor.ml", [] ];
     ["functor_in_type_expr.ml", u["Ext1";"Ext2";"Ext3";"Ext4"] ];
