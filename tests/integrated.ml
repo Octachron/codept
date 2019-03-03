@@ -1,4 +1,12 @@
 
+(** Black-box tests
+    The codept executable is called and compared to some reference results:
+    Invidual cases tests/cases/%.ml are compared to tests/case/%.ref .
+    Complex cases  tests/complex/% are compared to tests/complex/%/reference .
+   Invidual cases can add a version constraint with [[@@@if %d.%02d]] .
+   Complex cases can add a version constraint with a "%/guard" file.
+*)
+
 module Version = struct
   include Version
   type t = {major:int; minor:int}
@@ -55,6 +63,8 @@ let diff ppf (x,y) =
     if stop then () else diff ppf x xnew y ynew in
   diff ppf x (-1) y (-1)
 
+(* Ignore location difference corresponding to the "??" pattern in
+   l1.??−end *)
 let (%=%) x y =
   let lsx = String.length x in
   let lsy = String.length y in
