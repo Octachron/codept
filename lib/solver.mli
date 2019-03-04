@@ -1,6 +1,6 @@
 (** Basic solver *)
 
-type i = { input: Unit.s; code: M2l.t }
+type i = { input: Unit.s; code: M2l.t Outliner.With_deps.t }
 (** In-processing state for unit files *)
 
 

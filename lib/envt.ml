@@ -391,7 +391,7 @@ module Libraries = struct
   let rec track source stack = match stack with
     | [] -> ()
     | (name, path, code) :: q ->
-      match I.m2l path source.resolved code with
+      match Outliner.With_deps.value (I.m2l path source.resolved code) with
       | Error code ->
         begin match M2l.Block.m2l code with
           | None -> assert false
@@ -401,7 +401,7 @@ module Libraries = struct
             let code' = Cmi.m2l @@ P.filename path' in
             track source ( (name', path', code') :: (name, path, code) :: q )
         end
-      | Ok (_,_deps, sg) ->
+      | Ok (_, sg) ->
         let md = M.create
             ~origin:(M.Origin.Unit {source=path;path=[name]}) name sg in
         source.resolved <- Core.add_unit source.resolved (M.M md);

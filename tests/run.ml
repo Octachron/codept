@@ -589,11 +589,11 @@ let result =
                      ["Cmi_format"; !"List"; "Path";"Types";"Ident"], []);
           "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic"],[!"List"],[]);
           "summary.mli", (
-            ["Deps";"Module";"Paths";"Schematic"],
+            ["Module";"Paths";"Schematic"],
             [!"Format"],
             [] );
           "summary.ml", (
-            ["Deps";"Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
+            ["Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
             [!"List"], []);
           "envt.mli", (
             ["Module";"Name"; "Namespaced"; "Outliner"; "Paths"],

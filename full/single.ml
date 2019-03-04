@@ -43,15 +43,17 @@ let one_pass _ _ ppf param (_,filename,_ as x) =
   let module Param = (val Analysis.lift param) in
   let module Sg = Outliner.Make(Envt.Core)(Param) in
   let start = to_m2l param.policy param.sig_only x in
-  match Option.( start
-                 >>| snd
-                 >>| Sg.m2l (Pkg.local filename)
-                   Envt.Core.empty )
+  match
+    Option.( start
+             >>| snd
+             >>| Sg.m2l (Pkg.local filename) Envt.Core.empty
+             >>| Outliner.With_deps.unpack
+           )
   with
   | None -> ()
-  | Some (Ok (_state, deps, d)) ->
+  | Some (deps, Ok (_state, d)) ->
     Pp.fp ppf "Computation finished:@ %a@ %a@." Deps.pp deps Module.Sig.pp d
-  | Some (Error h) ->
+  | Some (_ , Error h) ->
     Pp.fp ppf "Computation halted at:\n %a@." M2l.pp h
 
 let m2l_info _ _ ppf param f =

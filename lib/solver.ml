@@ -1,11 +1,13 @@
 
+module With_deps = Outliner.With_deps
+
 let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
-type i = { input: Unit.s; code: M2l.t }
+type i = { input: Unit.s; code: M2l.t Outliner.With_deps.t }
 let make (input:Unit.s) =
   let open_namespace = List.map
       (fun name -> Loc.nowhere @@ M2l.Open (Ident [name])) input.path.namespace in
-  { input; code = open_namespace @ input.code }
+  { input; code = Outliner.With_deps.no_deps (open_namespace @ input.code) }
 
 module Mp = Namespaced.Map module Sp = Namespaced.Set
 
@@ -29,7 +31,7 @@ module Failure = struct
     let rec track s map ((u:i),r) =
       let s = Sp.remove u.input.path s in
       let update r = s, Mp.add u.input.path (u,r) map in
-      match M2l.Block.m2l u.code with
+      match M2l.Block.m2l (Outliner.With_deps.value u.code) with
       | None -> update (ref @@ Some Internal_error)
       | Some { data = (y,path); loc } ->
         let path' = resolve_alias y path in
@@ -84,7 +86,8 @@ module Failure = struct
   let rec kernel resolver map cycle start =
     if Set.mem start cycle then cycle
     else
-      let next_name = match M2l.Block.m2l start.code with
+      let next_name =
+        match M2l.Block.m2l (Outliner.With_deps.value start.code) with
         | Some { data =y, path ; _ } ->
           resolver y path
         | _ -> assert false
@@ -121,7 +124,7 @@ module Failure = struct
     Pp.fp ppf "%a" Namespaced.pp path;
     if path <> start || first then
       let u = fst @@ Mp.find path map in
-      match M2l.Block.m2l u.code with
+      match M2l.Block.m2l (Outliner.With_deps.value u.code) with
       | None -> ()
       | Some { data = y,path ; loc }  ->
         let next = resolver y path in
@@ -171,11 +174,12 @@ module Failure = struct
       Set.fold
         (fun n acc -> Summary.see (mock n.input) acc) set def in
     let code =
-      match i.code with
+      With_deps.map i.code begin function
       | { data = M2l.Defs def; loc } :: q ->
         { Loc.data = M2l.Defs (add_set def); loc } :: q
       | code ->
         (Loc.nowhere @@ M2l.Defs (add_set Summary.empty)) :: code
+      end
     in
     { i with code }
 
@@ -210,12 +214,13 @@ let fault =
 
   let eval_bounded policy eval (unit:Unit.s) =
     let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
-    let r, r' = eval unit, eval unit' in
-    let lower, sign, upper = match r, r' with
-      | Ok(_,lower, _) , Ok (_,upper,sg) -> lower, sg, upper
-      | Ok(_,lower,sg) , Error _  -> lower, sg, lower
-      | Error _, Ok(_,upper,sg)  -> upper, sg, upper
-      | Error _, Error _ -> Deps.empty, Module.Sig.empty, Deps.empty
+    let (d,r), (d',r') =
+      With_deps.unpack (eval unit), With_deps.unpack(eval unit') in
+    let lower, sign, upper = match d, r, d', r' with
+      | lower, Ok _ , upper, Ok (_,sg) -> lower, sg, upper
+      | lower, Ok(_,sg) , upper, Error _  -> lower, sg, upper
+      | lower, Error _, upper, Ok(_,sg)  -> lower, sg, upper
+      | lower, Error _, upper, Error _ -> lower, Module.Sig.empty, upper
         (* something bad happened but we are already parsing
            problematic input *) in
     let elts m = List.map fst @@ Paths.P.Map.bindings m in
@@ -292,14 +297,14 @@ module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
         resolved = Paths.P.Map.empty } units
 
   let compute_more env (u:i) =
-    Eval.m2l u.input.src env u.code
-
+    With_deps.bind u.code (Eval.m2l u.input.src env)
 
   let expand_and_add = expand_and_add Param.epsilon_dependencies
 
   let eval ?(learn=true) state unit =
-    match compute_more state.env unit with
-    | Ok (_,deps,sg) ->
+    match With_deps.comm (compute_more state.env unit) with
+    | Ok x ->
+      let deps, (_,sg) = With_deps.unpack x in
       let env =
         if learn then begin
           let input = unit.input in
@@ -432,8 +437,8 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
     | [] -> Mp.add i.input.path [i] state.pending in
     { state with pending }
 
-  let compute state i =
-    Eval.m2l i.input.src state.env i.code
+  let compute state (i:i) =
+    With_deps.bind i.code @@ Eval.m2l i.input.src state.env
 
   let add_unit (u:Unit.s) state =
     match u.precision with
@@ -469,8 +474,9 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
     let path, src = i.input.path, i.input.src in
     let not_ancestors = Namespaced.Set.add path state.not_ancestors in
     let state = { state with not_ancestors } in
-    match compute state i with
-    | Ok(_,deps,sg) ->
+    match With_deps.comm (compute state i) with
+    | Ok x ->
+      let deps, (_,sg) = With_deps.unpack x in
       let more, pending = remove path state.pending in
       let state = { state with pending } in
       let state =
@@ -497,6 +503,7 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
       (* first, we update the work-in-progress map *)
       let state = update_pending { i with code = m2l } state in
       (* we check the first missing module *)
+      let m2l = With_deps.value m2l in
       match M2l.Block.m2l m2l with
       | None ->
         assert false (* we failed to eval the m2l code due to something *)

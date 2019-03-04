@@ -7,7 +7,6 @@ type view = Module.signature
 type t = {
   defined: view; (** modules and module types defined in scope *)
   visible: view; (** in scope but not defined *)
-  deps: Deps.t;
 }
 type summary = t
 
@@ -37,7 +36,7 @@ module View = struct
   and str_def def =
     {def with modules = Name.Map.map strong_alias def.modules }
 
-  let e = {visible = empty; defined = empty; deps = Deps.empty; }
+  let e = {visible = empty; defined = empty }
   let see visible = { e with visible }
   let define defined = { e with defined }
 
@@ -47,7 +46,6 @@ let empty = View.e
 let strenghen v =
   { defined = View.strenghen v.defined;
     visible = View.strenghen v.visible;
-    deps = v.deps
   }
 
 let defined s = s.defined
@@ -78,15 +76,13 @@ let pp ppf x = Pp.fp ppf "@[[@,%a@,]@]"
     pp_view x.defined;
   if not @@ View.is_empty x.visible then
     Pp.fp ppf "@,in scope:@[@,[%a@,]@]"
-      pp_view x.visible;
-  if not (Deps.empty = x.deps) then
-    Pp.fp ppf "@,deps:@ @[%a@]" Deps.pp x.deps
+      pp_view x.visible
 
 let sch = let open Schematic in
   custom ["Summary"; "t"]
-    [Module.Sig.sch;Module.Sig.sch; Deps.sch]
-    Tuple.(fun r -> [r.defined; r.visible; r.deps] )
-    Tuple.(fun [defined;visible;deps] -> {defined;visible; deps})
+    [Module.Sig.sch;Module.Sig.sch]
+    Tuple.(fun r -> [r.defined; r.visible] )
+    Tuple.(fun [defined;visible] -> {defined;visible})
 
 let clear_visible v = { v with visible =  View.empty }
 
@@ -100,7 +96,6 @@ let define ?(level=M.Module)  l =
 let merge s1 s2 = {
   visible = View.merge s1.visible s2.visible;
   defined = View.merge s1.defined s2.defined;
-  deps = Deps.merge s1.deps s2.deps;
 }
 
 let (+|) = merge

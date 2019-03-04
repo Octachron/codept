@@ -36,11 +36,22 @@ sig
   val transparent_aliases : bool
 end
 
+module With_deps: sig
+  type 'a t
+  val no_deps: 'a -> 'a t
+  val deps: 'a t -> Deps.t
+  val value: 'a t -> 'a
+  val unpack: 'a t -> Deps.t * 'a
+  val bind: 'a t -> ('a -> 'b t) -> 'b t
+  val map: 'a t -> ('a -> 'b) -> 'b t
+  val comm: ('a,'b) result t -> ('a t, 'b t) result
+end
+
 (** resulting signature *)
 module type s =
 sig
   type envt
-  val m2l : Paths.P.t -> envt -> M2l.t -> (envt * Deps.t * Module.Sig.t, M2l.t) result
+  val m2l : Paths.P.t -> envt -> M2l.t -> (envt *  Module.Sig.t, M2l.t) result With_deps.t
 end
 
 (** Create an outliner adapted for the environment type *)
