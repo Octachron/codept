@@ -361,7 +361,7 @@ module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
     | Error s -> Error (`Mli s)
 
   let alias_resolver state y path =
-      let env = Envt.( state.env >> y ) in
+      let env = Envt.extend state.env y in
       match Envt.resolve_alias path env with
       | Some x -> x
       | None -> { name = List.hd path; namespace = [] }
@@ -465,7 +465,7 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
 
 
   let alias_resolver state y path =
-    let env' = Envt.( state.env >> y ) in
+    let env' = Envt.extend state.env y in
     match Envt.resolve_alias path env' with
     | None -> Namespaced.make (List.hd path)
     | Some name -> name

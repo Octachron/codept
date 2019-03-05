@@ -22,7 +22,7 @@ module type envt = sig
   val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t -> t ->
     answer query_result
 
-  val (>>) : t -> Y.t -> t
+  val extend : t -> Y.t -> t
 
   val is_exterior: Paths.Simple.t -> t -> bool
   val resolve_alias: Paths.Simple.t -> t -> Namespaced.t option
@@ -271,7 +271,7 @@ module Make(Envt:envt)(Param:param) = struct
        approximative signature *)
     let mockup ({name;_}:_ M2l.bind) = M.md @@ M.mockup name in
     let add_mockup defs arg =
-      Envt.(>>) defs @@ Y.define [mockup arg] in
+      Envt.extend defs @@ Y.define [mockup arg] in
     let state' = List.fold_left add_mockup state bs in
     let mapper {name;expr} = match expr with
       | Constraint(me,mt) ->
@@ -287,7 +287,7 @@ module Make(Envt:envt)(Param:param) = struct
       (* if we did obtain the argument signature, we go on
          and try to resolve the whole recursive binding *)
       let add_arg defs (name, _me, arg) =
-        Envt.(>>) defs
+        Envt.extend defs
         @@ Y.define [M.M (P.to_module ~origin:Arg name arg)] in
       let state' = List.fold_left add_arg state defs in
       let mapper {name;expr} =
@@ -321,7 +321,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Ok arg ->
       let sg =
         Option.( arg >>| (fun m -> Y.define [M.M m] ) >< Y.empty ) in
-      let state =  Envt.( state >> sg ) in
+      let state =  Envt.extend state sg in
       body_type state body >>| function
       | Ok p  -> Ok { p with P.args = arg :: p.P.args }
       | Error me ->
@@ -368,7 +368,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Constraint(me,mt) ->
       constraint_ loc state me mt
     | Open_me {opens=[]; resolved; expr } ->
-      let state = Envt.( state >> resolved ) in
+      let state = Envt.extend state resolved in
       module_expr loc state expr
     | Open_me {opens=a :: q ; resolved; expr } as me ->
       begin find loc Module a state >>= function
@@ -434,7 +434,7 @@ module Make(Envt:envt)(Param:param) = struct
     | a :: q ->
       expr filename state a >>= function
       | Ok (Some defs)  ->
-        begin m2l filename Envt.( state >> defs ) q >>| function
+        begin m2l filename ( Envt.extend state defs ) q >>| function
           | Ok (state, sg) -> Ok (state, S.merge (Y.peek @@ Y.defined defs) sg)
           | Error q' ->
             Error ( snd @@ Normalize.all @@ Loc.nowhere (Defs defs) :: q' )

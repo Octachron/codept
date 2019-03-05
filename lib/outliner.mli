@@ -14,7 +14,7 @@ module type envt = sig
     -> t
     -> answer query_result
 
-  val (>>) : t -> Summary.t -> t
+  val extend : t -> Summary.t -> t
 
   val is_exterior: Paths.Simple.t -> t -> bool
   val resolve_alias: Paths.Simple.t -> t -> Namespaced.t option

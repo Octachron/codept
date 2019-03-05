@@ -263,7 +263,7 @@ module Core = struct
     | In_namespace modules ->
       M.Exact { M.Def.empty with modules }
 
-  let (>>) env def =
+  let extend env def =
     restrict env @@
     Signature (Y.extend (to_sign env.current) def)
 
