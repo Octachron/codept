@@ -48,8 +48,8 @@ let strenghen v =
     visible = View.strenghen v.visible;
   }
 
-let defined s = s.defined
 let peek x = x
+let defined s = s.defined
 let extend s y =
   S.merge (S.merge s y.defined) y.visible
 

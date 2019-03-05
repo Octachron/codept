@@ -195,18 +195,17 @@ module Make(Envt:envt)(Param:param) = struct
         | Submodule | Arg | Namespace -> Module.Divergence.External in
       let point =
         { Module.Divergence.root = x.name; origin=kind; loc } in
-      Y.View.see @@ Y.View.make @@ S.merge
+      Y.View.see @@ S.merge
             (Divergence
                { before = S.empty; point; after = Module.Def.empty}
             )
             x.result
-    | _, Divergence _ | _, Exact _ ->
-      Y.View.see @@ Y.View.make @@ x.result
+    | _, Divergence _ | _, Exact _ -> Y.View.see x.result
 
   let open_diverge loc = function
     | M x -> open_diverge_module loc (P.of_module x)
     | Namespace {modules;_} -> (* FIXME: type error *)
-      Y.View.(see @@ make @@ M.Exact { M.Def.empty with modules })
+      Y.View.see @@ M.Exact { M.Def.empty with modules }
 
   let open_ loc x =
     Ok(open_diverge_module loc x)
@@ -360,7 +359,7 @@ module Make(Envt:envt)(Param:param) = struct
       functor_expr (module_type loc) (module_expr loc, Build.fn, Build.demote_str)
         state [] arg body
     | Str [] -> ok P.empty
-    | Str[{data=Defs d;_ }] -> ok (P.no_arg @@ Y.peek @@ Y.defined d)
+    | Str[{data=Defs d;_ }] -> ok (P.no_arg @@ Y.defined d)
     | Resolved d -> ok d
     | Str str ->
       let str = drop_state <<| m2l (filename loc) state str in
@@ -394,7 +393,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   and module_type loc state = function
     | Sig [] -> ok P.empty
-    | Sig [{data=Defs d;_}] -> ok (P.no_arg @@ Y.peek @@ Y.defined d)
+    | Sig [{data=Defs d;_}] -> ok (P.no_arg @@ Y.defined d)
     | Sig s ->
       let s = signature (filename loc) state s >>| drop_state in
       Mresult.fmap (fun s -> Sig s) P.no_arg <<| s
@@ -435,7 +434,7 @@ module Make(Envt:envt)(Param:param) = struct
       expr filename state a >>= function
       | Ok (Some defs)  ->
         begin m2l filename ( Envt.extend state defs ) q >>| function
-          | Ok (state, sg) -> Ok (state, S.merge (Y.peek @@ Y.defined defs) sg)
+          | Ok (state, sg) -> Ok (state, S.merge (Y.defined defs) sg)
           | Error q' ->
             Error ( snd @@ Normalize.all @@ Loc.nowhere (Defs defs) :: q' )
         end

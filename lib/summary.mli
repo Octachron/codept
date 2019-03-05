@@ -13,13 +13,12 @@ module View: sig
 
   val empty: view
   val is_empty: view -> bool
-  val make: Module.signature -> view
+
+  val see : Module.signature -> summary
+  val define : Module.signature -> summary
   val make_top: ?namespace:Paths.S.t -> Module.t -> view
 
   val merge : view -> view -> view
-
-  val see : view -> summary
-  val define : view -> summary
 
 end
 
@@ -32,7 +31,9 @@ val sch: t Schematic.t
 val empty : summary
 (** Empty summary *)
 
-val defined : summary -> view
+val defined : summary -> Module.signature
+(** Modules defined in the current scope *)
+
 val extend: Module.signature -> summary -> Module.signature
 
 (** transform top level weak aliases to normal aliases *)
@@ -47,7 +48,7 @@ val clear_visible : summary -> summary
 (** forget visible but not defined modules *)
 
 (** Basic creation function *)
-  val define: ?level:Module.level -> Module.t list -> summary
+val define: ?level:Module.level -> Module.t list -> summary
 
 (** {2 Merging functions } *)
 
