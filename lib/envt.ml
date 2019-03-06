@@ -157,13 +157,11 @@ module Core = struct
         (* We then try to find the searched name in the signature
            before the divergence *)
         begin find_name level name (Signature d.before) >>? fun q ->
-          Some (Query.create
-                  (Module.spirit_away d.point q)
-                  [ambiguity name d.point])
+          let m = Module.spirit_away d.point q in
+          Some (Query.create m [ambiguity name d.point])
           (* If we found the expected name before the divergence,
               we add a new message to the message stack, and return
               the found module, after marking it as a phantom module. *)
-
         end
         (* If we did not find anything and were looking for a module type,
            we return a mockup module type *)

@@ -29,7 +29,7 @@ let rec tlist ?(sep=s ";@,") pp ppf =
 
 let opt_list ?(pre=s "") ?(post=s "")  ?(sep= s ";@, ") pp ppf = function
   | [] -> ()
-  | l -> fp ppf "%t@[<hv>%a@]%t" pre (list ~sep pp) l post
+  | l -> fp ppf "%t%a%t" pre (list ~sep pp) l post
 
 let opt_list_0 ?(pre=s "") ?(post=s "")  ?(sep= s ";@, ") pp ppf = function
   | [] -> ()

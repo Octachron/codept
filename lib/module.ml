@@ -394,7 +394,7 @@ and pp_signature ppf = function
 and pp_definition ppf {modules; module_types} =
   Pp.fp ppf "@[<hv>%a" pp_mdict modules;
   if Name.Map.cardinal module_types >0 then
-    Pp.fp ppf "@, __Types__:@, %a@]"
+    Pp.fp ppf "@, types:@, %a@]"
       pp_mdict module_types
   else Pp.fp ppf "@]"
 and pp_mdict ppf dict =

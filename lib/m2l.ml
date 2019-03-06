@@ -465,13 +465,15 @@ let rec pp_expression ppf = function
   | Bind_rec bs ->
     Pp.fp ppf "rec@[<hv>[ %a ]@]"
       (Pp.(list ~sep:(s "@, and @,")) @@ pp_bind ) bs
-and pp_annot ppf {access;values; packed} =
+and pp_annot ppf {access; values; packed} =
+  let sep = Pp.s ";@ " in
+  let post = Pp.s "@]" in
   Pp.fp ppf "%a%a%a"
     pp_access access
-    Pp.(opt_list ~sep:(s " @,") ~pre:(s "@,values: ") pp) values
-    Pp.(opt_list ~sep:(s " @,") ~pre:(s "packed: ") pp_opaque) packed
+    Pp.(opt_list ~sep ~pre:(s "@[<hv 2>values: ") ~post pp_simple) values
+    Pp.(opt_list ~sep ~pre:(s "@,@[<2>packed: ") ~post pp_opaque) packed
 and pp_access ppf s =  if Paths.S.Map.cardinal s = 0 then () else
-    Pp.fp ppf "access:@[<hv>{%a}@]" (Pp.list pp_access_elt) (Paths.S.Map.bindings s)
+    Pp.fp ppf "@[<2>access: {%a}@]" (Pp.list pp_access_elt) (Paths.S.Map.bindings s)
 and pp_access_elt ppf (name, (loc,edge)) =
   Pp.fp ppf "%s%a(%a)" (if edge = Deps.Edge.Normal then "" else "ε∙")
     Paths.S.pp name
@@ -487,6 +489,12 @@ and pp_bind ppf {name;expr} =
     Pp.fp ppf "@[(module %s:@[<hv>%a@])@]" name pp_mt mt
   | Unpacked ->
     Pp.fp ppf "(module %s)" name
+  | Open_me {opens = a :: q ; resolved; expr} ->
+    Pp.fp ppf "%a.(%a)" Paths.Simple.pp a pp_bind
+      {name; expr = Open_me{opens=q;resolved;expr} }
+  | Open_me {opens=[]; resolved; expr} ->
+    Pp.fp ppf "⟨context:%a⟩ %a"
+      Summary.pp resolved pp_bind {name;expr}
   | _ ->
     Pp.fp ppf "@[module %s = @,@[<hv>%a@] @]" name pp_me expr
 and pp_bind_sig ppf {name;expr} =
@@ -529,8 +537,9 @@ and pp_extension ppf x = Pp.fp ppf "[%%%s @[<hv>%a@]]" x.name pp_extension_core
 and pp_extension_core ppf = function
   | Module m -> pp ppf m
   | Val m -> pp_annot ppf m
-and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]"
-    Pp.(list ~sep:(s " @,") pp_expression_with_loc)
+and pp_simple ppf =
+  Pp.list ~sep:(Pp.s " @,") pp_expression_with_loc ppf
+and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" pp_simple
 and pp_expression_with_loc ppf e = Pp.fp ppf "%a(%a)"
     pp_expression e.data Loc.pp e.loc
 
