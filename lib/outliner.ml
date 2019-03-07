@@ -428,19 +428,20 @@ module Make(Envt:envt)(Param:param) = struct
       end
   and of_ x = Mresult.Error.fmap (fun x -> Of x) <<| x
 
-  and m2l filename state = function
-    | [] -> no_deps @@ Ok (state, S.empty)
+  and prem2l prev_deps defs filename state = function
+    | [] -> prev_deps <+> ok (state, Y.defined defs)
     | a :: q ->
-      expr filename state a >>= function
-      | Ok (Some defs)  ->
-        begin m2l filename ( Envt.extend state defs ) q >>| function
-          | Ok (state, sg) -> Ok (state, S.merge (Y.defined defs) sg)
-          | Error q' ->
-            Error ( snd @@ Normalize.all @@ Loc.nowhere (Defs defs) :: q' )
-        end
-      | Ok None -> m2l filename state q
-      | Error h -> err ( snd @@ Normalize.all @@ h :: q)
+      let {x; deps} = expr filename state a in
+      let deps = Deps.( deps + prev_deps ) in
+      match x with
+      | Ok (Some ext) ->
+        (* note: defs ⊂ state *)
+        prem2l deps (Y.merge defs ext) filename (Envt.extend state ext) q
+      | Ok None -> prem2l deps defs filename state q
+      | Error h ->
+        deps <+> err @@ snd @@ Normalize.all @@ Loc.nowhere (Defs defs) :: h :: q
 
+  and m2l filename= prem2l Deps.empty Y.empty filename
   and signature filename state  = m2l filename state
 
   and expr file state e =
