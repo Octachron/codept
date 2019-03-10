@@ -16,14 +16,16 @@ module L :
   sig
     type ('a, 'b) l = { get : 'a -> 'b; update : 'a -> 'b -> 'a; }
     val create : ('a -> 'b) -> ('a -> 'b -> 'a) -> ('a, 'b) l
-    val get : 'a -> ('a, 'b) l -> 'b
+    val get : ('a, 'b) l -> 'a -> 'b
+
     val update : 'a -> ('a, 'b) l -> 'b -> 'a
+    val fmap : 'a ref -> ('a, 'b) l -> ('b -> 'b) -> unit
+
     val set : 'a ref -> ('a, 'b) l -> 'b -> unit
-    module String :
-      sig
-        val get : 'a -> ('a, 'b) l -> 'b
-        val set : 'a ref -> ('a, 'b) l -> 'b -> unit
-      end
+
+    val ( #. ) : 'a -> ('a, 'b) l -> 'b
+    val ( #! ) : 'a ref -> ('a, 'b) l -> 'b
+    val ( #<- ) : 'a ref -> ('a, 'b) l * 'b -> unit
 
     val compose : ('a, 'b) l -> ('b, 'c) l -> ('a, 'c) l
     val ( % ) : ('a, 'b) l -> ('b, 'c) l -> ('a, 'c) l

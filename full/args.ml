@@ -79,7 +79,7 @@ let with_output out s f=
 
 let iter_makefile out param interm s =
   with_output out s (fun ppf ->
-      Makefile.main L.(param.[policy]) ppf param.synonyms param.makefile interm
+      Makefile.main L.(param#.policy) ppf param.synonyms param.makefile interm
     )
 
 (** {2 Option implementations } *)
@@ -88,23 +88,18 @@ let first_ppx = Compenv.first_ppx
 let add_ppx ppx =
   first_ppx := ppx :: !first_ppx
 
+let ((#.),(#!),(#<-), fmap) = L.((#.),(#!),(#<-),fmap)
+
 let ml_synonym param s =
-  let open L in
-  let synonyms = !param.[synonyms] in
   let info = { Common.format = Src; kind = Implementation } in
-  let synonyms =   Name.Map.add s info synonyms in
-  param.[L.synonyms] <- synonyms
+  fmap param L.synonyms (Name.Map.add s info)
 
 let mli_synonym param s =
-  let open L in
-  let synonyms = !param.[synonyms] in
   let info = { Common.format = Src; kind = Interface } in
-  let synonyms =   Name.Map.add s info synonyms in
-  param.[L.synonyms] <- synonyms
+  fmap param L.synonyms (Name.Map.add s info)
 
 let add_include param filename =
-  let open L in
-  param.[includes] <- filename :: (!param).[includes]
+  fmap param L.includes (List.cons filename)
 
 let eval_single out writer param (task:Common.task) (file,single) =
   with_output out file (fun ppf ->
@@ -117,8 +112,7 @@ let iter_mode out writer param r (file,mode) =
 
 let format param x =
   let lenses = [L.inner_fmt;L.ext_fmt] in
-  let open L in
-  let update x = List.iter(fun l -> param.[l] <- x ) lenses in
+  let update x = List.iter(fun l -> param#<-(l,x) ) lenses in
   match x with
     | "sexp" -> update Schematic.Sexp
     | "json" -> update Schematic.Json
@@ -158,22 +152,18 @@ let fault param s =
   | [a;b] ->
     let path= List.map String.trim @@ Support.split_on_char '.' a in
     let level = Fault.Level.of_string b in
-    let open L in
-    let policy = !param.[policy] in
-    param.[L.policy] <- Fault.Policy.set (path,None,level) policy
+    fmap param L.policy (Fault.Policy.set (path,None,level))
 
 let silent_level param s =
-  let open L in
-  let policy = !param.[policy] in
-  param.[L.policy] <- { policy with silent = Fault.Level.of_string s}
+  fmap param L.policy
+    (fun policy -> { policy with silent = Fault.Level.of_string s})
 
 let exit_level param s =
-  let open L in
-  let policy = !param.[policy] in
-  param.[L.policy] <- { policy with exit = Fault.Level.of_string s}
+  fmap param L.policy
+    (fun policy -> { policy with exit = Fault.Level.of_string s})
 
 let print_policy param ()=
-  Fault.Policy.pp Pp.std L.(!param.[policy])
+  Fault.Policy.pp Pp.std param#!L.policy
 
 let print_json_schema  =
   function
@@ -183,16 +173,14 @@ let print_json_schema  =
   | _ -> ()
 
 let set_p param lens value =
-  let open L in
-  Cmd.Unit( fun () -> param.[lens] <- value)
+  Cmd.Unit( fun () -> param#<-(lens, value))
 
 let set_t param lens = set_p param lens true
 let set_f param lens = set_p param lens false
 
 
 let use_p param lens value =
-  let open L in
-  param.[lens] <- value
+  param#<-(lens, value)
 
 let task_p param task f = Cmd.String (f param task)
 let taskc task f = Cmd.String (f task)
@@ -203,18 +191,13 @@ let findlib findlib_query update =
 let pkg param findlib_query =
   let add s =
     if Common.is_stdlib_pkg s then
-      let open L in
-      param.[precomputed_libs] <- Name.Set.add s !param.[precomputed_libs]
+      fmap param L.precomputed_libs (Name.Set.add s)
     else
       findlib_query := Findlib.pkg !findlib_query s in
   Cmd.String( fun s -> List.iter add @@ Support.split_on_char ',' s )
 
 let no_stdlib param =
-  Cmd.Unit( fun () ->
-      let open L in
-      param.[precomputed_libs] <-
-        Name.Set.remove "stdlib" !param.[precomputed_libs]
-    )
+  Cmd.Unit( fun () -> fmap param L.precomputed_libs @@ Name.Set.remove "stdlib" )
 
 let usage_msg =
   "Codept is an alternative dependency solver for OCaml.\n\

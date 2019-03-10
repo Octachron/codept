@@ -140,11 +140,11 @@ let rec add_file_rec ~prefix:(mpre0,mpre1,fpre) ~start ~cycle_guard param task
   let name = String.concat "/" (List.rev_append fpre [name0]) in
   let lax = let open Fault in
     Policy.set_err (Codept_policies.unknown_extension, Level.info)
-   L.(!param.[policy]) in
+   L.(param#!policy) in
   let k name = if Sys.is_directory name then
         add_dir ~prefix:(mpre0, mpre1, fpre) start
           ~cycle_guard param task ~dir_name:name0 ~abs_name:name in
-  add_file ~explicit:start k lax L.(!param.[synonyms]) task
+  add_file ~explicit:start k lax L.(param#!synonyms) task
     (name, mpre0 @ List.rev mpre1, path)
 
 and add_dir ~prefix:(mpre0,mpre1,fpre) first ~cycle_guard param task
@@ -153,7 +153,7 @@ and add_dir ~prefix:(mpre0,mpre1,fpre) first ~cycle_guard param task
     ()
   else
       let dir_name =
-        if dir_name.[String.length dir_name - 1] = L.(!param.[slash]).[0] then
+        if dir_name.[String.length dir_name - 1] = L.(param#!slash).[0] then
           String.sub dir_name 0 (String.length dir_name - 1)
         else
           dir_name
@@ -162,7 +162,7 @@ and add_dir ~prefix:(mpre0,mpre1,fpre) first ~cycle_guard param task
       let files = Sys.readdir abs_name in
 
       let mpre1 =
-        if L.( !param.[nested] ) && not first then
+        if L.(param#!nested ) && not first then
           let mname =  name_of_path dir_name in
           mname :: mpre1
         else mpre1 in
@@ -187,7 +187,7 @@ let add_file param task name0  =
         (fpath,Some module_name) in
     List.iter add expanded
   with Invalid_file_group s ->
-    Fault.handle L.(!param.[policy]) Codept_policies.invalid_file_group name0 s
+    Fault.handle L.(param#!policy) Codept_policies.invalid_file_group name0 s
 
 let add_impl param task name =
   List.iter (add_impl param task) (parse_filename name)
@@ -208,9 +208,9 @@ let lib task f =
   task := { !task with libs = (expand_dir f) :: (!task).libs }
 
 let map param task file =
-  L.( param.[transparent_aliases] <- true );
+  L.( param#<-(transparent_aliases, true) );
   add_invisible_file param task file
 
 let as_map param task file =
-  L.( param.[transparent_aliases] <- true ) ;
+  L.( param#<-(transparent_aliases,true) ) ;
   add_file param task file
