@@ -126,16 +126,6 @@ let mode action command () =
       modes = (output, command) :: (!action).modes
     }
 
-
-(*let mode  action param command () =
-  let output = !param.output in
-  action  :=
-    { !action with
-      active_modes =
-        (fun units -> (output, fun out -> command out !param units) )
-        :: !action.active_modes
-    }*)
-
 let set_iter action command () =
   action :=
     { !action with
@@ -278,7 +268,7 @@ let args action param task fquery version =
     ": print version number\n\n Major options:\n";
 
     "-expand-deps", set_t epsilon_dependencies,
-    "compute exact dependencies, rather than a subset of dependencies that is \
+    ": compute exact dependencies, rather than a subset of dependencies that is \
      equivalent to the exact dependency set up to transitive closure";
     "-k", set_p policy Codept_policies.lax,
     ": ignore most recoverable errors and keep going";
@@ -302,7 +292,7 @@ let args action param task fquery version =
     "-json", Unit (mode @@ Modes.Deps (Some Schematic.Json)),
     ": print dependencies in json format";
     "-json-schema", String print_json_schema,
-    " <mode>: print json schema for the corresponding mode (deps,sig,m2l)";
+    "<mode>: print json schema for the corresponding mode (deps,sig,m2l)";
     "-sexp", Unit (mode @@ Modes.Deps (Some Schematic.Sexp)),
     ": print dependencies in a s-expression format";
 
