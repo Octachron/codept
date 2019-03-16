@@ -7,3 +7,36 @@
   (libraries compiler-libs.common)
   (flags (:standard -w -30))
 )
+
+
+(rule
+  (targets pparse_compat.ml)
+  (deps pparse_compat.mlp ../preprocessor.exe)
+  (action (run ../preprocessor.exe %{targets}))
+)
+
+(rule
+  (targets format_compat.ml)
+  (deps format_compat.mlp ../preprocessor.exe)
+  (action (run ../preprocessor.exe %{targets}))
+)
+
+(rule
+  (targets format_tags.ml)
+  (deps format_tags.mlp ../preprocessor.exe)
+  (action (run ../preprocessor.exe %{targets}))
+)
+
+
+(rule
+  (targets ast_converter.ml)
+  (deps ast_converter.mlp ../preprocessor.exe)
+  (action (run ../preprocessor.exe %{targets}))
+)
+
+
+(rule
+  (targets cmi.ml)
+  (deps cmi.mlp ../preprocessor.exe)
+  (action (run ../preprocessor.exe %{targets}))
+)

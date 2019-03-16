@@ -53,13 +53,13 @@ let sub {pos;x} s =
   String.sub x pos (String.length s) = s
 
 let parse x =
-  let x = skip ' ' x in     
+  let x = skip ' ' x in
   if sub x "end" then
     End
   else
     let left, x = parse_version x in
     let x = List.fold_left (fun x c -> skip c x) x [' '; ','; ' '] in
-    let right, x = parse_version x in
+    let right, _ = parse_version x in
     Start {left; right}
 
 (*
@@ -111,11 +111,10 @@ let line read write active =
   if not macro && version <: active then write line;
   active
 
-let rename s = String.sub s 0 (String.length s - 1)
+let before s = s ^ "p"
 let preprocess file =
-  Printf.eprintf "Preprocessing %s to %s\n%!" file (rename file);
-  let input = open_in file in
-  let output = open_out (rename file) in
+  let input = open_in (before file) in
+  let output = open_out file in
   let read () = input_line input in
   let write s =
     (*    Printf.eprintf "%s\n" s;*)
@@ -129,10 +128,16 @@ let preprocess file =
     | stack -> loop stack in
   loop []
 
-let files = List.map (Format.sprintf "lib/%s.mlp")
+let files = List.map (Format.sprintf "lib/%s.ml")
   ["ast_converter";"cmi"; "pparse_compat"; "format_compat"; "format_tags"]
-  @ List.map (Format.sprintf "full/%s.mlp")
+  @ List.map (Format.sprintf "full/%s.ml")
     ["extended_args"]
+
+let targets = ref []
 let () =
-  List.iter preprocess files
-(*  Arg.parse [] preprocess "preprocessor <file>"*)
+  Arg.parse [] (fun x->targets:= x :: !targets) "preprocessor <file>";
+  let targets=
+    match !targets with
+    | [] -> files
+    | x -> x in
+   List.iter preprocess targets

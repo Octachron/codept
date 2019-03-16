@@ -7,3 +7,9 @@
   (section man)
   (files ../docs/codept.1)
 )
+
+(rule
+  (targets extended_args.ml)
+  (deps extended_args.mlp ../preprocessor.exe)
+  (action (run ../preprocessor.exe %{targets}))
+)
