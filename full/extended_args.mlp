@@ -1,3 +1,4 @@
+# 4.05, oo
 let parse argv args anon usage =
   let args =
     args @ [
@@ -16,3 +17,6 @@ let parse argv args anon usage =
   with
   | Arg.Bad msg -> Printf.eprintf "%s" msg; exit 2
   | Arg.Help msg -> Printf.printf "%s" msg; exit 0
+#oo, 4.05
+let parse = Arg.parse_argv ?current:None
+# end

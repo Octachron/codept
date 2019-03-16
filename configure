@@ -33,7 +33,7 @@ simplify () {
 }
 
 copy () {
-for dir in lib full precomputed; do
+for dir in precomputed; do
     if [ -d "$1/${dir}" ]; then
 	    cp $1/${dir}/*.ml ${dir}/;
 	fi done
@@ -53,4 +53,5 @@ for i in $(seq 3 ${minor})
       copy $lver
     fi
   done
+ocaml preprocessor.ml
 echo "let major=${major} let minor=${minor}" > lib/version.ml

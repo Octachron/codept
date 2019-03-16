@@ -1,0 +1,12 @@
+let _ = Format.err_formatter
+
+let compat f = f
+# oo, 4.08
+  Format.err_formatter
+#end
+
+let implementation input =
+  compat Pparse.parse_implementation ~tool_name:"codept" input
+
+let interface input =
+  compat Pparse.parse_interface ~tool_name:"codept" input

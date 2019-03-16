@@ -1,4 +1,9 @@
-type t =  ..
+type t
+# 4.08, oo
+= Format.stag
+#end
+= ..
+
 type t +=
   | Info | Notification | Warning | Error | Critical
   | Em | Loc | Title | M
@@ -29,9 +34,21 @@ let to_string = function
   | _ -> "?"
 
 
+let parse x =
+# oo, 4.08
+ of_string
+#end
+  x
+
+let serialize x =
+# oo, 4.08
+ to_string
+#end
+  x
+
 let mark_open_tag tag =
   let b = "\x1b[1m" in
-  match of_string tag with
+  match parse tag with
   | Critical -> b ^ "\x1b[91m"
   | Error -> b ^ "\x1b[31m"
   | Warning -> b ^ "\x1b[35m"
@@ -49,16 +66,28 @@ let mark_close_tag _tag =
 let enable ppf =
   Format.pp_set_tags ppf true;
   Format.pp_set_mark_tags ppf true;
+# oo, 4.08
   Format.pp_set_formatter_tag_functions ppf
     { (Format.pp_get_formatter_tag_functions ppf ()) with
       mark_open_tag; mark_close_tag }
+# 4.08, oo
+  Format.pp_set_formatter_stag_functions ppf
+    { (Format.pp_get_formatter_stag_functions ppf ()) with
+      mark_open_stag=mark_open_tag;
+      mark_close_stag=mark_close_tag
+    }
+#end
 
 let with_tag tag printer ppf x =
-  Format.pp_open_tag ppf (to_string tag);
+# oo, 4.08
+  Format.pp_open_tag ppf (serialize tag);
   printer ppf x;
   Format.pp_close_tag ppf ()
+# 4.08, oo
+  Format.pp_open_stag ppf (serialize tag);
+  printer ppf x;
+  Format.pp_close_stag ppf ()
+#end
 
 let tagged tag ppf x =
-  Format.pp_open_tag ppf (to_string tag);
-  Format.pp_print_string ppf x;
-  Format.pp_close_tag ppf ()
+  with_tag tag Format.pp_print_string ppf x

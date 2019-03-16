@@ -62,8 +62,8 @@ module H = struct
 
 
 
-  let do_open lid =
-    [{ Loc.data = M2l.Open (Ident (npath lid)); loc = extract_loc lid} ]
+  let do_open loc me =
+    [{ Loc.data = M2l.Open me; loc = from_loc loc } ]
 
 
   let (@%) l l' =
@@ -121,6 +121,26 @@ module Pattern = struct
 
   let bind loc name sign =
     { empty with binds = [Loc.create loc {M2l.name; expr = sign }] }
+# 4.04, oo
+  let open_ m { annot={ data = {values; packed; access}; loc } ; binds} =
+    let values =
+      ( if Paths.S.Map.cardinal access > 0 then
+          M2l.[{ Loc.data = Minor {Annot.empty.data with access}; loc }]
+        else
+          []
+      )
+      :: values in
+    let op x = M2l.Open (Ident x) in
+    let values = List.map( List.cons (Loc.fmap op m) ) values in
+    let packed = List.map (Loc.fmap @@ B.open_me [m.data]) packed in
+    let binds = List.map
+        (fun {Loc.data={name;expr};loc} ->
+           Loc.create (Loc.merge m.loc loc) {name; expr = B.open_me [m.data] expr } )
+        binds in
+    let access = Annot.Access.empty in
+    let loc = Loc.merge m.loc loc in
+    { annot={ data = {values;access;packed}; loc } ; binds }
+#end
 
   let bind_fmod p inner =
     let minor x = Minor x in
@@ -159,6 +179,31 @@ open Parsetree
 
 
 let data x = x.Loc.data
+# oo, 4.06
+let core_field (_,_,t) = t
+# 4.06, 4.08
+let core_field (Otag (_,_,t) | Oinherit t) = t
+# 4.08, oo
+let core_field {pof_desc=(Otag (_,t) | Oinherit t); _} = t
+#end
+
+# oo, 4.08
+let exnc x = x
+let row_field_core = function
+  | Rtag (_,_,_,cts) -> cts
+  | Rinherit ct -> [ct]
+# 4.08, oo
+let exnc x = x.ptyexn_constructor
+let row_field_core x = match x.prf_desc with
+  | Rtag (_,_,cts) -> cts
+  | Rinherit ct -> [ct]
+#end
+
+# oo, 4.06
+let subst_path x=[txt x]
+# 4.06, oo
+let subst_path = H.npath
+#end
 
 let rec structure str =
   mmap structure_item str
@@ -173,7 +218,7 @@ and structure_item item =
            let rec P1 = E1 and ... and Pn = EN   (flag = Recursive)
     *) ->
     minor @@ data @@
-    Annot.union_map (Pattern.to_annot % value_binding) vals
+    Annot.union_map (Pattern.to_annot % val_binding % vb_pair) vals
   | Pstr_primitive desc
     (*  val x: T
         external x: T = "s1" ... "sn" *)
@@ -186,15 +231,14 @@ and structure_item item =
   | Pstr_exception an_extension_constructor
     (* exception C of T
        exception C = M.X *)
-    -> minor @@ data @@ extension_constructor an_extension_constructor
+    -> minor @@ data @@ extension_constructor @@ exnc an_extension_constructor
   | Pstr_module mb (* module X = ME *) ->
     [with_loc loc @@ Bind(module_binding_raw mb)]
   | Pstr_recmodule module_bindings (* module rec X1 = ME1 and ... and Xn = MEn *)
     -> recmodules module_bindings
   | Pstr_modtype a_module_type_declaration (*module type s = .. *) ->
     [ with_loc loc @@  Bind_sig(module_type_declaration a_module_type_declaration) ]
-  | Pstr_open open_desc (* open M *) ->
-    do_open open_desc.popen_lid
+  | Pstr_open open_desc (* open M *) -> simple_open open_desc
   | Pstr_class class_declarations  (* class c1 = ... and ... and cn = ... *)
     -> minor' @@ Annot.union_map class_declaration class_declarations
   | Pstr_class_type class_type_declarations
@@ -313,6 +357,10 @@ and expr exp =
     Annot.value [[ with_loc loc @@ Bind( module_binding (m,me) );
                    with_loc e.pexp_loc @@ Minor( data @@ expr e )
                  ]]
+# 4.04, oo
+  | Pexp_letexception (_c, e) (* let exception C in E *) ->
+    expr e
+#end
   | Pexp_send (e, _) (*  E # m *)
   | Pexp_assert e (* assert E *)
   | Pexp_newtype (_ ,e) (* fun (type t) -> E *)
@@ -326,15 +374,25 @@ and expr exp =
     ->  (*Warning.first_class_module (); *)
     (* todo: are all cases caught by the Module.approximation mechanism?  *)
     Annot.pack @@ with_loc loc [with_loc loc @@ module_expr me]
-  | Pexp_open (_override_flag,name,e)
+# oo, 4.08
+  | Pexp_open (_override_flag,me,e)
+# 4.08, oo
+  | Pexp_open (me,e)
+# end
     (* M.(E), let open M in E, let! open M in E *)
-    -> Annot.value [ do_open name @ [with_loc loc @@ Minor (data @@ expr e) ] ]
+    -> Annot.value [ local_open me @ [with_loc loc @@ Minor (data @@ expr e) ] ]
   | Pexp_extension (name, PStr payload) when txt name = "extension_constructor" ->
     Annot.value [structure payload]
   | Pexp_constant _ | Pexp_unreachable (* . *)
     -> Annot.empty
   | Pexp_extension ext (* [%ext] *) ->
-   Annot.value [[with_loc loc @@ extension ext]]
+      Annot.value [[with_loc loc @@ extension ext]]
+# 4.08,oo
+  | Pexp_letop b ->
+     val_bindings (fun bop -> bop.pbop_pat, bop.pbop_exp)
+       (b.let_ :: b.ands)
+       (expr b.body)
+#end
 and pattern pat =
   let loc = pat.ppat_loc in
   match pat.ppat_desc with
@@ -388,6 +446,10 @@ and pattern pat =
        Note: (module P : S) is represented as
        Ppat_constraint(Ppat_unpack, Ptyp_package)
   *)
+# 4.04,oo
+| Ppat_open (m,p) (* M.(P) *) ->
+    Pattern.open_ (with_loc loc @@ H.npath m) @@ pattern p
+#end
 
 and type_declaration td: M2l.Annot.t  =
   Annot.union_map (fun (_,t,_) -> core_type t) td.ptype_cstrs
@@ -428,7 +490,7 @@ and core_type ct : M2l.Annot.t =
     access name
     ++ Annot.union_map core_type cts
   | Ptyp_object (lbls, _ ) (* < l1:T1; ...; ln:Tn[; ..] > *) ->
-    Annot.union_map  (fun  (_,_,t) -> core_type t) lbls
+    Annot.union_map (core_type % core_field) lbls
   | Ptyp_poly (_, ct)
   | Ptyp_alias (ct,_) (* T as 'a *) -> core_type ct
 
@@ -436,10 +498,7 @@ and core_type ct : M2l.Annot.t =
     Annot.union_map row_field row_fields
   | Ptyp_package s (* (module S) *) ->
     package_type s
-
-and row_field = function
-  | Rtag (_,_,_,cts) -> Annot.union_map core_type cts
-  | Rinherit ct -> core_type ct
+and row_field x = Annot.union_map core_type (row_field_core x)
 and package_type (s,constraints) =
   Annot.merge
     (access s)
@@ -465,6 +524,17 @@ and class_type ct = match ct.pcty_desc with
     Annot.( class_type clt ++ core_type ct)
   | Pcty_extension ext (* [%ext] *) ->
     Annot.value [[ with_loc ct.pcty_loc @@ extension ext ]]
+# 4.06, 4.08
+  | Pcty_open (_,module',cty) ->
+# 4.08, oo
+  | Pcty_open (module',cty) ->
+#end
+# 4.06, oo
+    Annot.value [
+        class_open module'
+      @ [with_loc ct.pcty_loc @@ Minor (data @@ class_type cty)]
+    ]
+#end
 and class_signature cs = Annot.union_map class_type_field cs.pcsig_fields
 and class_type_field ctf = match ctf.pctf_desc with
   | Pctf_inherit ct -> class_type ct
@@ -518,6 +588,17 @@ and class_expr ce =
     class_type ct ++ class_expr ce
   | Pcl_extension ext ->
     Annot.value [[ with_loc loc @@ extension ext ]]
+# 4.06, 4.08
+  | Pcl_open(_,module',cl) ->
+# 4.08, oo
+  | Pcl_open(module',cl) ->
+#end
+# 4.06, oo
+      Annot.value [
+        class_open module'
+       @ [with_loc cl.pcl_loc @@ Minor (data @@ class_expr cl)]
+    ]
+#end
 and class_field_kind = function
   | Cfk_virtual ct -> core_type ct
   | Cfk_concrete (_, e) -> expr e
@@ -546,17 +627,20 @@ and module_expr mexpr : M2l.module_expr =
   | Pmod_extension ext ->
     Extension_node(extension_core ext)
 (* [%id] *)
-and value_binding vb : Pattern.t =
-  let p, e = matched_patt_expr vb.pvb_pat vb.pvb_expr in
+and val_binding (patt,expr): Pattern.t =
+  let p, e = matched_patt_expr patt expr in
   Pattern.( p ++ of_annot e )
-and value_bindings vbs expr =
-  let p = Pattern.union_map value_binding vbs in
-  if List.length p.binds > 0 then
+and val_bindings: 'a. ('a -> pattern * Parsetree.expression) -> 'a list -> _  =
+  fun proj vbs expr ->
+  let p = Pattern.union_map (val_binding % proj) vbs in
+  if List.length p.Pattern.binds > 0 then
     let v = List.fold_left ( fun inner b -> Loc.fmap (fun x -> Bind x) b :: inner )
         (minor' expr) p.binds in
     Pattern.to_annot p ++ Annot.value [v]
   else
     Pattern.to_annot p ++ expr
+and vb_pair x = x.pvb_pat, x.pvb_expr
+and value_bindings x = val_bindings vb_pair x
 
 and module_binding_raw mb =
   module_binding (mb.pmb_name, mb.pmb_expr)
@@ -600,7 +684,7 @@ and signature_item item =
   | Psig_typext te (* type t1 += ... *) ->
     minor @@ type_extension te
   | Psig_exception ec (* exception C of T *) ->
-    minor @@ extension_constructor ec
+    minor @@ extension_constructor @@ exnc ec
   | Psig_module md (* module X : MT *) ->
     [with_loc loc @@  Bind (module_declaration md)]
   | Psig_recmodule mds (* module rec X1 : MT1 and ... and Xn : MTn *) ->
@@ -608,8 +692,7 @@ and signature_item item =
   (* Warning.confused "Psig_recmodule"; (* todo coverage*) *)
   | Psig_modtype mtd (* module type S = MT *) ->
     [ with_loc loc @@ Bind_sig(module_type_declaration mtd)]
-  | Psig_open od (* open X *) ->
-    do_open od.popen_lid
+  | Psig_open od (* open X *) -> ident_open od
   | Psig_include id (* include MT *) ->
     [ with_loc loc @@ SigInclude (module_type id.pincl_mod) ]
   | Psig_class cds (* class c1 : ... and ... and cn : ... *) ->
@@ -618,6 +701,13 @@ and signature_item item =
     minor @@ Annot.union_map class_type_declaration ctds
   | Psig_attribute _ -> []
   | Psig_extension (ext,_) -> [with_loc loc @@ extension ext]
+# 4.08, oo
+  | Psig_typesubst tds -> minor @@ Annot.union_map type_declaration tds
+  | Psig_modsubst msub ->
+     let ghost =
+       Bind{ name=msub.pms_name.txt; expr= Ident(npath msub.pms_manifest)} in 
+     do_open msub.pms_loc (Str [with_loc msub.pms_loc ghost])
+#end
 and class_description x =  class_type_declaration x
 and recmodules mbs =
   let loc = List.fold_left Loc.merge Nowhere @@
@@ -626,13 +716,17 @@ and recmodules mbs =
 and with_more (dels,access) =
   let merge x y = Annot.Access.merge x y.Loc.data.access in
   function
-  | Pwith_typesubst td (* with type t := ... *)
+# oo, 4.06
+  | Pwith_typesubst td (* with type X.t := ... *)
+# 4.06, oo
+  | Pwith_typesubst (_,td) (* with type X.t := ... *)
+#end
   | Pwith_type (_,td)(* with type X.t = ... *) ->
     dels, merge access (type_declaration td)
   | Pwith_module (_,l) (* with module X.Y = Z *) ->
     dels, merge access (H.me_access l)
-  | Pwith_modsubst (name, me) ->
-    Paths.S.Set.add [txt name] dels, merge access (H.me_access me)
+  | Pwith_modsubst (l, me) ->
+      Paths.S.Set.add (subst_path l) dels, merge access (H.me_access me)
 and extension n =
   Extension_node (extension_core n)
 and extension_core (name,payload) =
@@ -691,3 +785,17 @@ and matched_patt_expr x y =
         | None, Some e -> acc_p , acc_e ++ expr e
       ) m (Pattern.empty, Annot.opt expr eo)
   | _, _ -> pattern x, expr y
+# oo, 4.08
+and ident_open o = do_open o.popen_loc (Ident (npath o.popen_lid))
+and simple_open o = ident_open o
+and local_open o = do_open o.loc (Ident (npath o))
+# 4.08, oo
+and ident_open o = do_open o.popen_loc (Ident (npath o.popen_expr))
+and simple_open o = do_open o.popen_loc (module_expr o.popen_expr)
+and local_open o = simple_open o
+#end
+# 4.06, 4.08
+and class_open o = do_open o.loc (Ident (npath o))
+# 4.08, oo
+and class_open o = ident_open o
+#end
