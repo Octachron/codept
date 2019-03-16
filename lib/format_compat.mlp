@@ -2,7 +2,7 @@ let transform fmt f =
   { fmt with
     Format.out_newline = (fun () -> ());
     out_spaces = (fun _ -> ());
-# >= 4.06
+# 4.06, oo
     out_indent = ignore;
 #end
   out_string = f
