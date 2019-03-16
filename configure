@@ -54,4 +54,3 @@ for i in $(seq 3 ${minor})
     fi
   done
 ocaml preprocessor.ml
-echo "let major=${major} let minor=${minor}" > lib/version.ml

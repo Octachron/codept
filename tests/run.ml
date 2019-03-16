@@ -13,7 +13,7 @@ let classify filename =  match Support.extension filename with
   | ext -> raise (Invalid_argument ("unknown extension: "^ext))
 
 module Version = struct
-  include Version
+  let major, minor = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun x y -> x, y)
   type t = {major:int; minor:int}
   let v = { major; minor }
 

@@ -23,7 +23,6 @@ end
 let () = Sys.chdir ".."
 let pwd = Sys.getcwd ()
 let codept =  pwd ^ "/full/codept.exe"
-let () = Printf.printf "codept: %s\n" codept
 let () = Sys.chdir "../../tests/"
 
 

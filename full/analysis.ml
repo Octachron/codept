@@ -105,9 +105,11 @@ let stdlib_pkg s l = match s with
   | "threads" -> Std_threads.modules :: l
   | _ -> l
 
+let version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun x y -> x, y)
+
 let prefixed_stdlib () =
   let modules = Stdlib_data.modules in
-  if Version.(major,minor) < (4,7) then
+  if version < (4,7) then
     M.Dict.of_list [M.(Namespace {name="Stdlib"; modules })]
   else
     modules
