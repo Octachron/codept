@@ -1,22 +1,32 @@
-opam-version: "1.2"
+opam-version: "2.0"
 name: "codept"
-version: "0.10.2"
+version: "0.10.3"
 author: "octachron <octa@polychoron.fr>"
 maintainer: "octachron <octa@polychoron.fr>"
 homepage: "https://github.com/Octachron/codept"
 bug-reports: "https://github.com/Octachron/codept/issues"
 license: "gpl-3"
-dev-repo: "https://github.com/Octachron/codept.git"
+dev-repo: "git+https://github.com/Octachron/codept.git"
 build: [
-  ["./configure" "--%{ocamlbuild:enable}%-ocamlbuild" "--%{dune:enable}%-dune"]
-  [make "all"]
+  ["dune" "build" "-p" name]
+  ["dune" "build" "@private-docs" {with-doc}]
 ]
-build-test: [
-  [make "tests"]
-]
-build-doc: [
-  [make "docs"]
+run-test: [
+  ["dune" "runtest"]
 ]
 depopts:["ocamlbuild"]
-depends: []
-available: [ ocaml-version >= "4.03.0" ]
+depends: ["dune" {build} "menhir" {build} "ocaml" {>="4.03"}]
+synopsis: "Alternative ocaml dependency analyzer"
+description:"""
+Codept intends to be a dependency solver for OCaml project and an alternative to ocamldep. Compared to ocamldep, codept major
+features are:
+* whole project analysis
+* exhaustive warning and error messages
+* structured format (s-expression or json) for dependencies
+* uniform handling of delayed alias dependencies
+* (experimental) full dependencies,
+  when dependencies up to transitive closure are not enough
+  Both ocamldep and codept computes an over-approximation of the dependencies graph of OCaml project. However, codept uses whole
+project analysis to reduce the number of fictitious dependencies inferred at the project scale, whereas ocamldep is, by
+design, limited to local file analysis.
+"""
