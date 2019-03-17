@@ -577,16 +577,11 @@ let result =
         (Some ~:["Solver"; "Standard_policies"])
         (dl[
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
-          "ast_converter.ml", ( ["Loc"; "M2l"; "Option"; "Module"; "Paths"],
-                                [!"List"; "Longident"; "Location";
-                                 !"Lexing"; "Parsetree"], [] );
           "approx_parser.mli", (["M2l"], [],[]);
           "approx_parser.ml", (["Deps"; "Loc"; "Read";"M2l";"Paths"],
                                ["Lexer"; "Parser";!"Lexing";!"List"],[]);
           "cmi.mli", (["M2l"], [], []);
 
-          "cmi.ml", (["Loc"; "M2l";"Module"; "Option"; "Paths"],
-                     ["Cmi_format"; !"List"; "Path";"Types";"Ident"], []);
           "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic"],[!"List"],[]);
           "summary.mli", (
             ["Module";"Paths";"Schematic"],
@@ -623,9 +618,7 @@ let result =
           "fault.mli", (["Loc"; "Paths"; "Name"],
                           [!"Format"],[]);
           "format_tags.mli", ([],[!"Format"],[]);
-          "format_tags.ml", ([],[!"Format"],[]);
           "format_compat.mli", ([],[!"Format"],[]);
-          "format_compat.ml", ([],[!"Format"],[]);
           "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Schematic"],
                           [!"Format"], [] );
           "module.ml", ( ["Loc";"Paths";"Name"; "Namespaced"; "Option"; "Pp"
@@ -642,7 +635,6 @@ let result =
           "option.mli", ([],[!"Lazy"],[]);
           "option.ml", ([],[!"List";!"Lazy"],[]);
           "pparse_compat.mli", ([], ["Parsetree"], []);
-          "pparse_compat.ml", ([], [!"Format"; "Pparse"], []);
           "paths.mli", (["Name"; "Schematic"], [!"Map";!"Set";!"Format"],[]);
           "paths.ml", (["Name"; "Pp"; "Schematic"; "Support" ],
                        [!"Filename";!"List";!"Map";!"Set";

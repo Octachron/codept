@@ -8,9 +8,10 @@
 *)
 
 module Version = struct
-  include Version
+
   type t = {major:int; minor:int}
-  let v = { major; minor }
+  let v = Scanf.sscanf Sys.ocaml_version "%d.%d"
+      (fun major minor -> { major; minor })
 
   let v_4_04 = { minor = 4; major = 4 }
   let v_4_06 = { minor = 6; major = 4 }
