@@ -1,11 +1,11 @@
 (executable
   (name run) (modules Run)
-  (libraries unix codept_lib precomputed)
+  (libraries unix codept_lib bundled)
 )
 
 (executable
   (name serialization) (modules Serialization)
-  (libraries unix codept_lib precomputed)
+  (libraries unix codept_lib)
 )
 
 (executable

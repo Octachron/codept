@@ -1,0 +1,6 @@
+(library
+  (name bundled)
+  (libraries codept_lib)
+  (flags (:standard -w -33))
+  (wrapped false)
+)
