@@ -21,36 +21,4 @@ case $arg in
 esac
 done
 
-simplify () {
-  local name=$1
-  local ifs=$IFS
-  IFS=".+"
-  set -- ${name}
-  major="$1"
-  minor="$2"
-  version="$1.$2"
-  IFS=${ifs}
-}
-
-copy () {
-for dir in precomputed; do
-    if [ -d "$1/${dir}" ]; then
-	    cp $1/${dir}/*.ml ${dir}/;
-	fi done
-}
-
-name () {
-  echo "${major}.0$1";
-}
-
-simplify `ocaml -vnum`;
-
-for i in $(seq 3 ${minor})
-  do
-     lver=$(name $i);
-
-    if [ -d $lver ]; then
-      copy $lver
-    fi
-  done
 ocaml preprocessor.ml

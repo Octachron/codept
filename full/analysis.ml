@@ -96,23 +96,16 @@ let organize io policy sig_only opens files =
   units, signatures
 
 
-let stdlib_pkg s l = match s with
-  | "unix" -> Std_unix.modules :: l
-  | "bigarray" -> Std_bigarray.modules :: l
-  | "dynlink" -> Std_dynlink.modules :: l
-  | "graph" -> Std_graph.modules :: l
-  | "num" -> Std_num.modules :: l
-  | "threads" -> Std_threads.modules :: l
-  | _ -> l
-
 let version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun x y -> x, y)
 
-let prefixed_stdlib () =
-  let modules = Stdlib_data.modules in
-  if version < (4,7) then
-    M.Dict.of_list [M.(Namespace {name="Stdlib"; modules })]
-  else
-    modules
+let stdlib_pkg s l = match s with
+  | "unix" -> Bundle.unix :: l
+  | "bigarray" when version < (4,08) -> Bundle.bigarray :: l
+  | "dynlink" -> Bundle.dynlink :: l
+  | "graph" when version < (4,09)-> Bundle.graphics :: l
+  | "num" when version < (4,06) -> Bundle.num :: l
+  | "threads" -> Bundle.threads :: l
+  | _ -> l
 
 let base_sign io signatures =
   let (++) dict m = Name.Map.add (Module.name m) m dict in
@@ -130,7 +123,7 @@ let start_env io param libs signatures fileset =
   let base_sign = base_sign io signs in
   let implicits =
     if Name.Set.mem "stdlib" param.precomputed_libs then
-      [["Stdlib"], prefixed_stdlib ()]
+      [["Stdlib"], Bundle.stdlib]
     else
       [] in
   let env =
