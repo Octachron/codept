@@ -19,3 +19,5 @@
 * Proper library documentation
 
 * Improved library packaging
+
+* Add a validator for the bundled stdlib library
