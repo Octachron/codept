@@ -93,14 +93,13 @@ module Core = struct
     let phantom_record name =
       path_record Edge.Normal [name] { P.source = Unknown; file = [name] }
 
-
     let record edge root (m:Module.m) =
       match m.origin with
       | M.Origin.Unit p -> path_record edge p.path p.source
       | Phantom (phantom_root, b) when root && not phantom_root ->
         phantom_record m.name <!> [ambiguity m.name b]
       | _ -> return ()
-  end open D
+  end
 
   let request lvl name env =
     let rec request name  = function
@@ -199,7 +198,7 @@ module Core = struct
     | Alias {path; phantom; name; weak = false } ->
       debug "alias to %a" Namespaced.pp path;
       let m = match phantom with
-        | Some b when is_top ctx -> phantom_record name <!> [ambiguity name b]
+        | Some b when is_top ctx -> D.phantom_record name <!> [ambiguity name b]
         | None | Some _ -> return () in
       (* aliases link only to compilation units *)
       m >> find option Any current (top env) (Namespaced.flatten path @ q)
@@ -208,7 +207,7 @@ module Core = struct
       find option Concrete [] (top env) (Namespaced.flatten path @ q)
     | M.M m ->
       debug "found module %s" m.name;
-      record option.edge (is_top ctx) m >>
+      D.record option.edge (is_top ctx) m >>
       if q = [] then return (M m)
       else
         find option Submodule current (restrict env @@ Signature m.signature) q
