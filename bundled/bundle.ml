@@ -123,7 +123,7 @@ let simple_stdlib = Dict.of_list @@
   @ after (4,04) [spacetime]
   @ after (4,07) [bigarray ();float; simple "Seq"]
   @ after (4,08)
-    (List.map simple ["Fun";"Bool";"Option";"Int";"Result";"LargeFile"])
+    (List.map simple ["Fun";"Bool";"Option";"Int";"Result";"LargeFile"; "Unit"])
   @ complex
   @ simples
 
@@ -137,7 +137,6 @@ let num =
      "Ratio"]
 
 let bigarray = Dict.of_list [bigarray ~nms:"stdlib/bigarray" ()]
-
 
 let unix =
   top (fun x -> root ~nms:"stdlib/unix" x ~mds:[submodule "Largefile"] )

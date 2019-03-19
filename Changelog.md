@@ -1,3 +1,14 @@
+# Version 0.10.3
+
+## Bug fixes
+
+  * Missing dependencies while matching first-class modules
+  * Less noisy ambiguous module warning
+
+## Support
+
+  * OCaml 4.08
+
 # Version 0.10.2
 
 ## Features
