@@ -43,6 +43,8 @@ let update mp e ps deps: t =
     >< (e, ps) in
   P.Map.add mp ep deps
 
+let make mp e ps = update mp e ps empty
+
 let merge = P.Map.merge (fun _k x y -> match x, y with
     | Some (x,ps), Some (y,ps') -> Some (Edge.max x y, Pth.Set.union ps ps')
     | None, (Some _ as x) | (Some _ as x), None -> x

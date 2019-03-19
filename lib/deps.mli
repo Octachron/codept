@@ -18,6 +18,7 @@ val sch: t Schematic.t
 (** Add a new path to a dependency map or
     promote the type of an existing path to {!Edge.Epsilon} *)
 val update: Paths.P.t -> Edge.t -> Paths.S.set -> t -> t
+val make: Paths.P.t -> Edge.t -> Paths.S.set -> t
 
 val merge: t -> t -> t
 val (+) : t -> t -> t
