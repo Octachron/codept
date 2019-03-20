@@ -39,20 +39,16 @@ let structured fmt _ _ ppf param units =
   let pp = let open Schematic in
     match fmt with Json -> Ext.json Schema.x | Sexp -> Ext.sexp Schema.x in
   let udeps (u:Unit.r) =
-    let add_dep (loc,lib,unknw) ((p:Paths.P.t), mps) =
-      let mps = Paths.S.Set.elements mps in
+    let add_dep (p:Paths.P.t) _ s (loc,lib,unknw)  =
       let local file path: Schema.local = {file;path} in
       let libs pkg file path = { Schema.lib = pkg; file = file; path } in
-      let dup mk l =
-        List.fold_left (fun l x -> mk x :: l ) l mps in
       match p.source with
-      | Paths.P.Local -> dup (local p.file) loc, lib, unknw
+      | Paths.P.Local -> local p.file s :: loc , lib, unknw
       | Paths.P.Pkg pkg ->
-        loc, dup (libs pkg p.file) lib, unknw
-      | Paths.P.Unknown -> loc, lib, dup (fun x -> x) unknw
-      | Paths.P.Special _ -> loc, lib, unknw in
-    List.fold_left add_dep ([],[],[])
-      (Deps.Forget.to_list u.dependencies) in
+        loc, libs pkg p.file s :: lib, unknw
+      | Paths.P.Unknown -> loc, lib, s :: unknw
+      | Paths.P.Special _ -> loc, lib,unknw in
+    Deps.fold add_dep u.dependencies ([],[],[]) in
 
   let open Schematic in
   let open Schema in
@@ -117,7 +113,7 @@ let signature filename writer ppf param {Unit.mli; _} =
 
 
 let dependencies ?filter sort (u:Unit.r) =
-  Pkg.Map.bindings u.dependencies
+  Deps.Forget.to_list u.dependencies
   |> List.map fst
   |> sort
   |> (match filter with
@@ -193,8 +189,7 @@ let local_dependencies sort unit =
   @@ List.filter
     (function {Pkg.source=Unknown; _ }
             | {Pkg.source=Special _ ; _ } -> false | _ -> true )
-  @@ List.map fst
-  @@ Deps.Forget.to_list unit.Unit.dependencies
+  @@ List.map fst @@ Deps.Forget.to_list unit.Unit.dependencies
 
 
 let dot _ _ ppf param {Unit.mli; _ } =

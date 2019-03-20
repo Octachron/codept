@@ -15,19 +15,17 @@ type param =
   }
 
 let preprocess_deps includes unit =
-  let replace l = function
-    | ({ Pkg.source = Unknown; file = [name] } as p , e ) ->
-      begin
-        (try Name.Map.find name includes with Not_found -> p)
-      , e end :: l
-    | { Pkg.source = Pkg _ ; _ }, _  -> l
-    | x -> x :: l
+  let replace p e s l = match p with
+    | { Pkg.source = Unknown; file = [name] } ->
+      let p = Option.default p (Name.Map.find_opt name includes) in
+      (p, e, s) :: l
+    | { Pkg.source = Pkg _ ; _ }  -> l
+    | p -> (p,e,s) :: l
 
   in
-  { unit with Unit.dependencies =
-                Deps.of_list
-                @@ List.fold_left replace []
-                @@ Pkg.Map.bindings unit.Unit.dependencies }
+  let dependencies =
+    Deps.of_list @@ Deps.fold replace unit.Unit.dependencies [] in
+  { unit with Unit.dependencies }
 
 let implicit_dep synonyms path =
   (* implicitely looks for interface/implementation files.
@@ -88,7 +86,7 @@ let tokenize_deps includes param input dep (unit,imore,dmore) =
     ::  tokens
       (
         List.sort compare
-        @@ List.rev_map (fun (x,_) -> dep x) @@ Common.local_dependencies unit
+        @@ List.rev_map dep @@ Common.local_dependencies unit
       )
   @ tokens dmore
 

@@ -40,9 +40,9 @@ let expand_dir dir =
 
 let local_dependencies unit =
   List.filter
-    (function {Pkg.source=Unknown; _ }, _
-            | {Pkg.source=Special _ ; _ }, _ -> false | _ -> true )
-  @@ Deps.Forget.to_list @@ unit.U.dependencies
+    (function {Pkg.source=Unknown; _ }
+            | {Pkg.source=Special _ ; _ } -> false | _ -> true )
+  @@ List.map fst @@ Deps.Forget.to_list @@ unit.U.dependencies
 
 let make_abs abs p =
   let open Paths.Pkg in
