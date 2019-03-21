@@ -112,8 +112,7 @@ module Branch(Param:Outliner.param) = struct
 
   let normalize set =
     set
-    |> Deps.Forget.to_list
-    |> List.map fst
+    |> Deps.pkgs
     |> List.sort compare
 
 
@@ -129,7 +128,7 @@ module Branch(Param:Outliner.param) = struct
   let (%) f g x = f (g x)
 
   let normalize_2 set =
-    let l = List.map fst @@ Deps.Forget.to_list set in
+    let l = Deps.pkgs set in
     let is_inner =
       function { Pth.source = Local; _ } -> true | _ -> false in
     let is_lib =

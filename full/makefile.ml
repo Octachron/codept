@@ -15,13 +15,12 @@ type param =
   }
 
 let preprocess_deps includes unit =
-  let replace p e s l = match p with
+  let replace ({Deps.pkg; _ } as dep) l = match pkg with
     | { Pkg.source = Unknown; file = [name] } ->
-      let p = Option.default p (Name.Map.find_opt name includes) in
-      (p, e, s) :: l
+      let pkg = Option.default pkg (Name.Map.find_opt name includes) in
+      {dep with pkg} :: l
     | { Pkg.source = Pkg _ ; _ }  -> l
-    | p -> (p,e,s) :: l
-
+    | _ -> dep :: l
   in
   let dependencies =
     Deps.of_list @@ Deps.fold replace unit.Unit.dependencies [] in

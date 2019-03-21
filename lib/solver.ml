@@ -223,9 +223,10 @@ let fault =
       | lower, Error _, upper, Error _ -> lower, Module.Sig.empty, upper
         (* something bad happened but we are already parsing
            problematic input *) in
-    let elts m = List.map fst @@ Deps.Forget.to_list m in
+    let elts m = Deps.paths m in
     let set m =
-      Deps.fold (fun _ _ x s -> Paths.S.Set.add x s) m Paths.S.Set.empty in
+      let add {Deps.path; _ } = Paths.S.Set.add path in
+      Deps.fold add m Paths.S.Set.empty in
     if elts upper = elts lower then
       Fault.handle policy Standard_faults.concordant_approximation
         unit.src
@@ -241,14 +242,14 @@ let fault =
 let expand_epsilon resolved unit =
   let module M = Namespaced.Map in
   let open Unit in
-  let add_epsilon_dep edge name e' p deps =
-    if e' = Deps.Edge.Epsilon then
-      Deps.update name edge p deps
+  let add_epsilon_dep edge0 {Deps.path;edge;pkg} deps =
+    if edge = Deps.Edge.Epsilon then
+      Deps.update path edge0 pkg deps
     else
       deps in
-  let expand_dep path edge mpaths deps =
-    let deps = Deps.update path edge mpaths deps in
-    match Paths.P.Map.find_opt path resolved with
+  let expand_dep {Deps.path;edge;pkg} deps =
+    let deps = Deps.update path edge pkg deps in
+    match Paths.P.Map.find_opt pkg resolved with
     | None -> deps
     | Some ancestor ->
       Deps.fold (add_epsilon_dep edge) ancestor.dependencies deps in

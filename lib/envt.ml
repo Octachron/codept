@@ -88,7 +88,7 @@ module Core = struct
       M.pp_mdict x.top pp_context x.current
 
   module D = struct
-    let path_record edge mp p = deps (Deps.make p edge mp)
+    let path_record edge path pkg = deps (Deps.make path edge pkg)
 
     let phantom_record name =
       path_record Edge.Normal [name] { P.source = Unknown; file = [name] }

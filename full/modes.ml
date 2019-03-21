@@ -39,14 +39,13 @@ let structured fmt _ _ ppf param units =
   let pp = let open Schematic in
     match fmt with Json -> Ext.json Schema.x | Sexp -> Ext.sexp Schema.x in
   let udeps (u:Unit.r) =
-    let add_dep (p:Paths.P.t) _ s (loc,lib,unknw)  =
+    let add_dep {Deps.path; pkg; _} (loc,lib,unknw)  =
       let local file path: Schema.local = {file;path} in
       let libs pkg file path = { Schema.lib = pkg; file = file; path } in
-      match p.source with
-      | Paths.P.Local -> local p.file s :: loc , lib, unknw
-      | Paths.P.Pkg pkg ->
-        loc, libs pkg p.file s :: lib, unknw
-      | Paths.P.Unknown -> loc, lib, s :: unknw
+      match pkg.source with
+      | Paths.P.Local -> local pkg.file path :: loc , lib, unknw
+      | Paths.P.Pkg pkg' -> loc, libs pkg' pkg.file path :: lib, unknw
+      | Paths.P.Unknown -> loc, lib, path :: unknw
       | Paths.P.Special _ -> loc, lib,unknw in
     Deps.fold add_dep u.dependencies ([],[],[]) in
 
@@ -113,8 +112,7 @@ let signature filename writer ppf param {Unit.mli; _} =
 
 
 let dependencies ?filter sort (u:Unit.r) =
-  Deps.Forget.to_list u.dependencies
-  |> List.map fst
+  Deps.pkgs u.dependencies
   |> sort
   |> (match filter with
       | Some f -> List.filter f
@@ -167,7 +165,7 @@ let modules ?filter _ _ =
 
 let pp_only_deps sort ?filter ppf u =
   let open Unit in
-  let elts = List.map fst @@ Deps.Forget.to_list u.dependencies in
+  let elts = Deps.pkgs u.dependencies in
   let elts = sort elts in
   let elts = match filter with
     | Some f -> List.filter f elts
@@ -189,7 +187,7 @@ let local_dependencies sort unit =
   @@ List.filter
     (function {Pkg.source=Unknown; _ }
             | {Pkg.source=Special _ ; _ } -> false | _ -> true )
-  @@ List.map fst @@ Deps.Forget.to_list unit.Unit.dependencies
+  @@ Deps.pkgs unit.Unit.dependencies
 
 
 let dot _ _ ppf param {Unit.mli; _ } =
@@ -216,7 +214,7 @@ let dot _ _ ppf param {Unit.mli; _ } =
 
 let local_deps x =
   let filter = function { Pkg.source = Local; _ } -> true | _ -> false in
-  x.Unit.dependencies |> Deps.Forget.to_set |> Pkg.Set.filter filter
+  x.Unit.dependencies |> Deps.pkg_set |> Pkg.Set.filter filter
 
 
 let sort _ _ ppf _param (units: _ Unit.pair) =

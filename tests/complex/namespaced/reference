@@ -8,8 +8,8 @@
      "dependencies" :
        {
        "local" :
-         [[["Main"], ["namespaced", "main.ml"]],
-         [["NAME__b"], ["namespaced", "NAME__b.ml"]]]
+         [[["NAME__b"], ["namespaced", "NAME__b.ml"]],
+         [["Main"], ["namespaced", "main.ml"]]]
        }
      },
     {
@@ -17,8 +17,8 @@
     "dependencies" :
       {
       "local" :
-        [[["Main"], ["namespaced", "main.ml"]],
-        [["NAME__c"], ["namespaced", "NAME__c.ml"]]]
+        [[["NAME__c"], ["namespaced", "NAME__c.ml"]],
+        [["Main"], ["namespaced", "main.ml"]]]
       }
     },
     {
