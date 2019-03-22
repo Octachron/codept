@@ -88,16 +88,18 @@ module Core = struct
       M.pp_mdict x.top pp_context x.current
 
   module D = struct
-    let path_record edge path pkg = deps (Deps.make path edge pkg)
+    let path_record ~path ?aliases ~edge pkg  =
+      deps (Deps.make ~path ?aliases ~edge pkg )
 
-    let phantom_record name =
-      path_record Edge.Normal [name] { P.source = Unknown; file = [name] }
+    let phantom_record ?aliases name =
+      path_record ~path:[name] ?aliases ~edge:Edge.Normal
+        { P.source = Unknown; file = [name] }
 
-    let record edge root (m:Module.m) =
+    let record edge ?aliases root (m:Module.m) =
       match m.origin with
-      | M.Origin.Unit p -> path_record edge p.path p.source
+      | M.Origin.Unit p -> path_record ~path:p.path ?aliases ~edge p.source
       | Phantom (phantom_root, b) when root && not phantom_root ->
-        phantom_record m.name <!> [ambiguity m.name b]
+        phantom_record ?aliases m.name <!> [ambiguity m.name b]
       | _ -> return ()
   end
 
@@ -180,7 +182,7 @@ module Core = struct
   let approx_submodule o ctx lvl =
     o.approx_submodule && (ctx = Submodule || lvl=M.Module_type)
 
-  let rec find option ctx current env path =
+  let rec find option aliases ctx current env path =
     debug "looking for %a" Paths.S.pp path;
     debug "in %a, sub-approx: %B" pp_context env.current option.approx_submodule;
     match path with
@@ -193,33 +195,34 @@ module Core = struct
           return (M.md @@ M.mockup @@ last path) <!> [nosubmodule current lvl a]
         | None -> request lvl a env
         | Some _ as x -> x in
-      r >>? find_elt option ctx env (a::current) q
-  and find_elt option ctx env current q = function
+      r >>? find_elt option aliases ctx env (a::current) q
+  and find_elt option aliases ctx env current q = function
     | Alias {path; phantom; name; weak = false } ->
       debug "alias to %a" Namespaced.pp path;
+      let aliases = Paths.S.Set.add (List.rev current) aliases in
       let m = match phantom with
         | Some b when is_top ctx -> D.phantom_record name <!> [ambiguity name b]
         | None | Some _ -> return () in
       (* aliases link only to compilation units *)
-      m >> find option Any current (top env) (Namespaced.flatten path @ q)
+      m >> find option aliases Any [] (top env) (Namespaced.flatten path @ q)
     | Alias { weak = true; _ } when ctx = Concrete -> None
     | Alias {path; weak = true; _ } ->
-      find option Concrete [] (top env) (Namespaced.flatten path @ q)
+      find option aliases Concrete [] (top env) (Namespaced.flatten path @ q)
     | M.M m ->
       debug "found module %s" m.name;
-      D.record option.edge (is_top ctx) m >>
+      D.record option.edge ~aliases (is_top ctx) m >>
       if q = [] then return (M m)
       else
-        find option Submodule current (restrict env @@ Signature m.signature) q
+        find option aliases Submodule current (restrict env @@ Signature m.signature) q
     | Namespace {name;modules} ->
       (* let faults = record edge root env name in*)
       if q = [] then return (Namespace {name;modules})
-      else find option ctx current (restrict env @@ In_namespace modules) q
+      else find option aliases ctx current (restrict env @@ In_namespace modules) q
 
   let find sub ?edge level path envt =
     let edge = Option.default Edge.Normal edge in
     let option = {approx_submodule=sub; edge; level } in
-    match find option Any [] envt path with
+    match find option Paths.S.Set.empty Any [] envt path with
     | None -> raise Not_found
     | Some x -> x
 

@@ -26,6 +26,10 @@ struct
   module Set = struct
     include Set.Make(Core)
     let pp ppf s = Pp.(clist Core.pp) ppf (elements s)
+    let sch = let open Schematic in
+      custom ["Paths"; "Simple"; "Sets"] (Array sch)
+        elements
+        (List.fold_left (fun s x -> add x s) empty)
   end
   module Map = struct
     include (Map.Make(Core))

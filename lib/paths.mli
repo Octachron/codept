@@ -9,6 +9,7 @@ module Simple :
     module Set : sig
       include Set.S with type elt = t
       val pp: Format.formatter -> t -> unit
+      val sch: t Schematic.t
       end
     module Map : sig
       include Map.S with type key = t

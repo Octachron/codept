@@ -9,7 +9,7 @@ module Edge: sig
   val sch: t Schematic.t
 end
 
-type dep = { path: Paths.S.t; edge:Edge.t; pkg:Paths.Pkg.t }
+type dep ={ path: Paths.S.t; edge:Edge.t; pkg:Paths.Pkg.t; aliases: Paths.S.set }
 type t
 val empty: t
 val sch: t Schematic.t
@@ -17,8 +17,10 @@ val sch: t Schematic.t
 
 (** Add a new path to a dependency map or
     promote the type of an existing path to {!Edge.Epsilon} *)
-val update: Paths.S.t -> Edge.t -> Paths.P.t -> t -> t
-val make: Paths.S.t -> Edge.t -> Paths.P.t -> t
+val update:
+  path:Paths.S.t -> ?aliases:Paths.S.set -> edge:Edge.t -> Paths.P.t -> t -> t
+val make:
+  path:Paths.S.t -> ?aliases:Paths.S.set -> edge:Edge.t -> Paths.P.t -> t
 
 val merge: t -> t -> t
 val (+) : t -> t -> t

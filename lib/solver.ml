@@ -242,13 +242,13 @@ let fault =
 let expand_epsilon resolved unit =
   let module M = Namespaced.Map in
   let open Unit in
-  let add_epsilon_dep edge0 {Deps.path;edge;pkg} deps =
+  let add_epsilon_dep edge0 {Deps.path;edge;pkg;_} deps =
     if edge = Deps.Edge.Epsilon then
-      Deps.update path edge0 pkg deps
+      Deps.update ~path ~edge:edge0 pkg deps
     else
       deps in
-  let expand_dep {Deps.path;edge;pkg} deps =
-    let deps = Deps.update path edge pkg deps in
+  let expand_dep {Deps.path;edge;pkg;_} deps =
+    let deps = Deps.update ~path ~edge pkg deps in
     match Paths.P.Map.find_opt pkg resolved with
     | None -> deps
     | Some ancestor ->
