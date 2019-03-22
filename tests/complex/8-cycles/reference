@@ -17,39 +17,15 @@
 "dependencies" :
   [{
    "file" : "8-cycles/a.ml",
-   "dependencies" :
-     {
-     "local" : [[["H"], ["8-cycles", "h.ml"]], [["B"], ["8-cycles", "b.ml"]]]
-     }
+   "local" : [[["H"], ["8-cycles", "h.ml"]], [["B"], ["8-cycles", "b.ml"]]]
    },
-  {
-  "file" : "8-cycles/b.ml",
-  "dependencies" : { "local" : [[["C"], ["8-cycles", "c.ml"]]] }
-  },
-  {
-  "file" : "8-cycles/c.ml",
-  "dependencies" : { "local" : [[["D"], ["8-cycles", "d.ml"]]] }
-  },
-  {
-  "file" : "8-cycles/d.ml",
-  "dependencies" : { "local" : [[["A"], ["8-cycles", "a.ml"]]] }
-  },
-  {
-  "file" : "8-cycles/e.ml",
-  "dependencies" : { "local" : [[["A"], ["8-cycles", "a.ml"]]] }
-  },
-  {
-  "file" : "8-cycles/f.ml",
-  "dependencies" : { "local" : [[["E"], ["8-cycles", "e.ml"]]] }
-  },
-  {
-  "file" : "8-cycles/g.ml",
-  "dependencies" : { "local" : [[["F"], ["8-cycles", "f.ml"]]] }
-  },
-  {
-  "file" : "8-cycles/h.ml",
-  "dependencies" : { "local" : [[["G"], ["8-cycles", "g.ml"]]] }
-  }],
+  { "file" : "8-cycles/b.ml", "local" : [[["C"], ["8-cycles", "c.ml"]]] },
+  { "file" : "8-cycles/c.ml", "local" : [[["D"], ["8-cycles", "d.ml"]]] },
+  { "file" : "8-cycles/d.ml", "local" : [[["A"], ["8-cycles", "a.ml"]]] },
+  { "file" : "8-cycles/e.ml", "local" : [[["A"], ["8-cycles", "a.ml"]]] },
+  { "file" : "8-cycles/f.ml", "local" : [[["E"], ["8-cycles", "e.ml"]]] },
+  { "file" : "8-cycles/g.ml", "local" : [[["F"], ["8-cycles", "f.ml"]]] },
+  { "file" : "8-cycles/h.ml", "local" : [[["G"], ["8-cycles", "g.ml"]]] }],
 "atlas" :
   [{ "module" : ["H"], "ml" : "8-cycles/h.ml" },
   { "module" : ["G"], "ml" : "8-cycles/g.ml" },

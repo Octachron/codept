@@ -7,9 +7,6 @@ a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/record.ml",
-   "dependencies" : { "unknown" : [["Ext"], ["E3"], ["E2"]] }
-   }],
+  [{ "file" : "cases/record.ml", "unknown" : [["Ext"], ["E3"], ["E2"]] }],
 "atlas" : [{ "module" : ["Record"], "ml" : "cases/record.ml" }]
 }

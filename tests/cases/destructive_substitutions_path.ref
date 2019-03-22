@@ -7,7 +7,7 @@ a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
 "dependencies" :
   [{
    "file" : "cases/destructive_substitutions_path.ml",
-   "dependencies" : { "unknown" : [["Ext2"], ["Ext"]] }
+   "unknown" : [["Ext2"], ["Ext"]]
    }],
 "atlas" :
   [{

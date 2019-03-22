@@ -2,7 +2,6 @@
 a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"dependencies" :
-  [{ "file" : "cases/with.ml", "dependencies" : { "unknown" : [["Ext"]] } }],
+"dependencies" : [{ "file" : "cases/with.ml", "unknown" : [["Ext"]] }],
 "atlas" : [{ "module" : ["With"], "ml" : "cases/with.ml" }]
 }

@@ -3,59 +3,43 @@
 "dependencies" :
   [{
    "file" : "siblings/L/L/a.ml",
-   "dependencies" :
-     {
-     "local" :
-       [[["L", "R", "A"], ["siblings", "L", "R", "a.ml"]],
-       [["L", "L", "B"], ["siblings", "L", "L", "b.ml"]]]
-     }
+   "local" :
+     [[["L", "R", "A"], ["siblings", "L", "R", "a.ml"]],
+     [["L", "L", "B"], ["siblings", "L", "L", "b.ml"]]]
    },
   {
   "file" : "siblings/L/L/b.ml",
-  "dependencies" :
-    { "local" : [[["L", "R", "B"], ["siblings", "L", "R", "b.ml"]]] }
+  "local" : [[["L", "R", "B"], ["siblings", "L", "R", "b.ml"]]]
   },
   {
   "file" : "siblings/L/R/a.ml",
-  "dependencies" :
-    { "local" : [[["L", "R", "B"], ["siblings", "L", "R", "b.ml"]]] }
-  }, { "file" : "siblings/L/R/b.ml", "dependencies" : {  } },
+  "local" : [[["L", "R", "B"], ["siblings", "L", "R", "b.ml"]]]
+  }, { "file" : "siblings/L/R/b.ml" },
   {
   "file" : "siblings/L/a.ml",
-  "dependencies" :
-    {
-    "local" :
-      [[["L", "R", "A"], ["siblings", "L", "R", "a.ml"]],
-      [["L", "L", "A"], ["siblings", "L", "L", "a.ml"]]]
-    }
+  "local" :
+    [[["L", "R", "A"], ["siblings", "L", "R", "a.ml"]],
+    [["L", "L", "A"], ["siblings", "L", "L", "a.ml"]]]
   },
   {
   "file" : "siblings/R/L/a.ml",
-  "dependencies" :
-    { "local" : [[["R", "L", "B"], ["siblings", "R", "L", "b.ml"]]] }
-  }, { "file" : "siblings/R/L/b.ml", "dependencies" : {  } },
+  "local" : [[["R", "L", "B"], ["siblings", "R", "L", "b.ml"]]]
+  }, { "file" : "siblings/R/L/b.ml" },
   {
   "file" : "siblings/R/R/a.ml",
-  "dependencies" :
-    {
-    "local" :
-      [[["R", "R", "B"], ["siblings", "R", "R", "b.ml"]],
-      [["R", "L", "A"], ["siblings", "R", "L", "a.ml"]]]
-    }
+  "local" :
+    [[["R", "R", "B"], ["siblings", "R", "R", "b.ml"]],
+    [["R", "L", "A"], ["siblings", "R", "L", "a.ml"]]]
   },
   {
   "file" : "siblings/R/R/b.ml",
-  "dependencies" :
-    { "local" : [[["R", "L", "B"], ["siblings", "R", "L", "b.ml"]]] }
+  "local" : [[["R", "L", "B"], ["siblings", "R", "L", "b.ml"]]]
   },
   {
   "file" : "siblings/a.ml",
-  "dependencies" :
-    {
-    "local" :
-      [[["R", "R", "B"], ["siblings", "R", "R", "b.ml"]],
-      [["L", "L", "A"], ["siblings", "L", "L", "a.ml"]]]
-    }
+  "local" :
+    [[["R", "R", "B"], ["siblings", "R", "R", "b.ml"]],
+    [["L", "L", "A"], ["siblings", "L", "L", "a.ml"]]]
   }],
 "atlas" :
   [{ "module" : ["A"], "ml" : "siblings/a.ml" },

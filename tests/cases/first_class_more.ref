@@ -1,7 +1,6 @@
 {
 "version" : [0, 10, 0],
-"dependencies" :
-  [{ "file" : "cases/first_class_more.ml", "dependencies" : {  } }],
+"dependencies" : [{ "file" : "cases/first_class_more.ml" }],
 "atlas" :
   [{ "module" : ["First_class_more"], "ml" : "cases/first_class_more.ml" }]
 }

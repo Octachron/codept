@@ -5,10 +5,7 @@ a non-resolvable module, [1mA[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/even_more_functor.ml",
-   "dependencies" : { "unknown" : [["E"], ["A"]] }
-   }],
+  [{ "file" : "cases/even_more_functor.ml", "unknown" : [["E"], ["A"]] }],
 "atlas" :
   [{ "module" : ["Even_more_functor"], "ml" : "cases/even_more_functor.ml" }]
 }

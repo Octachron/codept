@@ -5,10 +5,7 @@ a non-resolvable module type, [1mNot_self_cycle[0m, has been replaced by an ap
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/not_self_cycle.ml",
-   "dependencies" : { "unknown" : [["E"]] }
-   }],
+  [{ "file" : "cases/not_self_cycle.ml", "unknown" : [["E"]] }],
 "atlas" :
   [{ "module" : ["Not_self_cycle"], "ml" : "cases/not_self_cycle.ml" }]
 }

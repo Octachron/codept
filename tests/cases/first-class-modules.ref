@@ -9,10 +9,7 @@ first-class module was included while its signature was unknown.
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/first-class-modules.ml",
-   "dependencies" : { "unknown" : [["Mark"], ["B"]] }
-   }],
+  [{ "file" : "cases/first-class-modules.ml", "unknown" : [["Mark"], ["B"]] }],
 "atlas" :
   [{
    "module" : ["First-class-modules"],

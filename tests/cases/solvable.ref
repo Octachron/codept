@@ -2,10 +2,6 @@
 a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"dependencies" :
-  [{
-   "file" : "cases/solvable.ml",
-   "dependencies" : { "unknown" : [["Extern"]] }
-   }],
+"dependencies" : [{ "file" : "cases/solvable.ml", "unknown" : [["Extern"]] }],
 "atlas" : [{ "module" : ["Solvable"], "ml" : "cases/solvable.ml" }]
 }

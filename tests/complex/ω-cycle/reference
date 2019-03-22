@@ -11,46 +11,16 @@
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "ω-cycle/a.ml",
-   "dependencies" : { "local" : [[["B"], ["ω-cycle", "b.ml"]]] }
-   },
-  {
-  "file" : "ω-cycle/b.ml",
-  "dependencies" : { "local" : [[["K"], ["ω-cycle", "k.ml"]]] }
-  },
-  {
-  "file" : "ω-cycle/c1.ml",
-  "dependencies" : { "local" : [[["C2"], ["ω-cycle", "c2.ml"]]] }
-  },
-  {
-  "file" : "ω-cycle/c2.ml",
-  "dependencies" : { "local" : [[["C3"], ["ω-cycle", "c3.ml"]]] }
-  },
-  {
-  "file" : "ω-cycle/c3.ml",
-  "dependencies" : { "local" : [[["C4"], ["ω-cycle", "c4.ml"]]] }
-  },
-  {
-  "file" : "ω-cycle/c4.ml",
-  "dependencies" : { "local" : [[["C5"], ["ω-cycle", "c5.ml"]]] }
-  },
-  {
-  "file" : "ω-cycle/c5.ml",
-  "dependencies" : { "local" : [[["C1"], ["ω-cycle", "c1.ml"]]] }
-  },
-  {
-  "file" : "ω-cycle/k.ml",
-  "dependencies" : { "local" : [[["L"], ["ω-cycle", "l.ml"]]] }
-  },
-  {
-  "file" : "ω-cycle/l.ml",
-  "dependencies" : { "local" : [[["C2"], ["ω-cycle", "c2.ml"]]] }
-  },
-  {
-  "file" : "ω-cycle/w.ml",
-  "dependencies" : { "local" : [[["K"], ["ω-cycle", "k.ml"]]] }
-  }],
+  [{ "file" : "ω-cycle/a.ml", "local" : [[["B"], ["ω-cycle", "b.ml"]]] },
+  { "file" : "ω-cycle/b.ml", "local" : [[["K"], ["ω-cycle", "k.ml"]]] },
+  { "file" : "ω-cycle/c1.ml", "local" : [[["C2"], ["ω-cycle", "c2.ml"]]] },
+  { "file" : "ω-cycle/c2.ml", "local" : [[["C3"], ["ω-cycle", "c3.ml"]]] },
+  { "file" : "ω-cycle/c3.ml", "local" : [[["C4"], ["ω-cycle", "c4.ml"]]] },
+  { "file" : "ω-cycle/c4.ml", "local" : [[["C5"], ["ω-cycle", "c5.ml"]]] },
+  { "file" : "ω-cycle/c5.ml", "local" : [[["C1"], ["ω-cycle", "c1.ml"]]] },
+  { "file" : "ω-cycle/k.ml", "local" : [[["L"], ["ω-cycle", "l.ml"]]] },
+  { "file" : "ω-cycle/l.ml", "local" : [[["C2"], ["ω-cycle", "c2.ml"]]] },
+  { "file" : "ω-cycle/w.ml", "local" : [[["K"], ["ω-cycle", "k.ml"]]] }],
 "atlas" :
   [{ "module" : ["W"], "ml" : "ω-cycle/w.ml" },
   { "module" : ["L"], "ml" : "ω-cycle/l.ml" },

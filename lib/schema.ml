@@ -57,7 +57,7 @@ type p = Paths.S.t
 type local = { path: p; file:p}
 type lib = { path: p; lib: p; file:p}
 type unknown = p
-type dep = { local: local list; lib: lib list; unknown: unknown list }
+type unit = { file: string; local: local list; lib: lib list; unknown: unknown list }
 
 let local =
   let open Tuple in
@@ -78,8 +78,11 @@ let lib =
     (fun (r: lib) -> [r.path;r.lib;r.file])
     (fun [path;lib;file] -> {path;lib;file})
 
-let raw_dep =
+module File = Label(struct let l = "file" end)
+
+let raw_unit =
   Obj [
+    Req, File.l, String <?> "File name";
     Opt, Local.l, Array local ;
     Opt, Lib.l, Array lib;
     Opt, Unknown.l,
@@ -88,40 +91,31 @@ let raw_dep =
   <?> "Dependencies for a unit file are divided in three groups: \
        local dependencies, library dependencies, and unknown dependencies."
 
-let unit_deps =
+let unit =
   let open Record in
-  let ($=) x l = if l = L.[] then x $=? None else x $=? Some l in
-  custom ["deps"; "unit"; "deps"] raw_dep
+  let ($=$) x l = if l = L.[] then x $=? None else x $=? Some l in
+  custom ["deps"; "unit"; "deps"] raw_unit
     (fun d ->
-       [Local.l $= d.local; Lib.l $= d.lib; Unknown.l $= d.unknown])
-    Record.( fun [_,local;_,lib;_,unknown] ->
-        let local, lib, unknown = Option.( local >< [], lib >< [], unknown >< [] ) in
-        {local;lib;unknown} )
+       [ File.l $= d.file;
+         Local.l $=$ d.local;
+         Lib.l $=$ d.lib;
+         Unknown.l $=$ d.unknown]
+    )
+    Record.( fun [_, file; _,local;_,lib;_,unknown] ->
+        let local, lib, unknown =
+          Option.( local >< [], lib >< [], unknown >< [] ) in
+        {file; local;lib;unknown} )
 
-module File = Label(struct let l = "file" end)
 
 
 module Dependencies = Label(struct let l = "dependencies" end)
 module Atlas = Label(struct let l = "atlas" end)
 
-type item = { file: string; dependencies: dep }
-let raw_item =
-  Obj [
-    Req, File.l, String <?> "File name";
-    Req, Dependencies.l, unit_deps
-  ]
-  <?> "Dependencies for a file"
 
-
-let item = let open Record in
-  custom ["deps"; "unit"; "item"] raw_item
-    (fun {file;dependencies} -> [File.l $= file; Dependencies.l $= dependencies] )
-    (fun [_,file;_,dependencies] -> {file;dependencies} )
-
-type deps = { dependencies: item list; atlas: unit_association list }
+type deps = { dependencies: unit list; atlas: unit_association list }
 
 let deps = Obj [
-    Req, Dependencies.l, Array item <?> "Infered dependencies" ;
+    Req, Dependencies.l, Array unit <?> "Infered dependencies" ;
     Req, Atlas.l,
     Array unit_association <?> "Mapping between toplevel modules and files";
   ]

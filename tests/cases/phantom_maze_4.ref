@@ -7,10 +7,7 @@ ambiguity.
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/phantom_maze_4.ml",
-   "dependencies" : { "unknown" : [["Extern"]] }
-   }],
+  [{ "file" : "cases/phantom_maze_4.ml", "unknown" : [["Extern"]] }],
 "atlas" :
   [{ "module" : ["Phantom_maze_4"], "ml" : "cases/phantom_maze_4.ml" }]
 }

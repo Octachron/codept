@@ -8,13 +8,10 @@ dependencies might be inferred due to this ambiguity.
 "dependencies" :
   [{
    "file" : "network/a.ml",
-   "dependencies" :
-     { "local" : [[["B"], ["network", "b.ml"]]], "unknown" : [["Extern"]] }
-   }, { "file" : "network/b.ml", "dependencies" : {  } },
-  {
-  "file" : "network/c.ml",
-  "dependencies" : { "local" : [[["A"], ["network", "a.ml"]]] }
-  }],
+   "local" : [[["B"], ["network", "b.ml"]]],
+   "unknown" : [["Extern"]]
+   }, { "file" : "network/b.ml" },
+  { "file" : "network/c.ml", "local" : [[["A"], ["network", "a.ml"]]] }],
 "atlas" :
   [{ "module" : ["C"], "ml" : "network/c.ml" },
   { "module" : ["B"], "ml" : "network/b.ml" },

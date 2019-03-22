@@ -3,18 +3,14 @@
 "dependencies" :
   [{
    "file" : "aliases/amap.ml",
-   "dependencies" : { "local" : [[["Long__B"], ["aliases", "long__B.ml"]]] }
-   }, { "file" : "aliases/long__A.ml", "dependencies" : {  } },
-  { "file" : "aliases/long__B.ml", "dependencies" : {  } },
-  { "file" : "aliases/long__C.ml", "dependencies" : {  } },
+   "local" : [[["Long__B"], ["aliases", "long__B.ml"]]]
+   }, { "file" : "aliases/long__A.ml" }, { "file" : "aliases/long__B.ml" },
+  { "file" : "aliases/long__C.ml" },
   {
   "file" : "aliases/user.ml",
-  "dependencies" :
-    {
-    "local" :
-      [[["Long__A"], ["aliases", "long__A.ml"]],
-      [["Amap"], ["aliases", "amap.ml"]]]
-    }
+  "local" :
+    [[["Long__A"], ["aliases", "long__A.ml"]],
+    [["Amap"], ["aliases", "amap.ml"]]]
   }],
 "atlas" :
   [{ "module" : ["User"], "ml" : "aliases/user.ml" },

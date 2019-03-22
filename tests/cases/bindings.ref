@@ -1,5 +1,5 @@
 {
 "version" : [0, 10, 0],
-"dependencies" : [{ "file" : "cases/bindings.ml", "dependencies" : {  } }],
+"dependencies" : [{ "file" : "cases/bindings.ml" }],
 "atlas" : [{ "module" : ["Bindings"], "ml" : "cases/bindings.ml" }]
 }

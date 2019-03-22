@@ -1,7 +1,6 @@
 {
 "version" : [0, 10, 0],
-"dependencies" :
-  [{ "file" : "cases/functor_with_include.ml", "dependencies" : {  } }],
+"dependencies" : [{ "file" : "cases/functor_with_include.ml" }],
 "atlas" :
   [{
    "module" : ["Functor_with_include"],

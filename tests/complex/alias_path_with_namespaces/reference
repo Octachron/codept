@@ -5,21 +5,11 @@ a non-resolvable module, [1mC[0m, has been replaced by an approximation
 "dependencies" :
   [{
    "file" : "alias_path_with_namespaces/inner/a.ml",
-   "dependencies" :
-     {
-     "local" :
-       [[["Inner", "B"], ["alias_path_with_namespaces", "inner", "b.mli"]]],
-     "unknown" : [["C"]]
-     }
-   },
-  {
-  "file" : "alias_path_with_namespaces/inner/a.mli",
-  "dependencies" : {  }
-  },
-  {
-  "file" : "alias_path_with_namespaces/inner/b.mli",
-  "dependencies" : {  }
-  }],
+   "local" :
+     [[["Inner", "B"], ["alias_path_with_namespaces", "inner", "b.mli"]]],
+   "unknown" : [["C"]]
+   }, { "file" : "alias_path_with_namespaces/inner/a.mli" },
+  { "file" : "alias_path_with_namespaces/inner/b.mli" }],
 "atlas" :
   [{
    "module" : ["Inner", "B"],

@@ -18,8 +18,7 @@ Ext3; Ext4; Ext5}, maybe: {Ext}
 "dependencies" :
   [{
    "file" : "cases/broken.ml",
-   "dependencies" :
-     { "unknown" : [["Ext5"], ["Ext4"], ["Ext3"], ["Ext2"], ["Ext"]] }
+   "unknown" : [["Ext5"], ["Ext4"], ["Ext3"], ["Ext2"], ["Ext"]]
    }],
 "atlas" : [{ "module" : ["Broken"], "ml" : "cases/broken.ml" }]
 }

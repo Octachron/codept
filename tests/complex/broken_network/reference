@@ -14,22 +14,12 @@ Computed dependencies: at least {}, maybe: {B}
 "dependencies" :
   [{
    "file" : "broken_network/a.ml",
-   "dependencies" :
-     {
-     "local" :
-       [[["C"], ["broken_network", "c.ml"]],
-       [["Broken"], ["broken_network", "broken.ml"]]],
-     "unknown" : [["B"]]
-     }
-   },
-  {
-  "file" : "broken_network/broken.ml",
-  "dependencies" : { "unknown" : [["B"]] }
-  },
-  {
-  "file" : "broken_network/c.ml",
-  "dependencies" : { "unknown" : [["Extern"]] }
-  }],
+   "local" :
+     [[["C"], ["broken_network", "c.ml"]],
+     [["Broken"], ["broken_network", "broken.ml"]]],
+   "unknown" : [["B"]]
+   }, { "file" : "broken_network/broken.ml", "unknown" : [["B"]] },
+  { "file" : "broken_network/c.ml", "unknown" : [["Extern"]] }],
 "atlas" :
   [{ "module" : ["C"], "ml" : "broken_network/c.ml" },
   { "module" : ["Broken"], "ml" : "broken_network/broken.ml" },

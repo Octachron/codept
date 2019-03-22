@@ -8,17 +8,11 @@ dependencies might be inferred due to this ambiguity.
 "dependencies" :
   [{
    "file" : "collision/a.ml",
-   "dependencies" :
-     { "local" : [[["B"], ["collision", "b.ml"]]], "unknown" : [["Ext"]] }
-   }, { "file" : "collision/b.ml", "dependencies" : {  } },
-  {
-  "file" : "collision/c.ml",
-  "dependencies" : { "local" : [[["B"], ["collision", "b.ml"]]] }
-  },
-  {
-  "file" : "collision/d.ml",
-  "dependencies" : { "local" : [[["B"], ["collision", "b.ml"]]] }
-  }],
+   "local" : [[["B"], ["collision", "b.ml"]]],
+   "unknown" : [["Ext"]]
+   }, { "file" : "collision/b.ml" },
+  { "file" : "collision/c.ml", "local" : [[["B"], ["collision", "b.ml"]]] },
+  { "file" : "collision/d.ml", "local" : [[["B"], ["collision", "b.ml"]]] }],
 "atlas" :
   [{ "module" : ["D"], "ml" : "collision/d.ml" },
   { "module" : ["C"], "ml" : "collision/c.ml" },

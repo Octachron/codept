@@ -1,5 +1,5 @@
 {
 "version" : [0, 10, 0],
-"dependencies" : [{ "file" : "cases/let_open.ml", "dependencies" : {  } }],
+"dependencies" : [{ "file" : "cases/let_open.ml" }],
 "atlas" : [{ "module" : ["Let_open"], "ml" : "cases/let_open.ml" }]
 }

@@ -8,32 +8,26 @@ dependencies might be inferred due to this ambiguity.
 "dependencies" :
   [{
    "file" : "any_m/a/m.ml",
-   "dependencies" : { "local" : [[["B", "M"], ["any_m", "b", "m.ml"]]] }
+   "local" : [[["B", "M"], ["any_m", "b", "m.ml"]]]
    },
   {
   "file" : "any_m/b/m.ml",
-  "dependencies" :
-    {
-    "local" :
-      [[["E", "M"], ["any_m", "e", "m.ml"]],
-      [["D", "M"], ["any_m", "d", "m.ml"]]]
-    }
+  "local" :
+    [[["E", "M"], ["any_m", "e", "m.ml"]],
+    [["D", "M"], ["any_m", "d", "m.ml"]]]
   },
   {
   "file" : "any_m/c/m.ml",
-  "dependencies" :
-    {
-    "local" : [[["D", "M"], ["any_m", "d", "m.ml"]]],
-    "unknown" : [["Ext"]]
-    }
-  }, { "file" : "any_m/d/m.ml", "dependencies" : {  } },
+  "local" : [[["D", "M"], ["any_m", "d", "m.ml"]]],
+  "unknown" : [["Ext"]]
+  }, { "file" : "any_m/d/m.ml" },
   {
   "file" : "any_m/e/m.ml",
-  "dependencies" : { "local" : [[["D", "M"], ["any_m", "d", "m.ml"]]] }
+  "local" : [[["D", "M"], ["any_m", "d", "m.ml"]]]
   },
   {
   "file" : "any_m/f/m.ml",
-  "dependencies" : { "local" : [[["A", "M"], ["any_m", "a", "m.ml"]]] }
+  "local" : [[["A", "M"], ["any_m", "a", "m.ml"]]]
   }],
 "atlas" :
   [{ "module" : ["F", "M"], "ml" : "any_m/f/m.ml" },

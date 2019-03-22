@@ -4,7 +4,6 @@ first-class module [1mM[0m was opened while its signature was unknown.
 a non-resolvable module, [1mM5[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"dependencies" :
-  [{ "file" : "cases/riddle.ml", "dependencies" : { "unknown" : [["M5"]] } }],
+"dependencies" : [{ "file" : "cases/riddle.ml", "unknown" : [["M5"]] }],
 "atlas" : [{ "module" : ["Riddle"], "ml" : "cases/riddle.ml" }]
 }

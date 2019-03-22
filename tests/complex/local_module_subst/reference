@@ -7,17 +7,11 @@ Computed dependencies: at least {}, maybe: {Local}
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "local_module_subst/a.mli",
-   "dependencies" : { "unknown" : [["Local"]] }
-   },
+  [{ "file" : "local_module_subst/a.mli", "unknown" : [["Local"]] },
   {
   "file" : "local_module_subst/b.mli",
-  "dependencies" :
-    {
-    "local" : [[["A"], ["local_module_subst", "a.mli"]]],
-    "unknown" : [["Local"]]
-    }
+  "local" : [[["A"], ["local_module_subst", "a.mli"]]],
+  "unknown" : [["Local"]]
   }],
 "atlas" :
   [{ "module" : ["B"], "mli" : "local_module_subst/b.mli" },

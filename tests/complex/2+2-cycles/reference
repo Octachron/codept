@@ -9,12 +9,9 @@
 "dependencies" :
   [{
    "file" : "2+2-cycles/c.ml",
-   "dependencies" : { "local" : [[["D"], ["2+2-cycles", "d.ml"]]] }
+   "local" : [[["D"], ["2+2-cycles", "d.ml"]]]
    },
-  {
-  "file" : "2+2-cycles/d.ml",
-  "dependencies" : { "local" : [[["C"], ["2+2-cycles", "c.ml"]]] }
-  }],
+  { "file" : "2+2-cycles/d.ml", "local" : [[["C"], ["2+2-cycles", "c.ml"]]] }],
 "atlas" :
   [{ "module" : ["D"], "ml" : "2+2-cycles/d.ml" },
   { "module" : ["C"], "ml" : "2+2-cycles/c.ml" }]

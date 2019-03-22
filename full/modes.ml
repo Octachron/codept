@@ -69,9 +69,7 @@ let structured fmt _ _ ppf param units =
     List.fold_left(fun l x -> assoc x @ l)[](Paths.S.Map.bindings groups) in
   let dep (u:Unit.r) =
     let local, lib, unknown =  udeps u in
-    let all_deps =
-      { local; lib; unknown } in
-    { file = ufile u; dependencies = all_deps } in
+    { file = ufile u; local; lib; unknown } in
   let dependencies = List.map dep units.ml @ List.map dep units.mli in
   Pp.fp ppf "%a@." pp {atlas;dependencies}
 

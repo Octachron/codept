@@ -1,5 +1,5 @@
 {
 "version" : [0, 10, 0],
-"dependencies" : [{ "file" : "cases/include.ml", "dependencies" : {  } }],
+"dependencies" : [{ "file" : "cases/include.ml" }],
 "atlas" : [{ "module" : ["Include"], "ml" : "cases/include.ml" }]
 }

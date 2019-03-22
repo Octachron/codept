@@ -18,8 +18,7 @@ Ext3; Ext4}, maybe: {Inner; M}
 "dependencies" :
   [{
    "file" : "cases/option_monad.ml",
-   "dependencies" :
-     { "unknown" : [["M"], ["Inner"], ["Ext4"], ["Ext3"], ["Ext"]] }
+   "unknown" : [["M"], ["Inner"], ["Ext4"], ["Ext3"], ["Ext"]]
    }],
 "atlas" : [{ "module" : ["Option_monad"], "ml" : "cases/option_monad.ml" }]
 }

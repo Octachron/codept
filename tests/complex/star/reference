@@ -1,403 +1,107 @@
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{ "file" : "star/generator.ml", "dependencies" : {  } },
-  {
-  "file" : "star/m001.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m002.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m003.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m004.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m005.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m006.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m007.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m008.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m009.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m010.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m011.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m012.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m013.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m014.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m015.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m016.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m017.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m018.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m019.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m020.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m021.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m022.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m023.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m024.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m025.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m026.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m027.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m028.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m029.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m030.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m031.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m032.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m033.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m034.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m035.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m036.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m037.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m038.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m039.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m040.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m041.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m042.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m043.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m044.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m045.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m046.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m047.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m048.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m049.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m050.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m051.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m052.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m053.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m054.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m055.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m056.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m057.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m058.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m059.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m060.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m061.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m062.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m063.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m064.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m065.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m066.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m067.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m068.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m069.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m070.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m071.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m072.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m073.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m074.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m075.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m076.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m077.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m078.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m079.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m080.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m081.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m082.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m083.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m084.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m085.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m086.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m087.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m088.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m089.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m090.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m091.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m092.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m093.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m094.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m095.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m096.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m097.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m098.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  },
-  {
-  "file" : "star/m099.mli",
-  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-  }, { "file" : "star/m100.mli", "dependencies" : {  } }],
+  [{ "file" : "star/generator.ml" },
+  { "file" : "star/m001.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m002.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m003.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m004.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m005.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m006.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m007.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m008.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m009.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m010.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m011.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m012.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m013.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m014.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m015.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m016.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m017.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m018.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m019.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m020.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m021.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m022.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m023.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m024.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m025.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m026.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m027.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m028.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m029.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m030.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m031.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m032.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m033.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m034.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m035.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m036.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m037.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m038.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m039.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m040.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m041.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m042.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m043.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m044.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m045.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m046.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m047.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m048.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m049.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m050.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m051.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m052.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m053.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m054.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m055.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m056.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m057.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m058.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m059.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m060.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m061.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m062.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m063.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m064.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m065.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m066.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m067.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m068.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m069.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m070.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m071.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m072.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m073.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m074.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m075.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m076.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m077.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m078.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m079.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m080.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m081.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m082.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m083.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m084.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m085.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m086.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m087.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m088.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m089.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m090.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m091.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m092.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m093.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m094.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m095.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m096.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m097.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m098.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m099.mli", "local" : [[["M100"], ["star", "m100.mli"]]] },
+  { "file" : "star/m100.mli" }],
 "atlas" :
   [{ "module" : ["M100"], "mli" : "star/m100.mli" },
   { "module" : ["M099"], "mli" : "star/m099.mli" },

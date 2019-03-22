@@ -7,9 +7,6 @@ a non-resolvable module, [1mC[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/tuple.ml",
-   "dependencies" : { "unknown" : [["C"], ["B"], ["A"]] }
-   }],
+  [{ "file" : "cases/tuple.ml", "unknown" : [["C"], ["B"], ["A"]] }],
 "atlas" : [{ "module" : ["Tuple"], "ml" : "cases/tuple.ml" }]
 }

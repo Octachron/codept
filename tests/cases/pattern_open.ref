@@ -19,7 +19,7 @@ a non-resolvable module, [1mE3[0m, has been replaced by an approximation
 "dependencies" :
   [{
    "file" : "cases/pattern_open.ml",
-   "dependencies" : { "unknown" : [["E4"], ["E3"], ["E2"], ["E1"], ["A'"]] }
+   "unknown" : [["E4"], ["E3"], ["E2"], ["E1"], ["A'"]]
    }],
 "atlas" : [{ "module" : ["Pattern_open"], "ml" : "cases/pattern_open.ml" }]
 }

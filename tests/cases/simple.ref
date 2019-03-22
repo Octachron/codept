@@ -33,11 +33,8 @@ a non-resolvable module, [1mY[0m, has been replaced by an approximation
 "dependencies" :
   [{
    "file" : "cases/simple.ml",
-   "dependencies" :
-     {
-     "unknown" :
-       [["Y"], ["W"], ["I"], ["G"], ["Ext"], ["E"], ["C"], ["B"], ["A"]]
-     }
+   "unknown" :
+     [["Y"], ["W"], ["I"], ["G"], ["Ext"], ["E"], ["C"], ["B"], ["A"]]
    }],
 "atlas" : [{ "module" : ["Simple"], "ml" : "cases/simple.ml" }]
 }

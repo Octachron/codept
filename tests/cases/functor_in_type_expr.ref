@@ -11,7 +11,7 @@ a non-resolvable module, [1mExt4[0m, has been replaced by an approximation
 "dependencies" :
   [{
    "file" : "cases/functor_in_type_expr.ml",
-   "dependencies" : { "unknown" : [["Ext4"], ["Ext3"], ["Ext2"], ["Ext1"]] }
+   "unknown" : [["Ext4"], ["Ext3"], ["Ext2"], ["Ext1"]]
    }],
 "atlas" :
   [{

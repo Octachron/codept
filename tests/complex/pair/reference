@@ -3,11 +3,8 @@ a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "pair/a.ml",
-   "dependencies" : { "local" : [[["B"], ["pair", "b.ml"]]] }
-   },
-  { "file" : "pair/b.ml", "dependencies" : { "unknown" : [["Extern"]] } }],
+  [{ "file" : "pair/a.ml", "local" : [[["B"], ["pair", "b.ml"]]] },
+  { "file" : "pair/b.ml", "unknown" : [["Extern"]] }],
 "atlas" :
   [{ "module" : ["B"], "ml" : "pair/b.ml" },
   { "module" : ["A"], "ml" : "pair/a.ml" }]

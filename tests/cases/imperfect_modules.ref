@@ -11,10 +11,7 @@ only functor can be applied, got:(.)
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/imperfect_modules.ml",
-   "dependencies" : { "unknown" : [["Ext"]] }
-   }],
+  [{ "file" : "cases/imperfect_modules.ml", "unknown" : [["Ext"]] }],
 "atlas" :
   [{ "module" : ["Imperfect_modules"], "ml" : "cases/imperfect_modules.ml" }]
 }

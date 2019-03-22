@@ -5,10 +5,7 @@ a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/foreign_arg_sig.ml",
-   "dependencies" : { "unknown" : [["Ext2"], ["Ext"]] }
-   }],
+  [{ "file" : "cases/foreign_arg_sig.ml", "unknown" : [["Ext2"], ["Ext"]] }],
 "atlas" :
   [{ "module" : ["Foreign_arg_sig"], "ml" : "cases/foreign_arg_sig.ml" }]
 }

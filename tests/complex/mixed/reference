@@ -1,23 +1,13 @@
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "mixed/a.ml",
-   "dependencies" : { "local" : [[["D"], ["mixed", "d.mli"]]] }
-   },
+  [{ "file" : "mixed/a.ml", "local" : [[["D"], ["mixed", "d.mli"]]] },
   {
   "file" : "mixed/a.mli",
-  "dependencies" :
-    { "local" : [[["D"], ["mixed", "d.mli"]], [["B"], ["mixed", "b.ml"]]] }
-  },
-  {
-  "file" : "mixed/b.ml",
-  "dependencies" : { "local" : [[["C"], ["mixed", "c.mli"]]] }
-  },
-  {
-  "file" : "mixed/c.mli",
-  "dependencies" : { "local" : [[["D"], ["mixed", "d.mli"]]] }
-  }, { "file" : "mixed/d.mli", "dependencies" : {  } }],
+  "local" : [[["D"], ["mixed", "d.mli"]], [["B"], ["mixed", "b.ml"]]]
+  }, { "file" : "mixed/b.ml", "local" : [[["C"], ["mixed", "c.mli"]]] },
+  { "file" : "mixed/c.mli", "local" : [[["D"], ["mixed", "d.mli"]]] },
+  { "file" : "mixed/d.mli" }],
 "atlas" :
   [{ "module" : ["D"], "mli" : "mixed/d.mli" },
   { "module" : ["C"], "mli" : "mixed/c.mli" },

@@ -12,10 +12,7 @@ Spurious dependencies might be inferred due to this ambiguity.
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/phantom_maze_2.ml",
-   "dependencies" : { "unknown" : [["E"], ["D"]] }
-   }],
+  [{ "file" : "cases/phantom_maze_2.ml", "unknown" : [["E"], ["D"]] }],
 "atlas" :
   [{ "module" : ["Phantom_maze_2"], "ml" : "cases/phantom_maze_2.ml" }]
 }

@@ -3,10 +3,7 @@ a non-resolvable module, [1mA[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/include_functor.ml",
-   "dependencies" : { "unknown" : [["A"]] }
-   }],
+  [{ "file" : "cases/include_functor.ml", "unknown" : [["A"]] }],
 "atlas" :
   [{ "module" : ["Include_functor"], "ml" : "cases/include_functor.ml" }]
 }

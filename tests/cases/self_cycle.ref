@@ -6,8 +6,7 @@
 "dependencies" :
   [{
    "file" : "cases/self_cycle.ml",
-   "dependencies" :
-     { "local" : [[["Self_cycle"], ["cases", "self_cycle.ml"]]] }
+   "local" : [[["Self_cycle"], ["cases", "self_cycle.ml"]]]
    }],
 "atlas" : [{ "module" : ["Self_cycle"], "ml" : "cases/self_cycle.ml" }]
 }

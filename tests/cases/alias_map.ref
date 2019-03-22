@@ -7,7 +7,7 @@ a non-resolvable module, [1mAliased__B[0m, has been replaced by an approximati
 "dependencies" :
   [{
    "file" : "cases/alias_map.ml",
-   "dependencies" : { "unknown" : [["Aliased__C"], ["Aliased__B"]] }
+   "unknown" : [["Aliased__C"], ["Aliased__B"]]
    }],
 "atlas" : [{ "module" : ["Alias_map"], "ml" : "cases/alias_map.ml" }]
 }

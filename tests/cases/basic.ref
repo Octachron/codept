@@ -11,9 +11,6 @@ dependencies might be inferred due to this ambiguity.
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{
-   "file" : "cases/basic.ml",
-   "dependencies" : { "unknown" : [["Ext2"], ["Ext"]] }
-   }],
+  [{ "file" : "cases/basic.ml", "unknown" : [["Ext2"], ["Ext"]] }],
 "atlas" : [{ "module" : ["Basic"], "ml" : "cases/basic.ml" }]
 }

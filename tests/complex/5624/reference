@@ -1,15 +1,11 @@
 {
 "version" : [0, 10, 0],
 "dependencies" :
-  [{ "file" : "5624/a.mli", "dependencies" : {  } },
-  {
-  "file" : "5624/b.mli",
-  "dependencies" : { "local" : [[["A"], ["5624", "a.mli"]]] }
-  },
+  [{ "file" : "5624/a.mli" },
+  { "file" : "5624/b.mli", "local" : [[["A"], ["5624", "a.mli"]]] },
   {
   "file" : "5624/c.ml",
-  "dependencies" :
-    { "local" : [[["B"], ["5624", "b.mli"]], [["A"], ["5624", "a.mli"]]] }
+  "local" : [[["B"], ["5624", "b.mli"]], [["A"], ["5624", "a.mli"]]]
   }],
 "atlas" :
   [{ "module" : ["C"], "ml" : "5624/c.ml" },

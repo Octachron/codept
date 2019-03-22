@@ -3,26 +3,20 @@
 "dependencies" :
   [{
    "file" : "namespaced/NAME__a.ml",
-   "dependencies" :
-     {
-     "local" :
-       [[["NAME__b"], ["namespaced", "NAME__b.ml"]],
-       [["Main"], ["namespaced", "main.ml"]]]
-     }
+   "local" :
+     [[["NAME__b"], ["namespaced", "NAME__b.ml"]],
+     [["Main"], ["namespaced", "main.ml"]]]
    },
   {
   "file" : "namespaced/NAME__b.ml",
-  "dependencies" :
-    {
-    "local" :
-      [[["NAME__c"], ["namespaced", "NAME__c.ml"]],
-      [["Main"], ["namespaced", "main.ml"]]]
-    }
+  "local" :
+    [[["NAME__c"], ["namespaced", "NAME__c.ml"]],
+    [["Main"], ["namespaced", "main.ml"]]]
   },
   {
   "file" : "namespaced/NAME__c.ml",
-  "dependencies" : { "local" : [[["Main"], ["namespaced", "main.ml"]]] }
-  }, { "file" : "namespaced/main.ml", "dependencies" : {  } }],
+  "local" : [[["Main"], ["namespaced", "main.ml"]]]
+  }, { "file" : "namespaced/main.ml" }],
 "atlas" :
   [{ "module" : ["Main"], "ml" : "namespaced/main.ml" },
   { "module" : ["NAME__c"], "ml" : "namespaced/NAME__c.ml" },

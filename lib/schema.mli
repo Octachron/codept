@@ -15,9 +15,8 @@ type p = Paths.S.t
 type local = { path: p; file:p}
 type lib = { path: p; lib: p; file:p}
 type unknown = p
-type dep = { local: local list; lib: lib list; unknown: unknown list }
-type item = { file: string; dependencies: dep }
-type deps = { dependencies: item list; atlas: unit_association list }
+type unit = { file:string; local: local list; lib: lib list; unknown: unknown list }
+type deps = { dependencies: unit list; atlas: unit_association list }
 
 val x: (Lbl.deps, deps) Ext.t
 val schema: (Lbl.deps, deps) Ext.t

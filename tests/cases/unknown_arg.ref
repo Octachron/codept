@@ -2,10 +2,6 @@
 a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"dependencies" :
-  [{
-   "file" : "cases/unknown_arg.ml",
-   "dependencies" : { "unknown" : [["Ext"]] }
-   }],
+"dependencies" : [{ "file" : "cases/unknown_arg.ml", "unknown" : [["Ext"]] }],
 "atlas" : [{ "module" : ["Unknown_arg"], "ml" : "cases/unknown_arg.ml" }]
 }
