@@ -1,14 +1,8 @@
-[[1m[36mNotification[0m]: [1mcases/hidden.ml:l7.5−14[0m,
+[[1m[36mNotification[0m]: [1mcases/hidden.ml:l7.0−14[0m,
 a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/hidden.ml",
-     "dependencies" : { "unknown" : [["Ext"]] }
-     }],
-  "atlas" : [{ "module" : ["Hidden"], "ml" : "cases/hidden.ml" }]
-  }
+"dependencies" :
+  [{ "file" : "cases/hidden.ml", "dependencies" : { "unknown" : [["Ext"]] } }],
+"atlas" : [{ "module" : ["Hidden"], "ml" : "cases/hidden.ml" }]
 }

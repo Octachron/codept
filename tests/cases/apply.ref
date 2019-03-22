@@ -4,13 +4,10 @@ a non-resolvable module, [1mF[0m, has been replaced by an approximation
 a non-resolvable module, [1mX[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/apply.ml",
-     "dependencies" : { "unknown" : [["X"], ["F"]] }
-     }],
-  "atlas" : [{ "module" : ["Apply"], "ml" : "cases/apply.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/apply.ml",
+   "dependencies" : { "unknown" : [["X"], ["F"]] }
+   }],
+"atlas" : [{ "module" : ["Apply"], "ml" : "cases/apply.ml" }]
 }

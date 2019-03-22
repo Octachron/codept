@@ -1,8 +1,5 @@
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" : [{ "file" : "cases/letin.ml", "dependencies" : {  } }],
-  "atlas" : [{ "module" : ["Letin"], "ml" : "cases/letin.ml" }]
-  }
+"dependencies" : [{ "file" : "cases/letin.ml", "dependencies" : {  } }],
+"atlas" : [{ "module" : ["Letin"], "ml" : "cases/letin.ml" }]
 }

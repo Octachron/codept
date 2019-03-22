@@ -1,506 +1,503 @@
 {
 "version" : [0, 10, 0],
-"deps" :
+"dependencies" :
+  [{ "file" : "star/generator.ml", "dependencies" : {  } },
   {
-  "dependencies" :
-    [{ "file" : "star/generator.ml", "dependencies" : {  } },
-    {
-    "file" : "star/m001.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m002.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m003.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m004.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m005.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m006.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m007.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m008.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m009.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m010.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m011.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m012.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m013.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m014.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m015.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m016.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m017.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m018.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m019.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m020.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m021.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m022.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m023.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m024.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m025.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m026.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m027.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m028.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m029.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m030.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m031.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m032.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m033.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m034.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m035.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m036.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m037.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m038.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m039.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m040.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m041.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m042.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m043.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m044.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m045.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m046.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m047.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m048.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m049.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m050.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m051.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m052.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m053.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m054.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m055.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m056.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m057.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m058.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m059.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m060.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m061.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m062.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m063.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m064.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m065.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m066.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m067.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m068.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m069.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m070.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m071.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m072.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m073.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m074.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m075.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m076.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m077.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m078.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m079.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m080.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m081.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m082.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m083.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m084.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m085.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m086.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m087.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m088.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m089.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m090.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m091.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m092.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m093.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m094.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m095.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m096.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m097.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m098.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    },
-    {
-    "file" : "star/m099.mli",
-    "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
-    }, { "file" : "star/m100.mli", "dependencies" : {  } }],
-  "atlas" :
-    [{ "module" : ["M100"], "mli" : "star/m100.mli" },
-    { "module" : ["M099"], "mli" : "star/m099.mli" },
-    { "module" : ["M098"], "mli" : "star/m098.mli" },
-    { "module" : ["M097"], "mli" : "star/m097.mli" },
-    { "module" : ["M096"], "mli" : "star/m096.mli" },
-    { "module" : ["M095"], "mli" : "star/m095.mli" },
-    { "module" : ["M094"], "mli" : "star/m094.mli" },
-    { "module" : ["M093"], "mli" : "star/m093.mli" },
-    { "module" : ["M092"], "mli" : "star/m092.mli" },
-    { "module" : ["M091"], "mli" : "star/m091.mli" },
-    { "module" : ["M090"], "mli" : "star/m090.mli" },
-    { "module" : ["M089"], "mli" : "star/m089.mli" },
-    { "module" : ["M088"], "mli" : "star/m088.mli" },
-    { "module" : ["M087"], "mli" : "star/m087.mli" },
-    { "module" : ["M086"], "mli" : "star/m086.mli" },
-    { "module" : ["M085"], "mli" : "star/m085.mli" },
-    { "module" : ["M084"], "mli" : "star/m084.mli" },
-    { "module" : ["M083"], "mli" : "star/m083.mli" },
-    { "module" : ["M082"], "mli" : "star/m082.mli" },
-    { "module" : ["M081"], "mli" : "star/m081.mli" },
-    { "module" : ["M080"], "mli" : "star/m080.mli" },
-    { "module" : ["M079"], "mli" : "star/m079.mli" },
-    { "module" : ["M078"], "mli" : "star/m078.mli" },
-    { "module" : ["M077"], "mli" : "star/m077.mli" },
-    { "module" : ["M076"], "mli" : "star/m076.mli" },
-    { "module" : ["M075"], "mli" : "star/m075.mli" },
-    { "module" : ["M074"], "mli" : "star/m074.mli" },
-    { "module" : ["M073"], "mli" : "star/m073.mli" },
-    { "module" : ["M072"], "mli" : "star/m072.mli" },
-    { "module" : ["M071"], "mli" : "star/m071.mli" },
-    { "module" : ["M070"], "mli" : "star/m070.mli" },
-    { "module" : ["M069"], "mli" : "star/m069.mli" },
-    { "module" : ["M068"], "mli" : "star/m068.mli" },
-    { "module" : ["M067"], "mli" : "star/m067.mli" },
-    { "module" : ["M066"], "mli" : "star/m066.mli" },
-    { "module" : ["M065"], "mli" : "star/m065.mli" },
-    { "module" : ["M064"], "mli" : "star/m064.mli" },
-    { "module" : ["M063"], "mli" : "star/m063.mli" },
-    { "module" : ["M062"], "mli" : "star/m062.mli" },
-    { "module" : ["M061"], "mli" : "star/m061.mli" },
-    { "module" : ["M060"], "mli" : "star/m060.mli" },
-    { "module" : ["M059"], "mli" : "star/m059.mli" },
-    { "module" : ["M058"], "mli" : "star/m058.mli" },
-    { "module" : ["M057"], "mli" : "star/m057.mli" },
-    { "module" : ["M056"], "mli" : "star/m056.mli" },
-    { "module" : ["M055"], "mli" : "star/m055.mli" },
-    { "module" : ["M054"], "mli" : "star/m054.mli" },
-    { "module" : ["M053"], "mli" : "star/m053.mli" },
-    { "module" : ["M052"], "mli" : "star/m052.mli" },
-    { "module" : ["M051"], "mli" : "star/m051.mli" },
-    { "module" : ["M050"], "mli" : "star/m050.mli" },
-    { "module" : ["M049"], "mli" : "star/m049.mli" },
-    { "module" : ["M048"], "mli" : "star/m048.mli" },
-    { "module" : ["M047"], "mli" : "star/m047.mli" },
-    { "module" : ["M046"], "mli" : "star/m046.mli" },
-    { "module" : ["M045"], "mli" : "star/m045.mli" },
-    { "module" : ["M044"], "mli" : "star/m044.mli" },
-    { "module" : ["M043"], "mli" : "star/m043.mli" },
-    { "module" : ["M042"], "mli" : "star/m042.mli" },
-    { "module" : ["M041"], "mli" : "star/m041.mli" },
-    { "module" : ["M040"], "mli" : "star/m040.mli" },
-    { "module" : ["M039"], "mli" : "star/m039.mli" },
-    { "module" : ["M038"], "mli" : "star/m038.mli" },
-    { "module" : ["M037"], "mli" : "star/m037.mli" },
-    { "module" : ["M036"], "mli" : "star/m036.mli" },
-    { "module" : ["M035"], "mli" : "star/m035.mli" },
-    { "module" : ["M034"], "mli" : "star/m034.mli" },
-    { "module" : ["M033"], "mli" : "star/m033.mli" },
-    { "module" : ["M032"], "mli" : "star/m032.mli" },
-    { "module" : ["M031"], "mli" : "star/m031.mli" },
-    { "module" : ["M030"], "mli" : "star/m030.mli" },
-    { "module" : ["M029"], "mli" : "star/m029.mli" },
-    { "module" : ["M028"], "mli" : "star/m028.mli" },
-    { "module" : ["M027"], "mli" : "star/m027.mli" },
-    { "module" : ["M026"], "mli" : "star/m026.mli" },
-    { "module" : ["M025"], "mli" : "star/m025.mli" },
-    { "module" : ["M024"], "mli" : "star/m024.mli" },
-    { "module" : ["M023"], "mli" : "star/m023.mli" },
-    { "module" : ["M022"], "mli" : "star/m022.mli" },
-    { "module" : ["M021"], "mli" : "star/m021.mli" },
-    { "module" : ["M020"], "mli" : "star/m020.mli" },
-    { "module" : ["M019"], "mli" : "star/m019.mli" },
-    { "module" : ["M018"], "mli" : "star/m018.mli" },
-    { "module" : ["M017"], "mli" : "star/m017.mli" },
-    { "module" : ["M016"], "mli" : "star/m016.mli" },
-    { "module" : ["M015"], "mli" : "star/m015.mli" },
-    { "module" : ["M014"], "mli" : "star/m014.mli" },
-    { "module" : ["M013"], "mli" : "star/m013.mli" },
-    { "module" : ["M012"], "mli" : "star/m012.mli" },
-    { "module" : ["M011"], "mli" : "star/m011.mli" },
-    { "module" : ["M010"], "mli" : "star/m010.mli" },
-    { "module" : ["M009"], "mli" : "star/m009.mli" },
-    { "module" : ["M008"], "mli" : "star/m008.mli" },
-    { "module" : ["M007"], "mli" : "star/m007.mli" },
-    { "module" : ["M006"], "mli" : "star/m006.mli" },
-    { "module" : ["M005"], "mli" : "star/m005.mli" },
-    { "module" : ["M004"], "mli" : "star/m004.mli" },
-    { "module" : ["M003"], "mli" : "star/m003.mli" },
-    { "module" : ["M002"], "mli" : "star/m002.mli" },
-    { "module" : ["M001"], "mli" : "star/m001.mli" },
-    { "module" : ["Generator"], "ml" : "star/generator.ml" }]
-  }
+  "file" : "star/m001.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m002.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m003.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m004.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m005.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m006.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m007.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m008.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m009.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m010.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m011.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m012.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m013.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m014.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m015.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m016.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m017.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m018.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m019.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m020.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m021.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m022.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m023.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m024.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m025.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m026.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m027.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m028.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m029.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m030.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m031.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m032.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m033.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m034.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m035.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m036.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m037.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m038.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m039.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m040.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m041.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m042.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m043.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m044.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m045.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m046.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m047.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m048.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m049.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m050.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m051.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m052.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m053.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m054.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m055.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m056.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m057.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m058.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m059.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m060.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m061.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m062.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m063.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m064.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m065.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m066.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m067.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m068.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m069.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m070.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m071.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m072.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m073.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m074.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m075.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m076.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m077.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m078.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m079.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m080.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m081.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m082.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m083.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m084.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m085.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m086.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m087.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m088.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m089.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m090.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m091.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m092.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m093.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m094.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m095.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m096.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m097.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m098.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  },
+  {
+  "file" : "star/m099.mli",
+  "dependencies" : { "local" : [[["M100"], ["star", "m100.mli"]]] }
+  }, { "file" : "star/m100.mli", "dependencies" : {  } }],
+"atlas" :
+  [{ "module" : ["M100"], "mli" : "star/m100.mli" },
+  { "module" : ["M099"], "mli" : "star/m099.mli" },
+  { "module" : ["M098"], "mli" : "star/m098.mli" },
+  { "module" : ["M097"], "mli" : "star/m097.mli" },
+  { "module" : ["M096"], "mli" : "star/m096.mli" },
+  { "module" : ["M095"], "mli" : "star/m095.mli" },
+  { "module" : ["M094"], "mli" : "star/m094.mli" },
+  { "module" : ["M093"], "mli" : "star/m093.mli" },
+  { "module" : ["M092"], "mli" : "star/m092.mli" },
+  { "module" : ["M091"], "mli" : "star/m091.mli" },
+  { "module" : ["M090"], "mli" : "star/m090.mli" },
+  { "module" : ["M089"], "mli" : "star/m089.mli" },
+  { "module" : ["M088"], "mli" : "star/m088.mli" },
+  { "module" : ["M087"], "mli" : "star/m087.mli" },
+  { "module" : ["M086"], "mli" : "star/m086.mli" },
+  { "module" : ["M085"], "mli" : "star/m085.mli" },
+  { "module" : ["M084"], "mli" : "star/m084.mli" },
+  { "module" : ["M083"], "mli" : "star/m083.mli" },
+  { "module" : ["M082"], "mli" : "star/m082.mli" },
+  { "module" : ["M081"], "mli" : "star/m081.mli" },
+  { "module" : ["M080"], "mli" : "star/m080.mli" },
+  { "module" : ["M079"], "mli" : "star/m079.mli" },
+  { "module" : ["M078"], "mli" : "star/m078.mli" },
+  { "module" : ["M077"], "mli" : "star/m077.mli" },
+  { "module" : ["M076"], "mli" : "star/m076.mli" },
+  { "module" : ["M075"], "mli" : "star/m075.mli" },
+  { "module" : ["M074"], "mli" : "star/m074.mli" },
+  { "module" : ["M073"], "mli" : "star/m073.mli" },
+  { "module" : ["M072"], "mli" : "star/m072.mli" },
+  { "module" : ["M071"], "mli" : "star/m071.mli" },
+  { "module" : ["M070"], "mli" : "star/m070.mli" },
+  { "module" : ["M069"], "mli" : "star/m069.mli" },
+  { "module" : ["M068"], "mli" : "star/m068.mli" },
+  { "module" : ["M067"], "mli" : "star/m067.mli" },
+  { "module" : ["M066"], "mli" : "star/m066.mli" },
+  { "module" : ["M065"], "mli" : "star/m065.mli" },
+  { "module" : ["M064"], "mli" : "star/m064.mli" },
+  { "module" : ["M063"], "mli" : "star/m063.mli" },
+  { "module" : ["M062"], "mli" : "star/m062.mli" },
+  { "module" : ["M061"], "mli" : "star/m061.mli" },
+  { "module" : ["M060"], "mli" : "star/m060.mli" },
+  { "module" : ["M059"], "mli" : "star/m059.mli" },
+  { "module" : ["M058"], "mli" : "star/m058.mli" },
+  { "module" : ["M057"], "mli" : "star/m057.mli" },
+  { "module" : ["M056"], "mli" : "star/m056.mli" },
+  { "module" : ["M055"], "mli" : "star/m055.mli" },
+  { "module" : ["M054"], "mli" : "star/m054.mli" },
+  { "module" : ["M053"], "mli" : "star/m053.mli" },
+  { "module" : ["M052"], "mli" : "star/m052.mli" },
+  { "module" : ["M051"], "mli" : "star/m051.mli" },
+  { "module" : ["M050"], "mli" : "star/m050.mli" },
+  { "module" : ["M049"], "mli" : "star/m049.mli" },
+  { "module" : ["M048"], "mli" : "star/m048.mli" },
+  { "module" : ["M047"], "mli" : "star/m047.mli" },
+  { "module" : ["M046"], "mli" : "star/m046.mli" },
+  { "module" : ["M045"], "mli" : "star/m045.mli" },
+  { "module" : ["M044"], "mli" : "star/m044.mli" },
+  { "module" : ["M043"], "mli" : "star/m043.mli" },
+  { "module" : ["M042"], "mli" : "star/m042.mli" },
+  { "module" : ["M041"], "mli" : "star/m041.mli" },
+  { "module" : ["M040"], "mli" : "star/m040.mli" },
+  { "module" : ["M039"], "mli" : "star/m039.mli" },
+  { "module" : ["M038"], "mli" : "star/m038.mli" },
+  { "module" : ["M037"], "mli" : "star/m037.mli" },
+  { "module" : ["M036"], "mli" : "star/m036.mli" },
+  { "module" : ["M035"], "mli" : "star/m035.mli" },
+  { "module" : ["M034"], "mli" : "star/m034.mli" },
+  { "module" : ["M033"], "mli" : "star/m033.mli" },
+  { "module" : ["M032"], "mli" : "star/m032.mli" },
+  { "module" : ["M031"], "mli" : "star/m031.mli" },
+  { "module" : ["M030"], "mli" : "star/m030.mli" },
+  { "module" : ["M029"], "mli" : "star/m029.mli" },
+  { "module" : ["M028"], "mli" : "star/m028.mli" },
+  { "module" : ["M027"], "mli" : "star/m027.mli" },
+  { "module" : ["M026"], "mli" : "star/m026.mli" },
+  { "module" : ["M025"], "mli" : "star/m025.mli" },
+  { "module" : ["M024"], "mli" : "star/m024.mli" },
+  { "module" : ["M023"], "mli" : "star/m023.mli" },
+  { "module" : ["M022"], "mli" : "star/m022.mli" },
+  { "module" : ["M021"], "mli" : "star/m021.mli" },
+  { "module" : ["M020"], "mli" : "star/m020.mli" },
+  { "module" : ["M019"], "mli" : "star/m019.mli" },
+  { "module" : ["M018"], "mli" : "star/m018.mli" },
+  { "module" : ["M017"], "mli" : "star/m017.mli" },
+  { "module" : ["M016"], "mli" : "star/m016.mli" },
+  { "module" : ["M015"], "mli" : "star/m015.mli" },
+  { "module" : ["M014"], "mli" : "star/m014.mli" },
+  { "module" : ["M013"], "mli" : "star/m013.mli" },
+  { "module" : ["M012"], "mli" : "star/m012.mli" },
+  { "module" : ["M011"], "mli" : "star/m011.mli" },
+  { "module" : ["M010"], "mli" : "star/m010.mli" },
+  { "module" : ["M009"], "mli" : "star/m009.mli" },
+  { "module" : ["M008"], "mli" : "star/m008.mli" },
+  { "module" : ["M007"], "mli" : "star/m007.mli" },
+  { "module" : ["M006"], "mli" : "star/m006.mli" },
+  { "module" : ["M005"], "mli" : "star/m005.mli" },
+  { "module" : ["M004"], "mli" : "star/m004.mli" },
+  { "module" : ["M003"], "mli" : "star/m003.mli" },
+  { "module" : ["M002"], "mli" : "star/m002.mli" },
+  { "module" : ["M001"], "mli" : "star/m001.mli" },
+  { "module" : ["Generator"], "ml" : "star/generator.ml" }]
 }

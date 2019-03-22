@@ -10,13 +10,10 @@ a non-resolvable module, [1mC[0m, has been replaced by an approximation
 a non-resolvable module, [1mD[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/case.ml",
-     "dependencies" : { "unknown" : [["F"], ["D"], ["C"], ["B"], ["A"]] }
-     }],
-  "atlas" : [{ "module" : ["Case"], "ml" : "cases/case.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/case.ml",
+   "dependencies" : { "unknown" : [["F"], ["D"], ["C"], ["B"], ["A"]] }
+   }],
+"atlas" : [{ "module" : ["Case"], "ml" : "cases/case.ml" }]
 }

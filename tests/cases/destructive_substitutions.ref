@@ -1,18 +1,15 @@
-[[1m[36mNotification[0m]: [1mcases/destructive_substitutions.ml:l9.5−8[0m,
+[[1m[36mNotification[0m]: [1mcases/destructive_substitutions.ml:l9.0−8[0m,
 a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/destructive_substitutions.ml",
-     "dependencies" : { "unknown" : [["Ext"]] }
-     }],
-  "atlas" :
-    [{
-     "module" : ["Destructive_substitutions"],
-     "ml" : "cases/destructive_substitutions.ml"
-     }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/destructive_substitutions.ml",
+   "dependencies" : { "unknown" : [["Ext"]] }
+   }],
+"atlas" :
+  [{
+   "module" : ["Destructive_substitutions"],
+   "ml" : "cases/destructive_substitutions.ml"
+   }]
 }

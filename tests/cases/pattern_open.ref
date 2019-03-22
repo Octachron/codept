@@ -16,14 +16,10 @@ a non-resolvable module, [1mE2[0m, has been replaced by an approximation
 a non-resolvable module, [1mE3[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/pattern_open.ml",
-     "dependencies" :
-       { "unknown" : [["E4"], ["E3"], ["E2"], ["E1"], ["A'"]] }
-     }],
-  "atlas" : [{ "module" : ["Pattern_open"], "ml" : "cases/pattern_open.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/pattern_open.ml",
+   "dependencies" : { "unknown" : [["E4"], ["E3"], ["E2"], ["E1"], ["A'"]] }
+   }],
+"atlas" : [{ "module" : ["Pattern_open"], "ml" : "cases/pattern_open.ml" }]
 }

@@ -6,14 +6,10 @@ a non-resolvable module, [1mSig_lex[0m, has been replaced by an approximation
 a non-resolvable module, [1mSig_parse[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/sig_reader.ml",
-     "dependencies" :
-       { "unknown" : [["Sig_parse"], ["Sig_lex"], ["Module"]] }
-     }],
-  "atlas" : [{ "module" : ["Sig_reader"], "ml" : "cases/sig_reader.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/sig_reader.ml",
+   "dependencies" : { "unknown" : [["Sig_parse"], ["Sig_lex"], ["Module"]] }
+   }],
+"atlas" : [{ "module" : ["Sig_reader"], "ml" : "cases/sig_reader.ml" }]
 }

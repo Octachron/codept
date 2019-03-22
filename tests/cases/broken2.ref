@@ -14,13 +14,10 @@ Computed dependencies: at least {Ext;
 Ext2}, maybe: {A}
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/broken2.ml",
-     "dependencies" : { "unknown" : [["Ext2"], ["Ext"], ["A"]] }
-     }],
-  "atlas" : [{ "module" : ["Broken2"], "ml" : "cases/broken2.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/broken2.ml",
+   "dependencies" : { "unknown" : [["Ext2"], ["Ext"], ["A"]] }
+   }],
+"atlas" : [{ "module" : ["Broken2"], "ml" : "cases/broken2.ml" }]
 }

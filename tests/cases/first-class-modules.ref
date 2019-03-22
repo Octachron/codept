@@ -1,4 +1,4 @@
-[[1m[36mNotification[0m]: [1mcases/first-class-modules.ml:l14.5−9[0m,
+[[1m[36mNotification[0m]: [1mcases/first-class-modules.ml:l14.0−9[0m,
 a non-resolvable module, [1mMark[0m, has been replaced by an approximation
 [[1m[35mWarning[0m]: [1mcases/first-class-modules.ml:l18.11−12[0m,
 first-class module [1mN[0m was opened while its signature was unknown.
@@ -8,17 +8,14 @@ a non-resolvable module, [1mB[0m, has been replaced by an approximation
 first-class module was included while its signature was unknown.
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/first-class-modules.ml",
-     "dependencies" : { "unknown" : [["Mark"], ["B"]] }
-     }],
-  "atlas" :
-    [{
-     "module" : ["First-class-modules"],
-     "ml" : "cases/first-class-modules.ml"
-     }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/first-class-modules.ml",
+   "dependencies" : { "unknown" : [["Mark"], ["B"]] }
+   }],
+"atlas" :
+  [{
+   "module" : ["First-class-modules"],
+   "ml" : "cases/first-class-modules.ml"
+   }]
 }

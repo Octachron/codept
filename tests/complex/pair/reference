@@ -1,17 +1,14 @@
-[[1m[36mNotification[0m]: [1mpair/b.ml:l1.5−11[0m,
+[[1m[36mNotification[0m]: [1mpair/b.ml:l1.0−11[0m,
 a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "pair/a.ml",
-     "dependencies" : { "local" : [[["B"], ["pair", "b.ml"]]] }
-     },
-    { "file" : "pair/b.ml", "dependencies" : { "unknown" : [["Extern"]] } }],
-  "atlas" :
-    [{ "module" : ["B"], "ml" : "pair/b.ml" },
-    { "module" : ["A"], "ml" : "pair/a.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "pair/a.ml",
+   "dependencies" : { "local" : [[["B"], ["pair", "b.ml"]]] }
+   },
+  { "file" : "pair/b.ml", "dependencies" : { "unknown" : [["Extern"]] } }],
+"atlas" :
+  [{ "module" : ["B"], "ml" : "pair/b.ml" },
+  { "module" : ["A"], "ml" : "pair/a.ml" }]
 }

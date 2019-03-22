@@ -2,13 +2,10 @@
 a non-resolvable module, [1mB[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/module_types.ml",
-     "dependencies" : { "unknown" : [["B"]] }
-     }],
-  "atlas" : [{ "module" : ["Module_types"], "ml" : "cases/module_types.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/module_types.ml",
+   "dependencies" : { "unknown" : [["B"]] }
+   }],
+"atlas" : [{ "module" : ["Module_types"], "ml" : "cases/module_types.ml" }]
 }

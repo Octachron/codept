@@ -1,25 +1,22 @@
-[[1m[36mNotification[0m]: [1mnetwork/a.ml:l2.5−11[0m,
+[[1m[36mNotification[0m]: [1mnetwork/a.ml:l2.0−11[0m,
 a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
 [[1m[35mWarning[0m]: [1mnetwork/a.ml:l3.0−13[0m, name resolution for [1mC[0m was ambiguous, due
-to the opening of the external module [1mExtern[0m, at location [1ml2.5−11[0m. Spurious
+to the opening of the external module [1mExtern[0m, at location [1ml2.0−11[0m. Spurious
 dependencies might be inferred due to this ambiguity.
 {
 "version" : [0, 10, 0],
-"deps" :
+"dependencies" :
+  [{
+   "file" : "network/a.ml",
+   "dependencies" :
+     { "local" : [[["B"], ["network", "b.ml"]]], "unknown" : [["Extern"]] }
+   }, { "file" : "network/b.ml", "dependencies" : {  } },
   {
-  "dependencies" :
-    [{
-     "file" : "network/a.ml",
-     "dependencies" :
-       { "local" : [[["B"], ["network", "b.ml"]]], "unknown" : [["Extern"]] }
-     }, { "file" : "network/b.ml", "dependencies" : {  } },
-    {
-    "file" : "network/c.ml",
-    "dependencies" : { "local" : [[["A"], ["network", "a.ml"]]] }
-    }],
-  "atlas" :
-    [{ "module" : ["C"], "ml" : "network/c.ml" },
-    { "module" : ["B"], "ml" : "network/b.ml" },
-    { "module" : ["A"], "ml" : "network/a.ml" }]
-  }
+  "file" : "network/c.ml",
+  "dependencies" : { "local" : [[["A"], ["network", "a.ml"]]] }
+  }],
+"atlas" :
+  [{ "module" : ["C"], "ml" : "network/c.ml" },
+  { "module" : ["B"], "ml" : "network/b.ml" },
+  { "module" : ["A"], "ml" : "network/a.ml" }]
 }

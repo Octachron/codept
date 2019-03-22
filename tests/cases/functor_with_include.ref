@@ -1,13 +1,10 @@
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{ "file" : "cases/functor_with_include.ml", "dependencies" : {  } }],
-  "atlas" :
-    [{
-     "module" : ["Functor_with_include"],
-     "ml" : "cases/functor_with_include.ml"
-     }]
-  }
+"dependencies" :
+  [{ "file" : "cases/functor_with_include.ml", "dependencies" : {  } }],
+"atlas" :
+  [{
+   "module" : ["Functor_with_include"],
+   "ml" : "cases/functor_with_include.ml"
+   }]
 }

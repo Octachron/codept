@@ -11,30 +11,27 @@ dependencies might be inferred due to this ambiguity.
 Computed dependencies: at least {}, maybe: {B}
 {
 "version" : [0, 10, 0],
-"deps" :
+"dependencies" :
+  [{
+   "file" : "broken_network/a.ml",
+   "dependencies" :
+     {
+     "local" :
+       [[["C"], ["broken_network", "c.ml"]],
+       [["Broken"], ["broken_network", "broken.ml"]]],
+     "unknown" : [["B"]]
+     }
+   },
   {
-  "dependencies" :
-    [{
-     "file" : "broken_network/a.ml",
-     "dependencies" :
-       {
-       "local" :
-         [[["C"], ["broken_network", "c.ml"]],
-         [["Broken"], ["broken_network", "broken.ml"]]],
-       "unknown" : [["B"]]
-       }
-     },
-    {
-    "file" : "broken_network/broken.ml",
-    "dependencies" : { "unknown" : [["B"]] }
-    },
-    {
-    "file" : "broken_network/c.ml",
-    "dependencies" : { "unknown" : [["Extern"]] }
-    }],
-  "atlas" :
-    [{ "module" : ["C"], "ml" : "broken_network/c.ml" },
-    { "module" : ["Broken"], "ml" : "broken_network/broken.ml" },
-    { "module" : ["A"], "ml" : "broken_network/a.ml" }]
-  }
+  "file" : "broken_network/broken.ml",
+  "dependencies" : { "unknown" : [["B"]] }
+  },
+  {
+  "file" : "broken_network/c.ml",
+  "dependencies" : { "unknown" : [["Extern"]] }
+  }],
+"atlas" :
+  [{ "module" : ["C"], "ml" : "broken_network/c.ml" },
+  { "module" : ["Broken"], "ml" : "broken_network/broken.ml" },
+  { "module" : ["A"], "ml" : "broken_network/a.ml" }]
 }

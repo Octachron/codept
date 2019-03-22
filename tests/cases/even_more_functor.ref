@@ -4,17 +4,11 @@ a non-resolvable module, [1mE[0m, has been replaced by an approximation
 a non-resolvable module, [1mA[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/even_more_functor.ml",
-     "dependencies" : { "unknown" : [["E"], ["A"]] }
-     }],
-  "atlas" :
-    [{
-     "module" : ["Even_more_functor"],
-     "ml" : "cases/even_more_functor.ml"
-     }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/even_more_functor.ml",
+   "dependencies" : { "unknown" : [["E"], ["A"]] }
+   }],
+"atlas" :
+  [{ "module" : ["Even_more_functor"], "ml" : "cases/even_more_functor.ml" }]
 }

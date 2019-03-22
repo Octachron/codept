@@ -1,34 +1,31 @@
 {
 "version" : [0, 10, 0],
-"deps" :
+"dependencies" :
+  [{
+   "file" : "namespaced/NAME__a.ml",
+   "dependencies" :
+     {
+     "local" :
+       [[["NAME__b"], ["namespaced", "NAME__b.ml"]],
+       [["Main"], ["namespaced", "main.ml"]]]
+     }
+   },
   {
+  "file" : "namespaced/NAME__b.ml",
   "dependencies" :
-    [{
-     "file" : "namespaced/NAME__a.ml",
-     "dependencies" :
-       {
-       "local" :
-         [[["NAME__b"], ["namespaced", "NAME__b.ml"]],
-         [["Main"], ["namespaced", "main.ml"]]]
-       }
-     },
     {
-    "file" : "namespaced/NAME__b.ml",
-    "dependencies" :
-      {
-      "local" :
-        [[["NAME__c"], ["namespaced", "NAME__c.ml"]],
-        [["Main"], ["namespaced", "main.ml"]]]
-      }
-    },
-    {
-    "file" : "namespaced/NAME__c.ml",
-    "dependencies" : { "local" : [[["Main"], ["namespaced", "main.ml"]]] }
-    }, { "file" : "namespaced/main.ml", "dependencies" : {  } }],
-  "atlas" :
-    [{ "module" : ["Main"], "ml" : "namespaced/main.ml" },
-    { "module" : ["NAME__c"], "ml" : "namespaced/NAME__c.ml" },
-    { "module" : ["NAME__b"], "ml" : "namespaced/NAME__b.ml" },
-    { "module" : ["NAME__a"], "ml" : "namespaced/NAME__a.ml" }]
-  }
+    "local" :
+      [[["NAME__c"], ["namespaced", "NAME__c.ml"]],
+      [["Main"], ["namespaced", "main.ml"]]]
+    }
+  },
+  {
+  "file" : "namespaced/NAME__c.ml",
+  "dependencies" : { "local" : [[["Main"], ["namespaced", "main.ml"]]] }
+  }, { "file" : "namespaced/main.ml", "dependencies" : {  } }],
+"atlas" :
+  [{ "module" : ["Main"], "ml" : "namespaced/main.ml" },
+  { "module" : ["NAME__c"], "ml" : "namespaced/NAME__c.ml" },
+  { "module" : ["NAME__b"], "ml" : "namespaced/NAME__b.ml" },
+  { "module" : ["NAME__a"], "ml" : "namespaced/NAME__a.ml" }]
 }

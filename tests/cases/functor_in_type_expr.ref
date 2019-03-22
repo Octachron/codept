@@ -8,18 +8,14 @@ a non-resolvable module, [1mExt3[0m, has been replaced by an approximation
 a non-resolvable module, [1mExt4[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/functor_in_type_expr.ml",
-     "dependencies" :
-       { "unknown" : [["Ext4"], ["Ext3"], ["Ext2"], ["Ext1"]] }
-     }],
-  "atlas" :
-    [{
-     "module" : ["Functor_in_type_expr"],
-     "ml" : "cases/functor_in_type_expr.ml"
-     }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/functor_in_type_expr.ml",
+   "dependencies" : { "unknown" : [["Ext4"], ["Ext3"], ["Ext2"], ["Ext1"]] }
+   }],
+"atlas" :
+  [{
+   "module" : ["Functor_in_type_expr"],
+   "ml" : "cases/functor_in_type_expr.ml"
+   }]
 }

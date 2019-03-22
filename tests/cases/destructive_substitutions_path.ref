@@ -1,20 +1,17 @@
-[[1m[36mNotification[0m]: [1mcases/destructive_substitutions_path.ml:l22.23−26[0m,
+[[1m[36mNotification[0m]: [1mcases/destructive_substitutions_path.ml:l22.18−26[0m,
 a non-resolvable module, [1mExt[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/destructive_substitutions_path.ml:l23.23−27[0m,
+[[1m[36mNotification[0m]: [1mcases/destructive_substitutions_path.ml:l23.18−27[0m,
 a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/destructive_substitutions_path.ml",
-     "dependencies" : { "unknown" : [["Ext2"], ["Ext"]] }
-     }],
-  "atlas" :
-    [{
-     "module" : ["Destructive_substitutions_path"],
-     "ml" : "cases/destructive_substitutions_path.ml"
-     }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/destructive_substitutions_path.ml",
+   "dependencies" : { "unknown" : [["Ext2"], ["Ext"]] }
+   }],
+"atlas" :
+  [{
+   "module" : ["Destructive_substitutions_path"],
+   "ml" : "cases/destructive_substitutions_path.ml"
+   }]
 }

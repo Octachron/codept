@@ -534,30 +534,70 @@ module Ext = struct
     | Unknown_format
     | Parse_error
 
-  let schema sch: _ t =
-    Obj[ Req, Version.Lbl.l, Version.sch; Req, sch.label, sch.inner ]
+
+  type bound = B: 'a t * 'a -> bound
+
+  let bind sch x = B(sch,x)
+
+  let schema_gen (ext: (_,_) ext): _ t =
+    (Obj [ Req, Version.Lbl.l, Version.sch; Req, ext.label, ext.inner ])
+
+  let schema_obj: _ t -> _ t = function
+    | Obj r -> Obj ((Req, Version.Lbl.l, Version.sch) :: r)
+    | _ -> assert false
 
 
-  let json s ppf x = json (schema s) ppf [Version.Lbl.l $= s.version; s.label $= x]
+  let schema_custom ext =
+    match ext.inner with
+    | Custom {fwd;rev;sch=(Obj _ as sch);id} ->
+      let sch = schema_obj sch in
+      let rev ( (l,v) :: q :  _ record): _ record =
+        [l $= v; ext.label $= rev q] in
+      let fwd ([ (lv,v); (_,x)]: _ record) =
+        ((lv $= v) :: fwd x: _ record) in
+      Custom {fwd; rev; sch; id}
+    | _ -> assert false
+
+  let schema (type a b) (sch: (a,b) ext) = match sch.inner with
+    | Obj _ as x -> Dyn (schema_obj x)
+    | Custom { sch = Obj _; _} -> Dyn(schema_custom sch)
+    | _ -> Dyn (schema_gen sch)
+
+  let extend (type a b) (sch: (a,b) ext) (x: b) = match sch.inner, x with
+    | Obj _ as s , x ->
+      bind (schema_obj s)
+        ((Version.Lbl.l $= sch.version) :: x)
+    | Custom { sch = Obj _; _ }, x -> bind (schema_custom sch)
+        [Version.Lbl.l $= sch.version;  sch.label $= x ]
+    | _, x ->
+      bind (schema_gen sch)
+        [ Version.Lbl.l $= sch.version; sch.label $= x ]
+
+
+  let json s ppf x =
+    let B (sch, x) = extend s x in
+    json sch ppf x
+
   let json_schema ppf s =
-  let {ctx; map; _ } = extract_def (schema s) in
-  Pp.fp ppf
-    "@[<v 2>{@ \
-     %a,@;\
-     %a,@;\
-     %a,@;\
-     @[%a :@ {%a},@]@;\
-     %a\
-      @ }@]@."
-     p ("$schema", "http://json-schema.org/schema#")
-     p ("title", s.title)
-     p ("description", s.description)
-     k "definitions" (json_definitions ctx.mapped) map
-     (json_type ctx.mapped L.[]) (schema s)
+    let Dyn sch = schema s in
+    let {ctx; map; _ } = extract_def sch in
+    Pp.fp ppf
+      "@[<v 2>{@ \
+       %a,@;\
+       %a,@;\
+       %a,@;\
+       @[%a :@ {%a},@]@;\
+       %a\
+       @ }@]@."
+      p ("$schema", "http://json-schema.org/schema#")
+      p ("title", s.title)
+      p ("description", s.description)
+      k "definitions" (json_definitions ctx.mapped) map
+      (json_type ctx.mapped L.[]) sch
 
-  let sexp x ppf y = sexp (schema x) ppf
-      [ Version.Lbl.l $= x.version; x.label $= y]
-
+  let sexp s ppf x =
+    let B(s,x) = extend s x in
+    sexp s ppf x
 
   let optr = function
     | None -> Error Parse_error

@@ -30,17 +30,14 @@ Spurious dependencies might be inferred due to this ambiguity.
 a non-resolvable module, [1mY[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/simple.ml",
-     "dependencies" :
-       {
-       "unknown" :
-         [["Y"], ["W"], ["I"], ["G"], ["Ext"], ["E"], ["C"], ["B"], ["A"]]
-       }
-     }],
-  "atlas" : [{ "module" : ["Simple"], "ml" : "cases/simple.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/simple.ml",
+   "dependencies" :
+     {
+     "unknown" :
+       [["Y"], ["W"], ["I"], ["G"], ["Ext"], ["E"], ["C"], ["B"], ["A"]]
+     }
+   }],
+"atlas" : [{ "module" : ["Simple"], "ml" : "cases/simple.ml" }]
 }

@@ -1,24 +1,20 @@
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "aliases2/a.ml",
-     "dependencies" :
-       {
-       "local" :
-         [[["D"], ["aliases2", "d.ml"]], [["B"], ["aliases2", "b.ml"]]]
-       }
-     }, { "file" : "aliases2/b.ml", "dependencies" : {  } },
-    { "file" : "aliases2/c.ml", "dependencies" : {  } },
-    { "file" : "aliases2/d.ml", "dependencies" : {  } },
-    { "file" : "aliases2/e.ml", "dependencies" : {  } }],
-  "atlas" :
-    [{ "module" : ["E"], "ml" : "aliases2/e.ml" },
-    { "module" : ["D"], "ml" : "aliases2/d.ml" },
-    { "module" : ["C"], "ml" : "aliases2/c.ml" },
-    { "module" : ["B"], "ml" : "aliases2/b.ml" },
-    { "module" : ["A"], "ml" : "aliases2/a.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "aliases2/a.ml",
+   "dependencies" :
+     {
+     "local" : [[["D"], ["aliases2", "d.ml"]], [["B"], ["aliases2", "b.ml"]]]
+     }
+   }, { "file" : "aliases2/b.ml", "dependencies" : {  } },
+  { "file" : "aliases2/c.ml", "dependencies" : {  } },
+  { "file" : "aliases2/d.ml", "dependencies" : {  } },
+  { "file" : "aliases2/e.ml", "dependencies" : {  } }],
+"atlas" :
+  [{ "module" : ["E"], "ml" : "aliases2/e.ml" },
+  { "module" : ["D"], "ml" : "aliases2/d.ml" },
+  { "module" : ["C"], "ml" : "aliases2/c.ml" },
+  { "module" : ["B"], "ml" : "aliases2/b.ml" },
+  { "module" : ["A"], "ml" : "aliases2/a.ml" }]
 }

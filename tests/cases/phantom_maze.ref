@@ -30,16 +30,11 @@ ambiguity.
 a non-resolvable module, [1mY[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/phantom_maze.ml",
-     "dependencies" :
-       {
-       "unknown" : [["Y"], ["X"], ["External"], ["E"], ["D"], ["C"], ["B"]]
-       }
-     }],
-  "atlas" : [{ "module" : ["Phantom_maze"], "ml" : "cases/phantom_maze.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/phantom_maze.ml",
+   "dependencies" :
+     { "unknown" : [["Y"], ["X"], ["External"], ["E"], ["D"], ["C"], ["B"]] }
+   }],
+"atlas" : [{ "module" : ["Phantom_maze"], "ml" : "cases/phantom_maze.ml" }]
 }

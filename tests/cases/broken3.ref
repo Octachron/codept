@@ -4,9 +4,6 @@
 However, lower and upper bound agreed upon dependencies.
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" : [{ "file" : "cases/broken3.ml", "dependencies" : {  } }],
-  "atlas" : [{ "module" : ["Broken3"], "ml" : "cases/broken3.ml" }]
-  }
+"dependencies" : [{ "file" : "cases/broken3.ml", "dependencies" : {  } }],
+"atlas" : [{ "module" : ["Broken3"], "ml" : "cases/broken3.ml" }]
 }

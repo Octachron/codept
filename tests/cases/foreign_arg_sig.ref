@@ -4,14 +4,11 @@ a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/foreign_arg_sig.ml",
-     "dependencies" : { "unknown" : [["Ext2"], ["Ext"]] }
-     }],
-  "atlas" :
-    [{ "module" : ["Foreign_arg_sig"], "ml" : "cases/foreign_arg_sig.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/foreign_arg_sig.ml",
+   "dependencies" : { "unknown" : [["Ext2"], ["Ext"]] }
+   }],
+"atlas" :
+  [{ "module" : ["Foreign_arg_sig"], "ml" : "cases/foreign_arg_sig.ml" }]
 }

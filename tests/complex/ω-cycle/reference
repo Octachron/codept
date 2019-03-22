@@ -1,8 +1,8 @@
 [[1m[31mError[0m]: Solver failure 
    −Circular dependencies: 
-      C2 −([1mω-cycle/c2.ml:l1.5−7[0m)⟶ C3 −([1mω-cycle/c3.ml:l1.5−7[0m)⟶
-      C4 −([1mω-cycle/c4.ml:l1.5−7[0m)⟶ C5 −([1mω-cycle/c5.ml:l1.5−7[0m)⟶
-      C1 −([1mω-cycle/c1.ml:l1.5−7[0m)⟶ C2
+      C2 −([1mω-cycle/c2.ml:l1.0−7[0m)⟶ C3 −([1mω-cycle/c3.ml:l1.0−7[0m)⟶
+      C4 −([1mω-cycle/c4.ml:l1.0−7[0m)⟶ C5 −([1mω-cycle/c5.ml:l1.0−7[0m)⟶
+      C1 −([1mω-cycle/c1.ml:l1.0−7[0m)⟶ C2
 
    −Non-resolved internal dependency.
     The following compilation units {ω-cycle/a.ml, ω-cycle/b.ml,
@@ -10,59 +10,56 @@
     depend on the compilation units "ω-cycle/c2.ml" that could not be resolved.
 {
 "version" : [0, 10, 0],
-"deps" :
+"dependencies" :
+  [{
+   "file" : "ω-cycle/a.ml",
+   "dependencies" : { "local" : [[["B"], ["ω-cycle", "b.ml"]]] }
+   },
   {
-  "dependencies" :
-    [{
-     "file" : "ω-cycle/a.ml",
-     "dependencies" : { "local" : [[["B"], ["ω-cycle", "b.ml"]]] }
-     },
-    {
-    "file" : "ω-cycle/b.ml",
-    "dependencies" : { "local" : [[["K"], ["ω-cycle", "k.ml"]]] }
-    },
-    {
-    "file" : "ω-cycle/c1.ml",
-    "dependencies" : { "local" : [[["C2"], ["ω-cycle", "c2.ml"]]] }
-    },
-    {
-    "file" : "ω-cycle/c2.ml",
-    "dependencies" : { "local" : [[["C3"], ["ω-cycle", "c3.ml"]]] }
-    },
-    {
-    "file" : "ω-cycle/c3.ml",
-    "dependencies" : { "local" : [[["C4"], ["ω-cycle", "c4.ml"]]] }
-    },
-    {
-    "file" : "ω-cycle/c4.ml",
-    "dependencies" : { "local" : [[["C5"], ["ω-cycle", "c5.ml"]]] }
-    },
-    {
-    "file" : "ω-cycle/c5.ml",
-    "dependencies" : { "local" : [[["C1"], ["ω-cycle", "c1.ml"]]] }
-    },
-    {
-    "file" : "ω-cycle/k.ml",
-    "dependencies" : { "local" : [[["L"], ["ω-cycle", "l.ml"]]] }
-    },
-    {
-    "file" : "ω-cycle/l.ml",
-    "dependencies" : { "local" : [[["C2"], ["ω-cycle", "c2.ml"]]] }
-    },
-    {
-    "file" : "ω-cycle/w.ml",
-    "dependencies" : { "local" : [[["K"], ["ω-cycle", "k.ml"]]] }
-    }],
-  "atlas" :
-    [{ "module" : ["W"], "ml" : "ω-cycle/w.ml" },
-    { "module" : ["L"], "ml" : "ω-cycle/l.ml" },
-    { "module" : ["K"], "ml" : "ω-cycle/k.ml" },
-    { "module" : ["C5"], "ml" : "ω-cycle/c5.ml" },
-    { "module" : ["C4"], "ml" : "ω-cycle/c4.ml" },
-    { "module" : ["C3"], "ml" : "ω-cycle/c3.ml" },
-    { "module" : ["C2"], "ml" : "ω-cycle/c2.ml" },
-    { "module" : ["C1"], "ml" : "ω-cycle/c1.ml" },
-    { "module" : ["B"], "ml" : "ω-cycle/b.ml" },
-    { "module" : ["A"], "ml" : "ω-cycle/a.ml" }]
-  }
+  "file" : "ω-cycle/b.ml",
+  "dependencies" : { "local" : [[["K"], ["ω-cycle", "k.ml"]]] }
+  },
+  {
+  "file" : "ω-cycle/c1.ml",
+  "dependencies" : { "local" : [[["C2"], ["ω-cycle", "c2.ml"]]] }
+  },
+  {
+  "file" : "ω-cycle/c2.ml",
+  "dependencies" : { "local" : [[["C3"], ["ω-cycle", "c3.ml"]]] }
+  },
+  {
+  "file" : "ω-cycle/c3.ml",
+  "dependencies" : { "local" : [[["C4"], ["ω-cycle", "c4.ml"]]] }
+  },
+  {
+  "file" : "ω-cycle/c4.ml",
+  "dependencies" : { "local" : [[["C5"], ["ω-cycle", "c5.ml"]]] }
+  },
+  {
+  "file" : "ω-cycle/c5.ml",
+  "dependencies" : { "local" : [[["C1"], ["ω-cycle", "c1.ml"]]] }
+  },
+  {
+  "file" : "ω-cycle/k.ml",
+  "dependencies" : { "local" : [[["L"], ["ω-cycle", "l.ml"]]] }
+  },
+  {
+  "file" : "ω-cycle/l.ml",
+  "dependencies" : { "local" : [[["C2"], ["ω-cycle", "c2.ml"]]] }
+  },
+  {
+  "file" : "ω-cycle/w.ml",
+  "dependencies" : { "local" : [[["K"], ["ω-cycle", "k.ml"]]] }
+  }],
+"atlas" :
+  [{ "module" : ["W"], "ml" : "ω-cycle/w.ml" },
+  { "module" : ["L"], "ml" : "ω-cycle/l.ml" },
+  { "module" : ["K"], "ml" : "ω-cycle/k.ml" },
+  { "module" : ["C5"], "ml" : "ω-cycle/c5.ml" },
+  { "module" : ["C4"], "ml" : "ω-cycle/c4.ml" },
+  { "module" : ["C3"], "ml" : "ω-cycle/c3.ml" },
+  { "module" : ["C2"], "ml" : "ω-cycle/c2.ml" },
+  { "module" : ["C1"], "ml" : "ω-cycle/c1.ml" },
+  { "module" : ["B"], "ml" : "ω-cycle/b.ml" },
+  { "module" : ["A"], "ml" : "ω-cycle/a.ml" }]
 }

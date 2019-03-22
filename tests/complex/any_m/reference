@@ -1,48 +1,45 @@
-[[1m[36mNotification[0m]: [1many_m/c/m.ml:l1.5−8[0m,
+[[1m[36mNotification[0m]: [1many_m/c/m.ml:l1.0−8[0m,
 a non-resolvable module, [1mExt[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1many_m/c/m.ml:l2.5−8[0m, name resolution for [1mD[0m was ambiguous, due to
-the opening of the external module [1mExt[0m, at location [1ml1.5−8[0m. Spurious
+[[1m[35mWarning[0m]: [1many_m/c/m.ml:l2.0−8[0m, name resolution for [1mD[0m was ambiguous, due to
+the opening of the external module [1mExt[0m, at location [1ml1.0−8[0m. Spurious
 dependencies might be inferred due to this ambiguity.
 {
 "version" : [0, 10, 0],
-"deps" :
+"dependencies" :
+  [{
+   "file" : "any_m/a/m.ml",
+   "dependencies" : { "local" : [[["B", "M"], ["any_m", "b", "m.ml"]]] }
+   },
   {
+  "file" : "any_m/b/m.ml",
   "dependencies" :
-    [{
-     "file" : "any_m/a/m.ml",
-     "dependencies" : { "local" : [[["B", "M"], ["any_m", "b", "m.ml"]]] }
-     },
     {
-    "file" : "any_m/b/m.ml",
-    "dependencies" :
-      {
-      "local" :
-        [[["E", "M"], ["any_m", "e", "m.ml"]],
-        [["D", "M"], ["any_m", "d", "m.ml"]]]
-      }
-    },
+    "local" :
+      [[["E", "M"], ["any_m", "e", "m.ml"]],
+      [["D", "M"], ["any_m", "d", "m.ml"]]]
+    }
+  },
+  {
+  "file" : "any_m/c/m.ml",
+  "dependencies" :
     {
-    "file" : "any_m/c/m.ml",
-    "dependencies" :
-      {
-      "local" : [[["D", "M"], ["any_m", "d", "m.ml"]]],
-      "unknown" : [["Ext"]]
-      }
-    }, { "file" : "any_m/d/m.ml", "dependencies" : {  } },
-    {
-    "file" : "any_m/e/m.ml",
-    "dependencies" : { "local" : [[["D", "M"], ["any_m", "d", "m.ml"]]] }
-    },
-    {
-    "file" : "any_m/f/m.ml",
-    "dependencies" : { "local" : [[["A", "M"], ["any_m", "a", "m.ml"]]] }
-    }],
-  "atlas" :
-    [{ "module" : ["F", "M"], "ml" : "any_m/f/m.ml" },
-    { "module" : ["E", "M"], "ml" : "any_m/e/m.ml" },
-    { "module" : ["D", "M"], "ml" : "any_m/d/m.ml" },
-    { "module" : ["C", "M"], "ml" : "any_m/c/m.ml" },
-    { "module" : ["B", "M"], "ml" : "any_m/b/m.ml" },
-    { "module" : ["A", "M"], "ml" : "any_m/a/m.ml" }]
-  }
+    "local" : [[["D", "M"], ["any_m", "d", "m.ml"]]],
+    "unknown" : [["Ext"]]
+    }
+  }, { "file" : "any_m/d/m.ml", "dependencies" : {  } },
+  {
+  "file" : "any_m/e/m.ml",
+  "dependencies" : { "local" : [[["D", "M"], ["any_m", "d", "m.ml"]]] }
+  },
+  {
+  "file" : "any_m/f/m.ml",
+  "dependencies" : { "local" : [[["A", "M"], ["any_m", "a", "m.ml"]]] }
+  }],
+"atlas" :
+  [{ "module" : ["F", "M"], "ml" : "any_m/f/m.ml" },
+  { "module" : ["E", "M"], "ml" : "any_m/e/m.ml" },
+  { "module" : ["D", "M"], "ml" : "any_m/d/m.ml" },
+  { "module" : ["C", "M"], "ml" : "any_m/c/m.ml" },
+  { "module" : ["B", "M"], "ml" : "any_m/b/m.ml" },
+  { "module" : ["A", "M"], "ml" : "any_m/a/m.ml" }]
 }

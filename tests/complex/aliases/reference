@@ -1,29 +1,25 @@
 {
 "version" : [0, 10, 0],
-"deps" :
+"dependencies" :
+  [{
+   "file" : "aliases/amap.ml",
+   "dependencies" : { "local" : [[["Long__B"], ["aliases", "long__B.ml"]]] }
+   }, { "file" : "aliases/long__A.ml", "dependencies" : {  } },
+  { "file" : "aliases/long__B.ml", "dependencies" : {  } },
+  { "file" : "aliases/long__C.ml", "dependencies" : {  } },
   {
+  "file" : "aliases/user.ml",
   "dependencies" :
-    [{
-     "file" : "aliases/amap.ml",
-     "dependencies" :
-       { "local" : [[["Long__B"], ["aliases", "long__B.ml"]]] }
-     }, { "file" : "aliases/long__A.ml", "dependencies" : {  } },
-    { "file" : "aliases/long__B.ml", "dependencies" : {  } },
-    { "file" : "aliases/long__C.ml", "dependencies" : {  } },
     {
-    "file" : "aliases/user.ml",
-    "dependencies" :
-      {
-      "local" :
-        [[["Long__A"], ["aliases", "long__A.ml"]],
-        [["Amap"], ["aliases", "amap.ml"]]]
-      }
-    }],
-  "atlas" :
-    [{ "module" : ["User"], "ml" : "aliases/user.ml" },
-    { "module" : ["Long__C"], "ml" : "aliases/long__C.ml" },
-    { "module" : ["Long__B"], "ml" : "aliases/long__B.ml" },
-    { "module" : ["Long__A"], "ml" : "aliases/long__A.ml" },
-    { "module" : ["Amap"], "ml" : "aliases/amap.ml" }]
-  }
+    "local" :
+      [[["Long__A"], ["aliases", "long__A.ml"]],
+      [["Amap"], ["aliases", "amap.ml"]]]
+    }
+  }],
+"atlas" :
+  [{ "module" : ["User"], "ml" : "aliases/user.ml" },
+  { "module" : ["Long__C"], "ml" : "aliases/long__C.ml" },
+  { "module" : ["Long__B"], "ml" : "aliases/long__B.ml" },
+  { "module" : ["Long__A"], "ml" : "aliases/long__A.ml" },
+  { "module" : ["Amap"], "ml" : "aliases/amap.ml" }]
 }

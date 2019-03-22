@@ -1,19 +1,16 @@
-[[1m[36mNotification[0m]: [1mcases/phantom_maze_4.ml:l3.5−11[0m,
+[[1m[36mNotification[0m]: [1mcases/phantom_maze_4.ml:l3.0−11[0m,
 a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
 [[1m[35mWarning[0m]: [1mcases/phantom_maze_4.ml:l4.0−14[0m, name resolution for [1mM[0m was
 ambiguous, due to the opening of the external module [1mExtern[0m, at
-location [1ml3.5−11[0m. Spurious dependencies might be inferred due to this
+location [1ml3.0−11[0m. Spurious dependencies might be inferred due to this
 ambiguity.
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/phantom_maze_4.ml",
-     "dependencies" : { "unknown" : [["Extern"]] }
-     }],
-  "atlas" :
-    [{ "module" : ["Phantom_maze_4"], "ml" : "cases/phantom_maze_4.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/phantom_maze_4.ml",
+   "dependencies" : { "unknown" : [["Extern"]] }
+   }],
+"atlas" :
+  [{ "module" : ["Phantom_maze_4"], "ml" : "cases/phantom_maze_4.ml" }]
 }

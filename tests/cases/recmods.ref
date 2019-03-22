@@ -2,17 +2,14 @@
 module [1m[0m does not contain any module type [1mS[0m
 [[1m[35mWarning[0m]: [1mcases/recmods.ml:l5.18−27[0m,
 module [1m[0m does not contain any module type [1mS[0m
-[[1m[36mNotification[0m]: [1mcases/recmods.ml:l11.7−10[0m,
+[[1m[36mNotification[0m]: [1mcases/recmods.ml:l11.2−10[0m,
 a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/recmods.ml",
-     "dependencies" : { "unknown" : [["Ext"]] }
-     }],
-  "atlas" : [{ "module" : ["Recmods"], "ml" : "cases/recmods.ml" }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/recmods.ml",
+   "dependencies" : { "unknown" : [["Ext"]] }
+   }],
+"atlas" : [{ "module" : ["Recmods"], "ml" : "cases/recmods.ml" }]
 }

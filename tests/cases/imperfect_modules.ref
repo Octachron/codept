@@ -10,17 +10,11 @@ module [1mN[0m does not contain any submodule [1mF[0m
 only functor can be applied, got:(.)
 {
 "version" : [0, 10, 0],
-"deps" :
-  {
-  "dependencies" :
-    [{
-     "file" : "cases/imperfect_modules.ml",
-     "dependencies" : { "unknown" : [["Ext"]] }
-     }],
-  "atlas" :
-    [{
-     "module" : ["Imperfect_modules"],
-     "ml" : "cases/imperfect_modules.ml"
-     }]
-  }
+"dependencies" :
+  [{
+   "file" : "cases/imperfect_modules.ml",
+   "dependencies" : { "unknown" : [["Ext"]] }
+   }],
+"atlas" :
+  [{ "module" : ["Imperfect_modules"], "ml" : "cases/imperfect_modules.ml" }]
 }

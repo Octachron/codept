@@ -1,21 +1,25 @@
+[[1m[35mWarning[0m]: Syntax error
+ File "local_module_subst/a.mli", line 2, characters 13-15
 [[1m[36mNotification[0m]: [1mlocal_module_subst/b.mli:l2.0−10[0m,
 a non-resolvable module, [1mLocal[0m, has been replaced by an approximation
+[[1m[35mWarning[0m]: Approximate parsing of local_module_subst/a.mli.
+Computed dependencies: at least {}, maybe: {Local}
 {
 "version" : [0, 10, 0],
-"deps" :
+"dependencies" :
+  [{
+   "file" : "local_module_subst/a.mli",
+   "dependencies" : { "unknown" : [["Local"]] }
+   },
   {
+  "file" : "local_module_subst/b.mli",
   "dependencies" :
-    [{ "file" : "local_module_subst/a.mli", "dependencies" : {  } },
     {
-    "file" : "local_module_subst/b.mli",
-    "dependencies" :
-      {
-      "local" : [[["A"], ["local_module_subst", "a.mli"]]],
-      "unknown" : [["Local"]]
-      }
-    }],
-  "atlas" :
-    [{ "module" : ["B"], "mli" : "local_module_subst/b.mli" },
-    { "module" : ["A"], "mli" : "local_module_subst/a.mli" }]
-  }
+    "local" : [[["A"], ["local_module_subst", "a.mli"]]],
+    "unknown" : [["Local"]]
+    }
+  }],
+"atlas" :
+  [{ "module" : ["B"], "mli" : "local_module_subst/b.mli" },
+  { "module" : ["A"], "mli" : "local_module_subst/a.mli" }]
 }

@@ -1,7 +1,7 @@
 [[1m[31mError[0m]: Solver failure 
    −Circular dependencies: 
-      A −([1m8-cycles/a.ml:l1.5−6[0m)⟶ B −([1m8-cycles/b.ml:l2.5−6[0m)⟶
-      C −([1m8-cycles/c.ml:l3.5−6[0m)⟶ D −([1m8-cycles/d.ml:l5.5−6[0m)⟶ A
+      A −([1m8-cycles/a.ml:l1.0−6[0m)⟶ B −([1m8-cycles/b.ml:l2.0−6[0m)⟶
+      C −([1m8-cycles/c.ml:l3.0−6[0m)⟶ D −([1m8-cycles/d.ml:l5.0−6[0m)⟶ A
 
    −Non-resolved internal dependency.
     The following compilation units {8-cycles/e.ml, 8-cycles/f.ml,
@@ -9,58 +9,54 @@
     depend on the compilation units "8-cycles/a.ml" that could not be resolved.
 [[1m[31mError[0m]: Solver failure 
    −Circular dependencies: 
-      A −([1m8-cycles/a.ml:l2.5−6[0m)⟶ H −([1m8-cycles/h.ml:l9.5−6[0m)⟶
-      G −([1m8-cycles/g.ml:l8.5−6[0m)⟶ F −([1m8-cycles/f.ml:l7.5−6[0m)⟶
-      E −([1m8-cycles/e.ml:l6.5−6[0m)⟶ A
+      A −([1m8-cycles/a.ml:l2.0−6[0m)⟶ H −([1m8-cycles/h.ml:l9.0−6[0m)⟶
+      G −([1m8-cycles/g.ml:l8.0−6[0m)⟶ F −([1m8-cycles/f.ml:l7.0−6[0m)⟶
+      E −([1m8-cycles/e.ml:l6.0−6[0m)⟶ A
 {
 "version" : [0, 10, 0],
-"deps" :
+"dependencies" :
+  [{
+   "file" : "8-cycles/a.ml",
+   "dependencies" :
+     {
+     "local" : [[["H"], ["8-cycles", "h.ml"]], [["B"], ["8-cycles", "b.ml"]]]
+     }
+   },
   {
-  "dependencies" :
-    [{
-     "file" : "8-cycles/a.ml",
-     "dependencies" :
-       {
-       "local" :
-         [[["H"], ["8-cycles", "h.ml"]], [["B"], ["8-cycles", "b.ml"]]]
-       }
-     },
-    {
-    "file" : "8-cycles/b.ml",
-    "dependencies" : { "local" : [[["C"], ["8-cycles", "c.ml"]]] }
-    },
-    {
-    "file" : "8-cycles/c.ml",
-    "dependencies" : { "local" : [[["D"], ["8-cycles", "d.ml"]]] }
-    },
-    {
-    "file" : "8-cycles/d.ml",
-    "dependencies" : { "local" : [[["A"], ["8-cycles", "a.ml"]]] }
-    },
-    {
-    "file" : "8-cycles/e.ml",
-    "dependencies" : { "local" : [[["A"], ["8-cycles", "a.ml"]]] }
-    },
-    {
-    "file" : "8-cycles/f.ml",
-    "dependencies" : { "local" : [[["E"], ["8-cycles", "e.ml"]]] }
-    },
-    {
-    "file" : "8-cycles/g.ml",
-    "dependencies" : { "local" : [[["F"], ["8-cycles", "f.ml"]]] }
-    },
-    {
-    "file" : "8-cycles/h.ml",
-    "dependencies" : { "local" : [[["G"], ["8-cycles", "g.ml"]]] }
-    }],
-  "atlas" :
-    [{ "module" : ["H"], "ml" : "8-cycles/h.ml" },
-    { "module" : ["G"], "ml" : "8-cycles/g.ml" },
-    { "module" : ["F"], "ml" : "8-cycles/f.ml" },
-    { "module" : ["E"], "ml" : "8-cycles/e.ml" },
-    { "module" : ["D"], "ml" : "8-cycles/d.ml" },
-    { "module" : ["C"], "ml" : "8-cycles/c.ml" },
-    { "module" : ["B"], "ml" : "8-cycles/b.ml" },
-    { "module" : ["A"], "ml" : "8-cycles/a.ml" }]
-  }
+  "file" : "8-cycles/b.ml",
+  "dependencies" : { "local" : [[["C"], ["8-cycles", "c.ml"]]] }
+  },
+  {
+  "file" : "8-cycles/c.ml",
+  "dependencies" : { "local" : [[["D"], ["8-cycles", "d.ml"]]] }
+  },
+  {
+  "file" : "8-cycles/d.ml",
+  "dependencies" : { "local" : [[["A"], ["8-cycles", "a.ml"]]] }
+  },
+  {
+  "file" : "8-cycles/e.ml",
+  "dependencies" : { "local" : [[["A"], ["8-cycles", "a.ml"]]] }
+  },
+  {
+  "file" : "8-cycles/f.ml",
+  "dependencies" : { "local" : [[["E"], ["8-cycles", "e.ml"]]] }
+  },
+  {
+  "file" : "8-cycles/g.ml",
+  "dependencies" : { "local" : [[["F"], ["8-cycles", "f.ml"]]] }
+  },
+  {
+  "file" : "8-cycles/h.ml",
+  "dependencies" : { "local" : [[["G"], ["8-cycles", "g.ml"]]] }
+  }],
+"atlas" :
+  [{ "module" : ["H"], "ml" : "8-cycles/h.ml" },
+  { "module" : ["G"], "ml" : "8-cycles/g.ml" },
+  { "module" : ["F"], "ml" : "8-cycles/f.ml" },
+  { "module" : ["E"], "ml" : "8-cycles/e.ml" },
+  { "module" : ["D"], "ml" : "8-cycles/d.ml" },
+  { "module" : ["C"], "ml" : "8-cycles/c.ml" },
+  { "module" : ["B"], "ml" : "8-cycles/b.ml" },
+  { "module" : ["A"], "ml" : "8-cycles/a.ml" }]
 }
