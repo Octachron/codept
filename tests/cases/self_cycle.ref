@@ -2,11 +2,8 @@
    −Circular dependencies: 
       Self_cycle −([1mcases/self_cycle.ml:l1.0−15[0m)⟶ Self_cycle
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{
-   "file" : "cases/self_cycle.ml",
-   "local" : [[["Self_cycle"], ["cases", "self_cycle.ml"]]]
-   }],
-"atlas" : [{ "module" : ["Self_cycle"], "ml" : "cases/self_cycle.ml" }]
+  [{ "file" : "cases/self_cycle.ml", "deps" : [["Self_cycle"]] }],
+"local" : [{ "module" : ["Self_cycle"], "ml" : "cases/self_cycle.ml" }]
 }

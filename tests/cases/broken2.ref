@@ -13,8 +13,9 @@ dependencies might be inferred due to this ambiguity.
 Computed dependencies: at least {Ext; 
 Ext2}, maybe: {A}
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{ "file" : "cases/broken2.ml", "unknown" : [["Ext2"], ["Ext"], ["A"]] }],
-"atlas" : [{ "module" : ["Broken2"], "ml" : "cases/broken2.ml" }]
+  [{ "file" : "cases/broken2.ml", "deps" : [["Ext2"], ["Ext"], ["A"]] }],
+"local" : [{ "module" : ["Broken2"], "ml" : "cases/broken2.ml" }],
+"unknown" : [["A"], ["Ext"], ["Ext2"]]
 }

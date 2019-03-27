@@ -3,11 +3,12 @@ a non-resolvable module, [1mAliased__C[0m, has been replaced by an approximati
 [[1m[36mNotification[0m]: [1mcases/alias_map.ml:l6.0−6[0m,
 a non-resolvable module, [1mAliased__B[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
   [{
    "file" : "cases/alias_map.ml",
-   "unknown" : [["Aliased__C"], ["Aliased__B"]]
+   "deps" : [["Aliased__C"], ["Aliased__B"]]
    }],
-"atlas" : [{ "module" : ["Alias_map"], "ml" : "cases/alias_map.ml" }]
+"local" : [{ "module" : ["Alias_map"], "ml" : "cases/alias_map.ml" }],
+"unknown" : [["Aliased__B"], ["Aliased__C"]]
 }

@@ -7,15 +7,16 @@ a non-resolvable module, [1mExt3[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/functor_in_type_expr.ml:l1.26−42[0m,
 a non-resolvable module, [1mExt4[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
   [{
    "file" : "cases/functor_in_type_expr.ml",
-   "unknown" : [["Ext4"], ["Ext3"], ["Ext2"], ["Ext1"]]
+   "deps" : [["Ext4"], ["Ext3"], ["Ext2"], ["Ext1"]]
    }],
-"atlas" :
+"local" :
   [{
    "module" : ["Functor_in_type_expr"],
    "ml" : "cases/functor_in_type_expr.ml"
-   }]
+   }],
+"unknown" : [["Ext1"], ["Ext2"], ["Ext3"], ["Ext4"]]
 }

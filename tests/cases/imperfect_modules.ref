@@ -9,9 +9,10 @@ module [1mN[0m does not contain any submodule [1mF[0m
 [[1m[35mWarning[0m]: [1mcases/imperfect_modules.ml:l25.0−18[0m, 
 only functor can be applied, got:(.)
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{ "file" : "cases/imperfect_modules.ml", "unknown" : [["Ext"]] }],
-"atlas" :
-  [{ "module" : ["Imperfect_modules"], "ml" : "cases/imperfect_modules.ml" }]
+  [{ "file" : "cases/imperfect_modules.ml", "deps" : [["Ext"]] }],
+"local" :
+  [{ "module" : ["Imperfect_modules"], "ml" : "cases/imperfect_modules.ml" }],
+"unknown" : [["Ext"]]
 }

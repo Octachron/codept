@@ -1,16 +1,13 @@
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{ "file" : "mixed/a.ml", "local" : [[["D"], ["mixed", "d.mli"]]] },
-  {
-  "file" : "mixed/a.mli",
-  "local" : [[["D"], ["mixed", "d.mli"]], [["B"], ["mixed", "b.ml"]]]
-  }, { "file" : "mixed/b.ml", "local" : [[["C"], ["mixed", "c.mli"]]] },
-  { "file" : "mixed/c.mli", "local" : [[["D"], ["mixed", "d.mli"]]] },
-  { "file" : "mixed/d.mli" }],
-"atlas" :
-  [{ "module" : ["D"], "mli" : "mixed/d.mli" },
-  { "module" : ["C"], "mli" : "mixed/c.mli" },
+  [{ "file" : "mixed/a.mli", "deps" : [["D"], ["B"]] },
+  { "file" : "mixed/b.ml", "deps" : [["C"]] },
+  { "file" : "mixed/c.mli", "deps" : [["D"]] }, { "file" : "mixed/d.mli" },
+  { "file" : "mixed/a.ml", "deps" : [["D"]] }],
+"local" :
+  [{ "module" : ["A"], "ml" : "mixed/a.ml", "mli" : "mixed/a.mli" },
   { "module" : ["B"], "ml" : "mixed/b.ml" },
-  { "module" : ["A"], "ml" : "mixed/a.ml", "mli" : "mixed/a.mli" }]
+  { "module" : ["C"], "mli" : "mixed/c.mli" },
+  { "module" : ["D"], "mli" : "mixed/d.mli" }]
 }

@@ -3,8 +3,9 @@ a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/with_more.ml:l3.51−57[0m,
 a non-resolvable module, [1mExt3[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{ "file" : "cases/with_more.ml", "unknown" : [["Ext3"], ["Ext"]] }],
-"atlas" : [{ "module" : ["With_more"], "ml" : "cases/with_more.ml" }]
+  [{ "file" : "cases/with_more.ml", "deps" : [["Ext3"], ["Ext"]] }],
+"local" : [{ "module" : ["With_more"], "ml" : "cases/with_more.ml" }],
+"unknown" : [["Ext"], ["Ext3"]]
 }

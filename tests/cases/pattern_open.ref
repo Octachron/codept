@@ -15,11 +15,12 @@ a non-resolvable module, [1mE2[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l22.8−14[0m,
 a non-resolvable module, [1mE3[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
   [{
    "file" : "cases/pattern_open.ml",
-   "unknown" : [["E4"], ["E3"], ["E2"], ["E1"], ["A'"]]
+   "deps" : [["E4"], ["E3"], ["E2"], ["E1"], ["A'"]]
    }],
-"atlas" : [{ "module" : ["Pattern_open"], "ml" : "cases/pattern_open.ml" }]
+"local" : [{ "module" : ["Pattern_open"], "ml" : "cases/pattern_open.ml" }],
+"unknown" : [["A'"], ["E1"], ["E2"], ["E3"], ["E4"]]
 }

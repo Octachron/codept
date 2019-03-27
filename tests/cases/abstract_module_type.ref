@@ -1,7 +1,7 @@
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" : [{ "file" : "cases/abstract_module_type.ml" }],
-"atlas" :
+"local" :
   [{
    "module" : ["Abstract_module_type"],
    "ml" : "cases/abstract_module_type.ml"

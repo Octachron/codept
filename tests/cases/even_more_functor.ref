@@ -3,9 +3,10 @@ a non-resolvable module, [1mE[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/even_more_functor.ml:l3.0−24[0m,
 a non-resolvable module, [1mA[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{ "file" : "cases/even_more_functor.ml", "unknown" : [["E"], ["A"]] }],
-"atlas" :
-  [{ "module" : ["Even_more_functor"], "ml" : "cases/even_more_functor.ml" }]
+  [{ "file" : "cases/even_more_functor.ml", "deps" : [["E"], ["A"]] }],
+"local" :
+  [{ "module" : ["Even_more_functor"], "ml" : "cases/even_more_functor.ml" }],
+"unknown" : [["A"], ["E"]]
 }

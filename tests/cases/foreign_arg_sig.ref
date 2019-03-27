@@ -3,9 +3,10 @@ a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/foreign_arg_sig.ml:l2.2−30[0m,
 a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{ "file" : "cases/foreign_arg_sig.ml", "unknown" : [["Ext2"], ["Ext"]] }],
-"atlas" :
-  [{ "module" : ["Foreign_arg_sig"], "ml" : "cases/foreign_arg_sig.ml" }]
+  [{ "file" : "cases/foreign_arg_sig.ml", "deps" : [["Ext2"], ["Ext"]] }],
+"local" :
+  [{ "module" : ["Foreign_arg_sig"], "ml" : "cases/foreign_arg_sig.ml" }],
+"unknown" : [["Ext"], ["Ext2"]]
 }

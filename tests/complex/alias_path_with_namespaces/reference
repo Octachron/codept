@@ -1,23 +1,23 @@
 [[1m[36mNotification[0m]: [1malias_path_with_namespaces/inner/a.ml:l3.0−6[0m,
 a non-resolvable module, [1mC[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
+  [{ "file" : "alias_path_with_namespaces/inner/a.mli" },
+  { "file" : "alias_path_with_namespaces/inner/b.mli" },
+  {
+  "file" : "alias_path_with_namespaces/inner/a.ml",
+  "deps" : [["Inner", "B"], ["C"]]
+  }],
+"local" :
   [{
-   "file" : "alias_path_with_namespaces/inner/a.ml",
-   "local" :
-     [[["Inner", "B"], ["alias_path_with_namespaces", "inner", "b.mli"]]],
-   "unknown" : [["C"]]
-   }, { "file" : "alias_path_with_namespaces/inner/a.mli" },
-  { "file" : "alias_path_with_namespaces/inner/b.mli" }],
-"atlas" :
-  [{
-   "module" : ["Inner", "B"],
-   "mli" : "alias_path_with_namespaces/inner/b.mli"
+   "module" : ["Inner", "A"],
+   "ml" : "alias_path_with_namespaces/inner/a.ml",
+   "mli" : "alias_path_with_namespaces/inner/a.mli"
    },
   {
-  "module" : ["Inner", "A"],
-  "ml" : "alias_path_with_namespaces/inner/a.ml",
-  "mli" : "alias_path_with_namespaces/inner/a.mli"
-  }]
+  "module" : ["Inner", "B"],
+  "mli" : "alias_path_with_namespaces/inner/b.mli"
+  }],
+"unknown" : [["C"]]
 }

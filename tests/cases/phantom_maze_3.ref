@@ -11,9 +11,10 @@ ambiguity.
 [[1m[36mNotification[0m]: [1mcases/phantom_maze_3.ml:l16.11−12[0m,
 a non-resolvable module, [1mX[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{ "file" : "cases/phantom_maze_3.ml", "unknown" : [["X"], ["B"]] }],
-"atlas" :
-  [{ "module" : ["Phantom_maze_3"], "ml" : "cases/phantom_maze_3.ml" }]
+  [{ "file" : "cases/phantom_maze_3.ml", "deps" : [["X"], ["B"]] }],
+"local" :
+  [{ "module" : ["Phantom_maze_3"], "ml" : "cases/phantom_maze_3.ml" }],
+"unknown" : [["B"], ["X"]]
 }

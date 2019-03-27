@@ -1,5 +1,5 @@
 {
-"version" : [0, 10, 0],
-"dependencies" : [{ "file" : "cases/bug.ml" }],
-"atlas" : [{ "module" : ["Bug"], "ml" : "cases/bug.ml" }]
+"version" : [0, 10, 3],
+"dependencies" : [{ "file" : "cases/bug.ml", "deps" : [["Sys"]] }],
+"local" : [{ "module" : ["Bug"], "ml" : "cases/bug.ml" }]
 }

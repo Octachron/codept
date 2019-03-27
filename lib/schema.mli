@@ -9,14 +9,17 @@ end
 val sign: (Lbl.sig', Module.t list) Ext.t
 val m2l: (Lbl.m2l, M2l.t) Ext.t
 
-type unit_association =
-  { module_path: Name.t list ; ml: string option; mli: string option }
 type p = Paths.S.t
-type local = { path: p; file:p}
-type lib = { path: p; lib: p; file:p}
-type unknown = p
-type unit = { file:string; local: local list; lib: lib list; unknown: unknown list }
-type deps = { dependencies: unit list; atlas: unit_association list }
+type local_association = { path: p; ml: string option; mli: string option }
+type library_module = { path:p; lib:p}
+
+type unit = { file:string; deps: p list }
+type deps = {
+  dependencies: unit list;
+  local: local_association list;
+  library: library_module list;
+  unknown: p list;
+}
 
 val x: (Lbl.deps, deps) Ext.t
 val schema: (Lbl.deps, deps) Ext.t

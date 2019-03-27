@@ -14,11 +14,12 @@ a non-resolvable module, [1mM[0m, has been replaced by an approximation
 Computed dependencies: at least {Ext; 
 Ext3; Ext4}, maybe: {Inner; M}
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
   [{
    "file" : "cases/option_monad.ml",
-   "unknown" : [["M"], ["Inner"], ["Ext4"], ["Ext3"], ["Ext"]]
+   "deps" : [["M"], ["Inner"], ["Ext4"], ["Ext3"], ["Ext"]]
    }],
-"atlas" : [{ "module" : ["Option_monad"], "ml" : "cases/option_monad.ml" }]
+"local" : [{ "module" : ["Option_monad"], "ml" : "cases/option_monad.ml" }],
+"unknown" : [["Ext"], ["Ext3"], ["Ext4"], ["Inner"], ["M"]]
 }

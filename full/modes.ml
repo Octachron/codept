@@ -34,44 +34,51 @@ let str x = Format.asprintf "%a" x
 let ufile (u:Unit.r) = str Paths.Pkg.pp u.src
 let upath (u:Unit.r) = Namespaced.flatten u.path
 
+module LocalSet =
+  Set.Make(struct type t = Schema.local_association let compare=compare end)
+module LibSet =
+  Set.Make(struct type t = Schema.library_module let compare=compare end)
+
+let assoc x set =
+  let x, _  = Unit.Groups.R.flatten x in
+  let x = match x.mli, x.ml with
+    | Some ({ kind = M2l.Structure; _ } as u) , None ->
+      { Unit.ml = Some u; mli = None }
+    | _ -> x in
+  match x.mli, x.ml with
+  | Some u, _ | None, Some u ->
+    let path = upath u in
+    LocalSet.add
+      { path; ml = Option.fmap ufile x.ml ; mli = Option.fmap ufile x.mli }
+      set
+  | _ -> set
+
+let build_atlas (lib,unknow) (u:Unit.r) =
+  let build_atlas {Deps.path; pkg; _} (lib,unknw)  =
+    let add_libs lib path = LibSet.add { Schema.lib; path } in
+    match pkg.source with
+    | Paths.P.(Local|Special _) -> lib, unknw
+    | Paths.P.Pkg pkg' -> add_libs pkg' path lib, unknw
+    | Paths.P.Unknown -> lib, Paths.S.Set.add path unknw in
+  Deps.fold build_atlas u.dependencies (lib,unknow)
+
 let structured fmt _ _ ppf param units =
   let fmt = Option.default param.external_format fmt in
+  let all = units.Unit.mli @ units.ml in
   let pp = let open Schematic in
     match fmt with Json -> Ext.json Schema.x | Sexp -> Ext.sexp Schema.x in
-  let udeps (u:Unit.r) =
-    let add_dep {Deps.path; pkg; _} (loc,lib,unknw)  =
-      let local file path: Schema.local = {file;path} in
-      let libs pkg file path = { Schema.lib = pkg; file = file; path } in
-      match pkg.source with
-      | Paths.P.Local -> local pkg.file path :: loc , lib, unknw
-      | Paths.P.Pkg pkg' -> loc, libs pkg' pkg.file path :: lib, unknw
-      | Paths.P.Unknown -> loc, lib, path :: unknw
-      | Paths.P.Special _ -> loc, lib,unknw in
-    Deps.fold add_dep u.dependencies ([],[],[]) in
-
-  let open Schematic in
-  let open Schema in
+  let lib, unknown =
+    List.fold_left build_atlas (LibSet.empty, Paths.S.Set.empty) all in
   let groups = Unit.Groups.R.group units in
-  let assoc (_, x) =
-    let x, _  = Unit.Groups.R.flatten x in
-    let x = match x.mli, x.ml with
-      | Some ({ kind = M2l.Structure; _ } as u) , None ->
-        { Unit.ml = Some u; mli = None }
-      | _ -> x in
-    match x.mli, x.ml with
-    | Some u, _ | None, Some u ->
-      L.[
-        let module_path = upath u in
-        { module_path; ml = Option.fmap ufile x.ml ; mli = Option.fmap ufile x.mli }
-      ]
-    | _ -> [] in
-  let atlas =
-    List.fold_left(fun l x -> assoc x @ l)[](Paths.S.Map.bindings groups) in
+  let local =
+    Paths.S.Map.fold (fun _ x set -> assoc x set) groups LocalSet.empty in
   let dep (u:Unit.r) =
-    let local, lib, unknown =  udeps u in
-    { file = ufile u; local; lib; unknown } in
-  let dependencies = List.map dep units.ml @ List.map dep units.mli in
-  Pp.fp ppf "%a@." pp {atlas;dependencies}
+    { Schema.file = ufile u; deps= Deps.paths u.dependencies } in
+  let dependencies = List.map dep all in
+  let local = LocalSet.elements local in
+  let library = LibSet.elements lib in
+  let unknown = Paths.S.Set.elements unknown in
+  Pp.fp ppf "%a@." pp {dependencies;local; library; unknown}
 
 
 let export name _ _ ppf _param {Unit.mli; _} =

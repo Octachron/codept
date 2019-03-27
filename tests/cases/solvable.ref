@@ -1,7 +1,8 @@
 [[1m[36mNotification[0m]: [1mcases/solvable.ml:l1.0−11[0m,
 a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 0],
-"dependencies" : [{ "file" : "cases/solvable.ml", "unknown" : [["Extern"]] }],
-"atlas" : [{ "module" : ["Solvable"], "ml" : "cases/solvable.ml" }]
+"version" : [0, 10, 3],
+"dependencies" : [{ "file" : "cases/solvable.ml", "deps" : [["Extern"]] }],
+"local" : [{ "module" : ["Solvable"], "ml" : "cases/solvable.ml" }],
+"unknown" : [["Extern"]]
 }

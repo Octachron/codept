@@ -4,18 +4,16 @@ a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 to the opening of the external module [1mExt[0m, at location [1ml3.0−8[0m. Spurious
 dependencies might be inferred due to this ambiguity.
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{
-   "file" : "collision/a.ml",
-   "local" : [[["B"], ["collision", "b.ml"]]],
-   "unknown" : [["Ext"]]
-   }, { "file" : "collision/b.ml" },
-  { "file" : "collision/c.ml", "local" : [[["B"], ["collision", "b.ml"]]] },
-  { "file" : "collision/d.ml", "local" : [[["B"], ["collision", "b.ml"]]] }],
-"atlas" :
-  [{ "module" : ["D"], "ml" : "collision/d.ml" },
-  { "module" : ["C"], "ml" : "collision/c.ml" },
+  [{ "file" : "collision/a.ml", "deps" : [["Ext"], ["B"]] },
+  { "file" : "collision/b.ml" },
+  { "file" : "collision/c.ml", "deps" : [["B"]] },
+  { "file" : "collision/d.ml", "deps" : [["B"]] }],
+"local" :
+  [{ "module" : ["A"], "ml" : "collision/a.ml" },
   { "module" : ["B"], "ml" : "collision/b.ml" },
-  { "module" : ["A"], "ml" : "collision/a.ml" }]
+  { "module" : ["C"], "ml" : "collision/c.ml" },
+  { "module" : ["D"], "ml" : "collision/d.ml" }],
+"unknown" : [["Ext"]]
 }

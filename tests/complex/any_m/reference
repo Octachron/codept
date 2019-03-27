@@ -4,36 +4,20 @@ a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 the opening of the external module [1mExt[0m, at location [1ml1.0−8[0m. Spurious
 dependencies might be inferred due to this ambiguity.
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{
-   "file" : "any_m/a/m.ml",
-   "local" : [[["B", "M"], ["any_m", "b", "m.ml"]]]
-   },
-  {
-  "file" : "any_m/b/m.ml",
-  "local" :
-    [[["E", "M"], ["any_m", "e", "m.ml"]],
-    [["D", "M"], ["any_m", "d", "m.ml"]]]
-  },
-  {
-  "file" : "any_m/c/m.ml",
-  "local" : [[["D", "M"], ["any_m", "d", "m.ml"]]],
-  "unknown" : [["Ext"]]
-  }, { "file" : "any_m/d/m.ml" },
-  {
-  "file" : "any_m/e/m.ml",
-  "local" : [[["D", "M"], ["any_m", "d", "m.ml"]]]
-  },
-  {
-  "file" : "any_m/f/m.ml",
-  "local" : [[["A", "M"], ["any_m", "a", "m.ml"]]]
-  }],
-"atlas" :
-  [{ "module" : ["F", "M"], "ml" : "any_m/f/m.ml" },
-  { "module" : ["E", "M"], "ml" : "any_m/e/m.ml" },
-  { "module" : ["D", "M"], "ml" : "any_m/d/m.ml" },
-  { "module" : ["C", "M"], "ml" : "any_m/c/m.ml" },
+  [{ "file" : "any_m/a/m.ml", "deps" : [["B", "M"]] },
+  { "file" : "any_m/b/m.ml", "deps" : [["E", "M"], ["D", "M"]] },
+  { "file" : "any_m/c/m.ml", "deps" : [["Ext"], ["D", "M"]] },
+  { "file" : "any_m/d/m.ml" },
+  { "file" : "any_m/e/m.ml", "deps" : [["D", "M"]] },
+  { "file" : "any_m/f/m.ml", "deps" : [["A", "M"]] }],
+"local" :
+  [{ "module" : ["A", "M"], "ml" : "any_m/a/m.ml" },
   { "module" : ["B", "M"], "ml" : "any_m/b/m.ml" },
-  { "module" : ["A", "M"], "ml" : "any_m/a/m.ml" }]
+  { "module" : ["C", "M"], "ml" : "any_m/c/m.ml" },
+  { "module" : ["D", "M"], "ml" : "any_m/d/m.ml" },
+  { "module" : ["E", "M"], "ml" : "any_m/e/m.ml" },
+  { "module" : ["F", "M"], "ml" : "any_m/f/m.ml" }],
+"unknown" : [["Ext"]]
 }

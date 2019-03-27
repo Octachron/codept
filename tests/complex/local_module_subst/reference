@@ -5,15 +5,12 @@ a non-resolvable module, [1mLocal[0m, has been replaced by an approximation
 [[1m[35mWarning[0m]: Approximate parsing of local_module_subst/a.mli.
 Computed dependencies: at least {}, maybe: {Local}
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{ "file" : "local_module_subst/a.mli", "unknown" : [["Local"]] },
-  {
-  "file" : "local_module_subst/b.mli",
-  "local" : [[["A"], ["local_module_subst", "a.mli"]]],
-  "unknown" : [["Local"]]
-  }],
-"atlas" :
-  [{ "module" : ["B"], "mli" : "local_module_subst/b.mli" },
-  { "module" : ["A"], "mli" : "local_module_subst/a.mli" }]
+  [{ "file" : "local_module_subst/a.mli", "deps" : [["Local"]] },
+  { "file" : "local_module_subst/b.mli", "deps" : [["Local"], ["A"]] }],
+"local" :
+  [{ "module" : ["A"], "mli" : "local_module_subst/a.mli" },
+  { "module" : ["B"], "mli" : "local_module_subst/b.mli" }],
+"unknown" : [["Local"]]
 }

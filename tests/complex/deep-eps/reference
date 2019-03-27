@@ -1,37 +1,19 @@
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{
-   "file" : "deep-eps/a.mli",
-   "local" :
-     [[["Z"], ["deep-eps", "z.mli"]], [["W"], ["deep-eps", "w.mli"]],
-     [["K"], ["deep-eps", "k.ml"]]]
-   },
-  {
-  "file" : "deep-eps/b.mli",
-  "local" :
-    [[["Z"], ["deep-eps", "z.mli"]], [["W"], ["deep-eps", "w.mli"]],
-    [["A"], ["deep-eps", "a.mli"]]]
-  },
-  {
-  "file" : "deep-eps/c.ml",
-  "local" :
-    [[["Z"], ["deep-eps", "z.mli"]], [["W"], ["deep-eps", "w.mli"]],
-    [["B"], ["deep-eps", "b.mli"]], [["A"], ["deep-eps", "a.mli"]]]
-  },
-  {
-  "file" : "deep-eps/k.ml",
-  "local" : [[["Z"], ["deep-eps", "z.mli"]], [["W"], ["deep-eps", "w.mli"]]]
-  },
-  { "file" : "deep-eps/w.mli", "local" : [[["Y"], ["deep-eps", "y.mli"]]] },
+  [{ "file" : "deep-eps/a.mli", "deps" : [["Z"], ["W"], ["K"]] },
+  { "file" : "deep-eps/b.mli", "deps" : [["Z"], ["W"], ["A"]] },
+  { "file" : "deep-eps/c.ml", "deps" : [["Z"], ["W"], ["B"], ["A"]] },
+  { "file" : "deep-eps/k.ml", "deps" : [["Z"], ["W"]] },
+  { "file" : "deep-eps/w.mli", "deps" : [["Y"]] },
   { "file" : "deep-eps/y.mli" },
-  { "file" : "deep-eps/z.mli", "local" : [[["W"], ["deep-eps", "w.mli"]]] }],
-"atlas" :
-  [{ "module" : ["Z"], "mli" : "deep-eps/z.mli" },
-  { "module" : ["Y"], "mli" : "deep-eps/y.mli" },
-  { "module" : ["W"], "mli" : "deep-eps/w.mli" },
-  { "module" : ["K"], "ml" : "deep-eps/k.ml" },
-  { "module" : ["C"], "ml" : "deep-eps/c.ml" },
+  { "file" : "deep-eps/z.mli", "deps" : [["W"]] }],
+"local" :
+  [{ "module" : ["A"], "mli" : "deep-eps/a.mli" },
   { "module" : ["B"], "mli" : "deep-eps/b.mli" },
-  { "module" : ["A"], "mli" : "deep-eps/a.mli" }]
+  { "module" : ["C"], "ml" : "deep-eps/c.ml" },
+  { "module" : ["K"], "ml" : "deep-eps/k.ml" },
+  { "module" : ["W"], "mli" : "deep-eps/w.mli" },
+  { "module" : ["Y"], "mli" : "deep-eps/y.mli" },
+  { "module" : ["Z"], "mli" : "deep-eps/z.mli" }]
 }

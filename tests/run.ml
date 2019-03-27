@@ -634,9 +634,9 @@ let result =
                       ["Sparser";"Slex"]);
           "mresult.mli", ([],[],[]);
           "mresult.ml", ([],["List"],[]);
-          "schema.ml", (["M2l"; "Module";"Name"; "Option"; "Paths"; "Schematic"],
+          "schema.ml", (["M2l"; "Module"; "Option"; "Paths"; "Schematic"],
                         [],  []);
-          "schema.mli", (["M2l"; "Module"; "Name"; "Paths"; "Schematic"], [], []);
+          "schema.mli", (["M2l"; "Module"; "Paths"; "Schematic"], [], []);
           "schematic.mli", (["Name"],
                        [ "Format"], [] );
           "schematic.ml", (["Format_compat"; "Name"; "Mresult"; "Pp";

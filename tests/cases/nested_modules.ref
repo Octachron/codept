@@ -1,6 +1,6 @@
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" : [{ "file" : "cases/nested_modules.ml" }],
-"atlas" :
+"local" :
   [{ "module" : ["Nested_modules"], "ml" : "cases/nested_modules.ml" }]
 }

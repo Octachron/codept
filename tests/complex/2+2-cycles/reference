@@ -5,14 +5,11 @@
    −Circular dependencies: 
       C −([1m2+2-cycles/c.ml:l1.0−6[0m)⟶ D −([1m2+2-cycles/d.ml:l1.0−6[0m)⟶ C
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{
-   "file" : "2+2-cycles/c.ml",
-   "local" : [[["D"], ["2+2-cycles", "d.ml"]]]
-   },
-  { "file" : "2+2-cycles/d.ml", "local" : [[["C"], ["2+2-cycles", "c.ml"]]] }],
-"atlas" :
-  [{ "module" : ["D"], "ml" : "2+2-cycles/d.ml" },
-  { "module" : ["C"], "ml" : "2+2-cycles/c.ml" }]
+  [{ "file" : "2+2-cycles/c.ml", "deps" : [["D"]] },
+  { "file" : "2+2-cycles/d.ml", "deps" : [["C"]] }],
+"local" :
+  [{ "module" : ["C"], "ml" : "2+2-cycles/c.ml" },
+  { "module" : ["D"], "ml" : "2+2-cycles/d.ml" }]
 }

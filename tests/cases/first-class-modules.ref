@@ -7,12 +7,13 @@ a non-resolvable module, [1mB[0m, has been replaced by an approximation
 [[1m[35mWarning[0m]: [1mcases/first-class-modules.ml:l22.0−15[0m, 
 first-class module was included while its signature was unknown.
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{ "file" : "cases/first-class-modules.ml", "unknown" : [["Mark"], ["B"]] }],
-"atlas" :
+  [{ "file" : "cases/first-class-modules.ml", "deps" : [["Mark"], ["B"]] }],
+"local" :
   [{
    "module" : ["First-class-modules"],
    "ml" : "cases/first-class-modules.ml"
-   }]
+   }],
+"unknown" : [["B"], ["Mark"]]
 }

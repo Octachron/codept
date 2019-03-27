@@ -9,8 +9,9 @@ a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
 to the opening of the external module [1mExt2[0m, at location [1ml9.2−11[0m. Spurious
 dependencies might be inferred due to this ambiguity.
 {
-"version" : [0, 10, 0],
+"version" : [0, 10, 3],
 "dependencies" :
-  [{ "file" : "cases/basic.ml", "unknown" : [["Ext2"], ["Ext"]] }],
-"atlas" : [{ "module" : ["Basic"], "ml" : "cases/basic.ml" }]
+  [{ "file" : "cases/basic.ml", "deps" : [["Ext2"], ["Ext"]] }],
+"local" : [{ "module" : ["Basic"], "ml" : "cases/basic.ml" }],
+"unknown" : [["Ext"], ["Ext2"]]
 }
