@@ -9,18 +9,17 @@ module Lbl = struct
   type sig' = Sig.t
 end
 
-let version = { Version.major = 0; minor=10; patch=0 }
-let version2 = { Version.major = 0; minor=10; patch=3 }
+let version = { Version.major = 0; minor=10; patch=3 }
 
 
-let m2l = { Schematic.Ext.title = "codept/m2l/0.10";
+let m2l = { Schematic.Ext.title = "codept/m2l/0.10.3";
             description = "module level ocaml file skeleton";
             version;
             label = Lbl.M2l.l;
             inner = M2l.sch
           }
 
-let sign = { Schematic.Ext.title = "codept/sig/0.10";
+let sign = { Schematic.Ext.title = "codept/sig/0.10.3";
              description = "module level ocaml signature";
              version;
              label = Lbl.Sig.l;
@@ -121,10 +120,10 @@ let deps =
        } )
 
 let x  = {
-  Ext.title ="codept.0.10/deps";
+  Ext.title ="codept.0.10.3/deps";
   description = "dependencies and module-to-files mapping of ocaml project";
   label = Lbl.Deps.l;
-  version = version2;
+  version;
   inner = deps;
 }
 

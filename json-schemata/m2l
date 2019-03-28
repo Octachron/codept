@@ -1,6 +1,6 @@
 {
   "$schema" : "http://json-schema.org/schema#",
-  "title" : "codept/m2l/0.10",
+  "title" : "codept/m2l/0.10.3",
   "description" : "module level ocaml file skeleton",
   "definitions" :
   {"Deps" : {
