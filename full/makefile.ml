@@ -84,7 +84,7 @@ let tokenize_deps includes param input dep (unit,imore,dmore) =
     ::  tokens
       (
         List.sort compare
-        @@ List.rev_map dep @@ Common.local_dependencies unit
+        @@ List.rev_map dep @@ Unit.local_dependencies unit
       )
   @ tokens dmore
 

@@ -29,9 +29,6 @@ type task =
 (** [expand_dir dir] expands [+name] to [$(ocamlc -where)/name] *)
 val expand_dir: string -> string
 
-(** [local_dependencies u] *)
-val local_dependencies: Unit.r -> Paths.Pkg.t list
-
 (**[make_abs bool] if <bool> convert relative path to absolute path *)
 val make_abs: bool -> Paths.Pkg.t -> Paths.Pkg.t
 

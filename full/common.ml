@@ -38,12 +38,6 @@ let expand_dir dir =
       ^ String.sub dir 1 (String.length dir - 1)
     else dir
 
-let local_dependencies unit =
-  List.filter
-    (function {Pkg.source=Unknown; _ }
-            | {Pkg.source=Special _ ; _ } -> false | _ -> true )
-  @@ Deps.pkgs (U.deps unit)
-
 let make_abs abs p =
   let open Paths.Pkg in
   if abs && p.source = Local then

@@ -32,6 +32,12 @@ let deps u = u.more.dependencies
 let update dependencies u =
   { u with more = { u.more with dependencies } }
 
+let local_dependencies unit =
+  List.filter
+    (function {Pkg.source=Unknown; _ }
+            | {Pkg.source=Special _ ; _ } -> false | _ -> true )
+  @@ Deps.pkgs @@ deps unit
+
 let lift signature dependencies u =
   {u with more = {signature;dependencies} }
 

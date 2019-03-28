@@ -189,14 +189,6 @@ let line_modules ?filter _ _ ppf param {Unit.mli; ml } =
       (sort_u units) in
   print ml; print mli
 
-let local_dependencies sort unit =
-  sort
-  @@ List.filter
-    (function {Pkg.source=Unknown; _ }
-            | {Pkg.source=Special _ ; _ } -> false | _ -> true )
-  @@ Deps.pkgs @@ Unit.deps unit
-
-
 let dot _ _ ppf param {Unit.mli; _ } =
   let escaped = Name.Set.of_list
       [ "graph"; "digraph"; "subgraph"; "edge"; "node"; "strict" ] in
@@ -214,7 +206,7 @@ let dot _ _ ppf param {Unit.mli; _ } =
             escape (Namespaced.to_string u.path)
             escape (Pkg.module_name p)
         )
-        (local_dependencies sort u)
+        (sort @@ Unit.local_dependencies u)
     ) mli;
   Pp.fp ppf "}\n"
 
