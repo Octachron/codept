@@ -26,7 +26,7 @@
   "origin" : {
   "oneOf" :[{"enum" : ["First_class_module"]},{"enum" : ["External"]}] },
   "t" : { "type" : "array",
-   "items" :[ { "type" : "string" },
+   "items" :[ { "$ref" : "#/definitions/Option./name" },
       { "$ref" : "#/definitions/Module/Divergence/origin" },
       { "type" : "array",
          "items" :[ { "$ref" : "#/definitions/Paths/Pkg/t" },
@@ -52,7 +52,7 @@
       "Phantom" : { "type" : "array",
          "items" :[ { "type" : "string" },
             { "$ref" : "#/definitions/Module/Divergence/t" } ] }
-      }, "required" : [ "Phantom" ]}]
+      }, "required" : [ "Phantom" ]},{"enum" : ["Namespace"]}]
   } } ,
   "m" : { "type" : "object",
   "properties" : {
@@ -82,6 +82,13 @@
             { "type" : "array",
               "items" : { "$ref" : "#/definitions/Module/module" } } ] }
       }, "required" : [ "Namespace" ]}]
+  } } ,
+  "Option." : {
+  "name" : {
+  "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+    "properties" : {
+      "Some" : { "type" : "string" }
+      }, "required" : [ "Some" ]}]
   } } ,
   "Paths" : {
   "Pkg" : {

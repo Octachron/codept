@@ -56,7 +56,7 @@
       "Defs" : { "$ref" : "#/definitions/Summary/t" }
       }, "required" : [ "Defs" ]},{"type" : "object",
     "properties" : {
-      "Open" : { "type" : "array", "items" : { "type" : "string" } }
+      "Open" : { "$ref" : "#/definitions/M2l/module_expr" }
       }, "required" : [ "Open" ]},{"type" : "object",
     "properties" : {
       "Include_me" : { "$ref" : "#/definitions/M2l/module_expr" }
@@ -195,7 +195,7 @@
   "origin" : {
   "oneOf" :[{"enum" : ["First_class_module"]},{"enum" : ["External"]}] },
   "t" : { "type" : "array",
-   "items" :[ { "type" : "string" },
+   "items" :[ { "$ref" : "#/definitions/Option./name" },
       { "$ref" : "#/definitions/Module/Divergence/origin" },
       { "type" : "array",
          "items" :[ { "$ref" : "#/definitions/Paths/Pkg/t" },
@@ -221,7 +221,7 @@
       "Phantom" : { "type" : "array",
          "items" :[ { "type" : "string" },
             { "$ref" : "#/definitions/Module/Divergence/t" } ] }
-      }, "required" : [ "Phantom" ]}]
+      }, "required" : [ "Phantom" ]},{"enum" : ["Namespace"]}]
   } } ,
   "m" : { "type" : "object",
   "properties" : {
@@ -268,6 +268,13 @@
       "items" : { "$ref" : "#/definitions/Module/module" } }
     },
   "required" : [  ] } } ,
+  "Option." : {
+  "name" : {
+  "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+    "properties" : {
+      "Some" : { "type" : "string" }
+      }, "required" : [ "Some" ]}]
+  } } ,
   "Paths" : {
   "Expr" : {
   "t" : {
