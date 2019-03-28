@@ -22,9 +22,8 @@ let preprocess_deps includes unit =
     | { Pkg.source = Pkg _ ; _ }  -> l
     | _ -> dep :: l
   in
-  let dependencies =
-    Deps.of_list @@ Deps.fold replace unit.Unit.dependencies [] in
-  { unit with Unit.dependencies }
+  let deps = Deps.of_list @@ Deps.fold replace (Unit.deps unit) [] in
+  Unit.update deps unit
 
 let implicit_dep synonyms path =
   (* implicitely looks for interface/implementation files.
@@ -110,7 +109,7 @@ let print_deps includes param input dep ppf more =
   |> render param ppf
 
 let regroup {Unit.ml;mli} =
-  let add l m = List.fold_left (fun x y -> Unit.Groups.R.Map.add y x) m l in
+  let add l m = List.fold_left (fun x y -> Unit.Group.Map.add y x) m l in
   add mli @@ add ml @@ Pth.Map.empty
 
 let main policy ppf synonyms param units =
@@ -136,7 +135,7 @@ let main policy ppf synonyms param units =
     |  _ -> Pkg.cmo path in
   Pth.Map.iter (fun _k g ->
       let open Unit in
-      let g, err = Groups.R.flatten g in
+      let g, err = Group.flatten g in
       let log_error  = function
         | a :: _ as l ->
           Fault.handle

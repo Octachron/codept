@@ -87,11 +87,10 @@ let log_conflict policy proj (path, units) =
     (Namespaced.of_path path)
   @@ List.map proj units
 
-
 let organize io policy sig_only opens files =
   let units, signatures = pre_organize policy io files in
   let units = List.map (load_file io policy sig_only opens) units in
-  let units, errs = Unit.Groups.Unit.(split % group) @@ pair_split units in
+  let units, errs = Unit.Group.(split % group) @@ pair_split units in
   List.iter (log_conflict policy @@ fun (u:Unit.s) -> u.src ) errs;
   units, signatures
 
@@ -255,7 +254,7 @@ let main_seed io param (task:Common.task) =
       | Structure -> { pair with ml = u :: pair.ml }
       | Signature -> {pair with mli = u :: pair.mli }
     ) { ml=[]; mli=[]} units in
-  let g, errs = Unit.Groups.R.(split % group) units in
+  let g, errs = Unit.Group.(split % group) units in
   List.iter
     (log_conflict param.policy @@ fun (u:Unit.r) -> u.src) errs;
   g

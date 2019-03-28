@@ -42,7 +42,7 @@ let local_dependencies unit =
   List.filter
     (function {Pkg.source=Unknown; _ }
             | {Pkg.source=Special _ ; _ } -> false | _ -> true )
-  @@ Deps.pkgs unit.U.dependencies
+  @@ Deps.pkgs (U.deps unit)
 
 let make_abs abs p =
   let open Paths.Pkg in

@@ -241,7 +241,6 @@ let fault =
 
 let expand_epsilon resolved unit =
   let module M = Namespaced.Map in
-  let open Unit in
   let add_epsilon_dep edge0 {Deps.path;edge;pkg;_} deps =
     if edge = Deps.Edge.Epsilon then
       Deps.update ~path ~edge:edge0 pkg deps
@@ -252,9 +251,9 @@ let expand_epsilon resolved unit =
     match Paths.P.Map.find_opt pkg resolved with
     | None -> deps
     | Some ancestor ->
-      Deps.fold (add_epsilon_dep edge) ancestor.dependencies deps in
-  let deps = Deps.fold expand_dep unit.dependencies Deps.empty in
-  { unit with dependencies = deps }
+      Deps.fold (add_epsilon_dep edge) (Unit.deps ancestor) deps in
+  let deps = Deps.fold expand_dep (Unit.deps unit) Deps.empty in
+  Unit.update deps unit
 
 (* shortcut ε expansion when not needed *)
 let expand_and_add expand  =

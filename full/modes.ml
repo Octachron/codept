@@ -40,7 +40,7 @@ module LibSet =
   Set.Make(struct type t = Schema.library_module let compare=compare end)
 
 let assoc x set =
-  let x, _  = Unit.Groups.R.flatten x in
+  let x, _  = Unit.Group.flatten x in
   let x = match x.mli, x.ml with
     | Some ({ kind = M2l.Structure; _ } as u) , None ->
       { Unit.ml = Some u; mli = None }
@@ -60,7 +60,7 @@ let build_atlas (lib,unknow) (u:Unit.r) =
     | Paths.P.(Local|Special _) -> lib, unknw
     | Paths.P.Pkg pkg' -> add_libs pkg' path lib, unknw
     | Paths.P.Unknown -> lib, Paths.S.Set.add path unknw in
-  Deps.fold build_atlas u.dependencies (lib,unknow)
+  Deps.fold build_atlas (Unit.deps u) (lib,unknow)
 
 let structured fmt _ _ ppf param units =
   let fmt = Option.default param.external_format fmt in
@@ -69,11 +69,11 @@ let structured fmt _ _ ppf param units =
     match fmt with Json -> Ext.json Schema.x | Sexp -> Ext.sexp Schema.x in
   let lib, unknown =
     List.fold_left build_atlas (LibSet.empty, Paths.S.Set.empty) all in
-  let groups = Unit.Groups.R.group units in
+  let groups = Unit.Group.group units in
   let local =
     Paths.S.Map.fold (fun _ x set -> assoc x set) groups LocalSet.empty in
   let dep (u:Unit.r) =
-    { Schema.file = ufile u; deps= Deps.paths u.dependencies } in
+    { Schema.file = ufile u; deps= Deps.paths (Unit.deps u) } in
   let dependencies = List.map dep all in
   let local = LocalSet.elements local in
   let library = LibSet.elements lib in
@@ -83,7 +83,7 @@ let structured fmt _ _ ppf param units =
 
 let export name _ _ ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
-  let sign (u:Unit.r)= u.signature in
+  let sign (u:Unit.r)= Unit.signature u in
   let md (unit:Unit.r) =
     let fp = Namespaced.flatten unit.path in
     Module.M {Module.
@@ -106,23 +106,24 @@ let export name _ _ ppf _param {Unit.mli; _} =
 
 let signature filename writer ppf param {Unit.mli; _} =
   (* TODO: prefixed unit *)
-  let md {Unit.signature; src; path; _  } =
-    Module.M ( Module.create ~args:[]
-      ~origin:(Unit {source=src;path=Namespaced.flatten path})
-      path.name signature
-             )
+  let md (u:Unit.r) =
+    let origin =
+      Module.Origin.Unit {source=u.src;path=Namespaced.flatten u.path} in
+    Module.M ( Module.create ~args:[] ~origin u.path.name (Unit.signature u ))
   in
   let mds = List.map md mli in
   writer.Io.sign param.internal_format filename ppf mds
 
 
 let dependencies ?filter sort (u:Unit.r) =
-  Deps.pkgs u.dependencies
+  let filter = match filter with
+    | Some f -> List.filter f
+    | None -> fun x -> x in
+  u
+  |> Unit.deps
+  |> Deps.pkgs
   |> sort
-  |> (match filter with
-      | Some f -> List.filter f
-      | None -> fun x -> x
-    )
+  |> filter
   |> List.map Pkg.module_name
 
 
@@ -134,7 +135,8 @@ let pp_module {Makefile.abs_path;slash; _ } proj ppf (u:Unit.r) =
     elts
 
 let aliases _ _ ppf param {Unit.mli; _ } =
-  let mk_aliases (x:Unit.r) = Module.(aliases @@ M (create "" x.signature) ) in
+  let mk_aliases (x:Unit.r) =
+    Module.(aliases @@ M (create "" @@ Unit.signature x) ) in
   let param = param.makefile in
   let pp_pkg = Pkg.pp_gen param.slash in
   let pp_m (u:Unit.r) =
@@ -170,7 +172,7 @@ let modules ?filter _ _ =
 
 let pp_only_deps sort ?filter ppf u =
   let open Unit in
-  let elts = Deps.pkgs u.dependencies in
+  let elts = Deps.pkgs (Unit.deps u) in
   let elts = sort elts in
   let elts = match filter with
     | Some f -> List.filter f elts
@@ -192,7 +194,7 @@ let local_dependencies sort unit =
   @@ List.filter
     (function {Pkg.source=Unknown; _ }
             | {Pkg.source=Special _ ; _ } -> false | _ -> true )
-  @@ Deps.pkgs unit.Unit.dependencies
+  @@ Deps.pkgs @@ Unit.deps unit
 
 
 let dot _ _ ppf param {Unit.mli; _ } =
@@ -219,11 +221,11 @@ let dot _ _ ppf param {Unit.mli; _ } =
 
 let local_deps x =
   let filter = function { Pkg.source = Local; _ } -> true | _ -> false in
-  x.Unit.dependencies |> Deps.pkg_set |> Pkg.Set.filter filter
+  x |> Unit.deps |> Deps.pkg_set |> Pkg.Set.filter filter
 
 
 let sort _ _ ppf _param (units: _ Unit.pair) =
-  let module G = Unit.Groups.R in
+  let module G = Unit.Group in
   let gs = G.group units in
   let flat g = fst @@ G.flatten g
   (* errors should have handled earlier *) in

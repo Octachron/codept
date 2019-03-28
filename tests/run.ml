@@ -36,7 +36,7 @@ let read_simple policy (info,f) =
 let organize policy files =
   files
   |> Unit.unimap (List.map @@ read policy)
-  |> Unit.Groups.Unit.(fst % split % group)
+  |> Unit.Group.(fst % split % group)
 
 let version = Sys.ocaml_version
 
@@ -187,7 +187,7 @@ module Branch(Param:Outliner.param) = struct
         let expected =
           M.find path expect
         in
-        inner_test u.src expected u.dependencies
+        inner_test u.src expected (Unit.deps u)
       ) files in
     exp =? u.ml && exp =? u.mli && Option.( u' >>| (=?) exp >< true )
 

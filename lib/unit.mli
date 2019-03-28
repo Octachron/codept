@@ -9,30 +9,35 @@ type precision =
   | Exact
   | Approx
 
-(** Input type *)
-type s = {
+(** Base type *)
+type 'ext t = {
   path: Namespaced.t; (** module path of the compilation unit *)
   src: Pkg.t; (** source file of the compilation unit *)
   kind: M2l.kind;
   precision: precision;
   code: M2l.t;
+  more: 'ext
 }
 
-(** Output type *)
-type r = {
-  path: Namespaced.t;
-  src: Pkg.t;
-  kind: M2l.kind;
-  precision: precision;
-  code: M2l.t;
+(** Extension for output type *)
+type ext = {
   signature: Module.signature;
   dependencies: Deps.t
 }
-type u = r
+
+type 'ext base = 'ext t
+type s = unit t
+type u = ext t
+type r = u
+
+val signature: r -> Module.signature
+val deps: r -> Deps.t
+val update: Deps.t -> r -> r
 
 (** Conversion function between input and output types *)
-val lift: Module.signature -> Deps.t -> s -> r
-val proj: r -> s
+val lift: Module.signature -> Deps.t -> s -> u
+val proj: u -> s
+
 
 val read_file :
      Fault.Policy.t
@@ -48,7 +53,7 @@ val read_file :
 *)
 
 (** Pretty-printing function *)
-val pp : Format.formatter -> r -> unit
+val pp : Format.formatter -> u -> unit
 val pp_input : Format.formatter -> s -> unit
 
 (** Pair of implementation/interface units *)
@@ -58,53 +63,24 @@ val unimap: ('a -> 'b) -> 'a pair -> 'b pair
 val adder:  ('a->'b->'b) -> 'b pair -> M2l.kind * 'a -> 'b pair
 
 (** {!group} handles pair of ml/mli files together *)
-module type group =
-sig
-  type elt
-  type set
-  type ('a,'b) arrow
-  type t = set pair
-  type group = t
+module Group: sig
+  type 'ext group
 
-  val add_mli : elt -> group -> group
-  val add_ml : elt -> group -> group
-  val add : (M2l.kind, elt -> group -> group) arrow
-  val empty : group
+  val add_mli : 'ext t -> 'ext group -> 'ext group
+  val add_ml : 'ext t -> 'ext group -> 'ext group
+  val add : 'ext t -> 'ext group -> 'ext group
+  val empty : 'any group
   module Map :
   sig
-    type t = group Pth.map
-    val find: Pth.t -> t -> group
-    val add : (M2l.kind , elt -> t -> t) arrow
-    val of_list : (M2l.kind, elt list -> t) arrow
+    type 'ext t = 'ext group Pth.map
+    val find: Pth.t -> 'ext t -> 'ext group
+    val add : 'ext base -> 'ext t -> 'ext t
+    val of_list : 'ext base list -> 'ext t
   end
 
-  val group : elt list pair -> group Pth.map
-  val flatten: group -> elt option pair * elt list pair
-  val split : group Pth.map -> elt list pair * (Paths.S.t * elt list) list
-
-end
-
-module type group_core= sig
-  type elt
-  type ('a,'b) arrow
-  val lift: ( (elt ->M2l.kind) -> 'c ) -> (M2l.kind, 'c) arrow
-  val key: elt -> Pth.t
-end
-
-module Groups: sig
-
-  module Make(Base: group_core):
-    group with type elt = Base.elt
-           and type ('a,'b) arrow = ('a,'b) Base.arrow
-
-    module Filename: group with
-    type elt = string and type ('a,'b) arrow = 'a -> 'b
-
-  module Unit: group with
-    type elt = s and type ('a,'b) arrow = 'b
-
-  module R: group with
-    type elt = r and type ('a,'b) arrow = 'b
+  val group : 'ext t list pair -> 'ext Map.t
+  val flatten: 'ext group -> 'ext t option pair * 'ext t list pair
+  val split : 'ext Map.t -> 'ext t list pair * (Paths.S.t * 'ext t list) list
 
 end
 
