@@ -455,25 +455,25 @@ let rec pp_expression ppf = function
   | Defs defs -> Pp.fp ppf "define %a" Summary.pp defs
 
   | Minor annot -> pp_annot ppf annot
-  | Open me -> Pp.fp ppf "@[<hv>open [%a]@]" pp_me me
-  | Include me -> Pp.fp ppf "@[<hv>include [%a]@]" pp_me me
-  | SigInclude mt -> Pp.fp ppf "@[<hv>include type [%a]@]" pp_mt mt
+  | Open me -> Pp.fp ppf "@[open [%a]@]" pp_me me
+  | Include me -> Pp.fp ppf "@[include [%a]@]" pp_me me
+  | SigInclude mt -> Pp.fp ppf "@[include type [%a]@]" pp_mt mt
 
   | Bind bind -> pp_bind ppf bind
   | Bind_sig bind -> pp_bind_sig ppf bind
   | Extension_node e -> pp_extension ppf e
   | Bind_rec bs ->
-    Pp.fp ppf "rec@[<hv>[ %a ]@]"
+    Pp.fp ppf "rec@[[ %a ]@]"
       (Pp.(list ~sep:(s "@, and @,")) @@ pp_bind ) bs
 and pp_annot ppf {access; values; packed} =
   let sep = Pp.s ";@ " in
   let post = Pp.s "@]" in
   Pp.fp ppf "%a%a%a"
     pp_access access
-    Pp.(opt_list ~sep ~pre:(s "@[<hv 2>values: ") ~post pp_simple) values
+    Pp.(opt_list ~sep ~pre:(s "@[<2>values: ") ~post pp_simple) values
     Pp.(opt_list ~sep ~pre:(s "@,@[<2>packed: ") ~post pp_opaque) packed
 and pp_access ppf s =  if Paths.S.Map.cardinal s = 0 then () else
-    Pp.fp ppf "@[<2>access: {%a}@]" (Pp.list pp_access_elt) (Paths.S.Map.bindings s)
+    Pp.fp ppf "@[<2>access: {%a}@]@," (Pp.list pp_access_elt) (Paths.S.Map.bindings s)
 and pp_access_elt ppf (name, (loc,edge)) =
   Pp.fp ppf "%s%a(%a)" (if edge = Deps.Edge.Normal then "" else "ε∙")
     Paths.S.pp name
@@ -482,11 +482,11 @@ and pp_opaque ppf me = Pp.fp ppf "⟨%a(%a)⟩" pp_me me.data Loc.pp me.loc
 and pp_bind ppf {name;expr} =
   match expr with
   | Constraint(Abstract, Alias np) ->
-    Pp.fp ppf "@[module %s ≡ %a" name Paths.Simple.pp np
+    Pp.fp ppf "@[module %s ≡ %a@]" name Paths.Simple.pp np
   | Constraint(Abstract, mt) ->
-    Pp.fp ppf "@[module %s:@[<hv>%a@] @]" name pp_mt mt
+    Pp.fp ppf "@[<2>module %s:%a@]" name pp_mt mt
   | Constraint(Unpacked, mt) ->
-    Pp.fp ppf "@[(module %s:@[<hv>%a@])@]" name pp_mt mt
+    Pp.fp ppf "@[<2>(module %s:%a)@]" name pp_mt mt
   | Unpacked ->
     Pp.fp ppf "(module %s)" name
   | Open_me {opens = a :: q ; resolved; expr} ->
@@ -496,15 +496,15 @@ and pp_bind ppf {name;expr} =
     Pp.fp ppf "⟨context:%a⟩ %a"
       Summary.pp resolved pp_bind {name;expr}
   | _ ->
-    Pp.fp ppf "@[module %s = @,@[<hv>%a@] @]" name pp_me expr
+    Pp.fp ppf "@[<2>module %s =@ %a@]" name pp_me expr
 and pp_bind_sig ppf {name;expr} =
   match expr with
   | Alias id ->
-    Pp.fp ppf "@[module type %s ≡ %a @]" name Paths.Simple.pp id
+    Pp.fp ppf "@[module type %s ≡ %a@]" name Paths.Simple.pp id
   | Abstract ->
     Pp.fp ppf "@[module type %s@]" name
   | _ ->
-    Pp.fp ppf "@[module type %s = @,@[<hv>%a@] @]" name pp_mt expr
+    Pp.fp ppf "@[<2>module type %s =@ %a @]" name pp_mt expr
 and pp_me ppf = function
   | Resolved fdefs -> Pp.fp ppf "✔%a" P.pp fdefs
   | Ident np -> Paths.Simple.pp ppf np
@@ -532,14 +532,14 @@ and pp_mt ppf = function
   | Of me -> Pp.fp ppf "module type of@, %a" pp_me me
   | Extension_node ext -> Pp.fp ppf "%a" pp_extension ext
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
-and pp_extension ppf x = Pp.fp ppf "[%%%s @[<hv>%a@]]" x.name pp_extension_core
+and pp_extension ppf x = Pp.fp ppf "[%%%s @[%a@]]" x.name pp_extension_core
     x.extension
 and pp_extension_core ppf = function
   | Module m -> pp ppf m
   | Val m -> pp_annot ppf m
 and pp_simple ppf =
   Pp.list ~sep:(Pp.s " @,") pp_expression_with_loc ppf
-and pp ppf = Pp.fp ppf "@[<hv2>[@,%a@,]@]" pp_simple
+and pp ppf = Pp.fp ppf "@[<2>[@,%a@,]@]" pp_simple
 and pp_expression_with_loc ppf e = Pp.fp ppf "%a(%a)"
     pp_expression e.data Loc.pp e.loc
 
