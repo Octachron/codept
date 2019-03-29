@@ -1,11 +1,4 @@
-B _build/**
-B build/**
-S lib
-S full
-S precomputed
-S tests
-S lib/sexp
-PKG compiler-libs.common
-PKG threads unix
-FLG -w A-44-42-45-4-41-48-6-40-30@8
-B +threads
+EXCLUDE_QUERY_DIR
+B _build/default/.preprocessor.eobjs/byte
+S .
+FLG -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs
