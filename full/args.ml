@@ -328,7 +328,7 @@ let args action param task fquery version =
     "-ppopt", findlib Findlib.ppopt,
     "<ppopt>: add <opt> to the active pp preprocessor";
     "-syntax", findlib Findlib.syntax,
-    "<syntax name>: use the <syntax> preprocessor provided \
+    "<syntax_name>: use the <syntax> preprocessor provided \
      by one of the available findlib packages.";
     "-native-filter", set_t native,
     ": generate native compilation only dependencies";
