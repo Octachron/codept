@@ -1,25 +1,16 @@
-[[1m[35mWarning[0m]: Syntax error
-            File "", line 3, characters 6-9
-[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l19.10−11[0m,
+[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l19.7−14[0m,
 a non-resolvable module, [1mExt[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l19.21−22[0m,
+[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l19.17−21[0m,
 a non-resolvable module, [1mExt3[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l20.26−27[0m,
+[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l20.22−26[0m,
 a non-resolvable module, [1mExt4[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l22.11−16[0m,
-a non-resolvable module, [1mInner[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l21.11−12[0m,
-a non-resolvable module, [1mM[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: Approximate parsing of cases/option_monad.ml.
-           Computed dependencies: at least {Ext; Ext3; Ext4}, maybe: 
-           {Inner; M}
 {
 "version" : [0, 10, 3],
 "dependencies" :
   [{
    "file" : "cases/option_monad.ml",
-   "deps" : [["M"], ["Inner"], ["Ext4"], ["Ext3"], ["Ext"]]
+   "deps" : [["Ext4"], ["Ext3"], ["Ext"]]
    }],
 "local" : [{ "module" : ["Option_monad"], "ml" : "cases/option_monad.ml" }],
-"unknown" : [["Ext"], ["Ext3"], ["Ext4"], ["Inner"], ["M"]]
+"unknown" : [["Ext"], ["Ext3"], ["Ext4"]]
 }
