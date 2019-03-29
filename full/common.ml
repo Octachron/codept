@@ -56,4 +56,4 @@ let classify policy synonyms f =
   match Name.Map.find ext synonyms with
   | x -> Some x
   | exception Not_found ->
-    Fault.handle policy Codept_policies.unknown_extension ext; None
+    Fault.raise policy Codept_policies.unknown_extension ext; None

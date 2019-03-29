@@ -1,5 +1,5 @@
 [[1m[35mWarning[0m]: Syntax error
- File "", line 2, characters 0-4
+            File "", line 2, characters 0-4
 [[1m[36mNotification[0m]: [1mbroken_network/a.ml:l2.0−6[0m,
 a non-resolvable module, [1mB[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mbroken_network/c.ml:l1.0−11[0m,
@@ -8,7 +8,7 @@ a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
 due to the opening of the external module [1mB[0m, at location [1ml2.0−6[0m. Spurious
 dependencies might be inferred due to this ambiguity.
 [[1m[35mWarning[0m]: Approximate parsing of broken_network/broken.ml.
-Computed dependencies: at least {}, maybe: {B}
+           Computed dependencies: at least {}, maybe: {B}
 {
 "version" : [0, 10, 3],
 "dependencies" :

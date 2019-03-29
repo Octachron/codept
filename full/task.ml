@@ -122,7 +122,7 @@ let add_file ?(explicit=false) k policy synonyms task (name,pre,path) =
     | None when Sys.is_directory name -> k name
     | None ->
       begin
-        Fault.handle policy Codept_policies.unknown_extension name;
+        Fault.raise policy Codept_policies.unknown_extension name;
         k name
       end
     | Some { kind = Implementation; format } ->
@@ -132,15 +132,16 @@ let add_file ?(explicit=false) k policy synonyms task (name,pre,path) =
     | Some { kind = Signature; _ } ->
       add_sig task name
   else if explicit then
-    Fault.handle policy Codept_policies.nonexisting_file name
+    Fault.raise policy Codept_policies.nonexisting_file name
 
 
 let rec add_file_rec ~prefix:(mpre0,mpre1,fpre) ~start ~cycle_guard param task
     (name0,path) =
   let name = String.concat "/" (List.rev_append fpre [name0]) in
   let lax = let open Fault in
-    Policy.set_err (Codept_policies.unknown_extension, Level.info)
-   L.(param#!policy) in
+    Policy.register ~lvl:Level.info
+      Codept_policies.unknown_extension
+      L.(param#!policy) in
   let k name = if Sys.is_directory name then
         add_dir ~prefix:(mpre0, mpre1, fpre) start
           ~cycle_guard param task ~dir_name:name0 ~abs_name:name in
@@ -187,7 +188,7 @@ let add_file param task name0  =
         (fpath,Some module_name) in
     List.iter add expanded
   with Invalid_file_group s ->
-    Fault.handle L.(param#!policy) Codept_policies.invalid_file_group name0 s
+    Fault.raise L.(param#!policy) Codept_policies.invalid_file_group (name0,s)
 
 let add_impl param task name =
   List.iter (add_impl param task) (parse_filename name)

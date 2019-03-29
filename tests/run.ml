@@ -575,7 +575,7 @@ let result =
             ["Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
             ["List"], []);
           "envt.mli", (
-            ["Module";"Name"; "Namespaced"; "Outliner"; "Paths"],
+            ["Fault"; "Module";"Name"; "Namespaced"; "Outliner"; "Paths"],
             [], []);
           "envt.ml", (
             ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
@@ -598,9 +598,8 @@ let result =
                       "Option";"Summary";"Paths"; "Pp"; "Schematic" ],
                      ["List"],[]);
           "fault.ml", (["Format_tags"; "Loc"; "Option"; "Name";"Paths"; "Pp"],
-                          ["Array"; "Format"],[]);
-          "fault.mli", (["Loc"; "Paths"; "Name"],
-                          ["Format"],[]);
+                          ["Array"; "Format"; "Map"],[]);
+          "fault.mli", (["Loc"; "Paths"], ["Format"],[]);
           "format_tags.mli", ([],["Format"],[]);
           "format_compat.mli", ([],["Format"],[]);
           "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Schematic"],

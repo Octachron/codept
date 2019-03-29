@@ -28,26 +28,29 @@ let to_int = function
 
 end
 
+type 'a itag = ..
+module type tag = sig
+  type arg
+  type _ itag+= E: arg itag
+end
+type 'a tag = (module tag with type arg = 'a)
+type dtag = Dyn: 'a tag -> dtag [@@unboxed]
+type fault = Err: 'a tag * 'a -> fault
+type t = fault
+
+let tag (type t) (): t tag =
+  (module struct type arg = t type _ itag += E: arg itag end)
+
+
+type 'a printer = Format.formatter -> 'a -> unit
+
 module Log = struct
 
-  type 'k status =
-    | Ok: (Format.formatter -> unit) status
-    | Fail: (Format.formatter -> 'b) status
-
-  let kont (type k): k status -> k = function
-    | Ok -> ignore
-    | Fail -> (fun _x -> exit 1)
-
-  let kf k st = Format.kfprintf (fun ppf -> k ppf; kont st ppf)
-      Format.err_formatter
-
-  let msg (type a) lvl simple fatal (st: (_->a) status) (fmt: (_,_,_,a) format4) =
-    let title = match st with
-      | Ok -> simple
-      | Fail -> fatal in
-    Format.eprintf "@[[%a]: "
-      (Format_tags.tagged lvl) title;
-    kf (fun ppf -> Format.fprintf ppf "@]@.") st fmt
+  let msg lvl simple fatal critical printer ppf x=
+    let title = if critical then fatal else simple in
+    Format.fprintf ppf "@[[%a]: %a@]@."
+      (Format_tags.tagged lvl) title
+    printer x
 
   let kcritical x = msg Level.critical "Critical error" "Critical error" x
 
@@ -56,38 +59,59 @@ module Log = struct
   let knotification x = msg Level.notification "Notification" "Fatal notification" x
   let kinfo x = msg Level.info "Misc" "Fatal accident" x
 
-  let critical fmt = kcritical Fail fmt
-  let error fmt = kerror Ok fmt
-  let warning fmt = kwarning Ok fmt
-  let notification fmt = kwarning Ok fmt
-  let info fmt = kinfo Ok fmt
+  let critical fmt = kcritical true fmt
+  let error fmt = kerror false fmt
+  let warning fmt = kwarning false fmt
+  let notification fmt = kwarning false fmt
+  let info fmt = kinfo false fmt
 
 end
 
 type log_info = { silent:Level.t; level:Level.t; exit:Level.t}
-let log i fmt =
+let log i printer ppf x =
   let fns = Log.[| kinfo; knotification; kwarning; kerror; kcritical |] in
-  if i.level < i.silent then
-    Format.ifprintf Format.err_formatter fmt
+  let fn x = fns.(Level.to_int i.level) (i.level >= i.exit) printer ppf x in
+  if i.level < i.silent then ()
   else if i.level >= Level.critical then
-    Log.critical fmt
+    Log.critical printer ppf x
+  else if i.level >= i.exit then
+    (fn x; exit 1)
   else
-    begin
-      let k = if i.level >= i.exit then
-          Log.Fail
-        else
-          Log.Ok  in
-      fns.(Level.to_int i.level) k fmt
-    end
+    fn x
 
 type explanation = string
-type 'a fault = { path: Paths.S.t; expl: explanation; log: log_info -> 'a }
-type 'a t = 'a fault
+
+type 'a info = {
+  tag: 'a tag;
+  path: Paths.S.t;
+  expl: explanation;
+  printer: Format.formatter -> 'a -> unit
+}
+
+let info path expl printer =
+  let tag = tag () in
+  { tag; path; expl; printer }
+
+let emit info x = Err(info.tag,x)
+
+type dyn_info = Info: 'a info -> dyn_info [@@unboxed]
+
+let check (type a) ((module X): a tag) (Info info) =
+  let module Y = (val info.tag) in
+  match Y.E with
+  | X.E -> Some (info:a info)
+  | _ -> None
 
 type loc = Paths.Pkg.t * Loc.t
-let loc ppf =
+let loc_none = Paths.Pkg.{ source= Unknown; file=[] }, Loc.Nowhere
+
+let loc ppf l =
   let sub ppf (path,x) = Pp.fp ppf "%a:%a" Paths.Pkg.pp path Loc.pp x in
-  Format_tags.(with_tag Loc) sub ppf
+  Format_tags.(with_tag Loc) sub ppf l
+
+let locc ppf l =
+  if l == loc_none then ()
+  else Format.fprintf ppf "%a,@ " loc l
 
 module Policy = struct
 
@@ -95,44 +119,62 @@ module Policy = struct
     | Level of {expl: explanation; lvl: Level.t option}
     | Map of {expl:explanation; lvl:Level.t option; map: map Name.map}
 
-  type t = { silent: Level.t; exit:Level.t; map:map}
-  type polycy = t
+  module Register = Map.Make(struct type t = dtag let compare=compare end)
+  type t = {
+    silent: Level.t;
+    exit:Level.t;
+    map:map;
+    register: dyn_info Register.t
+  }
+  type policy = t
 
-  let rec find default pol l  =
+  let make ~silent ~exit =
+    let map = Level { expl = ""; lvl = Some Level.critical } in
+    { silent; exit; map; register = Register.empty }
+
+  let find_info tag p =
+    Register.find (Dyn tag) p.register
+
+  let rec find_lvl default pol l  =
     let with_default = Option.default default in
     match pol, l with
     | Level h, _ -> with_default h.lvl
     | Map m, a :: q  ->
       begin
         let h = with_default m.lvl in
-        try find h (Name.Map.find a m.map) q with
+        try find_lvl h (Name.Map.find a m.map) q with
           Not_found -> h
       end
     | Map m, [] -> with_default m.lvl
 
-  let level {map; exit; _ } error = find exit map error.path
+  let level_info {map; exit; _ } (Info error) =
+    find_lvl exit map error.path
 
-  let rec set (path,expl,lvl) env = match path, env with
+  let level p (Err(tag,_)) =
+    let info = find_info tag p in
+    level_info p info
+
+  let rec set ?lvl ?expl path env = match path, env with
     | [], Level l -> Level {expl = Option.default l.expl expl;lvl }
     | [], Map m -> Map { m with lvl; expl = Option.default m.expl expl }
     | a :: q, Level l ->
       Map{ lvl = None; expl = "";
-           map=Name.Map.singleton a @@ set (q,expl,lvl) @@ Level l
+           map=Name.Map.singleton a @@ set ?lvl ?expl q @@ Level l
          }
     | a :: q, Map m ->
       let env' = try
           Name.Map.find a m.map with
       | Not_found -> Level {lvl=m.lvl; expl = m.expl} in
-      let elt = set (q,expl,lvl) env' in
+      let elt = set ?lvl ?expl q env' in
       let map = Name.Map.add a elt m.map in
       Map{m with map}
 
-  let register (p,expl) pol = { pol with map = set (p,expl,None) pol.map }
-  let set (p,expl,lvl) pol = { pol with map = set (p,expl, Some lvl) pol.map }
+  let set ?lvl ?expl p pol = { pol with map = set ?lvl ?expl p pol.map }
 
-  let set_err (error,lvl) polycy = set (error.path,Some error.expl, lvl) polycy
-  let register_err error polycy = register (error.path,Some error.expl) polycy
-
+  let register ?lvl error policy =
+    let policy = set ?lvl ~expl:error.expl error.path policy in
+    let register = Register.add (Dyn error.tag) (Info error) policy.register in
+    { policy with register }
 
   let pp_lvl ppf = function
     | None -> ()
@@ -156,16 +198,23 @@ module Policy = struct
 
   let pp ppf pol = Pp.fp ppf "%a@." pp_map ("Policy",pol.map)
 
+  let set_exit exit p = { p with exit }
+  let set_silent silent p = {p with silent}
+
   end
 
-let set = Policy.set_err
-let handle (polycy:Policy.t) error =
-  error.log {
-    level =
-      Policy.level polycy error;
-    silent = polycy.silent;
-    exit = polycy.exit;
-  }
+let register = Policy.register
+let handle policy (Err(tag,e)) =
+  let info = Policy.find_info tag policy in
+  let log_info = {
+    level = Policy.level_info policy info;
+    silent = policy.silent;
+    exit = policy.exit;
+  } in
+  let ppf = Format.err_formatter in
+  Option.iter (fun info -> log log_info info.printer ppf e) (check tag info)
 
-let is_silent polycy fault =
-  Policy.level polycy fault <= polycy.silent
+let raise policy info x = handle policy (emit info x)
+
+let is_silent policy info =
+  Policy.level_info policy (Info info) <= policy.silent

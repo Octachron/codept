@@ -2,7 +2,7 @@ type context =
   | Signature of Module.signature
   | In_namespace of Module.dict
 
-type module_provider = Name.t -> Module.t Outliner.query_result option
+type module_provider = Fault.loc -> Name.t -> Module.t Outliner.query_result option
 
 module Core :
 sig

@@ -1,5 +1,5 @@
 [[1m[35mWarning[0m]: Syntax error
- File "", line 6, characters 8-15
+            File "", line 6, characters 8-15
 [[1m[36mNotification[0m]: [1mcases/broken2.ml:l4.8−9[0m,
 a non-resolvable module, [1mA[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/broken2.ml:l1.7−14[0m,
@@ -10,8 +10,7 @@ a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
 due to the opening of the external module [1mExt[0m, at location [1ml2.5−6[0m. Spurious
 dependencies might be inferred due to this ambiguity.
 [[1m[35mWarning[0m]: Approximate parsing of cases/broken2.ml.
-Computed dependencies: at least {Ext; 
-Ext2}, maybe: {A}
+           Computed dependencies: at least {Ext; Ext2}, maybe: {A}
 {
 "version" : [0, 10, 3],
 "dependencies" :

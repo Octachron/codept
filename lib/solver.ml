@@ -202,12 +202,11 @@ module Failure = struct
 end
 
 let fault =
-  Fault.{ path = ["solver"; "block" ];
-    expl = "Solver fault: major errors during analysis.";
-    log = (fun lvl resolver -> log lvl
-              "Solver failure@?@[@<2> @[<0>@;%a@]@]" (Failure.pp_cycle resolver)
-          )
-  }
+  Fault.info ["solver"; "block" ]
+    "Solver fault: major errors during analysis."
+    (fun ppf (resolver,x) -> Format.fprintf ppf
+        "Solver failure@?@[@<2> @[<0>@;%a@]@]" (Failure.pp_cycle resolver) x
+    )
 
 
 (** Common functions *)
@@ -227,15 +226,15 @@ let fault =
     let set m =
       let add {Deps.path; _ } = Paths.S.Set.add path in
       Deps.fold add m Paths.S.Set.empty in
-    if elts upper = elts lower then
-      Fault.handle policy Standard_faults.concordant_approximation
-        unit.src
-    else
-      Fault.handle policy Standard_faults.discordant_approximation
-        unit.src
-        (Paths.S.Set.elements @@ set lower)
-        ( Paths.S.Set.elements
-          @@ Paths.S.Set.diff (set upper) (set lower));
+    begin
+      if elts upper = elts lower then
+        Fault.raise policy Standard_faults.concordant_approximation unit.src
+      else
+        let diff =
+          Paths.S.Set.elements @@ Paths.S.Set.diff (set upper) (set lower) in
+        Fault.raise policy Standard_faults.discordant_approximation
+          (unit.src, (Paths.S.Set.elements @@ set lower), diff)
+    end;
     Unit.lift sign upper unit
 
 
@@ -378,8 +377,7 @@ module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
       match resolve_dependencies ~learn:true state with
       | Ok (e,l) -> e, l
       | Error state ->
-        Fault.handle Param.policy fault
-          (alias_resolver state) state.pending;
+        Fault.raise Param.policy fault (alias_resolver state, state.pending);
         solve_harder (state :: ancestors)
         @@ approx_and_try_harder state in
     let env, mli = solve_harder [] @@ start core units.mli in
@@ -584,10 +582,8 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
       | [] -> None
       | [a] -> Some a
       | a :: _  ->
-        Fault.handle Param.policy
-          Standard_faults.local_module_conflict k
-        @@ List.map
-          (fun (_k,x,_n) -> Paths.P.local x) l;
+        Fault.raise Param.policy Standard_faults.local_module_conflict
+          (k, List.map (fun (_k,x,_n) -> Paths.P.local x) l);
         Some a in
     let convert_p (k, p) = k, Unit.unimap (convert k) p
     in
@@ -655,7 +651,7 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
       match solve_once state with
       | Ok (e,l) -> e, l
       | Error s ->
-        Fault.handle Param.policy fault  (alias_resolver s) (wip s);
+        Fault.raise Param.policy fault  (alias_resolver s, wip s);
         solve_harder (s :: ancestors) @@ approx_and_try_harder s in
     solve_harder [] @@ start loader files core seeds
 

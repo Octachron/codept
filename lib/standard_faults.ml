@@ -1,94 +1,83 @@
 open Fault
+let fp = Format.fprintf
+
+let em = Format_tags.(tagged Em)
+
+let locc ppf fmt = fp ppf ("%a"^^fmt) locc
+let e1 fmt p ppf x = fp ppf fmt p x
+let le fmt ppf l = locc ppf fmt l
+let l2 fmt printer ppf (x,y) = locc ppf fmt x printer y
+let e2 fmt px py ppf (x,y) = fp ppf fmt px x py y
+let l3 fmt py pz ppf (x,y,z) = locc ppf fmt x py y pz z
+let e3 fmt px py pz ppf (x,y,z) = fp ppf fmt px x py y pz z
+let l4 fmt py pz pw ppf (x,y,z,w) = locc ppf fmt x py y pz z pw w
 
 (** Warnings *)
 let extension_ignored =
-  { path = ["extension"; "ignored"];
-    expl = "The payload of an extension node was ignored";
-  log = (fun lvl l ->
-        log lvl "%a, extension node %a ignored." loc l
-          Format_tags.(tagged Em)
-      )
-}
+  info ["extension"; "ignored"]
+    "The payload of an extension node was ignored"
+    (l2 "extension node %a ignored." em)
 
 let extension_traversed =
-  { path = ["extension"; "traversed"];
-    expl = "The payload of the extension node was handled as a standard \
-           OCaml code.";
-  log = (fun lvl l ->
-        log lvl "%a, @ extension node %a traversed." loc l
-          Format_tags.(tagged Em)
-      )
-}
-
-
+  info
+    ["extension"; "traversed"]
+    "The payload of the extension node was handled as a standard \
+     OCaml code."
+    (l2 "extension node %a traversed." em)
 
 let opened_first_class =
-  { path = ["first_class"; "open"];
-    expl= "A first-class module was opened while its signature was deemed \
-           unresolved. Consequently, inferred dependendencies after this \
-           point may be a superset of the real dependencies.";
-    log = (fun lvl lc name -> match name with
-        | None ->
-          log lvl "%a,@a first-class module was opened while its signature was \
-                   unknown." loc lc
-        | Some name ->
-          log lvl "%a,@ first-class module %a was opened while \
-                   its signature was unknown." loc lc
-            Format_tags.(tagged M) name
-      )
-  }
+  info
+    ["first_class"; "open"]
+    "A first-class module was opened while its signature was deemed \
+     unresolved. Consequently, inferred dependendencies after this \
+     point may be a superset of the real dependencies."
+  (fun ppf (lc,name) -> match name with
+    | None ->
+      locc ppf
+        "a first-class module was opened while its signature was unknown."
+        lc
+     | Some name ->
+       locc ppf
+         "first-class module %a was opened while its signature was unknown." lc
+         Format_tags.(tagged M) name
+  )
 
 let included_first_class =
-  { path = ["first_class"; "included"];
-    expl = "A first-class module was included while its signature was deemed \
-           unresolved. Consequently, inferred dependendencies after this \
-           point may be a superset of the real dependencies";
-    log = (fun lvl ->
-        log lvl
-          "%a, @ first-class module was included while its signature was unknown."
-          loc
-      )
-  }
+  info ["first_class"; "included"]
+  "A first-class module was included while its signature was deemed \
+   unresolved. Consequently, inferred dependendencies after this \
+   point may be a superset of the real dependencies"
+  (le "first-class module was included while its signature was unknown.")
 
 let applied_structure =
-  { path = ["typing"; "apply"; "structure"];
-    expl = "Signature fault: a module that was inferred as not a functor \
-            was applied like a functor.";
-    log = (fun lvl l -> log lvl "%a, @ only functor can be applied, got:%a"
-               loc l Module.Partial.pp)
-  }
+  info ["typing"; "apply"; "structure"]
+    "Signature fault: a module that was inferred as not a functor \
+     was applied like a functor."
+    (l2 "only functor can be applied, got:%a" Module.Partial.pp)
 
 let structure_expected =
-  { path = ["typing"; "structure_expected"];
-    log = (fun lvl l -> log lvl "%a, @ a structure, i.e. not a functor was \
-                                 expected; got:%a"
-              loc l
-              Module.Partial.pp);
-    expl = "Signature fault: a functor was not expected in this situation."
-  }
+  info ["typing"; "structure_expected"]
+    "Signature fault: a functor was not expected in this situation."
+    (l2 "a structure, i.e. not a functor was expected; got:%a" Module.Partial.pp)
 
 let nonexisting_submodule =
-    {
-      path = ["typing"; "non_existing"; "submodule"];
-      log = (fun lvl l path level name ->
-          log lvl "%a,@ module %a does not contain any %s %a"
-            loc l Format_tags.(with_tag M Paths.S.pp) path
-            (if level=Module.Module_type then "module type" else "submodule")
-            Format_tags.(tagged M) name
-        );
-      expl="Signature fault: there was an error when looking for a non-existing \
-             submodule of a known module"
-    }
+  let mtype ppf lvl = Pp.string ppf
+      (if lvl = Module.Module_type then "module type" else "submodule") in
+  info ["typing"; "non_existing"; "submodule"]
+    "Signature fault: there was an error when looking for a non-existing \
+     submodule of a known module"
+    (l4
+        "module %a does not contain any %a %a"
+        Format_tags.(with_tag M Paths.S.pp) mtype Format_tags.(tagged M)
+    )
 
 let applied_unknown =
-  { path = ["typing"; "apply"; "unknown"];
-    log = (fun lvl l -> log lvl
-              "%a, @ only functor can be applied, hopefully the \
-               unknown module (%a) is a functor"
-              loc l
-              Module.Partial.pp);
-    expl = "Signature fault: an unknown module was applied like a functor.";
-  }
+  info ["typing"; "apply"; "unknown"]
+    "Signature fault: an unknown module was applied like a functor."
+    (l2 "only functor can be applied, hopefully the \
+         unknown module (%a) is a functor"
+        Module.Partial.pp
+    )
 
 
 let maybe_module qual ppf = function
@@ -111,90 +100,73 @@ let pp_divergence l ppf (d:Module.Divergence.t) =
     f loc d.loc
 
 let ambiguous =
-  { path = [ "typing"; "ambiguous"];
-    expl = "Signature fault: a module resolution was ambiguous, leading \
-      to potential spurious dependencies in the future";
-    log = (fun lvl l name div -> log lvl
-              "%a,@;name resolution for %a@ was@ ambiguous,@ due@ to@ %a.@ \
-               Spurious@ dependencies@ might@ be@ inferred@ due@ to@ this@ ambiguity."
-              loc l
-              Format_tags.(tagged M) name (pp_divergence l) div
-          )
-  }
+  info [ "typing"; "ambiguous"]
+    "Signature fault: a module resolution was ambiguous, leading \
+     to potential spurious dependencies in the future"
+    (fun ppf (l,name,div) -> locc ppf
+        "name resolution for %a@ was@ ambiguous,@ due@ to@ %a.@ \
+         Spurious@ dependencies@ might@ be@ inferred@ due@ to@ this@ ambiguity."
+        l Format_tags.(tagged M) name (pp_divergence l) div
+    )
 
 let unknown_approximated =
-  { path = ["typing"; "unknown"; "approximation"];
-    log = (fun lvl mlvl name l ->
-        log lvl "%a,@ a non-resolvable module%s, %a, has been \
-                 replaced by an approximation"
-          loc l
-          (if mlvl = Module.Module_type then " type" else "")
-          Format_tags.(tagged M) name );
-    expl = "Signature fault: an unknown module was approximated, possibly \
-            leading to an over-approximation of dependencies";
-  }
-
-
-
+  info ["typing"; "unknown"; "approximation"]
+    "Signature fault: an unknown module was approximated, possibly \
+     leading to an over-approximation of dependencies"
+    (l3
+       "a non-resolvable %a, %a, has been replaced by an approximation"
+       Module.pp_level Format_tags.(tagged M)
+    )
 
 
 let module_conflict =
-  { path = ["input"; "module_conflict"; "global" ];
-    expl = "A module path is provided by multiple sources, \
-            only the first one will be used in the following \
-            analysis.";
-    log = (fun lvl name paths -> log lvl
-              "Global module conflict,@; Module %a is provided \
-               simultaneously by %a"
-              Format_tags.(with_tag M Namespaced.pp) name
-              (Pp.in_text_list Format_tags.(with_tag M Paths.P.pp)) paths
-          )
-  }
-
+  info ["input"; "module_conflict"; "global" ]
+    "A module path is provided by multiple sources, \
+     only the first one will be used in the following \
+     analysis."
+    (e2 "Global module conflict,@; Module %a is provided \
+         simultaneously by %a"
+        Format_tags.(with_tag M Namespaced.pp)
+        (Pp.in_text_list Format_tags.(with_tag M Paths.P.pp))
+    )
 
 
 
 let local_module_conflict =
-  { path = ["input"; "module_conflict"; "local" ];
-    expl = "A module is provided by multiple input files, \
-            only the first one will be used in the following \
-            analysis.";
-    log = (fun lvl name paths -> log lvl
-              "Local module conflict,@; Module %a is provided \
-               simultaneously by %a" Format_tags.(with_tag M Namespaced.pp) name
-              Pp.(in_text_list Format_tags.(with_tag M Paths.P.pp)) paths
-          )
-  }
-
+  info ["input"; "module_conflict"; "local" ]
+   "A module is provided by multiple input files, \
+    only the first one will be used in the following \
+    analysis."
+   (e2
+       "Local module conflict,@; Module %a is provided \
+        simultaneously by %a" Format_tags.(with_tag M Namespaced.pp)
+       Pp.(in_text_list Format_tags.(with_tag M Paths.P.pp))
+   )
 
 let concordant_approximation =
-  { path = ["parsing"; "approximation"; "concordant"];
-    expl = "Parsing fault: The signature and dependency of an unit were obtained \
-            using the heuristic approximative parser. However, the lower and upper \
-            bounds for dependencies are equal: inferred dependencies \
-            might be exact.";
-    log = (fun lvl path -> log lvl
-             "Approximate parsing of %a.\n\
-              However, lower and upper bound agreed upon dependencies."
-        Paths.P.pp path
-           )
-  }
+  info ["parsing"; "approximation"; "concordant"]
+    "Parsing fault: The signature and dependency of an unit were obtained \
+     using the heuristic approximative parser. However, the lower and upper \
+     bounds for dependencies are equal: inferred dependencies \
+     might be exact."
+    (e1
+       "@[<v>Approximate parsing of %a.@,\
+        However, lower and upper bound agreed upon dependencies.@]"
+       Paths.P.pp
+    )
 
 let discordant_approximation =
-  { path = ["parsing"; "approximation"; "discordant"];
-    expl = "Parsing fault: The signature and dependencies of an unit were obtained \
-            using the heuristic approximative parser. Moreover, the lower and upper \
-            bounds for dependencies are distincts. Codept will use \
-            the dependencies upper bound as a safe over-approximation but \
-            dependency problems might arise.";
-    log = (fun lvl path lower diff -> log lvl
-               "Approximate parsing of %a.\n\
-                Computed dependencies: at least {%a}, maybe: {%a}"
-        Paths.P.pp path
-        Pp.(list Paths.S.pp) lower
-        Pp.(list Paths.S.pp) diff
-           )
-  }
+  info ["parsing"; "approximation"; "discordant"]
+    "Parsing fault: The signature and dependencies of an unit were obtained \
+     using the heuristic approximative parser. Moreover, the lower and upper \
+     bounds for dependencies are distincts. Codept will use \
+     the dependencies upper bound as a safe over-approximation but \
+     dependency problems might arise."
+    (e3
+       "@[<v>Approximate parsing of %a.@,\
+        Computed dependencies: at least @[{%a}@], maybe: @[{%a}@]@]"
+       Paths.P.pp Pp.(list Paths.S.pp) Pp.(list Paths.S.pp)
+    )
 
 
 (** Syntax errors *)
@@ -210,76 +182,58 @@ let print_loc ppf loc =
       Format.fprintf ppf "%s%i%s%i" msg_chars startchar msg_to endchar
 
 let syntaxerr =
-  { path = ["parsing"; "syntax"];
-    expl = "Parsing fault: not syntactically valid input file.";
-    log = (fun lvl error ->
-        log lvl "Syntax error\n %a" print_loc
-          (Syntaxerr.location_of_error error)
-      )
-  }
-
+  let loc ppf err = print_loc ppf (Syntaxerr.location_of_error err) in
+  info ["parsing"; "syntax"]
+   "Parsing fault: not syntactically valid input file."
+   (e1 "@[<v>Syntax error@, @[%a@]@]" loc)
 
 let lexerr =
-  { path = ["parsing"; "lexer"];
-    expl = "Parsing fault: not lexically valid input file.";
-    log = (fun lvl file _error -> log lvl "Lexer error in file %a"
-              Format_tags.(tagged Loc) file )
-  }
+  info ["parsing"; "lexer"]
+   "Parsing fault: not lexically valid input file."
+   (e2 "Lexer error in file %a%a" Format_tags.(tagged Loc) (fun _ _ -> ()))
 
 
 (** Codept internal file format errors *)
 
 let unknown_file_format =
-  { path = ["parsing"; "internal"; "unknown"; "format"];
-    expl = "unknown file format, an internal serialized file was expected";
-    log = (fun lvl kind name -> log lvl
-              "unknown file format,@ when parsing the supposedly \
-               serialized %s file %a" kind Format_tags.(tagged Loc) name
-          )
-  }
+  info ["parsing"; "internal"; "unknown"; "format"]
+  "unknown file format, an internal serialized file was expected"
+  (e2
+     "unknown file format,@ when parsing the supposedly serialized %a file %a"
+      Pp.string Format_tags.(tagged Loc)
+  )
 
 let future_version =
-  { path = ["parsing"; "internal"; "future"; "version"];
-    expl = "file format from the future";
-    log = (fun lvl name (mj,mn,p) (mj',mn',p') -> log lvl
-              "file %a@ format version (%d.%d.%d) is more recent \
-               than codept own version (%d.%d.%d)."
-              Format_tags.(tagged Loc) name mj' mn' p' mj mn p
-          )
-  }
+  let version ppf (mj,mn,p) = fp ppf "(%d.%d.%d)" mj mn p in
+  info ["parsing"; "internal"; "future"; "version"]
+  "file format from the future"
+  (e3
+     "file %a@ format version %a is more recent than codept own version %a."
+     Format_tags.(tagged Loc) version version
+  )
 
 let wrong_file_kind =
-  { path = ["parsing"; "internal"; "wrong"; "kind"];
-    expl = "file type mismatch";
-    log = (fun lvl filename got expected ->  log lvl
-              "%a,@ file type %s does not match the expected type %s."
-              Format_tags.(tagged Loc) filename got expected);
-  }
+  info ["parsing"; "internal"; "wrong"; "kind"] "file type mismatch"
+    (e3 "%a,@ file type %a does not match the expected type %a."
+       Format_tags.(tagged Loc) Pp.string Pp.string
+    )
 
 
 let parsing_error =
-  { path = ["parsing"; "internal"; "error"];
-    expl = "parsing error";
-    log = (fun lvl kind filename ->  log lvl
-              "file %a,@ failed to parse %s"
-              Format_tags.(tagged Loc) filename kind);
-  }
+  info ["parsing"; "internal"; "error"] "parsing error"
+    (e2 "file %a,@ failed to parse %a" Format_tags.(tagged Loc) Pp.string)
 
 
 let schematic_errors policy (filename,kind,e) =
   begin match e with
         | Schematic.Ext.Future_version {expected;got} ->
-          Fault.handle policy future_version
-            filename
-            (expected.major,expected.minor,expected.patch)
+          Fault.raise policy future_version (
+            filename,
+            (expected.major,expected.minor,expected.patch),
             (got.major,got.minor,got.patch)
-        | Unknown_format ->
-          Fault.handle policy unknown_file_format
-            kind filename
-        | Parse_error ->
-          Fault.handle policy parsing_error
-            kind filename
+          )
+        | Unknown_format -> Fault.raise policy unknown_file_format (kind,filename)
+        | Parse_error -> Fault.raise policy parsing_error (kind,filename)
         | Mismatched_kind {expected;got} ->
-          Fault.handle policy wrong_file_kind
-            filename got expected
+          Fault.raise policy wrong_file_kind (filename,got,expected)
       end

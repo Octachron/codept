@@ -33,31 +33,21 @@ module Query = struct
 end
 open Query
 
-type module_provider = Name.t -> Module.t Query.t
+type module_provider = Fault.loc -> Name.t -> Module.t Query.t
 let last l = List.hd @@ List.rev l
 
 let to_context s = Signature (Exact s)
 
-let ambiguity name breakpoint =
-  let f = Standard_faults.ambiguous in
-  { f  with
-    Fault.log = (fun lvl l -> f.log lvl l name breakpoint)
-  }
+let ambiguity loc name breakpoint =
+  Fault.emit Standard_faults.ambiguous (loc,name,breakpoint)
 
-let nosubmodule current level name =
-  let fault = Standard_faults.nonexisting_submodule in
-  {  fault with
-     Fault.log = (fun lvl l ->
-         fault.log lvl l (List.rev current) level name
-       )
-  }
+let nosubmodule loc current level name =
+  Fault.emit Standard_faults.nonexisting_submodule (loc,current,level,name)
 
-let unknown mlvl path =
-  let fault = Standard_faults.unknown_approximated in
-  {  fault with
-     Fault.log = (fun lvl -> fault.log lvl mlvl path)
-  }
+let unknown loc mlvl path =
+  Fault.emit Standard_faults.unknown_approximated (loc,mlvl,path)
 
+let noloc = Fault.loc_none
 
 module Core = struct
 
@@ -95,19 +85,19 @@ module Core = struct
       path_record ~path:[name] ?aliases ~edge:Edge.Normal
         { P.source = Unknown; file = [name] }
 
-    let record edge ?aliases root (m:Module.m) =
+    let record loc edge ?aliases root (m:Module.m) =
       match m.origin with
       | M.Origin.Unit p -> path_record ~path:p.path ?aliases ~edge p.source
       | Phantom (phantom_root, b) when root && not phantom_root ->
-        phantom_record ?aliases m.name <!> [ambiguity m.name b]
+        phantom_record ?aliases m.name <!> [ambiguity loc m.name b]
       | _ -> return ()
   end
 
-  let request lvl name env =
+  let request loc lvl name env =
     let rec request name  = function
       | [] -> None
       | f :: q ->
-        match f name with
+        match f loc name with
         | Some _ as q -> q
         | None -> request name q in
     if lvl = M.Module then
@@ -133,7 +123,7 @@ module Core = struct
     | exception Not_found -> None
     | x -> return x
 
-  let rec find_name phantom level name current =
+  let rec find_name loc phantom level name current =
     match current with
     | Signature Module.Blank ->
       (* we are already in error mode here, no need to emit yet another warning *)
@@ -153,9 +143,9 @@ module Core = struct
 
         (* We then try to find the searched name in the signature
            before the divergence *)
-        begin find_name true level name (Signature d.before) >>? fun q ->
+        begin find_name loc true level name (Signature d.before) >>? fun q ->
           let m = Module.spirit_away d.point q in
-          if phantom then return m else return m <!> [ambiguity name d.point]
+          if phantom then return m else return m <!> [ambiguity loc name d.point]
           (* If we found the expected name before the divergence,
               we add a new message to the message stack, and return
               the found module, after marking it as a phantom module. *)
@@ -163,10 +153,10 @@ module Core = struct
         (* If we did not find anything and were looking for a module type,
            we return a mockup module type *)
         ||| lazy (if level = Module_type then
-                    return (M.md @@ M.mockup name) <!> [unknown Module_type name]
+                    return (M.md @@ M.mockup name) <!> [unknown loc Module_type name]
                   else None)
 
-  let find_name = find_name false
+  let find_name loc = find_name loc false
 
   type ctx =
     | Any (** look for aliases too *)
@@ -176,7 +166,7 @@ module Core = struct
   let is_top = function Any | Concrete -> true | Submodule -> false
 
   type option =
-    { level:M.level; edge:Edge.t; approx_submodule:bool }
+    { loc: Fault.loc; level:M.level; edge:Edge.t; approx_submodule:bool }
 
   (** Should we return a mockup module and a warning? *)
   let approx_submodule o ctx lvl =
@@ -189,11 +179,12 @@ module Core = struct
     | [] -> None (* should not happen *)
     | a :: q ->
       let lvl = adjust_level option.level q in
-      let r = match find_name lvl a env.current with
+      let r = match find_name option.loc lvl a env.current with
         | None when approx_submodule option ctx lvl ->
           debug "submodule approximate %s" (last path);
-          return (M.md @@ M.mockup @@ last path) <!> [nosubmodule current lvl a]
-        | None -> request lvl a env
+          return (M.md @@ M.mockup @@ last path)
+          <!> [nosubmodule option.loc current lvl a]
+        | None -> request option.loc lvl a env
         | Some _ as x -> x in
       r >>? find_elt option aliases ctx env (a::current) q
   and find_elt option aliases ctx env current q = function
@@ -201,7 +192,8 @@ module Core = struct
       debug "alias to %a" Namespaced.pp path;
       let aliases = Paths.S.Set.add (List.rev current) aliases in
       let m = match phantom with
-        | Some b when is_top ctx -> D.phantom_record name <!> [ambiguity name b]
+        | Some b when is_top ctx ->
+          D.phantom_record name <!> [ambiguity option.loc name b]
         | None | Some _ -> return () in
       (* aliases link only to compilation units *)
       m >> find option aliases Any [] (top env) (Namespaced.flatten path @ q)
@@ -210,7 +202,7 @@ module Core = struct
       find option aliases Concrete [] (top env) (Namespaced.flatten path @ q)
     | M.M m ->
       debug "found module %s" m.name;
-      D.record option.edge ~aliases (is_top ctx) m >>
+      D.record option.loc option.edge ~aliases (is_top ctx) m >>
       if q = [] then return (M m)
       else
         find option aliases Submodule current (restrict env @@ Signature m.signature) q
@@ -219,15 +211,15 @@ module Core = struct
       if q = [] then return (Namespace {name;modules})
       else find option aliases ctx current (restrict env @@ In_namespace modules) q
 
-  let find sub ?edge level path envt =
+  let find loc sub ?edge level path envt =
     let edge = Option.default Edge.Normal edge in
-    let option = {approx_submodule=sub; edge; level } in
+    let option = {loc; approx_submodule=sub; edge; level } in
     match find option Paths.S.Set.empty Any [] envt path with
     | None -> raise Not_found
     | Some x -> x
 
-  let find_implicit = find false
-  let find = find true
+  let find_implicit loc = find loc false
+  let find loc = find loc true
 
   let to_sign = function
     | Signature s -> s
@@ -283,7 +275,7 @@ module Core = struct
     match path with
     | [] -> false (* should not happen *)
     | a :: _ ->
-      match find_name Module a envt.current with
+      match find_name noloc Module a envt.current with
       | None -> true
       | Some m ->
         match m.main with
@@ -296,7 +288,7 @@ module Core = struct
     match path with
     | [] -> []
     | a :: q ->
-      match find_name Module a envt.current with
+      match find_name noloc Module a envt.current with
       | None -> path
       | Some m ->
         match m.main with
@@ -309,17 +301,20 @@ module Core = struct
   let pp ppf x = pp ppf x
 end
 
+
 let approx name =
   Module.mockup name ~path:{Paths.P.source=Unknown; file=[name]}
 
 let open_world () =
   let mem = ref Name.Set.empty in
-  let warn request =
-    if Name.Set.mem request !mem then [] else
-      (mem := Name.Set.add request !mem; [unknown Module request] ) in
-  fun request ->
+  let warn loc request =
+    if Name.Set.mem request !mem then [] else begin
+      mem := Name.Set.add request !mem;
+      [unknown loc Module request]
+    end in
+  fun loc request ->
     debug "open world: requesting %s" request;
-    return (M.md @@ approx request) <!> (warn request)
+    return (M.md @@ approx request) <!> (warn loc request)
 
 module Libraries = struct
 
@@ -377,7 +372,7 @@ module Libraries = struct
         track source q
 
   let rec pkg_find name source =
-    match Core.find_name M.Module name source.resolved.current with
+    match Core.find_name noloc M.Module name source.resolved.current with
     | Some {main =
               M.M { origin = Unit {source={ source = Unknown; _ }; _ }; _ }; _} ->
       raise Not_found
@@ -399,7 +394,7 @@ module Libraries = struct
 
   let provider libs =
     let pkgs = create libs in
-    fun name ->
+    fun _loc name ->
       debug "library layer: requesting %s" name;
       match pkgs_find name pkgs with
       | exception Not_found -> None
@@ -416,12 +411,12 @@ module Implicit_namespace = struct
       | Namespace {name;modules} ->
         M.Namespace {name; modules} in
     let env = Core.start (M.Def.modules modules) in
-    fun name ->
+    fun loc name ->
       try
-        Some(Core.find_implicit M.Module [name] env >>| wrap)
+        Some(Core.find_implicit loc M.Module [name] env >>| wrap)
       with Not_found ->
       try
-        Some(Core.find_implicit M.Module (namespace @ [name]) env >>| wrap)
+        Some(Core.find_implicit loc M.Module (namespace @ [name]) env >>| wrap)
       with Not_found -> None
 
 end

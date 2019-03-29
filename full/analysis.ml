@@ -83,9 +83,8 @@ let load_file (io:Io.reader) policy sig_only opens (info,file,n) =
 
 
 let log_conflict policy proj (path, units) =
-  Fault.handle policy Standard_faults.local_module_conflict
-    (Namespaced.of_path path)
-  @@ List.map proj units
+  Fault.raise policy Standard_faults.local_module_conflict
+    (Namespaced.of_path path, List.map proj units)
 
 let organize io policy sig_only opens files =
   let units, signatures = pre_organize policy io files in
@@ -188,7 +187,7 @@ module Collisions = struct
         Module.Dict.empty in
     let m = Nms.Map.empty in
     List.fold_left (fun m (u:Unit.s) ->
-        match Envt.Core.find M.Module (Nms.flatten u.path) env with
+        match Envt.Core.find Fault.loc_none M.Module (Nms.flatten u.path) env with
         | exception Not_found -> m
         | { main = M { M.origin = Unit p; _ }; msgs= []; _ } ->
           (add u.path p.source @@ add u.path u.src m)
@@ -201,10 +200,9 @@ module Collisions = struct
 
   (** Print error message for a given collision map *)
   let handle policy fault collisions =
-    List.iter (fun (name,paths) ->
-        Fault.handle policy fault
-          name @@ Paths.P.Set.elements paths)
-      (Nms.Map.bindings collisions)
+    let err name paths () =
+      Fault.raise policy fault (name,Paths.P.Set.elements paths) in
+    Nms.Map.fold err collisions ()
 
   (** Compute local/local collisions *)
   let local units =

@@ -142,15 +142,13 @@ let fault param s =
   | [a;b] ->
     let path= List.map String.trim @@ Support.split_on_char '.' a in
     let level = Fault.Level.of_string b in
-    fmap param L.policy (Fault.Policy.set (path,None,level))
+    fmap param L.policy (Fault.Policy.set ~lvl:level path)
 
 let silent_level param s =
-  fmap param L.policy
-    (fun policy -> { policy with silent = Fault.Level.of_string s})
+  fmap param L.policy (Fault.Policy.set_silent @@ Fault.Level.of_string s)
 
 let exit_level param s =
-  fmap param L.policy
-    (fun policy -> { policy with exit = Fault.Level.of_string s})
+  fmap param L.policy (Fault.Policy.set_exit @@ Fault.Level.of_string s)
 
 let print_policy param ()=
   Fault.Policy.pp Pp.std param#!L.policy

@@ -10,7 +10,7 @@ module S = Module.Sig
 module Faults = Standard_faults
 
 type 'a query_result =
-  { main:'a; deps: Deps.t; msgs: (Fault.loc -> unit ) Fault.t list }
+  { main:'a; deps: Deps.t; msgs: Fault.t list }
 
 type answer =
   | M of Module.m
@@ -19,8 +19,9 @@ type answer =
 module type envt = sig
   type t
   val eq: t -> t -> bool
-  val find: ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t -> t ->
-    answer query_result
+  val find:
+    Fault.loc -> ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t
+    -> t -> answer query_result
 
   val extend : t -> Y.t -> t
 
@@ -74,16 +75,17 @@ module Make(Envt:envt)(Param:param) = struct
 
   include Param
   let fault x = Fault.handle policy x
+  let raisef f t = fault (Fault.emit f t)
 
 
   let find ?edge loc level path env =
     let edge =
       if not epsilon_dependencies then Some Deps.Edge.Normal
       else edge in
-    match Envt.find ?edge level path env with
+    match Envt.find ?edge loc level path env with
     | exception Not_found -> no_deps None
     | {main; deps; msgs} ->
-      List.iter (fun msg -> fault msg loc) msgs;
+      List.iter fault msgs;
       deps <+> no_deps (Some main)
 
   let drop_arg loc (p:Module.Partial.t) =  match  p.args with
@@ -91,9 +93,9 @@ module Make(Envt:envt)(Param:param) = struct
       | [] ->
         if Module.Partial.is_exact p then
           begin
-            Fault.(handle policy Faults.applied_structure) loc p;
+            Fault.handle policy @@ Fault.emit Faults.applied_structure (loc,p);
             p
-            end
+          end
         else
           p (* we guessed the arg wrong *)
 
@@ -129,7 +131,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   let of_partial loc p =
     match Y.of_partial p with
-    | Error def -> fault Faults.structure_expected loc p;
+    | Error def -> raisef Faults.structure_expected (loc,p);
       def
     | Ok def -> def
 
@@ -188,8 +190,9 @@ module Make(Envt:envt)(Param:param) = struct
     | _, Blank | Phantom _, _ ->
       let kind =
         match x.origin with
-        | First_class -> (fault Faults.opened_first_class loc x.name;
-                          Module.Divergence.First_class_module)
+        | First_class ->
+          raisef Faults.opened_first_class (loc,x.name);
+          Module.Divergence.First_class_module
         | Unit _ -> Module.Divergence.External
         | Phantom (_,d) -> d.origin
         | Submodule | Arg | Namespace -> Module.Divergence.External in
@@ -214,7 +217,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Error h -> Error (box h)
     | Ok fdefs ->
       if P.( fdefs.result = Blank (* ? *) && fdefs.origin = First_class ) then
-        fault Standard_faults.included_first_class loc;
+        raisef Standard_faults.included_first_class loc;
       Ok (Some (of_partial loc fdefs))
 
 
@@ -465,11 +468,11 @@ module Make(Envt:envt)(Param:param) = struct
       <<| extension loc state n
   and extension loc state e =
     if not transparent_extension_nodes then
-      ( fault Faults.extension_ignored loc e.name; ok None )
+      ( raisef Faults.extension_ignored (loc,e.name); ok None )
     else
       begin
         let filename = fst loc in
-        fault Faults.extension_traversed loc e.name;
+        raisef Faults.extension_traversed (loc,e.name);
         begin let open M2l in
           match e.extension with
           | Module m ->

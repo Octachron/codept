@@ -52,9 +52,8 @@ let expand_includes policy synonyms includes =
       Array.fold_left (fun m x ->
           let policy =
             let open Fault in
-            Policy.set_err
-              (Codept_policies.unknown_extension, Level.info)
-              policy in
+            Policy.register ~lvl:Level.info
+              Codept_policies.unknown_extension policy in
           match Common.classify policy synonyms x with
           | None | Some { Common.kind = Signature; _ } -> m
           | Some { Common.kind = Interface | Implementation ; _ } ->
@@ -138,9 +137,9 @@ let main policy ppf synonyms param units =
       let g, err = Group.flatten g in
       let log_error  = function
         | a :: _ as l ->
-          Fault.handle
-            policy Standard_faults.module_conflict a.path @@
-          List.map (fun u -> u.src) l
+          Fault.raise
+            policy Standard_faults.module_conflict
+            (a.path, List.map (fun u -> u.src) l)
         | [] -> ()
       in
       log_error err.ml; log_error err.mli;

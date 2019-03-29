@@ -1,7 +1,7 @@
 [[1m[35mWarning[0m]: Syntax error
- File "", line 4, characters 7-16
+            File "", line 4, characters 7-16
 [[1m[36mNotification[0m]: Approximate parsing of cases/broken3.ml.
-However, lower and upper bound agreed upon dependencies.
+                However, lower and upper bound agreed upon dependencies.
 {
 "version" : [0, 10, 3],
 "dependencies" : [{ "file" : "cases/broken3.ml" }],

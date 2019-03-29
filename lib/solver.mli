@@ -45,8 +45,7 @@ module Failure :
   end
 
 (** Solver error when trying to resolve dependencies *)
-val fault:
-  (Failure.alias_resolver -> i list -> unit) Fault.t
+val fault: (Failure.alias_resolver * i list) Fault.info
 
 (** Create a solver using the environment module [Envt] for
     name resolution and dependendy tracking and

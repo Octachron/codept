@@ -1,9 +1,9 @@
 (** Codept fault policies *)
 
 (** {2 Codept specific fault} *)
-val nonexisting_file: (string -> unit) Fault.t
-val unknown_extension: (string -> unit) Fault.t
-val invalid_file_group: (string -> string -> unit) Fault.t
+val nonexisting_file: string Fault.info
+val unknown_extension: string Fault.info
+val invalid_file_group: (string * string) Fault.info
 
 
 (** Default policy *)

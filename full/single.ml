@@ -25,10 +25,10 @@ let to_m2l policy sig_only (k,f,_n) =
     | _name, Ok x ->
       if sig_only then Some (k, M2l.Sig_only.filter x) else Some (k,x)
     | _, Error (Ocaml (Syntax msg)) ->
-      Fault.handle policy Standard_faults.syntaxerr msg;
+      Fault.raise policy Standard_faults.syntaxerr msg;
       Some(k, approx f)
     | _, Error (Ocaml (Lexer msg)) ->
-      Fault.handle policy Standard_faults.lexerr !Location.input_name msg;
+      Fault.raise policy Standard_faults.lexerr (!Location.input_name,msg);
       Some(k, approx f)
     | _, Error (Serialized e) ->
       Standard_faults.schematic_errors policy (f,"m2l",e); None
