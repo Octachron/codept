@@ -11,7 +11,6 @@ type variant =
   | Nl
 
 type t =
-  | Aliases
   | Dot
   | Export of Name.t
   | Modules of variant * filter
@@ -25,13 +24,6 @@ type mode = string -> Io.writer -> Format.formatter
   -> Params.t -> Unit.r list Unit.pair -> unit
 
 val eval: t -> mode
-
-(** Display aliases:
-    compilation unit submodules aliased to another compiler units.
-    Note that aliases are constructing by the interpreter only if
-    the option -no-alias-deps is active.
- *)
-val aliases: mode
 
 (** Display interface dependencies in graphviz format (for graph vizualisation *)
 val dot: mode

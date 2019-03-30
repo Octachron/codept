@@ -16,7 +16,6 @@ type variant =
   | Nl
 
 type t =
-  | Aliases
   | Dot
   | Export of Name.t
   | Modules of variant * filter
@@ -132,20 +131,6 @@ let pp_module {Makefile.abs_path;slash; _ } proj ppf (u:Unit.r) =
   Pp.fp ppf "%a: %a\n" pp_pkg (Common.make_abs abs_path u.src)
     Pp.( list ~sep:(s" ") Name.pp )
     elts
-
-let aliases _ _ ppf param {Unit.mli; _ } =
-  let mk_aliases (x:Unit.r) =
-    Module.(aliases @@ M (create "" @@ Unit.signature x) ) in
-  let param = param.makefile in
-  let pp_pkg = Pkg.pp_gen param.slash in
-  let pp_m (u:Unit.r) =
-    let path = u.src in
-    let path' = Pkg.update_extension
-        (function "m2l" -> ".ml" | "m2li" -> ".mli" | s -> s ) path in
-    let f = Common.make_abs param.abs_path path' in
-    Pp.fp ppf "%a: %a\n" pp_pkg f
-      Pp.( list ~sep:(s" ") Namespaced.pp ) (mk_aliases u) in
-  List.iter pp_m mli
 
 let mname x = Namespaced.make @@ Pkg.module_name x
 let upath x = mname @@ x.Unit.src
@@ -265,7 +250,6 @@ end
 
 
 let eval = function
-  | Aliases -> aliases
   | Dot -> dot
   | Export name -> export name
   | Modules (Standard, filter) -> modules ~filter:(Filter.eval filter)
