@@ -14,7 +14,7 @@ make-all:
 alt2-%:
 	make -C build -j $*
 
-codept: lib/*.ml lib/*.mli full/*.ml full/*.mli precomputed/*.ml
+codept: lib/*.ml lib/*.mli full/*.ml full/*.mli bundled/*.ml bundled/*.mli
 	ocamlbuild $(OPTS) codept.native\
 		&& mv codept.native codept
 

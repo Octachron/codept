@@ -72,7 +72,7 @@ let io = {
             let path = Namespaced.make @@ Paths.P.module_name src in
             let u: Unit.s =
               { precision = Exact; code = m2l;
-                path; src; kind = kind.kind } in
+                path; src; kind = kind.kind; more = () } in
             let m2l = Name.Map.add filename u cached.m2l in
             { cached with m2l }
           ) cache;

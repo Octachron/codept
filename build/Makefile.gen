@@ -14,5 +14,5 @@ depend: codept.sort codept_client.sort codept_server.sort run.sort serialization
 	$(IMPL) $(addprefix build/, $(GENS)) $(MAINS) \
 	| sed -e 's/build\///g' > build/.depends
 
-%.sort: $(GENS) $S/lib $S/full $S/precomputed $S/tests
+%.sort: $(GENS) $S/lib $S/full $S/bundled $S/tests
 	$(call sorted_deps, $*)

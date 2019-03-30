@@ -1,6 +1,6 @@
 S = $(abspath  ..)
 
-OPTS= -no-alias-deps -bin-annot -strict-sequence -safe-string -short-paths -strict-formats -w +A@8-4-6-30-40..42-48-44-45 -I lib -I full -I lib/sexp -I precomputed -I tests
+OPTS= -no-alias-deps -bin-annot -strict-sequence -safe-string -short-paths -strict-formats -w +A@8-4-6-30-40..42-48-44-45 -I lib -I full -I lib/sexp -I bundled -I tests
 
 DEPS= compiler-libs
 PKGS= -I +compiler-libs
@@ -23,8 +23,8 @@ OMAINS=$(addprefix $S/,$(MAINS))
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
 
-OSRC= $(wildcard $S/lib/*.mli) $(wildcard $S/full/*.mli)
-OSRCI= $(wildcard $S/precomputed/*.ml) $(wildcard $S/tests/*.ml) \
+OSRC= $S/bundled/bundle.mli $(wildcard $S/lib/*.mli) $(wildcard $S/full/*.mli)
+OSRCI= $(wildcard $S/tests/*.ml) \
        $(addprefix $S/full/codept, .ml _server.ml _client.ml)
 OIMPL = $(OSRC:.mli=.ml)
 

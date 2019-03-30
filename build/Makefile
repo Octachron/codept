@@ -4,9 +4,10 @@ include Makefile.common
 
 
 all: dirs tests $S/codept-server $S/codept-client $S/codept
+codept: $S/codept
 
 dirs:
-	mkdir -p full tests docs precomputed
+	mkdir -p full tests docs bundled
 
 $S/codept: $(OBJ) full/codept.cmx | dirs
 	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codeptSORT)) -o $S/codept
@@ -52,7 +53,7 @@ lib/slex.cmi: lib/slex.ml lib/sparser.cmi
 
 clean:
 	@rm lib/*.cm[iox] lib/*.cmt lib/*.cmti ;\
-	rm -R full; rm -R precomputed
+	rm -R full; rm -R bundled
 
 
 %.cmi: %.mli | dirs
