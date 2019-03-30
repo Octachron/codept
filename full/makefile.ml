@@ -108,81 +108,68 @@ let print_deps includes param input dep ppf more =
   |> render param ppf
 
 let regroup {Unit.ml;mli} =
-  let add l m = List.fold_left (fun x y -> Unit.Group.Map.add y x) m l in
-  add mli @@ add ml @@ Pth.Map.empty
+  Unit.Group.Map.of_list ( mli @ ml)
+
+let cmi_or synonyms or_ path =
+  match implicit_dep synonyms path with
+  | exception Not_found -> or_ path
+  | { Unit.ml = true; mli = true } | { ml = false; mli=false } -> or_ path
+  | { mli = false; ml = true } -> or_ path
+  | { mli = true; ml = false } -> Pkg.cmi path
+
+let cmo_or_cmi synonyms path =
+  match implicit_dep synonyms path with
+  | { Unit.mli = true; ml = _ } -> Pkg.cmi path
+  |  _ -> Pkg.cmo path
+
+let collision_error policy = function
+  | a :: _ as l ->
+    Fault.raise policy Standard_faults.local_module_conflict
+      (a.Unit.path, List.map (fun u -> u.Unit.src) l)
+  | [] -> ()
+
+let unit_main policy param synonyms printer g =
+  let cmo_or_cmi = cmo_or_cmi synonyms and cmi_or = cmi_or synonyms in
+  let open Unit in
+  let all = param.all in
+  let if_all l = if all then l else [] in
+  let g, err = Unit.Group.flatten g in
+  List.iter (collision_error policy) [err.ml; err.mli];
+  match g with
+  | { ml= Some impl ; mli = Some intf } ->
+    let cmi = Pkg.cmi impl.src in
+    if not param.native then
+      printer Pkg.cmo cmo_or_cmi (impl, [], cmi :: if_all [impl.src] );
+    if not param.bytecode then begin
+      let files = impl, if_all [Pkg.o impl.src], cmi :: if_all [impl.src] in
+      printer (Pkg.cmx) (cmi_or Pkg.cmx) files;
+      if param.shared then
+        printer (Pkg.cmxs) (cmi_or Pkg.cmxs) files
+    end;
+    printer Pkg.cmi (Pkg.mk_dep all param.native) (intf,[], [])
+  | { ml = Some impl; mli = None } ->
+    begin
+      let implicit = implicit_dep synonyms impl.src in
+      let cmi = Pkg.cmi impl.src in
+      let cmi_dep, cmi_adep =
+        if param.implicits && implicit.mli then [cmi], [] else [], [cmi] in
+      if not param.native then
+        begin
+          printer Pkg.cmo cmo_or_cmi
+            (impl, if_all cmi_adep, if_all [impl.src] @ cmi_dep)
+        end;
+      if not param.bytecode then
+        printer Pkg.cmx (cmi_or Pkg.cmx)
+          (impl, if_all (Pkg.o impl.src :: cmi_adep),
+           if_all [impl.src] @ cmi_dep )
+    end
+  | { ml = None; mli = Some intf } ->
+    printer Pkg.cmi (Pkg.mk_dep all param.native) (intf,[],[])
+  | { ml = None; mli = None } -> ()
+
 
 let main policy ppf synonyms param units =
   let includes = expand_includes policy synonyms param.includes in
-  let all = param.all in
-  let if_all l = if all then l else [] in
-  let print_deps = print_deps includes param in
+  let print_deps x y = print_deps includes param x y ppf in
   let m =regroup units in
-  let cmi_or or_ path =
-    let open Unit in
-    match implicit_dep synonyms path with
-    | exception Not_found -> or_ path
-    | { ml = true; mli = true } | { ml = false; mli=false } ->
-        or_ path
-    | { mli = false; ml = true } ->
-      or_ path
-    | { mli = true; ml = false } ->
-      Pkg.cmi path in
-  let cmo_or_cmi path =
-    let open Unit in
-    match implicit_dep synonyms path with
-    | { mli = true; ml = _ } -> Pkg.cmi path
-    |  _ -> Pkg.cmo path in
-  Pth.Map.iter (fun _k g ->
-      let open Unit in
-      let g, err = Group.flatten g in
-      let log_error  = function
-        | a :: _ as l ->
-          Fault.raise
-            policy Standard_faults.module_conflict
-            (a.path, List.map (fun u -> u.src) l)
-        | [] -> ()
-      in
-      log_error err.ml; log_error err.mli;
-      match g with
-      | { ml= Some impl ; mli = Some intf } ->
-        let cmi = Pkg.cmi impl.src in
-        if not param.native then
-          print_deps (Pkg.cmo) cmo_or_cmi ppf
-            (impl, [], [cmi] @ if_all [impl.src] );
-        if not param.bytecode then begin
-          print_deps (Pkg.cmx) (cmi_or Pkg.cmx) ppf
-            (impl, if_all [Pkg.o impl.src],
-             [cmi] @ if_all [impl.src] );
-            if param.shared then
-              print_deps (Pkg.cmxs) (cmi_or Pkg.cmxs) ppf
-                (impl, if_all [Pkg.o impl.src],
-                 [cmi] @ if_all [impl.src] )
-        end;
-          print_deps Pkg.cmi (Pkg.mk_dep all param.native)  ppf
-          (intf,[], [] )
-      | { ml = Some impl; mli = None } ->
-        begin
-          let implicit = implicit_dep synonyms impl.src in
-          let cmi = Pkg.cmi impl.src in
-          let imli =  param.implicits
-                      && implicit.mli in
-          let cmi_dep, cmi_adep =
-            ( if imli then
-                [cmi], []
-              else [], [cmi] ) in
-          if not param.native then
-            begin
-              print_deps Pkg.cmo cmo_or_cmi ppf
-                (impl, if_all cmi_adep, if_all [impl.src] @ cmi_dep)
-            end;
-          if not param.bytecode then
-            print_deps Pkg.cmx (cmi_or Pkg.cmx) ppf
-              (impl,
-               if_all ([Pkg.o impl.src] @ cmi_adep),
-               if_all [impl.src] @ cmi_dep )
-        end
-      | { ml = None; mli = Some intf } ->
-        print_deps Pkg.cmi (Pkg.mk_dep all param.native) ppf
-          (intf,[],[])
-      | { ml = None; mli = None } -> ()
-    ) m
+  Unit.Group.Map.iter (unit_main policy param synonyms print_deps) m

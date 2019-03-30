@@ -111,6 +111,8 @@ module Group = struct
 
     let of_list x = List.fold_left (fun x y -> add  y x) Pth.Map.empty x
 
+    let fold f map start = Paths.S.Map.fold (fun _ -> f) map start
+    let iter f map = fold (fun x () -> f x) map ()
   end
 
   let group {ml;mli} =

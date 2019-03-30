@@ -73,10 +73,12 @@ module Group: sig
   val empty : 'any group
   module Map :
   sig
-    type 'ext t = 'ext group Pth.map
+    type 'ext t
     val find: Pth.t -> 'ext t -> 'ext group
     val add : 'ext base -> 'ext t -> 'ext t
     val of_list : 'ext base list -> 'ext t
+    val fold: ('ext group -> 'acc -> 'acc) -> 'ext t -> 'acc -> 'acc
+    val iter: ('ext group -> unit) -> 'ext t -> unit
   end
 
   val group : 'ext t list pair -> 'ext Map.t

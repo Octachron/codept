@@ -70,8 +70,7 @@ let structured fmt _ _ ppf param units =
   let lib, unknown =
     List.fold_left build_atlas (LibSet.empty, Paths.S.Set.empty) all in
   let groups = Unit.Group.group units in
-  let local =
-    Paths.S.Map.fold (fun _ x set -> assoc x set) groups LocalSet.empty in
+  let local = Unit.Group.Map.fold assoc groups LocalSet.empty in
   let dep (u:Unit.r) =
     { Schema.file = ufile u; deps= Deps.paths (Unit.deps u) } in
   let dependencies = List.map dep all in
@@ -221,12 +220,11 @@ let sort _ _ ppf _param (units: _ Unit.pair) =
   let gs = G.group units in
   let flat g = fst @@ G.flatten g
   (* errors should have handled earlier *) in
-  let extract_path _ g l = match flat g with
+  let extract_path g l = match flat g with
     | { Unit.ml = Some x; mli = _ }
     | { ml = None; mli = Some x }  -> x.Unit.src :: l
     | { ml = None; mli = None } -> l in
-  let paths =
-    Paths.S.Map.fold extract_path gs []  in
+  let paths = G.Map.fold extract_path gs []  in
   let deps path =
     let key = path.Pkg.file in
     match flat @@ G.Map.find key gs with
