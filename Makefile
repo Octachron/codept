@@ -23,8 +23,9 @@ codept_ocamlbuild: ocamlbuild_plugin/codept_ocamlbuild.ml
 	&& ocamlbuild -no-ocamlfind -cflags -I,$(OCAMLBUILD) \
 	codept_ocamlbuild.otarget
 
-dune-clean:
+clean:
 	dune clean
+
 make-clean:
 	rm codept
 	cd build; make clean
