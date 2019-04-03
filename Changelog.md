@@ -1,9 +1,13 @@
 # Version 0.10.3
 
+## Features
+
+* Flatter json and sexp output
+* Less noisy ambiguous module warning
+
 ## Bug fixes
 
   * Missing dependencies while matching first-class modules
-  * Less noisy ambiguous module warning
 
 ## Support
 
