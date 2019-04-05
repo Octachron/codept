@@ -20,9 +20,9 @@ module S = Paths.S.Set
 
 let sch: t Schematic.t =
   let module T = Schematic.Tuple in
-  let from_list =
+  let from_list = let open T in
     List.fold_left
-      (fun m T.[k; edge; pkg; aliases] -> Map.add k {edge;pkg;aliases} m)
+      (fun m [k; edge; pkg; aliases] -> Map.add k {edge;pkg;aliases} m)
       Map.empty in
   let to_list m =
     Map.fold (fun k {edge;pkg;aliases} l -> T.[k;edge;pkg;aliases] :: l) m [] in

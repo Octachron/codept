@@ -56,7 +56,7 @@ let build_atlas (lib,unknow) (u:Unit.r) =
   let build_atlas {Deps.path; pkg; _} (lib,unknw)  =
     let add_libs lib path = LibSet.add { Schema.lib; path } in
     match pkg.source with
-    | Paths.P.(Local|Special _) -> lib, unknw
+    | Paths.P.Local|Paths.P.Special _ -> lib, unknw
     | Paths.P.Pkg pkg' -> add_libs pkg' path lib, unknw
     | Paths.P.Unknown -> lib, Paths.S.Set.add path unknw in
   Deps.fold build_atlas (Unit.deps u) (lib,unknow)

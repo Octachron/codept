@@ -52,12 +52,13 @@ let local_association =
 type library_module = { path:p; lib:p}
 module Lib = Label(struct let l = "lib" end)
 
+module R = Schematic.Record
 let lib =
   custom ["deps";"lib_association"]
     (Obj [Req, Module.l, path; Req, Lib.l, path] <?>
      "Library dependency: module path followed by the library path")
     (fun (r: library_module) -> [Module.l $= r.path; Lib.l $= r.lib])
-    (fun [_,path;_,lib] -> {path;lib})
+    (let open R in fun [_,path;_,lib] -> {path;lib})
 
 
 module Local = Label(struct let l = "local" end)
@@ -80,7 +81,7 @@ let unit =
   let ($=$) x l = if l = L.[] then x $=? None else x $=? Some l in
   custom ["deps"; "unit"; "deps"] raw_unit
     (fun d -> [ File.l $= d.file; Deps.l $=$ d.deps ])
-    ( fun [_, file; _,deps] -> {file; deps = Option.default e deps } )
+    (let open R in fun [_, file; _,deps] -> {file; deps = Option.default e deps } )
 
 
 
