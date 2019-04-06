@@ -111,17 +111,12 @@ module Make(Envt:envt)(Param:param) = struct
   and remove_path_from_sig path defs = match path with
     | [] -> defs
     | [a] -> { defs with modules = Name.Map.remove a defs.modules }
-    | a :: rest -> let open Option in
-      let mods = defs.modules in
-      Name.Map.find_opt a mods
-      >>| ( function
-          | Namespace _ | Alias _ -> defs
-          | M m ->
-            let m =
-              M.M{ m with signature = remove_path_from rest m.signature }
-            in
-            { defs with modules = Name.Map.add a m mods }
-        ) >< defs
+    | a :: rest ->
+      let update: M.t -> _ = function
+        | M.Alias _ | Namespace _ as x -> x
+        | M m -> M.M { m with signature = remove_path_from rest m.signature }
+      in
+      { defs with modules= Name.Map.update a update defs.modules }
 
   let with_deletions dels d =
     Paths.S.Set.fold remove_path_from dels d

@@ -14,6 +14,7 @@ module Map: sig
   include Map.S with type key = t
   val find_opt: key -> 'a t -> 'a option
   val union': 'a t -> 'a t -> 'a t
+  val update: key -> ('a -> 'a) -> 'a t -> 'a t
 end
 
 type 'a map = 'a Map.t

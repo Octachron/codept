@@ -162,9 +162,9 @@ module Policy = struct
            map=Name.Map.singleton a @@ set ?lvl ?expl q @@ Level l
          }
     | a :: q, Map m ->
-      let env' = try
-          Name.Map.find a m.map with
-      | Not_found -> Level {lvl=m.lvl; expl = m.expl} in
+      let env' =
+        Option.default (Level {lvl=m.lvl; expl = m.expl})
+          (Name.Map.find_opt a m.map) in
       let elt = set ?lvl ?expl q env' in
       let map = Name.Map.add a elt m.map in
       Map{m with map}

@@ -152,9 +152,10 @@ module Core = struct
         end
         (* If we did not find anything and were looking for a module type,
            we return a mockup module type *)
-        ||| lazy (if level = Module_type then
-                    return (M.md @@ M.mockup name) <!> [unknown loc Module_type name]
-                  else None)
+        ||| lazy
+          (if level = Module_type then
+             return (M.md @@ M.mockup name) <!> [unknown loc Module_type name]
+           else None)
 
   let find_name loc = find_name loc false
 
@@ -371,26 +372,23 @@ module Libraries = struct
         source.resolved <- Core.add_unit source.resolved (M.M md);
         track source q
 
+  let is_unknown = function
+    | M.M { origin = Unit {source={ source = Unknown; _ };_};_} -> true
+    | _ -> false
+
   let rec pkg_find name source =
     match Core.find_name noloc M.Module name source.resolved.current with
-    | Some {main =
-              M.M { origin = Unit {source={ source = Unknown; _ }; _ }; _ }; _} ->
-      raise Not_found
     | None ->
       let path = Name.Map.find name source.cmis in
-      track source
-        [name, path, Cmi.m2l @@ P.filename path ];
+      track source [name, path, Cmi.m2l @@ P.filename path ];
       pkg_find name source
-    | Some m -> m.Out.main
+    | Some m -> let main = m.Out.main in
+      if is_unknown main then raise Not_found else main
 
   let rec pkgs_find name = function
     | [] -> raise Not_found
     | source :: q ->
-      try
-        let m = pkg_find name source in
-        m
-      with Not_found ->
-        pkgs_find name q
+      try pkg_find name source with Not_found -> pkgs_find name q
 
   let provider libs =
     let pkgs = create libs in
@@ -408,23 +406,19 @@ module Implicit_namespace = struct
     let open Query in
     let wrap = function
       | M m -> M.M m
-      | Namespace {name;modules} ->
-        M.Namespace {name; modules} in
+      | Namespace {name;modules} -> M.Namespace {name; modules} in
     let env = Core.start (M.Def.modules modules) in
+    let implicit loc path =
+      Some(Core.find_implicit loc M.Module path env >>| wrap) in
     fun loc name ->
-      try
-        Some(Core.find_implicit loc M.Module [name] env >>| wrap)
-      with Not_found ->
-      try
-        Some(Core.find_implicit loc M.Module (namespace @ [name]) env >>| wrap)
-      with Not_found -> None
+      try implicit loc [name] with Not_found ->
+      try implicit loc (namespace @ [name]) with Not_found -> None
 
 end
 let implicit_namespace = Implicit_namespace.provider
 
 
-let start ?(open_approximation=true)
-    ~libs ~namespace ~implicits predefs  =
+let start ?(open_approximation=true) ~libs ~namespace ~implicits predefs =
   let empty = Core.start M.Def.empty in
   let files_in_namespace =
     List.fold_left Core.add_namespace empty namespace in

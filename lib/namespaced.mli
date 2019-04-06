@@ -14,6 +14,6 @@ val of_filename: ?nms:p -> string -> t
 
 module Map: sig
   include Map.S with type key = t
-  val find_opt: namespaced -> 'a t -> 'a option 
-end           
+  val find_opt: namespaced -> 'a t -> 'a option
+end
 module Set: Set.S with type elt = t
