@@ -6,15 +6,7 @@ module M = Module
 module Annot = M2l.Annot
 module Arg = M.Arg
 
-
-
-let rec from_lid  =
-  let open Paths.Expr in
-  function
-    | L.Lident s -> A s
-    | L.Ldot (lid,s) -> S(from_lid lid,s)
-    | L.Lapply (f,x) -> F {f = from_lid f; x = from_lid x }
-
+let from_lid = Longident_converter.from_lid
 let txt x= x.Location.txt
 
 
@@ -41,17 +33,20 @@ module H = struct
   let extract_loc (loc: _ Location.loc) =
     from_loc loc.Location.loc
 
+  let rec remove_last = function
+    | [] | [_] -> []
+    | a :: q -> a :: remove_last q
+
   let access lid =
     let open Paths.Expr in
     let x = from_lid @@ txt lid in
     let loc =  extract_loc lid in
     match x with
-    | A _ | T -> Annot.empty
-    | S(p,_) ->
-      List.fold_left (fun annot data -> Annot.(merge annot @@ access {data; loc }))
-        Annot.empty (multiples p)
-    | F _ -> assert false
-
+    | {path = [_]| []; args = _ } -> Annot.empty
+    | p ->
+      let f annot data = Annot.(merge annot @@ access {data; loc }) in
+      let p = { p with path = remove_last p.path } in
+      List.fold_left f Annot.empty (multiples p)
 
   let me_access lid =
     let open Paths.Expr in

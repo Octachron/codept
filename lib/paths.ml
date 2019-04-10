@@ -76,82 +76,76 @@ end
 module S = Simple
 
 module Expr = struct
-  type t =
-    | T
-    | A of Name.t
-    | S of t * Name.t
-    | F of {f:t; x:t}
+
+  type t = { path: S.t; args: (int * t) list }
 
   module Sch = struct
     open Schematic
-    let rec raw = Sum[ "T", Void; "A", String; "S", [t;String]; "F", [t; t] ]
+    let rec raw = ([ S.sch; Array [Int; t] ]: _ t)
     and t = Custom {fwd;rev; sch=raw; id = ["Paths"; "Expr"; "t"] }
-    and fwd = let open Tuple in
-      function
-      | T -> C E
-      | A s -> C (S (Z s))
-      | S(t,s) -> C(S(S(Z [t;s])))
-      | F {f;x} -> C(S(S(S(Z [f;x]))))
+    and fwd {path; args} = let open Tuple in
+      [path; List.map (fun (n,x) -> [n;x]) args ]
     and rev = let open Tuple in
-      function
-      | C E -> T
-      | C S Z s -> A s
-      | C S S Z [t;s] -> S(t,s)
-      | C S S S Z [f;x] -> F {f;x}
-      | _ -> .
+      fun [path; args] ->
+        {path; args = List.map (fun [n;t] -> n, t) args }
   end
   let sch = Sch.t
 
 
   exception Functor_not_expected
-  let concrete p: Simple.t =
-    let rec concretize l = function
-      | T -> l
-      | A a -> a :: l
-      | F _ -> raise Functor_not_expected
-      | S(p,s) -> concretize (s::l) p in
-    concretize [] p
+  let concrete  = function
+      | {path; args=[] } -> path
+      | {args = _ :: _;  _ } -> raise Functor_not_expected
 
-  let concrete_with_f p: Simple.t =
-    let rec concretize l = function
-      | T -> l
-      | A a -> a :: l
-      | F {f;_} -> concretize l f
-      | S(p,s) -> concretize (s::l) p in
-    concretize [] p
-
+  let concrete_with_f p: Simple.t = p.path
 
   let multiples p : Simple.t list =
-    let rec concretize stack l = function
-      | T -> l :: stack
-      | A a -> (a :: l) :: stack
-      | F {f;x} -> concretize (concretize stack [] x) l f
-      | S(p,s) -> concretize stack (s::l) p in
-    concretize [] [] p
+    let rec extract l = function
+    | {path; args = [] } -> path :: l
+    | {path; args } ->
+      List.fold_left (fun l (_,x) -> extract l x) (path::l) args in
+    List.rev (extract [] p)
 
   let rev_concrete p = List.rev @@ concrete p
 
-  let from_list l =
-    let rec rebuild =
-      function
-      | [] -> T
-      | [a] -> A a
-      | a :: q -> S(rebuild q, a)
-    in rebuild @@ List.rev l
+  let from_list path = {path; args = [] }
 
-  let rec pp ppf =
-    let p fmt = Format.fprintf ppf fmt in
-    function
-    | T -> p "T"
-    | A name -> p"%s" name
-    | S(h,n) -> p "%a.%s" pp h n
-    | F {f;x} -> p "%a(%a)" pp f pp x
+  let rec normalize path =
+    let args = List.sort (fun (n,_) (n',_) -> compare n n') path.args in
+    let args = List.map (fun (n,x) -> n, normalize x) args in
+    { path with args }
 
-  let rec prefix = function
-    | S(p,_) -> prefix p
-    | A n -> n
-    | F {f;_} -> prefix f
-    | T -> raise @@ Invalid_argument "Paths.Expr: prefix of empty path"
+  (*
+  let rec raw_pp ppf { path; args} =
+    let int ppf d = Format.fprintf ppf "%d" d in
+    Format.fprintf ppf "%a[%a]"
+      S.pp path Pp.(list (pair int pp)) args
+*)
+
+  let rec pp offset ppf = function
+    | {path; args = []} -> S.pp ppf path
+    | {path; args = (n,x) :: l } -> subpath ppf offset n [] path x l
+  and subpath ppf offset n sub rest x args =
+    match n-offset, rest with
+    | 0, [a] ->
+      Format.fprintf ppf "%a(%a)"
+        S.pp (List.rev (a::sub))
+        (pp 0) x
+    | 0, a :: q ->
+      Format.fprintf ppf "%a(%a).%a"
+        S.pp (List.rev (a::sub))
+        (pp 0) x
+        (pp n) { path = q; args }
+    | _, []  -> assert false
+    | _, a :: rest ->
+      subpath ppf (offset+1) n (a::sub) rest x args
+
+  let pp ppf x = pp 0 ppf (normalize x)
+
+  let prefix = function
+    | {path = [] ; _ } ->
+      raise @@ Invalid_argument "Paths.Expr: prefix of empty path"
+    | {path= a :: _ ; _ } -> a
 end
 module E = Expr
 

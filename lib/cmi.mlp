@@ -26,17 +26,17 @@ let module_type_declaration module_type id mtd =
   bind_sig id Option.( mtd.mtd_type >>| module_type)
 
 module P = Path
-
-let rec from_path  =
-  let open Paths.Expr in
-  function
-    | P.Pident s -> A (Ident.name s)
+module L = Longident
+let rec path_to_lid  = function
+    | P.Pident s -> L.Lident (Ident.name s)
 # oo, 4.08
-    | P.Pdot (p,s,_n) -> S(from_path p,s)
+    | P.Pdot (p,s,_n) -> L.Ldot (path_to_lid p,s)
 # 4.08, oo
-    | P.Pdot (p,s) -> S(from_path p,s)
+    | P.Pdot (p,s) -> L.Ldot(path_to_lid p,s)
 #end
-    | P.Papply (f,x) -> F {f = from_path f; x=from_path  x}
+    | P.Papply (f,x) -> L.Lapply (path_to_lid f, path_to_lid x)
+let from_path x = Longident_converter.from_lid (path_to_lid x)
+
 
 module Arg = Module.Arg
 
