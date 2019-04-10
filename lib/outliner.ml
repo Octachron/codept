@@ -92,12 +92,9 @@ module Make(Envt:envt)(Param:param) = struct
       | _ :: args -> { p with args }
       | [] ->
         if Module.Partial.is_exact p then
-          begin
-            Fault.handle policy @@ Fault.emit Faults.applied_structure (loc,p);
-            p
-          end
-        else
-          p (* we guessed the arg wrong *)
+           (* we guessed the arg wrong *)
+            raisef  Faults.applied_structure (loc,p);
+        p
 
   (* Remove deleted modules with `with A.B.C.D := …` *)
   let rec remove_path_from path = function
@@ -126,8 +123,7 @@ module Make(Envt:envt)(Param:param) = struct
 
   let of_partial loc p =
     match Y.of_partial p with
-    | Error def -> raisef Faults.structure_expected (loc,p);
-      def
+    | Error def -> raisef Faults.structure_expected (loc,p); def
     | Ok def -> def
 
   type level = Module.level = Module | Module_type
@@ -218,8 +214,8 @@ module Make(Envt:envt)(Param:param) = struct
 
   let include_ loc state module_expr =
     gen_include loc (module_expr loc state) (fun i -> Include i)
-  let sig_include loc state module_type = gen_include loc
-      (module_type loc state) (fun i -> SigInclude i)
+  let sig_include loc state module_type =
+    gen_include loc (module_type loc state) (fun i -> SigInclude i)
 
   let bind state module_expr {name;expr} =
    module_expr state expr >>| function
