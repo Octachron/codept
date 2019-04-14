@@ -8,10 +8,10 @@ class virtual id_core =  object
   method virtual ident : Paths.Simple.t -> (Paths.Simple.t, unit) result
 
   method virtual abstract : module_expr
-  method virtual access :  a list -> access
+  method virtual access :  access -> access
   method virtual access_add :
-    Paths.S.t -> Loc.t -> Deps.Edge.t -> a list -> a list
-  method virtual access_init : a list
+    Paths.S.t -> Loc.t -> Deps.Edge.t -> access -> access
+  method virtual access_init : access
   method virtual add_packed :
     Loc.t -> module_expr -> module_expr Loc.ext list
     -> module_expr Loc.ext list
@@ -115,9 +115,9 @@ module Path = struct
         -> m2l annot
 
   type acc =
-    {left: (Paths.S.t * (Loc.t * Deps.Edge.t)) list as 'a;
+    {left: access;
      loc:Loc.t; edge: Deps.Edge.t;
-     right:'a
+     right:a list
     }
 
 
@@ -474,11 +474,9 @@ class id = object
   method ident s = Ok s
 
   method abstract: module_expr = Abstract
-  method access l: access =
-    List.fold_left (fun acc (k,x) -> Paths.S.Map.add k x acc)
-      Paths.S.Map.empty l
-  method access_add p loc edge a = (p, (loc,edge)) :: a
-  method access_init = []
+  method access l: access = l
+  method access_add p loc edge a = Paths.S.Map.add p (loc,edge) a
+  method access_init = Paths.S.Map.empty
   method add_packed loc me l = {Loc.loc;data=me} :: l
   method alias x = Alias x
   method apply f x = Apply {f;x}
