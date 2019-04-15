@@ -3,187 +3,236 @@ module Arg = Module.Arg
 
 type a = Paths.Simple.t * (Loc.t * Deps.Edge.t)
 
-class virtual id_core =  object
 
-  method virtual ident : Paths.Simple.t -> (Paths.Simple.t, unit) result
 
-  method virtual abstract : module_expr
-  method virtual access :  access -> access
+type env = Summary.t
+type level = Module.level
+
+type contextual_path =
+  { loc: Loc.t;
+    edge:Deps.Edge.t option;
+    level: level;
+    env: env;
+    path: Paths.S.t
+  }
+
+
+type 'p param = 'p
+  constraint 'p = <
+    path:'path;
+    module_expr: 'module_expr;
+    access: 'access;
+    packed: 'packed;
+    module_type:'module_type;
+    m2l:'m2l;
+    expr:'expr;
+    value: 'values;
+    annotation:'annotation;
+    bind_rec:'bind_rec;
+    ext:'ext;
+    path_expr:'path_expr;
+    path_expr_args:'path_expr_args;
+    opens:'opens;
+  >
+
+class virtual ['params] fold =
+  object
+    constraint
+      'params = <
+        path:'path;
+        module_expr: 'module_expr;
+        access: 'access;
+        packed: 'packed;
+        module_type:'module_type;
+        m2l:'m2l;
+        expr:'expr;
+        value: 'values;
+        annotation:'annotation;
+        bind_rec:'bind_rec;
+        ext:'ext;
+        path_expr:'path_expr;
+        path_expr_args:'path_expr_args;
+        opens:'opens;
+      > param
+
+    method virtual ident :
+      Paths.S.t -> ('path, unit) result
+
+  method virtual abstract : 'module_expr
+  method virtual access :  'access -> 'access
   method virtual access_add :
-    Paths.S.t -> Loc.t -> Deps.Edge.t -> access -> access
-  method virtual access_init : access
+    'path -> Loc.t -> Deps.Edge.t -> 'access -> 'access
+  method virtual access_init : 'access
   method virtual add_packed :
-    Loc.t -> module_expr -> module_expr Loc.ext list
-    -> module_expr Loc.ext list
-  method virtual alias : Paths.Simple.t -> module_type
-  method virtual annot :
-    module_expr Loc.ext list -> access -> m2l list -> annotation
-  method virtual apply : module_expr -> module_expr -> module_expr
+    Loc.t -> 'module_expr -> 'packed -> 'packed
+  method virtual alias : 'path -> 'module_type
+  method virtual annot : 'packed -> 'access -> 'values -> 'annotation
 
-  method virtual bind : string -> module_expr -> expression
-  method virtual bind_rec : module_expr bind list -> expression
+  method virtual apply : 'module_expr -> 'module_expr -> 'module_expr
+
+  method virtual bind : Name.t -> 'module_expr -> 'expr
+  method virtual bind_rec : 'bind_rec -> 'expr
   method virtual bind_rec_add :
-    string -> module_expr -> module_expr bind list -> module_expr bind list
-  method virtual bind_rec_init : module_expr bind list
-  method virtual bind_sig : string -> module_type -> expression
+    string -> 'module_expr -> 'bind_rec -> 'bind_rec
+  method virtual bind_rec_init : 'bind_rec
+  method virtual bind_sig : string -> 'module_type -> 'expr
 
-  method virtual expr_ext : string -> extension_core -> expression
-  method virtual expr_include : module_expr -> expression
-  method virtual expr_open : module_expr -> expression
-  method virtual ext_module : t -> extension_core
-  method virtual ext_val : annotation -> extension_core
+  method virtual expr_ext : string -> 'ext -> 'expr
+  method virtual expr_include : 'module_expr -> 'expr
+  method virtual expr_open : 'module_expr -> 'expr
+  method virtual ext_module : 'm2l -> 'ext
+  method virtual ext_val : 'annotation -> 'ext
 
-  method virtual m2l_add : Loc.t -> expression -> t -> t
-  method virtual m2l_init : t
-  method virtual m2l: m2l -> m2l
+  method virtual m2l_add : Loc.t -> 'expr -> 'm2l -> 'm2l
+  method virtual m2l_init : 'm2l
+  method virtual m2l: 'm2l -> 'm2l
 
-  method virtual me_constraint : module_expr -> module_type -> module_expr
-  method virtual me_ext : string -> extension_core -> module_expr
+  method virtual me_constraint : 'module_expr -> 'module_type -> 'module_expr
+  method virtual me_ext : string -> 'ext -> 'module_expr
   method virtual me_fun :
-    module_type Arg.t option -> module_expr -> module_expr
-  method virtual me_ident : Paths.Simple.t -> module_expr
-  method virtual me_val : annotation -> module_expr
-  method virtual minor : annotation -> expression
+    'module_type Arg.t option -> 'module_expr -> 'module_expr
+  method virtual me_ident : 'path -> 'module_expr
+  method virtual me_val : 'annotation -> 'module_expr
+  method virtual minor : 'annotation -> 'expr
 
-  method virtual mt_ext : string -> extension_core -> module_type
+  method virtual mt_ext : string -> 'ext -> 'module_type
   method virtual mt_fun :
-    module_type Arg.t option -> module_type -> module_type
-  method virtual mt_ident : Paths.Expr.t -> module_type
-  method virtual mt_of : module_expr -> module_type
-  method virtual mt_sig : t -> module_type
+    'module_type Arg.t option -> 'module_type -> 'module_type
+  method virtual mt_ident : 'path_expr -> 'module_type
+  method virtual mt_of : 'module_expr -> 'module_type
+  method virtual mt_sig : 'm2l -> 'module_type
   method virtual mt_with :
-    access -> Paths.Simple.set -> module_type -> module_type
+    'access -> Paths.Simple.set -> 'module_type -> 'module_type
   method virtual open_add :
-    Paths.Simple.t -> Paths.Simple.t list -> Paths.Simple.t list
-  method virtual open_init : Paths.Simple.t list
-  method virtual open_me : Paths.Simple.t list -> module_expr -> module_expr
+    'path -> 'opens -> 'opens
+  method virtual open_init : 'opens
+  method virtual open_me : 'opens -> 'module_expr -> 'module_expr
 
-  method virtual packed_init : module_expr Loc.ext list
+  method virtual packed_init : 'packed
 
   method virtual path_expr :
-    Paths.Simple.t -> (int * Paths.Expr.t) list -> Paths.Expr.t
+    'path -> 'path_expr_args -> 'path_expr
   method virtual path_expr_arg :
-    int -> Paths.Expr.t -> ((int * Paths.Expr.t) list as 'args) -> 'args
-  method virtual path_expr_arg_init : (int * Paths.Expr.t) list
-  method virtual sig_abstract : module_type
-  method virtual sig_include : module_type -> expression
-  method virtual str : t -> module_expr
-  method virtual unpacked : module_expr
+    int -> 'path_expr -> 'path_expr_args -> 'path_expr_args
+  method virtual path_expr_arg_init : 'path_expr_args
+  method virtual sig_abstract : 'module_type
+  method virtual sig_include : 'module_type -> 'expr
+  method virtual str : 'm2l -> 'module_expr
+  method virtual unpacked : 'module_expr
 
-  method virtual value_add : t -> t list -> t list
-  method virtual value_init : t list
-  method virtual values : t list -> t list
+  method virtual value_add : 'm2l -> 'values -> 'values
+  method virtual value_init : 'values
+  method virtual values : 'values -> 'values
 end
 
-module Path = struct
+module Fold_left = struct
   type waccess = W of access [@@unboxed]
 
-  type 'focus expr =
-    | Open: module_expr expr
-    | Include: module_expr expr
-    | SigInclude: module_type expr
-    | Bind: Name.t -> module_expr expr
-    | Bind_sig: Name.t -> module_type expr
+  type ('p, 'focus) expr =
+    | Open: ('p param, module_expr) expr
+    | Include: ('p param, module_expr) expr
+    | SigInclude: ('p param, module_type) expr
+    | Bind: Name.t -> ('p param, module_expr) expr
+    | Bind_sig: Name.t -> ('p param,module_type) expr
     | Bind_rec:
-        {left: module_expr bind list;
+        {left: 'bind_rec;
          name:Name.t;
          right:module_expr bind list
-        } -> module_expr expr
-    | Minor: annotation expr
-    | Extension_node: string -> extension_core expr
+        } -> (<bind_rec:'bind_rec;..> param, module_expr) expr
+    | Minor: ('p param, annotation) expr
+    | Extension_node: string -> ('p param, extension_core) expr
 
-  type 'focus annot =
+  type ('p, 'focus) annot =
     | Packed: {
-        left:module_expr Loc.ext list;
+        left:'packed;
         loc:Loc.t;
         right: module_expr Loc.ext list;
         access:access;
         values: m2l list }
-        -> module_expr annot
+        -> (<packed:'packed;..> param, module_expr) annot
     | Access :
         {
-          packed:module_expr Loc.ext list;
+          packed:'packed;
           values: m2l list
         }
-        -> waccess annot
+        -> (<packed:'packed;..> param, waccess) annot
     | Values:
-        { packed: module_expr Loc.ext list;
-          access:access;
-          left: m2l list;
+        { packed: 'packed;
+          access:'access;
+          left: 'values;
           right: m2l list
         }
-        -> m2l annot
+        -> (<packed:'packed; value:'values; access:'access; ..> param, m2l) annot
 
-  type acc =
-    {left: access;
+  type 'p acc =
+    {left: 'access;
      loc:Loc.t; edge: Deps.Edge.t;
      right:a list
-    }
+    } constraint 'p = <access:'access; .. > param
 
 
-  type  'f path_expr =
-    | Main: (int * Paths.Expr.t) list -> Paths.S.t path_expr
+  type  ('p, 'f) path_expr =
+    | Main: (int * Paths.Expr.t) list -> ('f,Paths.S.t) path_expr
     | Arg: {
-        main: Paths.S.t;
-        left: (int * Paths.Expr.t) list;
+        main: 'path;
+        left: 'path_expr_args;
         pos:int;
         right: (int * Paths.Expr.t) list
-      } -> Paths.Expr.t path_expr
+      } -> (<path:'path; path_expr_args:'path_expr_args; ..> param, Paths.Expr.t) path_expr
 
 
-  type 'focus me =
-    | Ident: Paths.S.t me
-    | Apply_left: module_expr -> module_expr me
-    | Apply_right: module_expr -> module_expr me
-    | Fun_left: string * module_expr -> module_type me
-    | Fun_right: module_type Arg.t option -> module_expr me
-    | Constraint_left: module_type -> module_expr me
-    | Constraint_right: module_expr -> module_type me
-    | Str: m2l me
-    | Val: annotation me
-    | Extension_node: string -> extension_core me
+  type ('p, 'focus) me =
+    | Ident: (_ param, Paths.S.t) me
+    | Apply_left: module_expr -> (_ param , module_expr) me
+    | Apply_right: 'module_expr -> (<module_expr:'module_expr; ..> param, module_expr) me
+    | Fun_left: string * module_expr -> (_ param, module_type) me
+    | Fun_right: 'module_type Arg.t option -> (<module_type:'module_type; ..> param, module_expr) me
+    | Constraint_left: module_type -> (_ param, module_expr) me
+    | Constraint_right: 'module_expr -> (<module_expr:'module_expr; ..> param, module_type) me
+    | Str: (_ param, m2l) me
+    | Val: (_ param, annotation) me
+    | Extension_node: string -> (_ param, extension_core) me
     | Open_me_left:
-        { left: Paths.S.t list; right:Paths.S.t list; expr:module_expr }
-        -> Paths.S.t me
-    | Open_me_right: Paths.S.t list -> module_expr me
+        { left: 'opens; right:Paths.S.t list; expr:module_expr }
+        -> (<opens:'opens; ..> param, Paths.S.t) me
+    | Open_me_right: 'opens -> (<opens:'opens; ..> param, module_expr) me
 
-  and 'focus mt =
-    | Alias: Paths.Simple.t mt
-    | Ident: Paths.Expr.t mt
-    | Sig: m2l mt
-    | Fun_left: string * module_type -> module_type mt
-    | Fun_right: module_type Arg.t option -> module_type mt
+  type ('p,'focus) mt =
+    | Alias: (_ param, Paths.Simple.t) mt
+    | Ident: (_ param, Paths.Expr.t) mt
+    | Sig: (_ param, m2l) mt
+    | Fun_left: string * module_type -> ( _ param, module_type) mt
+    | Fun_right: 'module_type Arg.t option
+        -> (< module_type:'module_type; ..> param , module_type) mt
     | With_access:
         {body:module_type; deletions: Paths.S.set }
-        -> waccess mt
+        -> (_ param, waccess) mt
     | With_body:
-        {access:access; deletions:Paths.S.set } -> module_type mt
-    | Of: module_expr mt
-    | Extension_node: string -> extension_core mt
+        {access:'access; deletions:Paths.S.set }
+        -> (<access:'access;..> param, module_type) mt
+    | Of: (_ param, module_expr) mt
+    | Extension_node: string -> (_ param, extension_core) mt
 
   type 'focus ext =
     | Module: m2l ext
     | Val: annotation ext
 
-  type diff = {left:m2l; right:m2l}
-  let empty = {left=[]; right=[] }
-
-
   type none = No
 
-  type ('elt,'from) elt =
-    | M2l: {left:m2l; loc:Loc.t; right:m2l} -> (expression, m2l) elt
-    | Expr: 'elt expr -> ('elt,expression) elt
-    | Annot: 'elt annot -> ('elt, annotation) elt
-    | Me: 'elt me -> ('elt, module_expr) elt
-    | Mt: 'elt mt -> ('elt, module_type) elt
-    | Access: acc -> (Paths.S.t, waccess) elt
-    | Ext: 'elt ext -> ('elt, extension_core) elt
-    | Path_expr: 'elt path_expr -> ('elt, Paths.Expr.t) elt
+  type ('p, 'elt,'from) elt =
+    | M2l: {left:'m2l; loc:Loc.t; right:m2l}
+        -> (<m2l:'m2l; ..> param, expression, m2l) elt
+    | Expr: ('p,'elt) expr -> ('p,'elt,expression) elt
+    | Annot: ('p,'elt) annot -> ('p,'elt, annotation) elt
+    | Me: ('p,'elt) me -> ('p,'elt, module_expr) elt
+    | Mt: ('p,'elt) mt -> ('p,'elt, module_type) elt
+    | Access: 'p acc -> ('p, Paths.S.t, waccess) elt
+    | Ext: 'elt ext -> ('p param, 'elt, extension_core) elt
+    | Path_expr: ('p, 'elt) path_expr -> ('p,'elt, Paths.Expr.t) elt
 
-  type _ path =
-    | []: m2l path
-    | (::): ('focus,'from) elt * 'from path -> 'focus path
+  type ('p,'f) path =
+    | []: (_ param, m2l) path
+    | (::): ('p, 'focus,'from) elt * ('p,'from) path -> ('p,'focus) path
 
 end
 (*
@@ -194,8 +243,9 @@ let witness (type a) (path:a path): a witness = match path with
   | a :: _ -> W a
 *)
 
-type 'result zipper =
- { path: 'result Path.path; focus: 'result }
+
+type ('param, 'result) zipper =
+ { path: ('param param, 'result) Fold_left.path; focus: 'result }
 
 let start focus = { path = []; focus}
 
@@ -203,16 +253,16 @@ module L = struct
   type 'a t = 'a list = [] | (::) of 'a * 'a t
 end
 module Fold = struct
-  open Path
+  open Fold_left
   module Ok = Mresult.Ok
   let ((>>=), (>>|)) = Ok.((>>=), (>>|))
 
-  let rec m2l (folder:id_core) path left = function
+  let rec m2l (folder:_ fold) path left = function
     | L.[] -> Ok (folder#m2l left)
     | {Loc.loc; data=a} :: right ->
       expr folder (M2l {left;loc;right} :: path) a >>= fun a ->
       m2l folder path (folder#m2l_add loc a left) right
-  and expr folder path expr: (expression,_) result = match expr with
+  and expr folder path expr = match expr with
     | Defs _ -> assert false (* to be removed *)
     | Open m -> me folder (Expr Open::path) m >>| folder#expr_open
     | Include m -> me folder (Expr Include :: path) m >>| folder#expr_include
@@ -230,7 +280,9 @@ module Fold = struct
       >>| folder#expr_ext name
   and me folder path = function
     | Resolved _ -> assert false (* to be removed *)
-    | Ident s -> ident folder (Me Ident :: path) s >>| folder#me_ident
+    | Ident s ->
+      ident folder (Me Ident :: path) s
+      >>| folder#me_ident
     | Apply {f; x} ->
       me folder (Me (Apply_left x)::path) f >>= fun f ->
       me folder (Me (Apply_right f)::path) x >>|
@@ -301,7 +353,7 @@ module Fold = struct
       let path_arg = Path_expr (Arg {main;left;pos=n;right})::path in
       path_expr folder path_arg arg >>= fun x ->
       path_expr_args folder path main (folder#path_expr_arg n x left) right
-  and path_expr folder ctx {Paths.Expr.path; args}: (Paths.Expr.t,_) result =
+  and path_expr folder ctx {Paths.Expr.path; args} =
     ident folder (Path_expr (Main args) :: ctx) path >>= fun main ->
     path_expr_args folder ctx main folder#path_expr_arg_init args
   and minor folder path mn =
@@ -342,45 +394,45 @@ module Fold = struct
     | Error () -> Error ( { path; focus=s })
     | Ok _ as x -> x
 
-  let rec restart (f:id_core) z: (t, Paths.S.t zipper) result =
+  let rec restart (f:_ fold) z: (t, (_, Paths.S.t) zipper) result =
     match f#ident z.focus with
     | Error _ -> Error z
-    | Ok x -> self_restart f @@ match (z.path:Paths.S.t path) with
+    | Ok x -> self_restart f @@ match z.path with
       | Me Ident :: rest ->
-        restart_me f (rest: module_expr path) (f#me_ident x)
+        restart_me f (rest: (_,module_expr) path) (f#me_ident x)
       | Me (Open_me_left {left;right;expr}) :: path ->
         open_all f path expr (f#open_add x left) right >>=
         open_right f path expr >>= fun me ->
-        restart_me f (path:module_expr path) me
+        restart_me f (path:(_,module_expr) path) me
       | Access a :: rest ->
         access_step f rest (f#access_add x a.loc a.edge a.left) a.right
-        >>= restart_access f (rest: waccess path)
+        >>= restart_access f (rest: (_,waccess) path)
       | Mt Alias :: path ->
-        restart_mt f (path: module_type path) (f#alias x)
+        restart_mt f (path: (_,module_type) path) (f#alias x)
       | Path_expr Main args :: path ->
         path_expr_args f path x f#path_expr_arg_init args >>=
-        restart_path_expr f (path: Paths.Expr.t path)
+        restart_path_expr f (path: (_,Paths.Expr.t) path)
       | _ -> .
   and self_restart f = function
     | Error z -> restart f z
     | Ok _ as x -> x
   and restart_me f path x = match path with
     | Expr Include :: rest ->
-      restart_expr f (rest: expression path) (f#expr_include x)
+      restart_expr f (rest: (_,expression) path) (f#expr_include x)
     | Expr Open :: rest ->
-      restart_expr f (rest: expression path) (f#expr_open x)
+      restart_expr f (rest: (_,expression) path) (f#expr_open x)
     | Annot (Packed p) :: path ->
       let left = f#add_packed p.loc x p.left in
       packed f path p.access p.values left p.right  >>= fun packed ->
       let fpath = Annot (Access {packed; values=p.values}) :: path in
       access f fpath p.access >>= fun access ->
       values f path packed access p.values >>=
-      restart_annot f (path: annotation path)
+      restart_annot f (path: (_,annotation) path)
     | Me (Apply_left xx) :: path ->
       me f (Me (Apply_right x)::path) xx
       >>| f#apply x
       >>= restart_me f path
-    | Mt Of :: path -> restart_mt f (path: module_type path) (f#mt_of x)
+    | Mt Of :: path -> restart_mt f (path: (_,module_type) path) (f#mt_of x)
     | Me(Apply_right fn) :: path -> restart_me f path (f#apply fn x)
     | Me(Fun_right fn) :: path ->
       restart_me f path (f#me_fun fn x)
@@ -390,20 +442,20 @@ module Fold = struct
     | Me (Open_me_right opens) :: path ->
       restart_me f path (f#open_me opens x)
     | Expr (Bind name) :: path ->
-      restart_expr f (path: expression path) (f#bind name x)
+      restart_expr f (path: (_,expression) path) (f#bind name x)
     | Expr (Bind_rec {left;name;right}) :: path  ->
       let left = f#bind_rec_add name x left in
       bind_rec f path left right >>| f#bind_rec >>=
-      restart_expr f (path: expression path)
+      restart_expr f (path: (_,expression) path)
     | _ -> .
   and restart_expr f path x = match path with
     | M2l {left;loc;right} :: path ->
       m2l f path (f#m2l_add loc x left) right >>=
-      restart_m2l f (path: m2l path)
+      restart_m2l f (path: (_,m2l) path)
     | _ -> .
   and restart_mt f path x = match path with
     | Expr (Bind_sig name) :: path ->
-      restart_expr f (path: expression path) (f#bind_sig name x)
+      restart_expr f (path: (_,expression) path) (f#bind_sig name x)
     | Me Fun_left(name,body) :: path ->
       let arg = Some {Arg.signature = x; name } in
       me f (Me(Fun_right arg) :: path ) body >>|
@@ -417,13 +469,13 @@ module Fold = struct
     | Mt With_body {access;deletions} :: path ->
       restart_mt f path (f#mt_with access deletions x)
     | Me Constraint_right body :: path ->
-      restart_me f (path:module_expr path) (f#me_constraint body x)
+      restart_me f (path: (_,module_expr) path) (f#me_constraint body x)
     | Expr SigInclude :: path ->
-      restart_expr f (path: expression path) (f#sig_include x)
+      restart_expr f (path: (_,expression) path) (f#sig_include x)
     | _ -> .
   and restart_path_expr f path x = match path with
     | Mt Ident :: path ->
-      restart_mt f (path:module_type path) (f#mt_ident x)
+      restart_mt f (path: (_,module_type) path) (f#mt_ident x)
     | Path_expr Arg {main;left;pos;right} :: path ->
       let left = f#path_expr_arg pos x left in
       path_expr_args f path main left right >>=
@@ -432,7 +484,7 @@ module Fold = struct
   and restart_access f  path x = match path with
     | Annot (Access mn) :: path ->
       values f path mn.packed x mn.values >>=
-      restart_annot f (path: annotation path)
+      restart_annot f (path: (_,annotation) path)
     | Mt With_access {deletions;body} :: path ->
       mt f (Mt(With_body {deletions;access=x}) :: path ) body
       >>| f#mt_with x deletions
@@ -440,37 +492,37 @@ module Fold = struct
     | _ -> .
   and restart_annot f path x = match path with
     | Expr Minor :: path ->
-      restart_expr f (path:expression path) (f#minor x)
+      restart_expr f (path: (_,expression) path) (f#minor x)
     | Me Val :: path ->
-      restart_me f (path:module_expr path) (f#me_val x)
+      restart_me f (path: (_,module_expr) path) (f#me_val x)
     | Ext Val :: path ->
-      restart_ext f (path:extension_core path) (f#ext_val x)
+      restart_ext f (path: (_,extension_core) path) (f#ext_val x)
     | _ -> .
   and restart_ext f path x = match path with
     | Expr (Extension_node name) :: path ->
-      restart_expr f (path:expression path) (f#expr_ext name x)
+      restart_expr f (path: (_,expression) path) (f#expr_ext name x)
     | Me (Extension_node name) :: path ->
-      restart_me f (path:module_expr path) (f#me_ext name x)
+      restart_me f (path: (_,module_expr) path) (f#me_ext name x)
     | Mt (Extension_node name) :: path ->
-      restart_mt f (path:module_type path) (f#mt_ext name x)
+      restart_mt f (path: (_,module_type) path) (f#mt_ext name x)
     | _ -> .
   and restart_m2l f path x = match path with
     | [] -> Ok x
-    | Me Str :: path -> restart_me f (path:module_expr path) (f#str x)
-    | Mt Sig :: path -> restart_mt f (path:module_type path) (f#mt_sig x)
+    | Me Str :: path -> restart_me f (path: (_,module_expr) path) (f#str x)
+    | Mt Sig :: path -> restart_mt f (path: (_,module_type) path) (f#mt_sig x)
     | Annot (Values {packed;access;left;right}) :: path ->
       let left = f#value_add x left in
       m2ls f path packed access left right >>| f#annot packed access
-      >>= restart_annot f (path:annotation path)
+      >>= restart_annot f (path: (_,annotation) path)
     | Ext Module :: path ->
-      restart_ext f (path: extension_core path) (f#ext_module x)
+      restart_ext f (path: (_,extension_core) path) (f#ext_module x)
     | _ :: _ -> .
   let ustart f x =m2l f [] f#m2l_init x
 end
 
 open L
 class id = object
-  inherit id_core
+  inherit [_]fold
   method ident s = Ok s
 
   method abstract: module_expr = Abstract
@@ -523,6 +575,62 @@ class id = object
 
 end
 
+class iterator = object
+  inherit [_]fold
+  method ident _s = Ok ()
+
+  method abstract = ()
+  method access () = ()
+  method access_add _p _loc _edge () = ()
+  method access_init = ()
+  method add_packed _loc _me () = ()
+  method alias () = ()
+  method apply () () = ()
+  method annot () () () = ()
+  method bind _name () = ()
+  method bind_rec () = ()
+  method bind_rec_add _name () () = ()
+  method bind_rec_init = ()
+  method bind_sig _name () = ()
+  method expr_ext _name () = ()
+  method expr_include () = ()
+  method expr_open () = ()
+  method ext_module () =()
+  method ext_val () = ()
+  method m2l_add _loc () () = ()
+  method m2l_init = ()
+  method m2l () = ()
+  method me_constraint () () = ()
+  method me_ext _name () = ()
+  method me_fun _arg () = ()
+  method me_ident () = ()
+  method me_val () = ()
+  method minor () = ()
+  method mt_ext _name () = ()
+  method mt_fun _arg ()  = ()
+  method mt_of () = ()
+  method mt_ident () = ()
+  method mt_with () _deletions () = ()
+  method mt_sig () = ()
+  method open_add () () = ()
+  method open_init = ()
+  method open_me () () = ()
+  method packed_init = ()
+  method path_expr () () = ()
+  method path_expr_arg _n () () = ()
+  method path_expr_arg_init = ()
+  method sig_include () = ()
+  method sig_abstract = ()
+  method str () = ()
+  method unpacked = ()
+  method value_add () () = ()
+  method value_init = ()
+  method values () = ()
+
+end
+
+
+
 class failing_id = object
   inherit id
   method! ident s = if Random.float 1. > 0.99 then Ok s else Error ()
@@ -536,3 +644,6 @@ let failing_deep_id x =
       | Error e ->
         try_at_most (n-1) (Fold.restart f e) in
   try_at_most 1000 (Fold.ustart f x)
+
+let deeop_nop x =
+  Fold.ustart (new iterator) x
