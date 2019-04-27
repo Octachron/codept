@@ -35,29 +35,11 @@ module type envt = sig
   val pp: Format.formatter -> t -> unit
 end
 
-module With_deps = struct
-  type 'a t = { deps: Deps.t ; x:'a}
-  let with_deps deps x = {deps; x}
-  let ( <+> ) more {deps; x} = {deps = Deps.(more + deps); x }
-  let no_deps x = with_deps Deps.empty x
-  let (>>=) x f = x.deps <+> f x.x
-  let bind = (>>=)
+open With_deps
 
-  let (>>|) x f = x >>= (fun x -> no_deps @@ f x)
-  let map = (>>|)
-  let (<<|) f x  = x >>= (fun x -> no_deps @@ f x)
-  let (<*>) x y = { deps = Deps.merge x.deps y.deps; x= x.x , y.x}
-
-  let some x = Some x
-  let ok x = no_deps (Ok x)
-  let err x = no_deps (Error x)
-  let deps x = x.deps
-  let value x = x.x
-  let unpack {deps; x} = deps, x
-  let comm {deps; x} = match x with
-    | Ok a -> Ok (with_deps deps a)
-    | Error b -> Error(with_deps deps b)
-end open With_deps
+let some x = Some x
+let ok x = no_deps (Ok x)
+let err x = no_deps (Error x)
 
 module type s = sig
   type envt
@@ -425,7 +407,7 @@ module Make(Envt:envt)(Param:param) = struct
   and prem2l prev_deps defs filename state = function
     | [] -> prev_deps <+> ok (state, Y.defined defs)
     | a :: q ->
-      let {x; deps} = expr filename state a in
+      let deps, x = With_deps.unpack @@ expr filename state a in
       let deps = Deps.( deps + prev_deps ) in
       match x with
       | Ok (Some ext) ->

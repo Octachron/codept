@@ -356,7 +356,7 @@ module Libraries = struct
   let rec track source stack = match stack with
     | [] -> ()
     | (name, path, code) :: q ->
-      match Outliner.With_deps.value (I.m2l path source.resolved code) with
+      match With_deps.value (I.m2l path source.resolved code) with
       | Error code ->
         begin match M2l.Block.m2l code with
           | None -> assert false

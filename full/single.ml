@@ -47,7 +47,7 @@ let one_pass _ _ ppf param (_,filename,_ as x) =
     Option.( start
              >>| snd
              >>| Sg.m2l (Pkg.local filename) Envt.Core.empty
-             >>| Outliner.With_deps.unpack
+             >>| With_deps.unpack
            )
   with
   | None -> ()

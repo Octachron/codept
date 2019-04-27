@@ -1,13 +1,13 @@
 
-module With_deps = Outliner.With_deps
+module With_deps = With_deps
 
 let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
-type i = { input: Unit.s; code: M2l.t Outliner.With_deps.t }
+type i = { input: Unit.s; code: M2l.t With_deps.t }
 let make (input:Unit.s) =
   let open_namespace = List.map
       (fun name -> Loc.nowhere @@ M2l.Open (Ident [name])) input.path.namespace in
-  { input; code = Outliner.With_deps.no_deps (open_namespace @ input.code) }
+  { input; code = With_deps.no_deps (open_namespace @ input.code) }
 
 module Mp = Namespaced.Map module Sp = Namespaced.Set
 
@@ -31,7 +31,7 @@ module Failure = struct
     let rec track s map ((u:i),r) =
       let s = Sp.remove u.input.path s in
       let update r = s, Mp.add u.input.path (u,r) map in
-      match M2l.Block.m2l (Outliner.With_deps.value u.code) with
+      match M2l.Block.m2l (With_deps.value u.code) with
       | None -> update (ref @@ Some Internal_error)
       | Some { data = (y,path); loc } ->
         let path' = resolve_alias y path in
@@ -87,7 +87,7 @@ module Failure = struct
     if Set.mem start cycle then cycle
     else
       let next_name =
-        match M2l.Block.m2l (Outliner.With_deps.value start.code) with
+        match M2l.Block.m2l (With_deps.value start.code) with
         | Some { data =y, path ; _ } ->
           resolver y path
         | _ -> assert false
@@ -124,7 +124,7 @@ module Failure = struct
     Pp.fp ppf "%a" Namespaced.pp path;
     if path <> start || first then
       let u = fst @@ Mp.find path map in
-      match M2l.Block.m2l (Outliner.With_deps.value u.code) with
+      match M2l.Block.m2l (With_deps.value u.code) with
       | None -> ()
       | Some { data = y,path ; loc }  ->
         let next = resolver y path in
