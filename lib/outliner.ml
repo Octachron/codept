@@ -8,20 +8,14 @@ module M = Module
 module Arg = M.Arg
 module S = Module.Sig
 module Faults = Standard_faults
-
-type 'a query_result =
-  { main:'a; deps: Deps.t; msgs: Fault.t list }
-
-type answer =
-  | M of Module.m
-  | Namespace of M.namespace_content
+module T = Transforms
 
 module type envt = sig
   type t
   val eq: t -> t -> bool
   val find:
     Fault.loc -> ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t
-    -> t -> answer query_result
+    -> t -> T.answer T.query_result
 
   val extend : t -> Y.t -> t
 
@@ -70,14 +64,6 @@ module Make(Envt:envt)(Param:param) = struct
       List.iter fault msgs;
       deps <+> no_deps (Some main)
 
-  let drop_arg loc (p:Module.Partial.t) =  match  p.args with
-      | _ :: args -> { p with args }
-      | [] ->
-        if Module.Partial.is_exact p then
-           (* we guessed the arg wrong *)
-            raisef  Faults.applied_structure (loc,p);
-        p
-
   (* Remove deleted modules with `with A.B.C.D := …` *)
   let rec remove_path_from path = function
     | M.Blank -> M.Blank
@@ -100,13 +86,6 @@ module Make(Envt:envt)(Param:param) = struct
   let with_deletions dels d =
     Paths.S.Set.fold remove_path_from dels d
 
-
-  let filename loc = fst loc
-
-  let of_partial loc p =
-    match Y.of_partial p with
-    | Error def -> raisef Faults.structure_expected (loc,p); def
-    | Ok def -> def
 
   type level = Module.level = Module | Module_type
 
@@ -158,40 +137,9 @@ module Make(Envt:envt)(Param:param) = struct
     | Some (Ok x, rest) when List.for_all is_ok rest -> Ok x
     | _ -> Error path
 
-  let open_diverge_module loc x = let open P in
-    match x.origin, x.result with
-    | _, Blank | Phantom _, _ ->
-      let kind =
-        match x.origin with
-        | First_class ->
-          raisef Faults.opened_first_class (loc,x.name);
-          Module.Divergence.First_class_module
-        | Unit _ -> Module.Divergence.External
-        | Phantom (_,d) -> d.origin
-        | Submodule | Arg | Namespace -> Module.Divergence.External in
-      let point =
-        { Module.Divergence.root = x.name; origin=kind; loc } in
-      Y.View.see @@ S.merge
-            (Divergence
-               { before = S.empty; point; after = Module.Def.empty}
-            )
-            x.result
-    | _, Divergence _ | _, Exact _ -> Y.View.see x.result
-
-  let open_diverge loc = function
-    | M x -> open_diverge_module loc (P.of_module x)
-    | Namespace {modules;_} -> (* FIXME: type error *)
-      Y.View.see @@ M.Exact { M.Def.empty with modules }
-
-  let open_ loc x =
-    Ok(open_diverge_module loc x)
-
   let gen_include loc unbox box i = unbox i >>| function
     | Error h -> Error (box h)
-    | Ok fdefs ->
-      if P.( fdefs.result = Blank (* ? *) && fdefs.origin = First_class ) then
-        raisef Standard_faults.included_first_class loc;
-      Ok (Some (of_partial loc fdefs))
+    | Ok fdefs -> Ok (Some (T.gen_include policy loc fdefs))
 
 
   let include_ loc state module_expr =
@@ -202,9 +150,7 @@ module Make(Envt:envt)(Param:param) = struct
   let bind state module_expr {name;expr} =
    module_expr state expr >>| function
     | Error h -> Error ( Bind {name; expr = h} )
-    | Ok d ->
-      let m = M.M( P.to_module ~origin:Submodule name d ) in
-      Ok (Some(Y.define [m]))
+    | Ok d -> Ok (Some(T.bind_summary Module name d))
 
   let bind state module_expr (b: M2l.module_expr bind) =
     match b.expr with
@@ -235,9 +181,7 @@ module Make(Envt:envt)(Param:param) = struct
   let bind_sig state module_type {name;expr} =
     module_type state expr >>| function
     | Error h -> Error ( Bind_sig {name; expr = h} )
-    | Ok d ->
-      let m = P.to_module ~origin:Submodule name d in
-      Ok (Some(Y.define ~level:M.Module_type [M.M m]))
+    | Ok d -> Ok (Some(T.bind_summary M.Module_type name d))
 
   let bind_rec state module_expr module_type bs =
     let pair name expr = {name;expr} in
@@ -312,7 +256,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Abstract -> ok P.empty
     | Unpacked -> ok P.{ empty with result = Blank; origin = First_class }
     | Val m -> begin
-        minor loc module_expr (m2l @@ filename loc) state m >>| function
+        minor loc module_expr (m2l @@ T.filename loc) state m >>| function
         | Ok _ -> Ok { P.empty with result = Blank; origin = First_class }
         | Error h -> Error (Val h: module_expr)
       end  (* todo : check warning *)
@@ -326,7 +270,7 @@ module Make(Envt:envt)(Param:param) = struct
       let f = module_expr loc state f in
       let x = module_expr loc state x in
       begin (f <*> x) >>| function
-        | Ok f, Ok _ -> Ok (drop_arg loc f)
+        | Ok f, Ok _ -> Ok (T.drop_arg policy loc f)
         | Error f, Error x -> Error (Apply {f;x} )
         | Error f, Ok x -> Error (Apply {f; x = Resolved x})
         | Ok f, Error x -> Error (Apply {f = Resolved f ;x} )
@@ -338,7 +282,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Str[{data=Defs d;_ }] -> ok (P.no_arg @@ Y.defined d)
     | Resolved d -> ok d
     | Str str ->
-      let str = drop_state <<| m2l (filename loc) state str in
+      let str = drop_state <<| m2l (T.filename loc) state str in
       Mresult.fmap (fun s -> Str s) P.no_arg <<| str
     | Constraint(me,mt) ->
       constraint_ loc state me mt
@@ -349,7 +293,7 @@ module Make(Envt:envt)(Param:param) = struct
       begin find loc Module a state >>= function
         | None -> err me
         | Some x ->
-          let seen = open_diverge loc x in
+          let seen = T.open_diverge policy loc x in
           let resolved = Y.( resolved +| seen ) in
           module_expr loc state @@ Open_me {opens = q; resolved; expr }
       end
@@ -371,7 +315,7 @@ module Make(Envt:envt)(Param:param) = struct
     | Sig [] -> ok P.empty
     | Sig [{data=Defs d;_}] -> ok (P.no_arg @@ Y.defined d)
     | Sig s ->
-      let s = signature (filename loc) state s >>| drop_state in
+      let s = signature (T.filename loc) state s >>| drop_state in
       Mresult.fmap (fun s -> Sig s) P.no_arg <<| s
     | Resolved d -> ok d
     | Ident id ->
@@ -427,7 +371,9 @@ module Make(Envt:envt)(Param:param) = struct
     | Defs d -> ok (Some d)
     | Open me ->
       module_expr loc state me >>| fun me ->
-      me |> Mresult.Ok.bind (open_ loc) |> Mresult.fmap (fun x -> Open x) some
+      me
+      |> Mresult.Ok.fmap (fun x -> T.open_ policy loc x)
+      |> Mresult.fmap (fun x -> Open x) some
     | Include i -> include_ loc state module_expr i
     | SigInclude i -> sig_include loc state module_type i
     | Bind b -> bind state (module_expr loc) b

@@ -1,10 +1,5 @@
 (** Monotonic outliner for m2l ast *)
 
-(** Input fault type *)
-type 'a query_result = { main:'a; deps: Deps.t; msgs: Fault.t list }
-type answer =
-  | M of Module.m
-  | Namespace of Module.namespace_content
 
 (** Input type *)
 module type envt = sig
@@ -12,7 +7,7 @@ module type envt = sig
   val eq: t -> t -> bool
   val find:
     Fault.loc -> ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t
-    -> t -> answer query_result
+    -> t -> Transforms.answer Transforms.query_result
 
   val extend : t -> Summary.t -> t
 

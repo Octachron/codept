@@ -575,21 +575,23 @@ let result =
             ["Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
             ["List"], []);
           "envt.mli", (
-            ["Fault"; "Module";"Name"; "Namespaced"; "Outliner"; "Paths"],
+            ["Fault"; "Module";"Name"; "Namespaced"; "Outliner"; "Paths";
+             "Transforms"],
             [], []);
           "envt.ml", (
-            ["Cmi"; "Deps"; "Summary"; "Outliner"; "M2l"; "Fault";
-             "Module"; "Name"; "Namespaced"; "Paths";
+            ["Cmi"; "Deps"; "Summary"; "With_deps"; "Transforms"; "M2l";
+             "Fault"; "Outliner"; "Module"; "Name"; "Namespaced"; "Paths";
              "Standard_faults";"Standard_policies";"Option";"Pp"],
             ["Array"; "Filename";"List";"Sys"; "Format"],
             []);
           "outliner.mli", (
-            ["Deps"; "Fault"; "Module"; "Namespaced"; "Paths";"M2l"; "Summary"],
+            ["Deps"; "Fault"; "Module"; "Namespaced"; "Paths";"M2l"; "Summary";
+            "With_deps"; "Transforms"],
             ["Format"],[]);
           "outliner.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Namespaced";
              "Option"; "Paths"; "Mresult"; "Fault"; "Standard_faults";
-             "Deps"]
+             "Deps"; "With_deps"; "Transforms" ]
           ,["List";"Format"],[]);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";
                        "Schematic" ],
@@ -644,13 +646,13 @@ let result =
                            [] );
           "solver.mli", (["Fault"; "Loc"; "Unit";"M2l";
                           "Namespaced"; "Read";
-                          "Summary"; "Outliner"; "Paths"],
+                          "Summary"; "Outliner"; "Paths"; "With_deps"],
                          ["Format";"Map";"Set"],[]);
           "solver.ml", (
             ["Approx_parser"; "Deps"; "Summary"; "Outliner"; "Loc";
              "M2l"; "Module"; "Mresult"; "Namespaced";
              "Option"; "Pp"; "Paths"; "Read"; "Unit"; "Fault";
-             "Standard_faults"],
+             "Standard_faults"; "With_deps"],
             ["List"; "Map"; "Set";"Format"],[]);
           "standard_faults.ml", (
             ["Fault"; "Format_tags"; "Module"; "Namespaced"; "Paths"; "Pp"
@@ -672,6 +674,12 @@ let result =
             []);
           "support.ml", ([],["String"],[]);
           "support.mli", ([],[],[]);
+          "with_deps.ml", (["Deps"],[],[]);
+          "with_deps.mli", (["Deps"],[],[]);
+          "transforms.ml", (
+            ["Deps"; "Fault"; "Module"; "Name"; "Paths";"Standard_faults";
+             "Summary"]
+          ,[],[]);
         ])
       )
     )

@@ -1,12 +1,12 @@
 module M = Module
 module Edge = Deps.Edge
 module P = Paths.Pkg
-module Out = Outliner
+module T = Transforms
 module Y = Summary
 
 let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
-type answer = Out.answer =
+type answer = T.answer =
   | M of Module.m
   | Namespace of Module.namespace_content
 
@@ -16,19 +16,19 @@ type context =
 
 module Query = struct
 
-  type 'a t = 'a Outliner.query_result option
-  let return main = Some { Outliner.main; deps = Deps.empty; msgs = [] }
-  let deps deps = Some {Outliner.main=(); deps; msgs=[]}
+  type 'a t = 'a T.query_result option
+  let return main = Some { T.main; deps = Deps.empty; msgs = [] }
+  let deps deps = Some {T.main=(); deps; msgs=[]}
 
-  let (>>|) x f = { x with Outliner.main = f x.Outliner.main }
+  let (>>|) x f = { x with T.main = f x.T.main }
   let (>>?) (x: _ t) f = let open Option in
-    x >>= fun x -> f x.Out.main >>| fun q ->
-    { q with Out.msgs= x.msgs @ q.Out.msgs; deps=Deps.merge q.Out.deps x.deps }
+    x >>= fun x -> f x.T.main >>| fun q ->
+    { q with T.msgs= x.msgs @ q.T.msgs; deps=Deps.merge q.T.deps x.deps }
 
   let (>>) x y = x >>? fun () -> y
 
   let (<!>) x msgs =
-    Option.fmap (fun x -> { x with Out.msgs = msgs @ x.Out.msgs }) x
+    Option.fmap (fun x -> { x with T.msgs = msgs @ x.T.msgs }) x
 
 end
 open Query
@@ -382,7 +382,7 @@ module Libraries = struct
       let path = Name.Map.find name source.cmis in
       track source [name, path, Cmi.m2l @@ P.filename path ];
       pkg_find name source
-    | Some m -> let main = m.Out.main in
+    | Some m -> let main = m.T.main in
       if is_unknown main then raise Not_found else main
 
   let rec pkgs_find name = function
