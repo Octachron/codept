@@ -155,20 +155,13 @@ module Make(Envt:envt)(Param:param) = struct
   let bind state module_expr (b: M2l.module_expr bind) =
     match b.expr with
     | (Ident p:M2l.module_expr)
-    | Constraint(Abstract, Alias p) when Envt.is_exterior p state ->
-      begin
+    | Constraint(Abstract, Alias p)
+      when Envt.is_exterior p state && transparent_aliases ->
         let path = Namespaced.of_path @@ Envt.expand_path p state in
         let m = Module.Alias
             { name = b.name; path; weak=false; phantom = None } in
         let r = Ok ( Some (Y.define [m]) ) in
-        if not transparent_aliases then
-          (* trigger dependency tracking *)
-          bind state module_expr b >>| function
-          | Error _ as e -> e
-          | Ok _ -> r
-        else
-          no_deps r
-      end
+        no_deps r
     | _ -> bind state module_expr b
 
 
