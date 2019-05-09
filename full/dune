@@ -1,10 +1,12 @@
 (executable
   (public_name codept)
+  (package codept)
   (libraries unix codept_lib bundled)
 )
 
 (install
   (section man)
+  (package codept)
   (files ../docs/codept.1)
 )
 

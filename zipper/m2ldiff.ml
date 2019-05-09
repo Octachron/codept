@@ -77,6 +77,8 @@ class virtual ['params] fold = object
   method virtual apply : Fault.loc -> 'module_expr -> 'module_expr -> 'module_expr
 
   method virtual bind : Name.t -> 'module_expr -> ('expr,'state_diff) with_state
+  method virtual bind_alias: 'state -> Name.t -> Paths.S.t ->
+    ('expr,'state_diff) with_state
   method virtual bind_rec : 'bind_rec -> ('expr,'state_diff) with_state
   method virtual bind_rec_add :
     string -> 'module_expr -> 'bind_rec -> ('bind_rec,'state_diff) with_state
@@ -133,6 +135,9 @@ class virtual ['params] fold = object
   method virtual state_bind_arg: 'state -> 'module_type Arg.t -> 'state
   method virtual state_open_path: loc:Fault.loc -> 'state -> 'path -> 'state
   method virtual state_merge: 'state -> 'state_diff -> 'state
+  method virtual state_is_alias: 'state -> Paths.S.t -> bool
+
+
 end
 
 module Fold_left = struct
@@ -323,6 +328,8 @@ module Fold = struct
     | SigInclude m ->
       mt folder (Expr SigInclude :: path) ~loc ~state m
       >>| folder#sig_include loc
+    | Bind {name; expr=Ident s} when folder#state_is_alias state s ->
+      Ok (folder#bind_alias state name s)
     | Bind {name; expr} ->
       me folder (Expr (Bind name) :: path) ~loc ~state expr
       >>| folder#bind name
@@ -475,7 +482,7 @@ module Fold = struct
     | Error () -> Error ( { path; focus= px })
     | Ok _ as x -> x
 
-  let rec restart (f:id_fold) (z: (_, _ path_in_context) zipper) :
+  let rec restart (f:_ fold) (z: (_, _ path_in_context) zipper) :
     (t, (_, _ path_in_context) zipper) result =
     let v = z.focus in
     let state, loc = v.state, v.loc in
@@ -633,6 +640,8 @@ class id = object
   method apply _ f x = Apply {f;x}
   method annot packed access values = {packed;access;values}
   method bind name me = no_state @@ Bind {name; expr = me}
+  method bind_alias _ name s = no_state @@ Bind {name; expr = Ident s}
+
   method bind_rec l = no_state @@ Bind_rec l
   method bind_rec_add  name expr l = no_state @@ {name;expr} :: l
   method bind_rec_init = []
@@ -675,6 +684,7 @@ class id = object
   method state_open_path ~loc:_ () _ = ()
   method state_bind_arg () _ = ()
   method state_merge () () = ()
+  method state_is_alias () _ = false
 
 end
 
@@ -699,6 +709,8 @@ class iterator = object
   method bind_rec_add _name () () = none
   method bind_rec_init = ()
   method bind_sig _name () = none
+  method bind_alias () _ _ = none
+
   method expr_ext _name _ = none
   method expr_include ~loc:_ () = none
   method expr_open ~loc:_ () = none
@@ -737,8 +749,85 @@ class iterator = object
   method state_bind_arg () _ = ()
   method state_open_path ~loc:_ () _ = ()
   method state_merge () () = ()
+  method state_is_alias () _ = false
 end
 
+
+(*
+class pair (base:_ fold) (next: _ fold) = object
+  inherit [_]fold
+  method resolve x = match base#resolve x, next#resolve x with
+    | Ok b, Ok n -> Ok (b,n)
+    | Error (), Ok _ | Ok _, Error () | Error (), Error () -> Error ()
+
+  method abstract = base#abstract, next#abstract
+  method access y = next#access y
+  method access_add p loc edge acc = next#access_add p loc edge acc
+  method access_init = next#access_init
+  method add_packed loc me packed = next#add_packed loc me packed
+  method alias (x,y) = base#alias x, next#alias y
+  method apply _ () () = ()
+  method annot loc (f,f') (_,x') =
+    base#apply loc f,
+    next#apply loc f' x'
+
+  method bind  name (x,y) =
+    { state = base#bind name x; r = next#bind name y }
+  method bind_rec (x,y) =
+    {state=base#bind_rec x; r = next#bind_rec y}
+  method bind_rec_add name (x,y) (xacc, yacc) =
+    let l = base#bind_rec name x xacc in
+    { l with r = l.r, next#bind_rec name y yacc}
+  method bind_rec_init = base#bind_rec_init, next#bind_rec_init
+  method bind_sig name (x, y) =
+        { state = base#bind_sig name x; r = next#bind_sig name y }
+  method bind_alias state name p =
+    let state = base#bind_alias state name p in
+    { state; r = next#bind_alias state name }
+
+  method expr_ext _name _ = none
+  method expr_include ~loc:_ () = none
+  method expr_open ~loc:_ () = none
+  method ext_module x =next#ext_module x
+  method ext_val x = next#ext_module x
+  method m2l_add loc expr (defs,y) =
+    S.merge defs (Y.defined expr.state), next#m2l_add loc expr y
+  method m2l_init = ()
+  method m2l () = ()
+  method me_constraint () () = ()
+  method me_ext ~loc:_ _name () = ()
+  method me_fun _arg () = ()
+  method me_ident () = ()
+  method me_val () = ()
+  method minor () = none
+  method mt_ext ~loc:_ _name _ = ()
+  method mt_fun _arg ()  = ()
+  method mt_of () = ()
+  method mt_ident () = ()
+  method mt_with () _deletions () = ()
+  method mt_sig () = ()
+  method open_add () () = ()
+  method open_init = ()
+  method open_me () () = ()
+  method packed_init = ()
+  method path_expr () () = ()
+  method path_expr_arg _n () () = ()
+  method path_expr_arg_init = ()
+  method sig_include _ () = none
+  method sig_abstract = ()
+  method str () = ()
+  method unpacked = ()
+  method value_add () () = ()
+  method value_init = ()
+  method values () = ()
+
+  method state_bind_arg () _ = ()
+  method state_open_path ~loc:_ () _ = ()
+  method state_merge () () = ()
+  method state_is_alias () _ = false
+
+end
+*)
 
 
 class failing_id = object

@@ -138,10 +138,17 @@ class outliner param =
 
   method bind  name me = ret (T.bind_summary Module name me)
   method bind_rec l =
-    () <++>
+    ret @@
     List.fold_left
       (fun y {name;expr} -> Y.merge y (T.bind_summary Module name expr))
       Y.empty l
+
+
+  method bind_alias state name p =
+    let path = Namespaced.of_path @@ Env.expand_path p state in
+    let m = Module.Alias
+        { name = name; path; weak=false; phantom = None } in
+    ret (Y.define [m])
 
   method bind_rec_add name expr l =
     {name;expr} :: l <++> T.bind_summary Module name expr
@@ -157,6 +164,9 @@ class outliner param =
   method state_bind_arg st {name;signature} =
     let m = M.M (P.to_module ~origin:Arg name signature) in
     Env.extend st (Y.define [m])
+
+  method state_is_alias state s =
+    param.transparent_aliases && Env.is_exterior s state
 
 end
 
