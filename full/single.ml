@@ -46,15 +46,15 @@ let one_pass _ _ ppf param (_,filename,_ as x) =
   match
     Option.( start
              >>| snd
-             >>| Sg.m2l (Pkg.local filename) Envt.Core.empty
-             >>| With_deps.unpack
+             >>| Sg.initial
+             >>| Sg.next ~pkg:(Pkg.local filename) Envt.Core.empty
            )
   with
   | None -> ()
-  | Some (deps, Ok (_state, d)) ->
+  | Some Ok (d,deps) ->
     Pp.fp ppf "Computation finished:@ %a@ %a@." Deps.pp deps Module.Sig.pp d
-  | Some (_ , Error h) ->
-    Pp.fp ppf "Computation halted at:\n %a@." M2l.pp h
+  | Some Error h ->
+    Pp.fp ppf "Computation halted at:\n %a@." Sg.pp h
 
 let m2l_info _ _ ppf param f =
   let param = param.analyzer in

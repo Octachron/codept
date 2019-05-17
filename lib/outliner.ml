@@ -26,7 +26,7 @@ module type envt = sig
   val add_unit: t -> ?namespace:Paths.Simple.t -> Module.t -> t
   val add_namespace: t -> Namespaced.t -> t
 
-  val pp: Format.formatter -> t -> unit
+  val pp: t Pp.t
 end
 
 open With_deps
@@ -37,7 +37,16 @@ let err x = no_deps (Error x)
 
 module type s = sig
   type envt
-  val m2l : Paths.P.t -> envt -> M2l.t -> (envt * Module.Sig.t, M2l.t) result With_deps.t
+  type on_going
+
+  val initial: M2l.t -> on_going
+  val next:
+    pkg:Paths.P.t -> envt -> on_going
+    -> (Module.Sig.t * Deps.t, on_going) result
+
+  val block: on_going -> (Summary.t * Paths.S.t) Loc.ext option
+  val recursive_patching: on_going -> Summary.t -> on_going
+  val pp: on_going Pp.t
 end
 
 module type param = sig
@@ -398,4 +407,28 @@ module Make(Envt:envt)(Param:param) = struct
         end
       end
 
+  type on_going = M2l.t With_deps.t
+
+  let initial x = no_deps x
+
+  let next ~pkg envt input =
+    let deps, r = unpack input in
+    let deps2, r = unpack (m2l pkg envt r) in
+    let deps = Deps.merge deps deps2 in
+    match r with
+    | Ok (_,x) -> Ok (x, deps)
+    | Error x -> Error (deps <+> no_deps x)
+
+  let block x = M2l.Block.m2l (value x)
+
+  let recursive_patching m2l y = With_deps.map m2l begin function
+      | { Loc.data = M2l.Defs def; loc } :: q ->
+        { Loc.data = M2l.Defs (Summary.merge def y); loc } :: q
+      | code ->
+        (Loc.nowhere @@ M2l.Defs y) :: code
+    end
+
+  let pp ppf x =
+    let deps, x = With_deps.unpack x in
+    Format.fprintf ppf "@[<2>deps:@ %a@,m2l:@ %a@]" Deps.pp deps M2l.pp x
 end

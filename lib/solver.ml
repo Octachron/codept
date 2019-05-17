@@ -3,17 +3,18 @@ module With_deps = With_deps
 
 let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
-type i = { input: Unit.s; code: M2l.t With_deps.t }
-let make (input:Unit.s) =
+type 'a i = { input: Unit.s; code: 'a}
+let make initial (input:Unit.s) =
   let open_namespace = List.map
       (fun name -> Loc.nowhere @@ M2l.Open (Ident [name])) input.path.namespace in
-  { input; code = With_deps.no_deps (open_namespace @ input.code) }
+  { input; code = initial (open_namespace @ input.code) }
 
 module Mp = Namespaced.Map module Sp = Namespaced.Set
 
 module Failure = struct
-  module Set = Set.Make(struct type t = i let compare = compare end)
+  module UMap = Map.Make(struct type t = Unit.s let compare = compare end)
 
+  type 'a cycle = 'a UMap.t
   type status =
     | Cycle of Namespaced.t Loc.ext
     | Extern of Namespaced.t
@@ -21,19 +22,22 @@ module Failure = struct
     | Internal_error
 
   type alias_resolver = Summary.t -> Paths.S.t -> Namespaced.t
-  let track_status resolve_alias (sources: i list) =
+  type block = (Summary.t * Paths.S.t) Loc.ext option
+  type 'a blocker = 'a -> block
+
+  let track_status block resolve_alias (sources: _ i list) =
     let m =
       List.fold_left (fun m u -> Mp.add u.input.path (u, ref None) m)
         Mp.empty sources in
     let s =
-      Sp.of_list @@ List.map (fun (x:i) -> x.input.path) @@ sources
+      Sp.of_list @@ List.map (fun (x: _ i) -> x.input.path) @@ sources
     in
-    let rec track s map ((u:i),r) =
+    let rec track s map ((u:_ i),r) =
       let s = Sp.remove u.input.path s in
       let update r = s, Mp.add u.input.path (u,r) map in
-      match M2l.Block.m2l (With_deps.value u.code) with
+      match block u.code with
       | None -> update (ref @@ Some Internal_error)
-      | Some { data = (y,path); loc } ->
+      | Some { Loc.data = (y,path); loc } ->
         let path' = resolve_alias y path in
         if not (Mp.mem path' map) then
          update (ref @@ Some (Extern path') )
@@ -69,31 +73,37 @@ module Failure = struct
 
 
   module Map = struct
-    include Map.Make(struct
-        type t = status let compare = compare end)
-    let find name m = try find name m with Not_found -> Set.empty
-    let add_elt status unit m = add status (Set.add unit @@ find status m) m
+    include Map.Make(struct type t = status let compare = compare end)
+    let find name m = try find name m with Not_found -> UMap.empty
+    let add_elt status unit m =
+      add status (UMap.add unit.input unit.code @@ find status m) m
     let add_set status set m =
-      let union = Set.union set @@ find status m in
+      let union = UMap.union (fun _ _ y -> Some y) set @@ find status m in
       add status union m
 
   end
+  type 'a cycles = 'a cycle Map.t
+
+  let to_list x =
+    x
+    |> Map.bindings
+    |> List.map (fun (k,x) -> k, List.map fst (UMap.bindings x))
 
   let categorize m = Mp.fold (fun _name (unit, status) ->
       Map.add_elt Option.(!status >< Internal_error) unit
     ) m Map.empty
 
-  let rec kernel resolver map cycle start =
-    if Set.mem start cycle then cycle
+  let rec kernel block resolver map cycle start =
+    if UMap.mem start.input cycle then cycle
     else
       let next_name =
-        match M2l.Block.m2l (With_deps.value start.code) with
-        | Some { data =y, path ; _ } ->
+        match block start.code with
+        | Some { Loc.data = y, path ; _ } ->
           resolver y path
         | _ -> assert false
       in
       let next = fst @@ Mp.find next_name map in
-      kernel resolver map (Set.add start cycle) next
+      kernel block resolver map (UMap.add start.input start.code cycle) next
 
   let rec ancestor_status name cmap =
     match !(snd @@ Mp.find name cmap) with
@@ -101,40 +111,44 @@ module Failure = struct
     | Some status -> status
     | None -> Internal_error
 
-  let normalize resolver name_map map =
+  let normalize block resolver name_map map =
     Map.fold (function
         | Internal_error | Extern _ | Depend_on _ as st -> Map.add_set st
         | Cycle {data=name; _ } as st -> fun set map ->
           let u = fst @@ Mp.find name name_map in
-          let k = kernel resolver name_map Set.empty u in
+          let k = kernel block resolver name_map UMap.empty u in
           let map = Map.add st k map in
-          let diff = Set.diff set k in
-          if Set.cardinal diff > 0 then
+          let diff =
+            UMap.fold
+              (fun key x m -> if UMap.mem key k then m else UMap.add key x m)
+              set UMap.empty in
+          if UMap.cardinal diff > 0 then
             Map.add_set (Depend_on name) diff map
           else
             map
       ) map Map.empty
 
-  let analyze resolver sources =
-    let map = track_status resolver sources in
-    map, categorize map |> normalize resolver map
+  let analyze block resolver sources =
+    let map = track_status block resolver sources in
+    map, categorize map |> normalize block resolver map
 
 
-  let rec pp_circular resolver map start first ppf path =
+  let rec pp_circular block resolver map start first ppf path =
     Pp.fp ppf "%a" Namespaced.pp path;
     if path <> start || first then
       let u = fst @@ Mp.find path map in
-      match M2l.Block.m2l (With_deps.value u.code) with
+      match block u.code with
       | None -> ()
-      | Some { data = y,path ; loc }  ->
+      | Some { Loc.data = y,path ; loc }  ->
         let next = resolver y path in
         begin
           Pp.fp ppf " −(%a)⟶@ " Fault.loc (u.input.src, loc);
-          pp_circular resolver map start false ppf next
+          pp_circular block resolver map start false ppf next
         end
 
-  let pp_cat resolver map ppf (st, units) =
-    let paths units = List.map (fun u -> u.input.src) @@ Set.elements units in
+  let pp_cat block resolver map ppf (st, units) =
+    let paths units =
+      List.rev @@ UMap.fold (fun k _ l -> k.src :: l) units [] in
     let path_pp = Paths.P.pp in
     match st with
     | Internal_error ->
@@ -157,55 +171,53 @@ module Failure = struct
         path_pp u.input.src
     | Cycle name ->
       Pp.fp ppf "@[<hov 4> −Circular dependencies: @ @[%a@]@]"
-        (pp_circular resolver map name.data true) name.data
+        (pp_circular block resolver map name.data true) name.data
 
-  let pp resolver map ppf m =
+  let pp block resolver map ppf m =
     Pp.fp ppf "%a"
-      Pp.(list ~sep:(s"\n@;") @@ pp_cat resolver map ) (Map.bindings m)
+      Pp.(list ~sep:(s"\n@;") @@ pp_cat block resolver map ) (Map.bindings m)
 
-  let pp_cycle resolver ppf sources =
-    let map, cmap = analyze resolver sources in
-    pp resolver map ppf cmap
+  let pp_cycle block resolver ppf sources =
+    let map, cmap = analyze block resolver sources in
+    pp block resolver map ppf cmap
 
-  let approx_cycle set (i:i) =
+  let approx_cycle recpatch set code =
     let mock (unit: Unit.s) =
       Module.(md @@ mockup unit.path.name ~path:unit.src) in
-    let add_set def =
-      Set.fold
-        (fun n acc -> Summary.see (mock n.input) acc) set def in
-    let code =
-      With_deps.map i.code begin function
-      | { data = M2l.Defs def; loc } :: q ->
-        { Loc.data = M2l.Defs (add_set def); loc } :: q
-      | code ->
-        (Loc.nowhere @@ M2l.Defs (add_set Summary.empty)) :: code
-      end
-    in
-    { i with code }
+    let cycle_summary =
+      UMap.fold
+        (fun k _ acc -> Summary.see (mock k) acc) set Summary.empty in
+    recpatch code cycle_summary
 
-    let approx_and_try_harder resolver pending  =
-    let cmap, map = analyze resolver pending in
+    let approx_and_try_harder recpatch block resolver pending  =
+    let cmap, map = analyze block resolver pending in
     let undo key x acc = match key with
       | Extern _ | Internal_error -> acc
       | Depend_on f ->
         begin
           match ancestor_status f cmap with
-          | Cycle _ -> Set.union x acc
+          | Cycle _ -> UMap.union (fun _ _ y -> Some y) x acc
           | _ -> acc
         end
       | Cycle _ ->
-        Set.elements x
-        |> List.map (approx_cycle x)
-        |> Set.of_list in
-    Set.elements @@ Map.fold undo map Set.empty
+        UMap.fold (fun input code acc ->
+            let code = approx_cycle recpatch x code in
+            UMap.add input code acc
+          ) x UMap.empty
+    in
+    List.map (fun (input,code) -> {input; code} ) @@
+    UMap.bindings @@ Map.fold undo map UMap.empty
 
 end
+
+type fault = Bind: 'a Failure.blocker * 'a i list -> fault
 
 let fault =
   Fault.info ["solver"; "block" ]
     "Solver fault: major errors during analysis."
-    (fun ppf (resolver,x) -> Format.fprintf ppf
-        "Solver failure@?@[@<2> @[<0>@;%a@]@]" (Failure.pp_cycle resolver) x
+    (fun ppf (Bind(block, x),resolver) -> Format.fprintf ppf
+        "Solver failure@?@[@<2> @[<0>@;%a@]@]"
+        (Failure.pp_cycle block resolver) x
     )
 
 
@@ -213,13 +225,13 @@ let fault =
 
   let eval_bounded policy eval (unit:Unit.s) =
     let unit' = Unit.{ unit with code = Approx_parser.to_upper_bound unit.code } in
-    let (d,r), (d',r') =
-      With_deps.unpack (eval unit), With_deps.unpack(eval unit') in
-    let lower, sign, upper = match d, r, d', r' with
-      | lower, Ok _ , upper, Ok (_,sg) -> lower, sg, upper
-      | lower, Ok(_,sg) , upper, Error _  -> lower, sg, upper
-      | lower, Error _, upper, Ok(_,sg)  -> lower, sg, upper
-      | lower, Error _, upper, Error _ -> lower, Module.Sig.empty, upper
+    let high = eval unit' in
+    let low = eval unit in
+    let lower, sign, upper = match low, high with
+      | Ok (sg, lower), Ok(_sg, upper) -> lower, sg, upper
+      | Ok(sg, lower) , Error _  -> lower, sg, lower
+      | Error _, Ok(sg,upper)  -> Deps.empty, sg, upper
+      | Error _, Error _ -> Deps.empty, Module.Sig.empty, Deps.empty
         (* something bad happened but we are already parsing
            problematic input *) in
     let elts m = Deps.paths m in
@@ -267,11 +279,12 @@ module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
   open Unit
 
   module Eval = Outliner.Make(Envt)(Param)
+  type on_going = Eval.on_going
 
 
   type state = { resolved: Unit.r Paths.P.map;
                  env: Envt.t;
-                 pending: i list;
+                 pending: Eval.on_going i list;
                  postponed: Unit.s list
                }
   let eq x y =
@@ -282,7 +295,7 @@ module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
     List.fold_left (fun state (u:Unit.s) ->
         match u.precision with
         | Exact ->
-          { state with pending = make u :: state.pending }
+          { state with pending = make Eval.initial u :: state.pending }
         | Approx ->
           let mock = Module.mockup u.path.name ~path:u.src in
           let env = Envt.add_unit state.env
@@ -294,15 +307,14 @@ module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
         pending = [];
         resolved = Paths.P.Map.empty } units
 
-  let compute_more env (u:i) =
-    With_deps.bind u.code (Eval.m2l u.input.src env)
+  let compute_more env (u:_ i) =
+    Eval.next ~pkg:u.input.src env u.code
 
   let expand_and_add = expand_and_add Param.epsilon_dependencies
 
   let eval ?(learn=true) state unit =
-    match With_deps.comm (compute_more state.env unit) with
-    | Ok x ->
-      let deps, (_,sg) = With_deps.unpack x in
+    match compute_more state.env unit with
+    | Ok (sg,deps) ->
       let env =
         if learn then begin
           let input = unit.input in
@@ -323,7 +335,8 @@ module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
       { state with pending = unit :: state.pending }
 
   let eval_bounded core =
-    eval_bounded Param.policy (fun unit -> compute_more core @@ make unit)
+    eval_bounded Param.policy
+      (fun unit -> compute_more core @@ make Eval.initial unit)
 
   let resolve_dependencies_main ?(learn=true) state =
     let rec resolve alert state =
@@ -364,10 +377,13 @@ module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
       | Some x -> x
       | None -> { name = List.hd path; namespace = [] }
 
-  let approx_and_try_harder state  =
+  let blocker = Eval.block
 
-    { state with pending = Failure.approx_and_try_harder
-                     (alias_resolver state) state.pending }
+  let approx_and_try_harder state  =
+    let pending =
+      Failure.approx_and_try_harder Eval.recursive_patching Eval.block
+        (alias_resolver state) state.pending  in
+    { state with pending }
 
   let solve core (units: _ Unit.pair) =
     let rec solve_harder ancestors state =
@@ -377,7 +393,8 @@ module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
       match resolve_dependencies ~learn:true state with
       | Ok (e,l) -> e, l
       | Error state ->
-        Fault.raise Param.policy fault (alias_resolver state, state.pending);
+        Fault.raise Param.policy fault
+          (Bind(Eval.block,state.pending), alias_resolver state);
         solve_harder (state :: ancestors)
         @@ approx_and_try_harder state in
     let env, mli = solve_harder [] @@ start core units.mli in
@@ -392,7 +409,7 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
   open Unit
 
   module Eval = Outliner.Make(Envt)(Param)
-
+  type on_going = Eval.on_going
 
   type gen = Namespaced.t -> Unit.s option Unit.pair
 
@@ -401,7 +418,7 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
     resolved: Unit.r Paths.P.map;
     learned: Namespaced.Set.t;
     not_ancestors: Namespaced.Set.t;
-    pending: i list Namespaced.Map.t;
+    pending: Eval.on_going i list Namespaced.Map.t;
     env: Envt.t;
     postponed: Unit.s list;
     roots: Namespaced.t list
@@ -434,12 +451,12 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
     | [] -> Mp.add i.input.path [i] state.pending in
     { state with pending }
 
-  let compute state (i:i) =
-    With_deps.bind i.code @@ Eval.m2l i.input.src state.env
+  let compute state (i: _ i) =
+    Eval.next ~pkg:i.input.src state.env i.code
 
   let add_unit (u:Unit.s) state =
     match u.precision with
-    | Exact -> add_pending (make u) state
+    | Exact -> add_pending (make Eval.initial u) state
     | Approx ->
       let mockup = Module.(md @@ mockup ~path:u.src u.path.name) in
       let env =
@@ -467,13 +484,14 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
     | None -> Namespaced.make (List.hd path)
     | Some name -> name
 
+  let blocker = Eval.block
+
   let rec eval_depth state i =
     let path, src = i.input.path, i.input.src in
     let not_ancestors = Namespaced.Set.add path state.not_ancestors in
     let state = { state with not_ancestors } in
-    match With_deps.comm (compute state i) with
-    | Ok x ->
-      let deps, (_,sg) = With_deps.unpack x in
+    match compute state i with
+    | Ok (sg, deps) ->
       let more, pending = remove path state.pending in
       let state = { state with pending } in
       let state =
@@ -500,12 +518,11 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
       (* first, we update the work-in-progress map *)
       let state = update_pending { i with code = m2l } state in
       (* we check the first missing module *)
-      let m2l = With_deps.value m2l in
-      match M2l.Block.m2l m2l with
+      match Eval.block m2l with
       | None ->
         assert false (* we failed to eval the m2l code due to something *)
       | Some { Loc.data = y, path; _ } ->
-        debug "blocked at :%a@ %a" Paths.S.pp path M2l.pp m2l;
+        (*       debug "blocked at :%a@ %a" Paths.S.pp path M2l.pp m2l;*)
         let first_parent = alias_resolver state y path in
         debug "first parent:%a" Namespaced.pp first_parent;
         (* are we cycling? *)
@@ -525,7 +542,7 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
             | ({ mli = Some u; _ } | { ml = Some u; mli = None } as pair) ->
               let state = add_pair state pair in
               if u.precision = Exact then
-                go_on state (make u)
+                go_on state (make Eval.initial u)
               else
                 go_on state i
 
@@ -540,13 +557,13 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
       )
 
   let eval_post state =
-    let compute (u:Unit.s) = compute state @@ make u in
+    let compute (u:Unit.s) = compute state @@ make Eval.initial u in
     let rec eval_more status state =
       match state.postponed with
       | [] -> status, state
       | u :: postponed ->
         let state =
-          { (add_pending (make u) state) with postponed } in
+          { (add_pending (make Eval.initial u) state) with postponed } in
       match u.precision with
       | Approx ->
         let r = eval_bounded Param.policy compute u in
@@ -554,8 +571,8 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
           resolved = expand_and_add state.resolved r
         }
       | Exact ->
-        let state = add_pending (make u) state in
-        match eval state (make u) with
+        let state = add_pending (make Eval.initial u) state in
+        match eval state (make Eval.initial u) with
         | Ok s -> eval_more status s
         | Error s -> eval_more false s
     in
@@ -638,7 +655,8 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
   let approx_and_try_harder state =
     state
     |> wip
-    |> Failure.approx_and_try_harder (alias_resolver state)
+    |> Failure.approx_and_try_harder
+      Eval.recursive_patching Eval.block (alias_resolver state)
     |> List.fold_left (flip add_pending)
       { state with pending = Mp.empty;
                    not_ancestors = Namespaced.Set.empty }
@@ -651,7 +669,8 @@ module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
       match solve_once state with
       | Ok (e,l) -> e, l
       | Error s ->
-        Fault.raise Param.policy fault  (alias_resolver s, wip s);
+        Fault.raise Param.policy fault
+          (Bind(Eval.block, wip s), alias_resolver s);
         solve_harder (s :: ancestors) @@ approx_and_try_harder s in
     solve_harder [] @@ start loader files core seeds
 

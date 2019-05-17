@@ -35,7 +35,18 @@ end
 module type s =
 sig
   type envt
-  val m2l : Paths.P.t -> envt -> M2l.t -> (envt *  Module.Sig.t, M2l.t) result With_deps.t
+  type on_going
+  val initial: M2l.t -> on_going
+  val next:
+    pkg:Paths.P.t -> envt -> on_going
+    -> (Module.Sig.t * Deps.t, on_going) result
+
+  val block: on_going -> (Summary.t * Paths.S.t) Loc.ext option
+
+  val recursive_patching: on_going -> Summary.t -> on_going
+
+  val pp: on_going Pp.t
+
 end
 
 (** Create an outliner adapted for the environment type *)

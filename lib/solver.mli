@@ -1,6 +1,6 @@
 (** Basic solver *)
 
-type i = { input: Unit.s; code: M2l.t With_deps.t }
+type 'a i = { input: Unit.s; code: 'a }
 (** In-processing state for unit files *)
 
 
@@ -15,37 +15,37 @@ module Failure :
       | Depend_on of Namespaced.t
       | Internal_error
 
-    module Set: Set.S with type elt = i
+    type 'a cycle
+    type 'a cycles
 
-    module Map : sig
-      include Map.S with type key = status
-      val find: key -> Set.t t -> Set.t
-    end
+    val to_list: 'a cycles -> (status * Unit.s list) list
 
     type alias_resolver = Summary.t -> Paths.S.t -> Namespaced.t
+    type 'a blocker = 'a -> (Summary.t * Paths.S.t) Loc.ext option
 
     val analyze:
-      alias_resolver -> i list ->
-      (i * status option ref) Namespaced.Map.t * Set.t Map.t
+      'a blocker -> alias_resolver -> 'a i list ->
+      ('a i * status option ref) Namespaced.Map.t * 'a cycles
 
     val pp_circular :
-      alias_resolver ->
-      (i * 'a) Namespaced.Map.t ->
+      'a blocker -> alias_resolver ->
+      ('a i * 'a) Namespaced.Map.t ->
       Namespaced.t -> bool -> Format.formatter -> Namespaced.t -> unit
     val pp_cat :
-      alias_resolver ->
-      (i * _) Namespaced.Map.t ->
-      Format.formatter -> status * Set.t -> unit
+      'a blocker -> alias_resolver ->
+      ('a i * _) Namespaced.Map.t ->
+      Format.formatter -> status * 'a cycle -> unit
     val pp :
-      alias_resolver ->
-      (i * _) Namespaced.Map.t ->
-      Format.formatter -> Set.t Map.t -> unit
-    val pp_cycle : alias_resolver ->
-      Format.formatter -> i list -> unit
+      'a blocker -> alias_resolver ->
+      ('a i * _) Namespaced.Map.t ->
+      Format.formatter -> 'a cycles -> unit
+    val pp_cycle : 'a blocker -> alias_resolver ->
+      Format.formatter -> 'a i list -> unit
   end
 
 (** Solver error when trying to resolve dependencies *)
-val fault: (Failure.alias_resolver * i list) Fault.info
+type fault
+val fault: (fault * Failure.alias_resolver) Fault.info
 
 (** Create a solver using the environment module [Envt] for
     name resolution and dependendy tracking and
@@ -53,16 +53,17 @@ val fault: (Failure.alias_resolver * i list) Fault.info
 module Make(Envt:Outliner.envt)(Param : Outliner.param):
   sig
 
+    type on_going
     type state = { resolved: Unit.r Paths.P.map;
                    env: Envt.t;
-                   pending: i list;
+                   pending: on_going i list;
                    postponed: Unit.s list
                  }
 
     val start: Envt.t -> Unit.s list -> state
 
       val eval :
-        ?learn:bool -> state -> i -> state
+        ?learn:bool -> state -> on_going i -> state
       (** [eval ~learn {resolved; envt; rest} unit]
           try to compute the signature of unit, and if successful
           add the unit to the resolved list. Otherwise, the unit
@@ -87,6 +88,9 @@ module Make(Envt:Outliner.envt)(Param : Outliner.param):
       (** Resolve current aliases *)
       val alias_resolver: state -> Failure.alias_resolver
 
+      (** expose current blocker on an on_going element *)
+      val blocker: on_going Failure.blocker
+
       (** Add approximation to make cycle resolvable, possibly adding spurious
           dependencies. Drop intermediary units that are deemed non-resolvable *)
       val approx_and_try_harder: state -> state
@@ -104,18 +108,23 @@ module Make(Envt:Outliner.envt)(Param : Outliner.param):
 module Directed(Envt:Outliner.envt)(Param : Outliner.param):
 sig
   type state
+  type on_going
 
   (** Compare if two states would lead to the same result for the solver
       (weak equality?). *)
   val eq: state -> state -> bool
 
-  val wip: state -> i list
+  val wip: state -> on_going i list
   val end_result: state -> Envt.t * Unit.r list
 
   type gen = Namespaced.t -> Unit.s option Unit.pair
 
   (** Resolve current aliases *)
   val alias_resolver: state -> Failure.alias_resolver
+
+  (** expose current blocker on an on_going element *)
+  val blocker: on_going Failure.blocker
+
 
 
   type entry = Read.kind * string * Namespaced.t
@@ -129,7 +138,8 @@ sig
   val start: loader -> entry list -> Envt.t -> Namespaced.t list ->
     state
 
-  val eval: state -> i -> (state,state) result
+  val eval: state -> on_going i -> (state,state) result
+
 
   val solve_once: state -> (Envt.t * Unit.r list, state) result
   val approx_and_try_harder: state -> state

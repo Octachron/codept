@@ -48,6 +48,7 @@ let start_env includes files =
     Module.Dict.empty
 
 module Branch(Param:Outliner.param) = struct
+
   module S = Solver.Make(Envt.Core)(Param)
   module D = Solver.Directed(Envt.Core)(Param)
 
@@ -82,14 +83,14 @@ module Branch(Param:Outliner.param) = struct
         | Error state ->
           let units = state.pending in
           let module F = Solver.Failure in
-          let _, cmap = F.analyze (S.alias_resolver state) units in
-          let errs = F.Map.bindings cmap in
-          let name unit = Solver.(unit.input.path) in
+          let _, cmap = F.analyze S.blocker (S.alias_resolver state) units in
+          let errs = F.to_list cmap in
+          let name input = input.Unit.path in
           let more_cycles =
             errs
             |> List.filter (function (F.Cycle _, _) -> true | _ -> false)
             |> List.map snd
-            |> List.map (List.map name % Solver.Failure.Set.elements)
+            |> List.map (List.map name)
             |> (* FIXME*)
             List.map (List.map (fun x -> x.Namespaced.name))
             |> CSet.of_list
@@ -579,19 +580,19 @@ let result =
              "Transforms"],
             [], []);
           "envt.ml", (
-            ["Cmi"; "Deps"; "Summary"; "With_deps"; "Transforms"; "M2l";
+            ["Cmi"; "Deps"; "Summary"; "Transforms";
              "Fault"; "Outliner"; "Module"; "Name"; "Namespaced"; "Paths";
              "Standard_faults";"Standard_policies";"Option";"Pp"],
             ["Array"; "Filename";"List";"Sys"; "Format"],
             []);
           "outliner.mli", (
             ["Deps"; "Fault"; "Module"; "Namespaced"; "Paths";"M2l"; "Summary";
-            "With_deps"; "Transforms"],
+            "Pp"; "Loc"; "Transforms"],
             ["Format"],[]);
           "outliner.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Namespaced";
              "Option"; "Paths"; "Mresult"; "Fault"; "Standard_faults";
-             "Deps"; "With_deps"; "Transforms" ]
+             "Deps"; "With_deps"; "Transforms"; "Pp" ]
           ,["List";"Format"],[]);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";
                        "Schematic" ],
@@ -644,16 +645,16 @@ let result =
                             "Support";"Option"],
                            ["Format"; "Hashtbl"; "List"; "Map"; "String"],
                            [] );
-          "solver.mli", (["Fault"; "Loc"; "Unit";"M2l";
+          "solver.mli", (["Fault"; "Loc"; "Unit";
                           "Namespaced"; "Read";
-                          "Summary"; "Outliner"; "Paths"; "With_deps"],
-                         ["Format";"Map";"Set"],[]);
+                          "Summary"; "Outliner"; "Paths"],
+                         ["Format"],[]);
           "solver.ml", (
             ["Approx_parser"; "Deps"; "Summary"; "Outliner"; "Loc";
              "M2l"; "Module"; "Mresult"; "Namespaced";
              "Option"; "Pp"; "Paths"; "Read"; "Unit"; "Fault";
-             "Standard_faults"; "With_deps"],
-            ["List"; "Map"; "Set";"Format"],[]);
+             "Standard_faults"],
+            ["List"; "Map";"Format"],[]);
           "standard_faults.ml", (
             ["Fault"; "Format_tags"; "Module"; "Namespaced"; "Paths"; "Pp"
             ; "Loc"; "Schematic" ],

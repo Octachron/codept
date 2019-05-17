@@ -352,21 +352,23 @@ module Libraries = struct
       (* do no try epsilon dependencies yet *)
     end)
 
-
   let rec track source stack = match stack with
     | [] -> ()
     | (name, path, code) :: q ->
-      match With_deps.value (I.m2l path source.resolved code) with
+      let more = I.next ~pkg:path source.resolved code in
+      match more with
       | Error code ->
-        begin match M2l.Block.m2l code with
+        begin match I.block code with
           | None -> assert false
           | Some { data = _y, bl_path ; _ } ->
             let name' = List.hd bl_path in
             let path' = Name.Map.find name' source.cmis in
-            let code' = Cmi.m2l @@ P.filename path' in
-            track source ( (name', path', code') :: (name, path, code) :: q )
+            let code' = I.initial (Cmi.m2l @@ P.filename path') in
+            let stack =
+              (name', path', code') :: (name, path, code) :: q  in
+            track source stack
         end
-      | Ok (_, sg) ->
+      | Ok (sg, _) ->
         let md = M.create
             ~origin:(M.Origin.Unit {source=path;path=[name]}) name sg in
         source.resolved <- Core.add_unit source.resolved (M.M md);
@@ -380,7 +382,7 @@ module Libraries = struct
     match Core.find_name noloc M.Module name source.resolved.current with
     | None ->
       let path = Name.Map.find name source.cmis in
-      track source [name, path, Cmi.m2l @@ P.filename path ];
+      track source [name, path, I.initial (Cmi.m2l @@ P.filename path) ];
       pkg_find name source
     | Some m -> let main = m.T.main in
       if is_unknown main then raise Not_found else main
