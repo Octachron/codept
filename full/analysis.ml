@@ -148,12 +148,14 @@ let lift p =
   : Outliner.param )
 
 let solve param (E((module Envt), core)) (units: _ Unit.pair) =
-  let module S = Solver.Make(Envt)((val lift param)) in
+  let module Engine = Outliner.Make(Envt)((val lift param)) in
+  let module S = Solver.Make(Envt)((val lift param))(Engine) in
   S.solve core units
 
 let solve_from_seeds seeds loader files param
     (E((module Envt), core)) =
-  let module S = Solver.Directed(Envt)((val lift param)) in
+  let module Engine = Outliner.Make(Envt)((val lift param)) in
+  let module S = Solver.Directed(Envt)((val lift param))(Engine) in
   snd @@ S.solve loader files core seeds
 
 let remove_units invisibles =

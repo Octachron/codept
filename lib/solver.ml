@@ -275,12 +275,10 @@ let expand_and_add expand  =
     fun resolved (unit:Unit.r) ->
       Paths.P.Map.add unit.src unit resolved
 
-module Make(Envt:Outliner.envt)(Param:Outliner.param) = struct
+module Make(Envt:Outliner.envt)(Param:Outliner.param)
+    (Eval: Outliner.s with type envt := Envt.t) =
+struct
   open Unit
-
-  module Eval = Outliner.Make(Envt)(Param)
-  type on_going = Eval.on_going
-
 
   type state = { resolved: Unit.r Paths.P.map;
                  env: Envt.t;
@@ -405,11 +403,10 @@ end
 
 
 
-module Directed(Envt:Outliner.envt)(Param:Outliner.param) = struct
+module Directed(Envt:Outliner.envt)(Param:Outliner.param)
+    (Eval: Outliner.s with type envt := Envt.t) =
+struct
   open Unit
-
-  module Eval = Outliner.Make(Envt)(Param)
-  type on_going = Eval.on_going
 
   type gen = Namespaced.t -> Unit.s option Unit.pair
 

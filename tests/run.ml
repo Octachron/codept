@@ -49,8 +49,9 @@ let start_env includes files =
 
 module Branch(Param:Outliner.param) = struct
 
-  module S = Solver.Make(Envt.Core)(Param)
-  module D = Solver.Directed(Envt.Core)(Param)
+  module Engine=Outliner.Make(Envt.Core)(Param)
+  module S = Solver.Make(Envt.Core)(Param)(Engine)
+  module D = Solver.Directed(Envt.Core)(Param)(Engine)
 
   let organize pkgs files =
     let units: _  Unit.pair = organize policy files in

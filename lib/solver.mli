@@ -50,20 +50,22 @@ val fault: (fault * Failure.alias_resolver) Fault.info
 (** Create a solver using the environment module [Envt] for
     name resolution and dependendy tracking and
     the parameter module [Param] *)
-module Make(Envt:Outliner.envt)(Param : Outliner.param):
+module Make
+    (Envt:Outliner.envt)
+    (Param : Outliner.param)
+    (Eval: Outliner.s with type envt := Envt.t):
   sig
 
-    type on_going
     type state = { resolved: Unit.r Paths.P.map;
                    env: Envt.t;
-                   pending: on_going i list;
+                   pending: Eval.on_going i list;
                    postponed: Unit.s list
                  }
 
     val start: Envt.t -> Unit.s list -> state
 
       val eval :
-        ?learn:bool -> state -> on_going i -> state
+        ?learn:bool -> state -> Eval.on_going i -> state
       (** [eval ~learn {resolved; envt; rest} unit]
           try to compute the signature of unit, and if successful
           add the unit to the resolved list. Otherwise, the unit
@@ -89,7 +91,7 @@ module Make(Envt:Outliner.envt)(Param : Outliner.param):
       val alias_resolver: state -> Failure.alias_resolver
 
       (** expose current blocker on an on_going element *)
-      val blocker: on_going Failure.blocker
+      val blocker: Eval.on_going Failure.blocker
 
       (** Add approximation to make cycle resolvable, possibly adding spurious
           dependencies. Drop intermediary units that are deemed non-resolvable *)
@@ -105,16 +107,18 @@ module Make(Envt:Outliner.envt)(Param : Outliner.param):
     end
 
 (** Alternative solver *)
-module Directed(Envt:Outliner.envt)(Param : Outliner.param):
+module Directed
+    (Envt:Outliner.envt)
+    (Param : Outliner.param)
+    (Eval: Outliner.s with type envt := Envt.t):
 sig
   type state
-  type on_going
 
   (** Compare if two states would lead to the same result for the solver
       (weak equality?). *)
   val eq: state -> state -> bool
 
-  val wip: state -> on_going i list
+  val wip: state -> Eval.on_going i list
   val end_result: state -> Envt.t * Unit.r list
 
   type gen = Namespaced.t -> Unit.s option Unit.pair
@@ -123,7 +127,7 @@ sig
   val alias_resolver: state -> Failure.alias_resolver
 
   (** expose current blocker on an on_going element *)
-  val blocker: on_going Failure.blocker
+  val blocker: Eval.on_going Failure.blocker
 
 
 
@@ -138,7 +142,7 @@ sig
   val start: loader -> entry list -> Envt.t -> Namespaced.t list ->
     state
 
-  val eval: state -> on_going i -> (state,state) result
+  val eval: state -> Eval.on_going i -> (state,state) result
 
 
   val solve_once: state -> (Envt.t * Unit.r list, state) result
