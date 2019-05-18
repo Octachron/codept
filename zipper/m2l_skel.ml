@@ -2,7 +2,6 @@ module M=Module
 module Y = Summary
 module F = Standard_faults
 module P = M.Partial
-module Env = Envt.Core
 
 module Arg = M.Arg
 
@@ -12,12 +11,14 @@ module T = Transforms
 let fault param x = Fault.handle param.T.policy x
 let raisef param f t = fault param (Fault.emit f t)
 
-type module_like = P.t
 type path = T.answer
 type query = path T.query_result
+
+module Make(Env:Outliner.envt) = struct
+type module_like = P.t
 type m2l = S.t
 type state_diff = Y.t
-type state = { initial:Envt.Core.t; diff:state_diff; current:Envt.Core.t }
+type state = { initial:Env.t; diff:state_diff; current:Env.t }
 
 type  path_in_context =
   { loc: Fault.loc;
@@ -86,6 +87,8 @@ let bind_rec_init = Y.empty
 let opened param ~loc m = T.open_ param.T.policy loc m
 let empty_diff = Y.empty
 
+let final x = x
+
 module State = struct
   let merge state diff =
     { state with current = Env.extend state.current diff;
@@ -114,8 +117,19 @@ module State = struct
 
   let open_path ~param ~loc state path =
     merge state (T.open_diverge param.T.policy loc path)
+
+  let from_env ?(diff=Summary.empty) env =
+    { initial = env; diff; current= Env.extend env diff }
+
+  let rec_approximate state l =
+    List.fold_left (fun state {M2l.expr=_; name} ->
+        merge state (bind name @@ P.of_module @@ Module.mockup name)
+      ) state l
+
+  let rec_patch y diff = Y.merge diff y
+
+  let peek x = x
+
 end
 
-(*
-module R(P:Outliner.param) = Fold.Fold(Skel(P))
-*)
+end

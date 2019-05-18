@@ -1,6 +1,6 @@
 (executable
   (name run) (modules Run)
-  (libraries unix codept_lib bundled)
+  (libraries unix codept_lib zipper bundled)
 )
 
 (executable

@@ -74,4 +74,18 @@ module Pre = struct
   let values = id
  end
 
-module Outliner = M2l_fold.Make(Pre)
+module Outline(Env:Outliner.envt) = M2l_fold.Make(Pre)(Env)
+
+module Default = Outline(Envt.Core)
+
+module Make(Env:Outliner.envt)(Param:Outliner.param):
+  Outliner.s with type envt := Env.t =
+struct
+  let param = let open Param in
+    { Transforms.transparent_aliases; policy;
+      epsilon_dependencies; transparent_extension_nodes
+    }
+  include Outline(Env)
+  let adapt f ~pkg = f ~pkg param
+  let next = adapt next
+end

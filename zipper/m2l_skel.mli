@@ -1,6 +1,9 @@
-type module_like
 type path = Transforms.answer
 type query = path Transforms.query_result
+
+
+module Make(Env:Outliner.envt): sig
+type module_like
 type m2l
 type state_diff
 type state
@@ -32,6 +35,7 @@ val empty: module_like
 (** M2l *)
 val m2l_add : state_diff -> m2l -> m2l
 val m2l_init : m2l
+val final: m2l -> Module.Sig.t
 
 (** Module rec *)
 val bind_rec_add : string -> module_like -> state_diff -> state_diff
@@ -54,4 +58,13 @@ module State: sig
   val diff : state -> state_diff
   val open_path :
     param:Transforms.param -> loc:Fault.loc -> state -> path -> state
+  val from_env: ?diff:state_diff -> Env.t -> state
+  val rec_approximate: state -> _ M2l.bind list -> state
+
+  val rec_patch: Summary.t -> state_diff -> state_diff
+
+  (** to be deleted ?*)
+  val peek: state_diff -> Summary.t
+end
+
 end

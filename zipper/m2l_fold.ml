@@ -1,21 +1,13 @@
+[@@@warning "-37"]
 
 module L = struct
   type 'a t = 'a list = [] | (::) of 'a * 'a t
 end
 
-module Sk = M2l_skel
 module Arg = Module.Arg
 
 type a = Paths.Simple.t * (Loc.t * Deps.Edge.t)
 type level = Module.level = Module | Module_type
-
-type path_in_context = Sk.path_in_context =
-  { loc: Fault.loc;
-    edge:Deps.Edge.t option;
-    level: Module.level;
-    ctx: Sk.state_diff;
-    path: Paths.S.t
-  }
 
 type ('a,'b) pair = { backbone:'a; user:'b }
 
@@ -35,7 +27,7 @@ module type fold = sig
  type path_expr_args
  type opens
 
-  val path : Sk.query -> path
+  val path : M2l_skel.query -> path
   val abstract : module_expr
   val access :  access -> access
   val access_add :
@@ -110,25 +102,32 @@ module Ok = Mresult.Ok
 
 let ((>>=), (>>|)) = Ok.((>>=), (>>|))
 
-module Make(F:fold) = struct
+module Make(F:fold)(Env:Outliner.envt) = struct
 
-  type path = (Sk.path, F.path) pair
+  module Sk=M2l_skel.Make(Env)
+  type path = (M2l_skel.path, F.path) pair
   type module_expr = (Sk.module_like, F.module_expr) pair
   type access = F.access
   type packed = F.packed
   type module_type = (Sk.module_like, F.module_type) pair
   type m2l = (Sk.m2l, F.m2l) pair
-  type expr = (Sk.state_diff, F.expr) pair
   type values = F.values
-  type annotation = F.annotation
   type bind_rec = (Sk.state_diff, F.bind_rec) pair
-  type ext = F.ext
-  type path_expr = F.path_expr
   type path_expr_args = F.path_expr_args
   type opens = F.opens
 
+  type path_in_context = Sk.path_in_context
+
+  (* Unused types
+  type expr = (Sk.state_diff, F.expr) pair
+  type path_expr = F.path_expr
+  type ext = F.ext
+  type annotation = F.annotation
+  *)
+
   module Path = struct
-    type waccess = W of M2l.access [@@unboxed]
+
+    type waccess = W of access [@@unboxed]
 
     type 'focus expr =
       | Open: M2l.module_expr expr
@@ -136,10 +135,16 @@ module Make(F:fold) = struct
       | SigInclude:  M2l.module_type expr
       | Bind: Name.t ->  M2l.module_expr expr
       | Bind_sig: Name.t -> M2l.module_type expr
-      | Bind_rec:
+      | Bind_rec_fix:
           {left: bind_rec;
            name:Name.t;
            right:M2l.module_expr M2l.bind list
+          } -> M2l.module_expr expr
+      | Bind_rec_zero:
+          {left: bind_rec;
+           name:Name.t;
+           right:M2l.module_expr M2l.bind list;
+           initial: M2l.module_expr M2l.bind list;
           } -> M2l.module_expr expr
       | Minor:  M2l.annotation expr
       | Extension_node: string ->  M2l.extension_core expr
@@ -279,7 +284,8 @@ module Make(F:fold) = struct
     | SigInclude m ->
       mt (Expr SigInclude :: path) ~param ~loc ~state m
       >>| both (Sk.included param loc) (F.sig_include loc)
-    | Bind {name; expr=Ident s} when Sk.State.is_alias param state s ->
+    | Bind {name; expr=(Ident s|Constraint(Abstract, Alias s))}
+      when Sk.State.is_alias param state s ->
       Ok {backbone=Sk.State.bind_alias state name s;
           user= F.bind_alias name s }
     | Bind {name; expr} ->
@@ -287,10 +293,14 @@ module Make(F:fold) = struct
       >>| both (Sk.bind name) (F.bind name)
     | Bind_sig {name; expr} ->
       mt (Expr (Bind_sig name) :: path) ~param ~loc ~state expr
-      >>| both (Sk.bind name) (F.bind_sig name)
+      >>| both (Sk.bind_sig name) (F.bind_sig name)
     | Bind_rec l ->
       let init = { backbone = Sk.bind_rec_init; user = F.bind_rec_init } in
-      bind_rec path ~param ~loc ~state init l >>| user F.bind_rec
+      let state = Sk.State.rec_approximate state l in
+      bind_rec_zero path ~param ~loc ~state init l >>= fun x ->
+      let state = Sk.State.merge state x.backbone in
+      bind_rec_fix path ~param ~loc ~state init l >>|
+      user F.bind_rec
     | Minor m ->
       minor (Expr Minor :: path) ~param ~pkg:(apkg loc) ~state m
       >>| user_ml F.minor
@@ -329,7 +339,7 @@ module Make(F:fold) = struct
       m2l_start (Me Str :: path) ~param ~pkg:(apkg loc) ~state items
       >>| both Sk.str F.str
     | Val v -> minor (Me Val::path) ~param ~pkg:(apkg loc) ~state v
-      >>| user_me F.me_val
+      >>| fun x ->{backbone=Sk.unpacked; user = F.me_val x }
     | Extension_node {name;extension=e} ->
       ext ~param ~pkg:(apkg loc) ~state
         (Me (Extension_node name) :: path) e >>|
@@ -356,11 +366,11 @@ module Make(F:fold) = struct
   and mt path ~param ~loc ~state = function
     | Resolved _ -> assert false (* to be removed *)
     | Alias id ->
-      resolve (Mt Alias :: path) ~param ~loc ~state ~level:Module_type id
+      resolve (Mt Alias :: path) ~param ~loc ~state ~level:Module id
       >>| both Sk.ident F.alias
     | Ident ids ->
-      path_expr (Mt Ident :: path) ~param ~loc ~state ids >>|
-      both Sk.ident F.mt_ident
+      path_expr ~level:Module_type (Mt Ident :: path) ~param ~loc ~state ids
+      >>| both Sk.ident F.mt_ident
     | Sig items ->
       m2l_start (Mt Sig :: path) ~pkg:(apkg loc) ~state ~param items
       >>| both Sk.str F.mt_sig
@@ -387,25 +397,34 @@ module Make(F:fold) = struct
       ext ~pkg:(apkg loc) ~param ~state (Mt (Extension_node name)::path)  e
       >>| user_me (F.mt_ext ~loc name)
     | Abstract -> Ok {backbone=Sk.abstract; user=F.sig_abstract}
-  and bind_rec path left ~param ~loc ~state = function
+  and bind_rec_gen save path left ~param ~loc ~state = function
     | L.[] -> Ok left
-    | {name;expr} :: right ->
-      me (Expr(Bind_rec{left;name;right}) :: path) ~loc ~param ~state expr
+    | {M2l.expr; name} :: right ->
+      me (Expr(save left name right) :: path) ~loc ~param ~state expr
       >>= fun me ->
       let more =
         both2 (Sk.bind_rec_add name) (F.bind_rec_add name) me left in
       let state = Sk.State.merge state more.backbone in
-      bind_rec path more ~loc ~state ~param right
+      bind_rec_gen save path more ~loc ~state ~param right
+  and bind_rec_zero path left ~param ~loc ~state l =
+    let save left name right =
+      Bind_rec_zero {left;name;right;initial=l} in
+    let param = { param with policy = Standard_policies.quiet } in
+    bind_rec_gen save path left ~param ~loc ~state l
+  and bind_rec_fix path left ~param ~loc ~state l =
+    let save left name right =
+      Bind_rec_fix {left;name;right} in
+    bind_rec_gen save path left ~param ~loc ~state l
   and path_expr_args path ~loc ~state ~param main left = function
     | L.[] ->
       Ok {backbone = main.backbone; user = F.path_expr main.user left}
     | (n, arg) :: right ->
       let path_arg = Path_expr (Arg {main;left;pos=n;right})::path in
-      path_expr path_arg arg ~loc ~state ~param >>= fun x ->
+      path_expr ~level:Module path_arg arg ~loc ~state ~param >>= fun x ->
       path_expr_args path main ~loc ~state ~param
         (F.path_expr_arg n x.user left) right
-  and path_expr ctx ~loc ~param ~state {Paths.Expr.path; args} =
-    resolve ~level:Module_type ~loc ~state ~param
+  and path_expr ~level ctx ~loc ~param ~state {Paths.Expr.path; args} =
+    resolve ~level ~loc ~state ~param
       (Path_expr (Main args) :: ctx) path >>= fun main ->
     path_expr_args ctx main F.path_expr_arg_init ~param ~loc ~state args
   and minor path ~pkg ~param ~state mn =
@@ -448,13 +467,13 @@ module Make(F:fold) = struct
       >>| fun m -> F.ext_module m.user
     | Val v -> minor ~state ~pkg ~param (Ext Val :: path) v >>| F.ext_val
   and resolve path ~param ~loc ~level ~state ?edge s =
-    let px = { edge; level; loc; ctx=Sk.State.diff state; path = s } in
+    let px = { Sk.edge; level; loc; ctx=Sk.State.diff state; path = s } in
     dual_resolve ~param ~state ~path px
 
   open M2l
   let rec restart ~param state z =
     let v = z.focus in
-    let loc = v.loc in
+    let loc = v.Sk.loc in
     match dual_resolve ~param ~state ~path:z.path v with
     | Error _ -> Error z
     | Ok x -> self_restart ~param state @@ match z.path with
@@ -518,9 +537,17 @@ module Make(F:fold) = struct
       restart_me path ~loc ~state ~param (user (F.open_me opens) x)
     | Expr (Bind name) :: path ->
       restart_expr path ~state ~param (both (Sk.bind name) (F.bind name) x)
-    | Expr (Bind_rec {left;name;right}) :: path  ->
+    | Expr (Bind_rec_zero {left;name;right;initial}) :: path  ->
       let left = both2 (Sk.bind_rec_add name) (F.bind_rec_add name) x left in
-      bind_rec path left ~loc ~param ~state right >>| user F.bind_rec >>=
+      bind_rec_zero path left ~loc ~param ~state right >>= fun x ->
+      let state = Sk.State.merge state x.backbone in
+      bind_rec_fix path left ~loc ~param ~state initial >>|
+      user F.bind_rec >>=
+      restart_expr ~state ~param path
+    | Expr (Bind_rec_fix {left;name;right}) :: path  ->
+      let left = both2 (Sk.bind_rec_add name) (F.bind_rec_add name) x left in
+      bind_rec_fix path left ~loc ~param ~state right >>|
+      user F.bind_rec >>=
       restart_expr ~state ~param path
     | _ -> .
   and restart_expr: expression path -> _ =
@@ -615,10 +642,58 @@ module Make(F:fold) = struct
       >>= restart_annot ~loc ~state ~param path
     | Ext Mod :: path -> restart_ext ~loc ~param ~state path (F.ext_module x.user)
     | _ :: _ -> .
-  let ustart param x =m2l_start ~param [] x
+
+  let unpack x = Sk.final x.backbone, x.user
+
+  type on_going =
+    | On_going of path_in_context zipper
+    | Initial of M2l.t
+ let initial x = Initial x
+
+  let start ~pkg param env x =
+    m2l_start ~pkg ~state:(Sk.State.from_env env) ~param [] x >>|
+    unpack
+
+  let restart param env z =
+    let state = Sk.State.from_env ~diff:z.focus.Sk.ctx env in
+    restart ~param state z >>| unpack
+
+  let next ~pkg param env x =
+    let r = match x with
+      | Initial x -> start ~pkg param env x
+      | On_going x -> restart param env x in
+    Mresult.Error.fmap (fun x -> On_going x) r
+
+  let block = function
+    | Initial _ -> None
+    | On_going x ->
+      let f = x.focus in
+      Some {Loc.loc = snd f.loc; data= Sk.State.peek f.ctx, f.path }
+
+  let pp _ppf = assert false
+
+  let recursive_patching ongoing y = match ongoing with
+    | Initial _ as x -> x
+    | On_going x ->
+      let focus = x.focus in
+      let ctx = Sk.State.rec_patch y focus.ctx in
+      let focus = { focus with ctx } in
+      On_going { x with focus }
+end
 
 
-  let restart param state z =
-    let state = Sk.State.restart state z.focus.ctx in
-    restart ~param state z
+module type S = sig
+  type envt
+  type on_going
+  type final
+  val initial: M2l.t -> on_going
+  val next:
+    pkg:Paths.P.t -> Transforms.param -> envt -> on_going
+    -> (final, on_going) result
+
+  val block: on_going -> (Summary.t * Paths.S.t) Loc.ext option
+
+  val recursive_patching: on_going -> Summary.t -> on_going
+
+  val pp: on_going Pp.t
 end

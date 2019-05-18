@@ -5,7 +5,7 @@ module Y: sig module M:F(X).Y end = struct module M = struct end end
 module W : Ext.F(Ext2.X).M.s = struct end
 
 module A = struct
-        module F(X:sig end) = struct 
+        module F(X:sig end) = struct
         module M = struct
                 module type s
         end
