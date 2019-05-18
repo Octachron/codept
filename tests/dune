@@ -26,6 +26,6 @@
 
 (alias
  (name   runtest)
- (deps ../full/codept.exe)
+ (deps ../full/codept.exe ../zipper_test/test.exe)
  (action (run %{exe:integrated.exe}))
 )

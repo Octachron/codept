@@ -24,6 +24,7 @@ end
 let () = Sys.chdir ".."
 let pwd = Sys.getcwd ()
 let codept =  pwd ^ "/full/codept.exe"
+let zip_test = pwd ^ "/zipper_test/test.exe"
 let () = Sys.chdir "../../tests/"
 
 
@@ -84,11 +85,16 @@ let (%=%) x y =
        ) in
   check x 0 y 0
 
-let run case =
+let full_variant x =
+  codept, [| "codept"; "-nested"; "-expand-deps"; "-no-alias-deps"; "-deps"; "-k"; x |]
+
+let zip_variant x = zip_test, [|"zip_test"; x|]
+
+let run (variant,case) =
   let out, inp = Unix.pipe () in
-  let pid = Unix.create_process
-      codept [| "codept"; "-nested"; "-expand-deps"; "-no-alias-deps"; "-deps"; "-k"; case |]
-      Unix.stdin inp inp in
+  let pid =
+    let main, args = variant case in
+    Unix.create_process main args Unix.stdin inp inp in
   case, pid, out
 
 let read_all =
@@ -130,7 +136,8 @@ let green ppf s = Format.fprintf ppf "\x1b[32m%s\x1b[0m" s
 let red ppf s = Format.fprintf ppf "\x1b[31m%s\x1b[0m" s
 
 let dir x =
-  let _, pid, out = run x in
+  let variant = full_variant in
+  let _, pid, out = run (variant,x) in
   match snd (Unix.waitpid [] pid) with
   | WEXITED (0|2) ->
     let s = read_all out in
@@ -151,7 +158,11 @@ let filter_case x =
     Version.v >= v
   with Scanf.Scan_failure _ | End_of_file -> close_in f; true
 
+let prod x y = List.flatten
+    (List.map (fun x -> List.map (fun y -> x,y) y) x)
+
 let cases =
+  let variants = [full_variant; (*; zip_variant*)] in
   let is_source x =
     Filename.check_suffix x "ml" || Filename.check_suffix x "mli" in
   let all =
@@ -159,6 +170,7 @@ let cases =
     @@ List.map (fun x -> "cases/" ^ x )
     @@ List.filter is_source
     @@ Array.to_list @@ Sys.readdir "cases" in
+  let all = prod variants all in
   let post (name, _, x) =
     let s = read_all x in
     let ref = reference (refname name) in
