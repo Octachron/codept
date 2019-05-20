@@ -12,7 +12,7 @@ case $arg in
 	"--enable-dune")
 		echo "DUNE=enabled" >> Makefile.config
 		;;
-	"--disable-ocamlbuild") 
+	"--disable-dune") 
 		echo "DUNE=disabled" >> Makefile.config
 		;;
 	*) 
