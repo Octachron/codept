@@ -135,16 +135,10 @@ module Make(F:fold)(Env:Outliner.envt) = struct
       | SigInclude:  M2l.module_type expr
       | Bind: Name.t ->  M2l.module_expr expr
       | Bind_sig: Name.t -> M2l.module_type expr
-      | Bind_rec_fix:
-          {left: bind_rec;
-           name:Name.t;
-           right:M2l.module_expr M2l.bind list
-          } -> M2l.module_expr expr
-      | Bind_rec_zero:
+      | Bind_rec:
           {left: bind_rec;
            name:Name.t;
            right:M2l.module_expr M2l.bind list;
-           initial: M2l.module_expr M2l.bind list;
           } -> M2l.module_expr expr
       | Minor:  M2l.annotation expr
       | Extension_node: string ->  M2l.extension_core expr
@@ -297,9 +291,7 @@ module Make(F:fold)(Env:Outliner.envt) = struct
     | Bind_rec l ->
       let init = { backbone = Sk.bind_rec_init; user = F.bind_rec_init } in
       let state = Sk.State.rec_approximate state l in
-      bind_rec_zero path ~param ~loc ~state init l >>= fun x ->
-      let state = Sk.State.merge state x.backbone in
-      bind_rec_fix path ~param ~loc ~state init l >>|
+      bind_rec path ~param ~loc ~state init l >>|
       user F.bind_rec
     | Minor m ->
       minor (Expr Minor :: path) ~param ~pkg:(apkg loc) ~state m
@@ -397,24 +389,15 @@ module Make(F:fold)(Env:Outliner.envt) = struct
       ext ~pkg:(apkg loc) ~param ~state (Mt (Extension_node name)::path)  e
       >>| user_me (F.mt_ext ~loc name)
     | Abstract -> Ok {backbone=Sk.abstract; user=F.sig_abstract}
-  and bind_rec_gen save path left ~param ~loc ~state = function
+  and bind_rec path left ~param ~loc ~state = function
     | L.[] -> Ok left
     | {M2l.expr; name} :: right ->
-      me (Expr(save left name right) :: path) ~loc ~param ~state expr
+      me (Expr(Bind_rec{left;name;right}) :: path) ~loc ~param ~state expr
       >>= fun me ->
       let more =
         both2 (Sk.bind_rec_add name) (F.bind_rec_add name) me left in
       let state = Sk.State.merge state more.backbone in
-      bind_rec_gen save path more ~loc ~state ~param right
-  and bind_rec_zero path left ~param ~loc ~state l =
-    let save left name right =
-      Bind_rec_zero {left;name;right;initial=l} in
-    let param = { param with policy = Standard_policies.quiet } in
-    bind_rec_gen save path left ~param ~loc ~state l
-  and bind_rec_fix path left ~param ~loc ~state l =
-    let save left name right =
-      Bind_rec_fix {left;name;right} in
-    bind_rec_gen save path left ~param ~loc ~state l
+      bind_rec path more ~loc ~state ~param right
   and path_expr_args path ~loc ~state ~param main left = function
     | L.[] ->
       Ok {backbone = main.backbone; user = F.path_expr main.user left}
@@ -481,9 +464,9 @@ module Make(F:fold)(Env:Outliner.envt) = struct
         restart_me ~param ~state ~loc (rest: module_expr path) (both Sk.ident F.me_ident x)
       | Me (Open_me_left {left;right;diff;expr}) :: path ->
         open_all ~state ~param ~loc path expr (F.open_add x.user left) right >>= fun r ->
-        open_right path expr ~loc ~param ~state:r.backbone r.user >>= fun me ->
+        open_right path expr ~loc ~param ~state:r.backbone r.user >>=
         let state = Sk.State.restart state diff in
-        restart_me ~param ~state ~loc (path:module_expr path) me
+        restart_me ~param ~state ~loc (path:module_expr path)
       | Access a :: rest ->
         let r = F.access_add x.user v.loc (default_edge v.edge) a.left in
         access_step rest ~pkg:(apkg loc) ~param ~state r a.right
@@ -514,9 +497,8 @@ module Make(F:fold)(Env:Outliner.envt) = struct
       restart_annot ~loc ~param ~state path
     | Me (Apply_left xx) :: path ->
       me (Me (Apply_right x)::path) ~param ~state ~loc xx
-      >>= fun arg ->
-      restart_me ~loc ~state ~param path
-        { backbone=Sk.apply param loc x.backbone; user = F.apply loc x.user arg.user }
+      >>| both2 (fun x _ -> Sk.apply param loc x) (F.apply loc) x
+      >>= restart_me ~loc ~state ~param path
     | Mt Of :: path -> restart_mt ~loc ~state ~param path (user F.mt_of x)
     | Me(Apply_right fn) :: path ->
       restart_me path ~loc ~param ~state
@@ -537,18 +519,11 @@ module Make(F:fold)(Env:Outliner.envt) = struct
       restart_me path ~loc ~state ~param (user (F.open_me opens) x)
     | Expr (Bind name) :: path ->
       restart_expr path ~state ~param (both (Sk.bind name) (F.bind name) x)
-    | Expr (Bind_rec_zero {left;name;right;initial}) :: path  ->
+    | Expr (Bind_rec {left;name;right}) :: path  ->
       let left = both2 (Sk.bind_rec_add name) (F.bind_rec_add name) x left in
-      bind_rec_zero path left ~loc ~param ~state right >>= fun x ->
-      let state = Sk.State.merge state x.backbone in
-      bind_rec_fix path left ~loc ~param ~state initial >>|
-      user F.bind_rec >>=
-      restart_expr ~state ~param path
-    | Expr (Bind_rec_fix {left;name;right}) :: path  ->
-      let left = both2 (Sk.bind_rec_add name) (F.bind_rec_add name) x left in
-      bind_rec_fix path left ~loc ~param ~state right >>|
-      user F.bind_rec >>=
-      restart_expr ~state ~param path
+      bind_rec path left ~loc ~param ~state right >>= fun x ->
+      user F.bind_rec x |>
+      restart_expr ~state:(Sk.State.merge state x.backbone) ~param path
     | _ -> .
   and restart_expr: expression path -> _ =
     fun path ~state ~param x ->
