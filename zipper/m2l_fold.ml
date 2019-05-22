@@ -479,21 +479,22 @@ module Make(F:fold)(Env:Outliner.envt) = struct
     | Error _ -> Error z
     | Ok x -> self_restart ~param state @@ match z.path with
       | Me Ident :: rest ->
-        restart_me ~param ~state ~loc (rest: module_expr path) (both Sk.ident F.me_ident x)
-      | Me (Open_me_left {left;right;diff;expr}) :: path ->
+        restart_me ~param ~state ~loc rest (both Sk.ident F.me_ident x)
+      | Me Open_me_left {left;right;diff;expr} :: path ->
+        let state = Sk.State.open_path ~param ~loc state x.backbone in
         open_all ~state ~param ~loc path expr (F.open_add x.user left) right >>= fun r ->
         open_right path expr ~loc ~param ~state:r.backbone r.user >>=
         let state = Sk.State.restart state diff in
-        restart_me ~param ~state ~loc (path:module_expr path)
+        restart_me ~param ~state ~loc path
       | Access a :: rest ->
         let r = F.access_add x.user v.loc (default_edge v.edge) a.left in
         access_step rest ~pkg:(apkg loc) ~param ~state r a.right
         >>= restart_access ~param ~loc ~state (rest: waccess path)
       | Mt Alias :: path ->
-        restart_mt ~param ~loc ~state (path: module_type path) (both Sk.ident F.alias x)
+        restart_mt ~param ~loc ~state path (both Sk.ident F.alias x)
       | Path_expr Main args :: path ->
         path_expr_args ~param ~state ~loc path x F.path_expr_arg_init args >>=
-        restart_path_expr ~param ~loc ~state (path: Paths.Expr.t path)
+        restart_path_expr ~param ~loc ~state path
       | _ -> .
   and self_restart ~param state = function
     | Error z -> restart ~param state z
