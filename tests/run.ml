@@ -302,7 +302,7 @@ let result =
     ["phantom_maze_2.ml", u["E"; "D"]];
     ["phantom_maze_3.ml", u["B"; "X"] ];
     ["phantom_maze_4.ml", u["Extern"] ];
-    ["recmods.ml", u["Ext"]];
+    ["recmods.ml", u["Ext";"Xeno";"Xeno2";"Xeno3"]];
     ["record.ml", u["Ext";"E2";"E3"]];
     ["simple.ml", u["G";"E"; "I"; "A"; "W"; "B"; "C"; "Y"; "Ext"]];
     ["solvable.ml", u["Extern"]];
