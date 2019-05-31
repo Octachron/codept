@@ -1,3 +1,7 @@
+(executable (name step_by_step) (modules Step_by_step)
+  (libraries bundled zipper)
+)
+
 (executable
   (name run) (modules Run)
   (libraries unix codept_lib zipper bundled)
@@ -26,6 +30,6 @@
 
 (alias
  (name   runtest)
- (deps ../full/codept.exe ../zipper_test/test.exe)
+ (deps ../full/codept.exe step_by_step.exe)
  (action (run %{exe:integrated.exe}))
 )

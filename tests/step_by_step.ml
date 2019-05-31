@@ -1,4 +1,26 @@
-module O = Zipper.Dep_fold.Default
+let () = Random.self_init ()
+module Failing_env = struct
+  include Envt.Core
+  let fail = ref true
+  let find loc ?edge level path env =
+    if !fail then (
+      fail := false;
+      raise Not_found
+    )
+    else
+      ( fail := true;
+        find loc ?edge level path env
+      )
+end
+
+module Param = struct
+let policy = Standard_policies.default
+let epsilon_dependencies = false
+let transparent_extension_nodes = false
+let transparent_aliases = true
+end
+
+module O = Zipper.Dep_fold.Make(Failing_env)(Param)
 
 let () =
   List.iter Format_tags.enable Format.[std_formatter;err_formatter]
@@ -36,19 +58,18 @@ let () =
     match res with
     | Error _ -> Format.eprintf "Error at parsing.@."; exit 2
     | Ok x -> x in
-  let param = Transforms.{
-      policy = Standard_policies.default;
-      epsilon_dependencies = false;
-      transparent_extension_nodes = false;
-      transparent_aliases = true
-    } in
   let env =   Envt.start ~open_approximation:true
     ~libs:[]
     ~namespace:[]
     ~implicits:[["Stdlib"], Bundle.stdlib ]
     Module.Dict.empty in
-  let res = O.next param env (O.initial m2l) ~pkg:(Paths.Pkg.local file) in
-  match res with
-  | Error _ -> Format.printf "Error: unfinished outlining.@."; exit 2
-  | Ok (_sig, deps) ->
-    pp file name deps
+  let pkg = (Paths.Pkg.local file) in
+  let rec loop guard res = match O.next env res ~pkg with
+    | Error zipper ->
+      if guard = 0 then
+        (Format.printf "Error: unfinished outlining.@."; exit 2)
+      else
+        loop (guard-1) zipper
+    | Ok (_sig, deps) -> deps in
+  let deps = loop 1_000_000 (O.initial m2l) in
+  pp file name deps

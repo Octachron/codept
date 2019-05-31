@@ -24,7 +24,7 @@ end
 let () = Sys.chdir ".."
 let pwd = Sys.getcwd ()
 let codept =  pwd ^ "/full/codept.exe"
-let zip_test = pwd ^ "/zipper_test/test.exe"
+let zip_test = pwd ^ "/step_by_step.exe"
 let () = Sys.chdir "../../tests/"
 
 
@@ -162,7 +162,7 @@ let prod x y = List.flatten
     (List.map (fun x -> List.map (fun y -> x,y) y) x)
 
 let cases =
-  let variants = [full_variant; (*; zip_variant*)] in
+  let variants = [full_variant; zip_variant] in
   let is_source x =
     Filename.check_suffix x "ml" || Filename.check_suffix x "mli" in
   let all =
