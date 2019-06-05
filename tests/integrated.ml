@@ -85,17 +85,25 @@ let (%=%) x y =
        ) in
   check x 0 y 0
 
-let full_variant x =
-  codept, [| "codept"; "-nested"; "-expand-deps"; "-no-alias-deps"; "-deps"; "-k"; x |]
+type attr =
+  | If of Version.t
+  | Broken
+  | Self_cycle
 
-let zip_variant x = zip_test, [|"zip_test"; x|]
+let full_variant =
+  (fun x -> codept, [| "codept"; "-nested"; "-expand-deps"; "-no-alias-deps"; "-deps"; "-k"; x |]),
+  (fun _ -> true)
 
-let run (variant,case) =
-  let out, inp = Unix.pipe () in
-  let pid =
-    let main, args = variant case in
-    Unix.create_process main args Unix.stdin inp inp in
-  case, pid, out
+let zip_variant =
+  (fun x -> zip_test, [|"zip_test"; x|]),
+  (function Broken | Self_cycle -> false | _ -> true)
+
+let run ((variant,_filter),(case,_attrs)) =
+    let out, inp = Unix.pipe () in
+    let pid =
+      let main, args = variant case in
+      Unix.create_process main args Unix.stdin inp inp in
+    case, pid, out
 
 let read_all =
   let len = 1024 in
@@ -141,7 +149,7 @@ let red ppf s = Format.fprintf ppf "\x1b[31m%s\x1b[0m" s
 
 let dir x =
   let variant = full_variant in
-  let _, pid, out = run (variant,x) in
+  let _, pid, out = run (variant, (x,[])) in
   match snd (Unix.waitpid [] pid) with
   | WEXITED (0|2) ->
     let s = read_all out in
@@ -152,15 +160,47 @@ let dir x =
       Format.printf "[%s]:@ %a@[<v>%a@]@." x red "failure" diff (s,ref)
   | e -> error e x
 
-let filter_case x =
+let extract_attribute x =
   let f = open_in x in
+  let rec loop l =
+    try
+      let nl = input_line f in
+      try
+        let att = Scanf.sscanf nl "[%@%@%@%s@]" (fun x -> x) in
+        loop (att :: l)
+      with
+      | Scanf.Scan_failure _ -> loop l
+    with End_of_file -> l in
+  let l = loop [] in
+  close_in f;
+  l
+
+let parse_if s =
   try
-    let v =
-      Scanf.bscanf (Scanf.Scanning.from_channel f) "[@@@if %d.%02d]"
-        (fun major minor -> {Version.major;minor}) in
-    close_in f;
+    Scanf.sscanf s "if %d.%02d" (fun x y -> Some(If{major=x;minor=y}))
+  with Scanf.Scan_failure _ -> None
+
+let parse_other = function
+  | "broken" -> Some Broken
+  | "cycle" -> Some Self_cycle
+  | _ -> None
+
+let parse l x = match parse_if x with
+  | Some x -> x :: l
+  | None -> match parse_other x with
+    | Some x -> x :: l
+    | None -> l
+
+let parse_all x = List.fold_left parse [] @@ extract_attribute x
+
+let if' = function If _ -> true | _ -> false
+let find_opt f l = try Some (List.find f l) with Not_found -> None
+
+let filter_case attrs =
+  match find_opt if' attrs with
+  | Some If v ->
     Version.v >= v
-  with Scanf.Scan_failure _ | End_of_file -> close_in f; true
+  | _ -> true
 
 let prod x y = List.flatten
     (List.map (fun x -> List.map (fun y -> x,y) y) x)
@@ -170,11 +210,14 @@ let cases =
   let is_source x =
     Filename.check_suffix x "ml" || Filename.check_suffix x "mli" in
   let all =
-    List.filter filter_case
+    List.filter (fun (_,attrs) -> filter_case attrs)
+    @@ List.map (fun x -> x, parse_all x )
     @@ List.map (fun x -> "cases/" ^ x )
     @@ List.filter is_source
     @@ Array.to_list @@ Sys.readdir "cases" in
-  let all = prod variants all in
+  let all =
+    List.filter (fun ((_,filter), (_,attrs)) -> List.for_all filter attrs)
+      @@ prod variants all in
   let post (name, _, x) =
     let s = read_all x in
     let ref = reference (refname name) in
