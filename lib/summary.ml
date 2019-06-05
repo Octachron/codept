@@ -75,10 +75,7 @@ let pp_view ppf view =
   Module.Sig.pp ppf view
 
 let pp ppf x = Pp.fp ppf "@[[@,%a@,]@]"
-    pp_view x.defined;
-  if not @@ View.is_empty @@ only_visible x then
-    Pp.fp ppf "@,in scope:@[@,[%a@,]@]"
-      pp_view x.visible
+    pp_view x.visible
 
 let sch = let open Schematic in
   custom ["Summary"; "t"]

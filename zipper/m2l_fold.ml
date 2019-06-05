@@ -477,7 +477,7 @@ module Make(F:fold)(Env:Outliner.envt) = struct
     let loc = v.Sk.loc in
     match dual_resolve ~param ~state ~path:z.path v with
     | Error _ -> Error z
-    | Ok x -> self_restart ~param state @@ match z.path with
+    | Ok x -> match z.path with
       | Me Ident :: rest ->
         restart_me ~param ~state ~loc rest (both Sk.ident F.me_ident x)
       | Me Open_me_left {left;right;diff;expr} :: path ->
@@ -496,9 +496,6 @@ module Make(F:fold)(Env:Outliner.envt) = struct
         path_expr_args ~param ~state ~loc path x F.path_expr_arg_init args >>=
         restart_path_expr ~param ~loc ~state path
       | _ -> .
-  and self_restart ~param state = function
-    | Error z -> restart ~param state z
-    | Ok _ as x -> x
   and restart_me: module_expr path -> _ = fun path ~state ~loc ~param x -> match path with
     | Expr Include :: rest ->
       restart_expr ~state ~param rest
