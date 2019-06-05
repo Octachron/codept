@@ -6,7 +6,7 @@ module S = Module.Sig
 type view = Module.signature
 type t = {
   defined: view; (** modules and module types defined in scope *)
-  visible: view; (** in scope but not defined *)
+  visible: view; (** all modules in scope: defined < visible *)
 }
 type summary = t
 
@@ -38,7 +38,7 @@ module View = struct
 
   let e = {visible = empty; defined = empty }
   let see visible = { e with visible }
-  let define defined = { e with defined }
+  let define defined = { defined; visible=defined }
 
   let pp = Module.Sig.pp
   let sch = Module.Sig.sch
@@ -52,9 +52,10 @@ let strenghen v =
 
 let defined s = s.defined
 let extend s y =
-  S.merge (S.merge s y.defined) y.visible
+  S.merge s y.visible
 
-let only_visible s = s.visible
+let only_visible s =
+  S.diff s.visible s.defined
 
 (* REMOVE ME *)
 (*
@@ -75,7 +76,7 @@ let pp_view ppf view =
 
 let pp ppf x = Pp.fp ppf "@[[@,%a@,]@]"
     pp_view x.defined;
-  if not @@ View.is_empty x.visible then
+  if not @@ View.is_empty @@ only_visible x then
     Pp.fp ppf "@,in scope:@[@,[%a@,]@]"
       pp_view x.visible
 

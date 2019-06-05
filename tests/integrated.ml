@@ -24,7 +24,7 @@ end
 let () = Sys.chdir ".."
 let pwd = Sys.getcwd ()
 let codept =  pwd ^ "/full/codept.exe"
-let zip_test = pwd ^ "/step_by_step.exe"
+let zip_test = pwd ^ "/tests/step_by_step.exe"
 let () = Sys.chdir "../../tests/"
 
 

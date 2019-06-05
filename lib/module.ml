@@ -235,6 +235,11 @@ module Dict = struct
       | x, _ -> Some x in
     Name.Map.union merge
 
+  let diff x y = Name.Map.merge ( fun _ x y -> match x, y with
+      | Some _, Some _ -> None
+      | Some _ as x, None -> x
+      | None, _ -> None
+    ) x y
 end
 
 (* TODO: Behavior with weak aliases *)
@@ -272,6 +277,12 @@ let spirit_away b =  spirit_away b true
 let sig_merge (s1:definition) (s2:definition) =
   { module_types = Name.Map.union' s1.module_types s2.module_types;
     modules = Dict.union s1.modules s2.modules }
+
+let sig_diff s1 s2 =
+  {
+    module_types = Dict.diff s1.module_types s2.module_types;
+    modules = Dict.diff s1.modules s2.modules
+  }
 
 let empty = Name.Map.empty
 let empty_sig = {modules = empty; module_types = empty }
@@ -564,6 +575,7 @@ module Sig = struct
 
   let merge x = gen_merge Def.merge x
   let weak_merge x = gen_merge Def.weak_merge x
+  let diff = gen_merge sig_diff
 
   let flatten = flatten
 

@@ -213,6 +213,9 @@ module Sig :
     (** [weak_merge x y] never redefines values in [x] *)
     val weak_merge: signature -> signature -> signature
 
+
+    val diff: signature -> signature -> signature
+
     val flatten: signature -> definition
     val is_exact: signature -> bool
 
