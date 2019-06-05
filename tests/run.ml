@@ -571,7 +571,7 @@ let result =
 
           "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic"],["List"],[]);
           "summary.mli", (
-            ["Module";"Paths";"Schematic"],
+            ["Module";"Paths";"Schematic"; "Pp"],
             ["Format"],
             [] );
           "summary.ml", (
