@@ -40,6 +40,8 @@ module View = struct
   let see visible = { e with visible }
   let define defined = { e with defined }
 
+  let pp = Module.Sig.pp
+  let sch = Module.Sig.sch
 end
 
 let empty = View.e
@@ -48,7 +50,6 @@ let strenghen v =
     visible = View.strenghen v.visible;
   }
 
-let peek x = x
 let defined s = s.defined
 let extend s y =
   S.merge (S.merge s y.defined) y.visible

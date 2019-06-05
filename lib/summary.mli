@@ -20,6 +20,9 @@ module View: sig
 
   val merge : view -> view -> view
 
+  val pp: view Pp.t
+  val sch: view Schematic.t
+
 end
 
 
@@ -38,8 +41,6 @@ val extend: Module.signature -> summary -> Module.signature
 
 (** transform top level weak aliases to normal aliases *)
 val strenghen: summary -> summary
-
-val peek: view -> Module.signature
 
 val only_visible : summary -> view
 (** List modules that are visibles and not defined *)
