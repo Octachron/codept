@@ -108,7 +108,11 @@ let read_all =
       (Buffer.add_subbytes buff b 0 read; Buffer.contents buff) in
   fun f -> loop f (Buffer.create 17)
 
-let error x = Format.eprintf "error with %s@." x
+let uerror ppf = function
+  | Unix.WEXITED x -> Format.fprintf ppf "WEXITED %d" x
+  | Unix.WSTOPPED x -> Format.fprintf ppf "WSTOPPED %d" x
+  | Unix.WSIGNALED x -> Format.fprintf ppf "WSIGNALED %d" x
+let error e x = Format.eprintf "error(%a) with %s@." uerror e x
 
 let refname name =
   Filename.chop_extension name ^ ".ref"
@@ -146,7 +150,7 @@ let dir x =
       Format.printf "[%s]: %a@." x green "ok"
     else
       Format.printf "[%s]:@ %a@[<v>%a@]@." x red "failure" diff (s,ref)
-  | _ -> error x
+  | e -> error e x
 
 let filter_case x =
   let f = open_in x in
@@ -184,7 +188,7 @@ let cases =
     match Unix.waitpid [Unix.WNOHANG] pid with
     | 0, _ -> x :: l
     | _, WEXITED (0|2)  -> post x; l
-    | _ -> error case; l in
+    | _, e  -> error e case; l in
   let rec loop = function
     | [] -> ()
     | pending ->
