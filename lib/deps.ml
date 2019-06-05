@@ -9,6 +9,9 @@ module Edge = struct
       (function Normal -> C E | Epsilon -> C (S E))
       (function C E -> Normal | C S
            E -> Epsilon | _ -> . )
+  let pp ppf = function
+    | Normal -> Pp.fp ppf "N"
+    | Epsilon -> Pp.fp ppf "ε"
 
 end
 

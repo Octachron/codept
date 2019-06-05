@@ -7,6 +7,7 @@ module Edge: sig
   val max: t -> t -> t
   val min: t -> t -> t
   val sch: t Schematic.t
+  val pp: t Pp.t
 end
 
 type dep ={ path: Paths.S.t; edge:Edge.t; pkg:Paths.Pkg.t; aliases: Paths.S.set }
