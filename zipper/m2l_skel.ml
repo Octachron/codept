@@ -28,6 +28,13 @@ type  path_in_context =
     path: Paths.S.t
   }
 
+let pp ppf x =
+  Format.fprintf ppf
+    "@[<2>{@ path=%a;@ loc=%a;@ edge=%a;@ level=%a;@ ctx=@ (@[%a@]);@ }@]"
+    Paths.S.pp x.path
+    Fault.locc x.loc (Pp.opt Deps.Edge.pp) x.edge
+    Module.pp_level x.level Y.View.pp x.ctx
+
 let resolve param state ({edge; loc; level; path; _ }: path_in_context) =
   let edge =
     if not param.T.epsilon_dependencies then Some Deps.Edge.Normal

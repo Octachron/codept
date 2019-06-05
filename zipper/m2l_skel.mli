@@ -16,6 +16,8 @@ type path_in_context = {
   path : Paths.Simple.t;
 }
 
+val pp: path_in_context Pp.t
+
 val resolve :
   Transforms.param -> state -> path_in_context -> (query, unit) result
 
