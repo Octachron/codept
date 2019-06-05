@@ -33,7 +33,7 @@ let pp ppf x =
     "@[<2>{@ path=%a;@ loc=%a;@ edge=%a;@ level=%a;@ ctx=@ (@[%a@]);@ }@]"
     Paths.S.pp x.path
     Fault.locc x.loc (Pp.opt Deps.Edge.pp) x.edge
-    Module.pp_level x.level Y.View.pp x.ctx
+    Module.pp_level x.level Summary.pp x.ctx
 
 let resolve param state ({edge; loc; level; path; _ }: path_in_context) =
   let edge =
