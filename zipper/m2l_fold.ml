@@ -270,12 +270,15 @@ module Make(F:fold)(Env:Outliner.envt) = struct
   let default_edge = Option.default Deps.Edge.Normal
 
   let arg name signature = {Arg.name; signature}
-  let mk_arg var name =
-    both2 (fun s -> Sk.fn (Some(arg name s)))
+  let mk_arg var name = both2 (fun s -> Sk.fn (Some(arg name s)))
       (fun s -> var (Some(arg name s)))
-  let bind_arg name signature state =
-    Sk.State.bind_arg state {name; signature=signature.backbone },
-    Some ({ Arg.name; signature }, Sk.State.diff state)
+
+  let fn_gen sel wrap k ~param ~loc ~state ~path name body signature =
+    let state = Sk.State.bind_arg state {name; signature=signature.backbone } in
+    let arg = Some ({ Arg.name; signature }, Sk.State.diff state) in
+    k (wrap arg :: path) ~param ~loc ~state body >>| mk_arg sel name signature
+  let fn_me = fn_gen F.me_fun (fun x -> Me (Fun_right x))
+  let fn_mt = fn_gen F.mt_fun (fun x -> Mt (Fun_right x))
 
   let rec m2l ~param path left ~pkg ~state = function
     | L.[] -> Ok (user F.m2l left)
@@ -325,17 +328,15 @@ module Make(F:fold)(Env:Outliner.envt) = struct
       >>| both Sk.ident F.me_ident
     | Apply {f; x} ->
       me (Me (Apply_left x)::path) ~param ~loc ~state f >>= fun f ->
-      me (Me (Apply_right f)::path)  ~param ~loc ~state x >>| fun arg ->
-      both2 (fun f _ -> Sk.apply param loc f) (F.apply loc) f arg
+      me (Me (Apply_right f)::path)  ~param ~loc ~state x >>|
+      both2 (fun f _ -> Sk.apply param loc f) (F.apply loc) f
     | Fun {arg = None; body } ->
       me (Me (Fun_right None) :: path)  ~param ~loc ~state body
       >>| both (Sk.fn None) (F.me_fun None)
     | Fun {arg = Some {name;signature} ; body } ->
       let pth = Me (Fun_left {name; body})  :: path in
-      mt pth ~param ~loc ~state signature >>= fun signature ->
-      let state, arg = bind_arg name signature state in
-      me (Me (Fun_right arg) :: path ) ~param ~loc ~state body >>|
-      mk_arg F.me_fun name signature
+      mt pth ~param ~loc ~state signature >>=
+      fn_me me ~path ~param ~loc ~state name body
     | Constraint (mex,mty) ->
       me (Me (Constraint_left mty)::path) ~loc ~state ~param  mex >>= fun me ->
       mt (Me (Constraint_right me)::path) ~loc ~param ~state mty >>|
@@ -363,8 +364,8 @@ module Make(F:fold)(Env:Outliner.envt) = struct
       let path' = Me (Open_me_left {left; right; diff; expr}) :: path in
       resolve path' ~param ~state ~loc ~level:Module a >>= fun a ->
       let state = Sk.State.open_path ~param ~loc state a.backbone in
-      open_all_rec path expr (F.open_add a.user left)
-        ~param ~loc ~diff ~state right
+      open_all_rec path expr (F.open_add a.user left) ~param ~loc ~diff
+        ~state right
   and open_all path expr left ~state ~loc ~param =
     open_all_rec path expr left ~param ~loc ~diff:(Sk.State.diff state) ~state
   and mt path ~param ~loc ~state = function
@@ -383,10 +384,8 @@ module Make(F:fold)(Env:Outliner.envt) = struct
       >>| both (Sk.fn None) (F.mt_fun None)
     | Fun {arg = Some {Arg.name;signature}; body } ->
       let arg_path = Mt(Fun_left {name; body} )::path in
-      mt arg_path ~loc ~param ~state signature >>= fun signature ->
-      let state, arg = bind_arg name signature state in
-      mt (Mt(Fun_right arg)::path) ~param ~state ~loc body >>|
-      mk_arg F.mt_fun name signature
+      mt arg_path ~loc ~param ~state signature >>=
+      fn_mt mt ~path ~param ~state ~loc name body
     | With {body;deletions;access=a} ->
       let access_path = Mt (With_access {body;deletions})::path in
       access ~param ~pkg:(apkg loc) ~state access_path a >>= fun access ->
@@ -546,13 +545,11 @@ module Make(F:fold)(Env:Outliner.envt) = struct
       restart_expr ~state ~param path
         (both (Sk.bind_sig name) (F.bind_sig name) x)
     | Me Fun_left {name;body} :: path ->
-      let inner_state, r = bind_arg name x state in
-      me (Me(Fun_right r) :: path ) ~param ~loc ~state:inner_state body
-      >>| mk_arg F.me_fun name x >>= restart_me path ~loc ~param ~state
+      fn_me me ~path ~param ~loc ~state name body x
+      >>= restart_me path ~loc ~param ~state
     | Mt Fun_left {name;body} :: path ->
-      let inner_state,r = bind_arg name x state in
-      mt (Mt(Fun_right r) :: path ) ~loc ~state:inner_state ~param body >>|
-      mk_arg F.mt_fun name x >>= restart_mt ~loc ~param ~state path
+      fn_mt mt ~path ~loc ~state ~param name body x
+      >>= restart_mt ~loc ~param ~state path
     | Mt Fun_right (Some (arg,diff)) :: path ->
       let state = Sk.State.restart state diff in
       restart_mt ~loc ~state ~param path (mk_arg F.mt_fun arg.name arg.signature x)
