@@ -74,7 +74,7 @@ module type fold = sig
     int -> path_expr -> path_expr_args -> path_expr_args
   val path_expr_arg_init : path_expr_args
   val sig_abstract : module_type
-  val sig_include : Fault.loc -> module_type -> expr
+  val sig_include : loc:Fault.loc -> module_type -> expr
   val str : m2l -> module_expr
   val unpacked : module_expr
 
