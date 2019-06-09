@@ -14,7 +14,7 @@ module type fold = sig
  type path_expr_args
  type opens
 
-  val path : M2l_skel.query -> path
+  val path : Zipper_skeleton.query -> path
   val abstract : module_expr
   val access :  access -> access
   val access_add :

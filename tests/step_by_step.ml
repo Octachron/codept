@@ -20,7 +20,7 @@ let transparent_extension_nodes = false
 let transparent_aliases = true
 end
 
-module O = Zipper.Dep_fold.Make(Failing_env)(Param)
+module O = Dep_zipper.Make(Failing_env)(Param)
 
 let () =
   List.iter Format_tags.enable Format.[std_formatter;err_formatter]

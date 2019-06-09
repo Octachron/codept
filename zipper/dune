@@ -1,1 +1,0 @@
-(library (name zipper) (libraries codept_lib))

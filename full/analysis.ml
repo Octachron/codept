@@ -149,7 +149,7 @@ let lift p =
 
 let solve param (E((module Envt), core)) (units: _ Unit.pair) =
   (*  let module Engine = Outliner.Make(Envt)((val lift param)) in*)
-  let module Engine = Zipper.Dep_fold.Make(Envt)((val lift param)) in
+  let module Engine = Dep_zipper.Make(Envt)((val lift param)) in
   let module S = Solver.Make(Envt)((val lift param))(Engine) in
   S.solve core units
 

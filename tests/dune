@@ -1,10 +1,10 @@
 (executable (name step_by_step) (modules Step_by_step)
-  (libraries bundled zipper)
+  (libraries bundled)
 )
 
 (executable
   (name run) (modules Run)
-  (libraries unix codept_lib zipper bundled)
+  (libraries unix codept_lib bundled)
 )
 
 (executable

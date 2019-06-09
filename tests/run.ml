@@ -50,7 +50,7 @@ let start_env includes files =
 module Branch(Param:Stage.param) = struct
 
   (*  module Engine=Outliner.Make(Envt.Core)(Param)*)
-  module Engine = Zipper.Dep_fold.Make(Envt.Core)(Param)
+  module Engine = Dep_zipper.Make(Envt.Core)(Param)
   module S = Solver.Make(Envt.Core)(Param)(Engine)
   module D = Solver.Directed(Envt.Core)(Param)(Engine)
 

@@ -1,7 +1,7 @@
 (executable
   (public_name codept)
   (package codept)
-  (libraries unix codept_lib zipper bundled)
+  (libraries unix codept_lib bundled)
 )
 
 (install

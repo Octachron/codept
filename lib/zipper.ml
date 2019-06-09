@@ -27,7 +27,7 @@ module type fold = sig
   type path_expr_args
   type opens
 
-  val path : M2l_skel.query -> path
+  val path : Zipper_skeleton.query -> path
   val abstract : module_expr
   val access :  access -> access
   val access_add :
@@ -104,8 +104,8 @@ let ((>>=), (>>|)) = Ok.((>>=), (>>|))
 
 module Make(F:fold)(Env:Stage.envt) = struct
 
-  module Sk=M2l_skel.Make(Env)
-  type path = (M2l_skel.path, F.path) pair
+  module Sk=Zipper_skeleton.Make(Env)
+  type path = (Zipper_skeleton.path, F.path) pair
   type module_expr = (Sk.module_like, F.module_expr) pair
   type access = F.access
   type packed = F.packed

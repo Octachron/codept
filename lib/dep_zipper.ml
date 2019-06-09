@@ -74,7 +74,7 @@ module Pre = struct
   let values = id
  end
 
-module Outline(Env:Stage.envt) = M2l_fold.Make(Pre)(Env)
+module Outline(Env:Stage.envt) = Zipper.Make(Pre)(Env)
 
 module Default = Outline(Envt.Core)
 
