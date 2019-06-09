@@ -76,8 +76,6 @@ module Pre = struct
 
 module Outline(Env:Stage.envt) = Zipper.Make(Pre)(Env)
 
-module Default = Outline(Envt.Core)
-
 module Make(Env:Stage.envt)(Param:Stage.param):
   Stage.outliner with type envt := Env.t =
 struct

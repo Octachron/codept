@@ -342,20 +342,21 @@ module Libraries = struct
 
   let create includes =  List.map read_dir includes
 
-  module I = Outliner.Make(Core)(struct
-      let policy = Standard_policies.quiet
-      let transparent_aliases = false
-      (* we are not recording anything *)
-      let transparent_extension_nodes = false
-      (* extension nodes should not appear in cmi *)
-      let epsilon_dependencies = false
-      (* do no try epsilon dependencies yet *)
-    end)
+  module I = Dep_zipper.Outline(Core)
+  let param = {
+    Transforms.policy = Standard_policies.quiet;
+    transparent_aliases = false;
+    (* we are not recording anything *)
+    transparent_extension_nodes = false;
+    (* extension nodes should not appear in cmi *)
+    epsilon_dependencies = false;
+    (* do no try epsilon dependencies yet *)
+  }
 
   let rec track source stack = match stack with
     | [] -> ()
     | (name, path, code) :: q ->
-      let more = I.next ~pkg:path source.resolved code in
+      let more = I.next ~pkg:path param source.resolved code in
       match more with
       | Error code ->
         begin match I.block code with

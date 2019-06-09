@@ -583,7 +583,7 @@ let result =
             [], []);
           "envt.ml", (
             ["Cmi"; "Deps"; "Summary"; "Transforms";
-             "Fault"; "Outliner"; "Module"; "Name"; "Namespaced"; "Paths";
+             "Fault"; "Dep_zipper"; "Module"; "Name"; "Namespaced"; "Paths";
              "Standard_faults";"Standard_policies";"Option";"Pp"],
             ["Array"; "Filename";"List";"Sys"; "Format"],
             []);
@@ -683,7 +683,26 @@ let result =
           "stage.mli", (
             ["Deps"; "Fault"; "Loc"; "M2l";"Module"; "Namespaced"; "Paths";
              "Pp"; "Summary"; "Transforms"]
-          ,["Format"],[])
+          ,["Format"],[]);
+          "dep_zipper.ml", (
+            ["Deps"; "Module"; "Stage"; "Transforms"; "Zipper"]
+          ,[],[]);
+          "zipper.ml", (
+            ["Deps"; "Fault"; "Loc"; "M2l"; "Module"; "Mresult"; "Name";
+             "Option"; "Paths"; "Stage";"Zipper_skeleton"]
+          ,["List"],[]);
+          "zipper.mli", (
+            ["Deps"; "Fault"; "Module"; "Name"; "Paths"; "Stage";
+             "Zipper_skeleton"]
+          ,[],[]);
+          "zipper_skeleton.ml", (
+            ["Deps"; "Fault"; "M2l"; "Module"; "Namespaced"; "Paths"; "Pp";
+             "Stage"; "Standard_faults"; "Summary"; "Transforms"]
+          ,["Format"; "List"],[]);
+          "zipper_skeleton.mli", (
+            ["Deps"; "Fault"; "M2l"; "Module"; "Paths"; "Pp"; "Stage";
+             "Summary"; "Transforms"]
+          ,[],[]);
         ])
       )
     )
