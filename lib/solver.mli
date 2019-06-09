@@ -51,9 +51,9 @@ val fault: (fault * Failure.alias_resolver) Fault.info
     name resolution and dependendy tracking and
     the parameter module [Param] *)
 module Make
-    (Envt:Outliner.envt)
-    (Param : Outliner.param)
-    (Eval: Outliner.s with type envt := Envt.t):
+    (Envt:Stage.envt)
+    (Param : Stage.param)
+    (Eval: Stage.outliner with type envt := Envt.t):
   sig
 
     type state = { resolved: Unit.r Paths.P.map;
@@ -108,9 +108,9 @@ module Make
 
 (** Alternative solver *)
 module Directed
-    (Envt:Outliner.envt)
-    (Param : Outliner.param)
-    (Eval: Outliner.s with type envt := Envt.t):
+    (Envt:Stage.envt)
+    (Param : Stage.param)
+    (Eval: Stage.outliner with type envt := Envt.t):
 sig
   type state
 

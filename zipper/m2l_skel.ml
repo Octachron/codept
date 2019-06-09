@@ -14,7 +14,7 @@ let raisef param f t = fault param (Fault.emit f t)
 type path = T.answer
 type query = path T.query_result
 
-module Make(Env:Outliner.envt) = struct
+module Make(Env:Stage.envt) = struct
 type module_like = P.t
 type m2l = S.t
 type state_diff = Y.t

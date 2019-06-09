@@ -74,12 +74,12 @@ module Pre = struct
   let values = id
  end
 
-module Outline(Env:Outliner.envt) = M2l_fold.Make(Pre)(Env)
+module Outline(Env:Stage.envt) = M2l_fold.Make(Pre)(Env)
 
 module Default = Outline(Envt.Core)
 
-module Make(Env:Outliner.envt)(Param:Outliner.param):
-  Outliner.s with type envt := Env.t =
+module Make(Env:Stage.envt)(Param:Stage.param):
+  Stage.outliner with type envt := Env.t =
 struct
   let param = let open Param in
     { Transforms.transparent_aliases; policy;

@@ -6,12 +6,8 @@ type module_provider = Fault.loc -> Name.t -> Module.t Transforms.query_result o
 
 module Core :
 sig
-  type t = {
-    top: Module.Dict.t;
-    current: context;
-    providers: module_provider list;
-  }
-  include Outliner.envt with type t := t
+  type t
+  include Stage.envt with type t := t
   val empty: t
   val start: Module.definition -> t
 end

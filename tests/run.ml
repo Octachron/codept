@@ -47,7 +47,7 @@ let start_env includes files =
     ~implicits:[["Stdlib"], Bundle.stdlib ]
     Module.Dict.empty
 
-module Branch(Param:Outliner.param) = struct
+module Branch(Param:Stage.param) = struct
 
   (*  module Engine=Outliner.Make(Envt.Core)(Param)*)
   module Engine = Zipper.Dep_fold.Make(Envt.Core)(Param)
@@ -578,7 +578,7 @@ let result =
             ["Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
             ["List"], []);
           "envt.mli", (
-            ["Fault"; "Module";"Name"; "Namespaced"; "Outliner"; "Paths";
+            ["Fault"; "Module";"Name"; "Namespaced"; "Stage"; "Paths";
              "Transforms"],
             [], []);
           "envt.ml", (
@@ -587,14 +587,11 @@ let result =
              "Standard_faults";"Standard_policies";"Option";"Pp"],
             ["Array"; "Filename";"List";"Sys"; "Format"],
             []);
-          "outliner.mli", (
-            ["Deps"; "Fault"; "Module"; "Namespaced"; "Paths";"M2l"; "Summary";
-            "Pp"; "Loc"; "Transforms"],
-            ["Format"],[]);
+          "outliner.mli", (["Stage"], [],[]);
           "outliner.ml", (
             ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Namespaced";
              "Option"; "Paths"; "Mresult"; "Fault"; "Standard_faults";
-             "Deps"; "With_deps"; "Transforms"; "Pp" ]
+             "Deps"; "With_deps"; "Transforms"; "Stage" ]
           ,["List";"Format"],[]);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";
                        "Schematic" ],
@@ -649,10 +646,10 @@ let result =
                            [] );
           "solver.mli", (["Fault"; "Loc"; "Unit";
                           "Namespaced"; "Read";
-                          "Summary"; "Outliner"; "Paths"],
+                          "Summary"; "Stage"; "Paths"],
                          ["Format"],[]);
           "solver.ml", (
-            ["Approx_parser"; "Deps"; "Summary"; "Outliner"; "Loc";
+            ["Approx_parser"; "Deps"; "Summary"; "Stage"; "Loc";
              "M2l"; "Module"; "Mresult"; "Namespaced";
              "Option"; "Pp"; "Paths"; "Read"; "Unit"; "Fault";
              "Standard_faults"],
@@ -683,6 +680,10 @@ let result =
             ["Deps"; "Fault"; "Module"; "Name"; "Paths";"Standard_faults";
              "Summary"]
           ,[],[]);
+          "stage.mli", (
+            ["Deps"; "Fault"; "Loc"; "M2l";"Module"; "Namespaced"; "Paths";
+             "Pp"; "Summary"; "Transforms"]
+          ,["Format"],[])
         ])
       )
     )

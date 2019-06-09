@@ -102,7 +102,7 @@ module Ok = Mresult.Ok
 
 let ((>>=), (>>|)) = Ok.((>>=), (>>|))
 
-module Make(F:fold)(Env:Outliner.envt) = struct
+module Make(F:fold)(Env:Stage.envt) = struct
 
   module Sk=M2l_skel.Make(Env)
   type path = (M2l_skel.path, F.path) pair
@@ -682,21 +682,4 @@ module Make(F:fold)(Env:Outliner.envt) = struct
       let ctx = Sk.State.rec_patch y focus.ctx in
       let focus = { focus with ctx } in
       On_going { x with focus }
-end
-
-
-module type S = sig
-  type envt
-  type on_going
-  type final
-  val initial: M2l.t -> on_going
-  val next:
-    pkg:Paths.P.t -> Transforms.param -> envt -> on_going
-    -> (final, on_going) result
-
-  val block: on_going -> (Summary.t * Paths.S.t) Loc.ext option
-
-  val recursive_patching: on_going -> Summary.t -> on_going
-
-  val pp: on_going Pp.t
 end

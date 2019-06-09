@@ -275,8 +275,8 @@ let expand_and_add expand  =
     fun resolved (unit:Unit.r) ->
       Paths.P.Map.add unit.src unit resolved
 
-module Make(Envt:Outliner.envt)(Param:Outliner.param)
-    (Eval: Outliner.s with type envt := Envt.t) =
+module Make(Envt:Stage.envt)(Param:Stage.param)
+    (Eval: Stage.outliner with type envt := Envt.t) =
 struct
   open Unit
 
@@ -403,8 +403,8 @@ end
 
 
 
-module Directed(Envt:Outliner.envt)(Param:Outliner.param)
-    (Eval: Outliner.s with type envt := Envt.t) =
+module Directed(Envt:Stage.envt)(Param:Stage.param)
+    (Eval: Stage.outliner with type envt := Envt.t) =
 struct
   open Unit
 

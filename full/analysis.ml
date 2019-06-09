@@ -111,7 +111,7 @@ let base_sign io signatures =
   Name.Map.union' m io.Io.env
 
 (** Environment *)
-type 'a envt_kind = (module Outliner.envt with type t = 'a)
+type 'a envt_kind = (module Stage.envt with type t = 'a)
 type envt = E: 'a envt_kind * 'a -> envt
 
 let start_env io param libs signatures fileset =
@@ -145,7 +145,7 @@ let lift p =
     let transparent_extension_nodes = p.transparent_extension_nodes
     let transparent_aliases = p.transparent_aliases
   end
-  : Outliner.param )
+  : Stage.param )
 
 let solve param (E((module Envt), core)) (units: _ Unit.pair) =
   (*  let module Engine = Outliner.Make(Envt)((val lift param)) in*)

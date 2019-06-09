@@ -84,24 +84,7 @@ module type fold = sig
 
 end
 
-module type S = sig
-  type envt
-  type on_going
-  type final
-  val initial: M2l.t -> on_going
-  val next:
-    pkg:Paths.P.t -> Transforms.param -> envt -> on_going
-    -> (final, on_going) result
-
-  val block: on_going -> (Summary.t * Paths.S.t) Loc.ext option
-
-  val recursive_patching: on_going -> Summary.t -> on_going
-
-  val pp: on_going Pp.t
-end
-
-module Make(X:fold)(Env:Outliner.envt):
-  S with type envt := Env.t
-     and type final := Module.Sig.t * X.m2l
-
-
+module Make(X:fold)(Env:Stage.envt):
+  Stage.generic_outliner with
+  type envt := Env.t and type final := X.m2l
+  and type 'a with_param := 'a Stage.param

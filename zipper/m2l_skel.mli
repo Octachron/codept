@@ -2,7 +2,7 @@ type path = Transforms.answer
 type query = path Transforms.query_result
 
 
-module Make(Env:Outliner.envt): sig
+module Make(Env:Stage.envt): sig
 type module_like
 type m2l
 type state_diff
