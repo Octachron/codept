@@ -270,7 +270,8 @@ module Make(F:fold)(Env:Outliner.envt) = struct
     let mk_arg var name = both2 (fun s -> Sk.fn (Some(arg name s)))
         (fun s -> var (Some(arg name s)))
     let m2l = user F.m2l
-    let m2l_add loc = both2 Sk.m2l_add (F.m2l_add loc)
+    let m2l_add state loc r left =
+      Sk.State.merge state r.backbone, both2 Sk.m2l_add (F.m2l_add loc) r left
     let expr_open param loc = both  (Sk.opened param ~loc) (F.expr_open ~loc)
     let gen_include var param loc = both (Sk.included param loc) (var ~loc)
     let expr_include = gen_include F.expr_include
@@ -329,8 +330,7 @@ module Make(F:fold)(Env:Outliner.envt) = struct
       expr ~param ~loc ~state
         (M2l {left;loc;state=Sk.State.diff state;right} :: path)  a
       >>= fun r ->
-      let state = Sk.State.merge state r.backbone in
-      let left = D.m2l_add loc r left in
+      let state, left = D.m2l_add state loc r left in
       m2l ~param path left  ~pkg ~state right
   and m2l_start ~param path ~pkg ~state =
     m2l ~param path {backbone=Sk.m2l_init; user=F.m2l_init} ~pkg ~state
@@ -568,8 +568,7 @@ module Make(F:fold)(Env:Outliner.envt) = struct
     fun path ~state ~param x ->
     match path with
     | M2l {left;loc;right; state=restart } :: path ->
-      let state = Sk.State.merge state x.backbone in
-      let left = D.m2l_add loc x left in
+      let state, left = D.m2l_add state loc x left in
       m2l path left ~pkg:(apkg loc) ~param ~state right >>=
       restart_m2l ~param ~loc ~state:(Sk.State.restart state restart) path
     | _ -> .
