@@ -14,12 +14,7 @@ let raisef param f t = fault param (Fault.emit f t)
 type path = T.answer
 type query = path T.query_result
 
-module Make(Env:Stage.envt) = struct
-type module_like = P.t
-type m2l = S.t
 type state_diff = Y.t
-type state = { initial:Env.t; diff:state_diff; current:Env.t }
-
 type  path_in_context =
   { loc: Fault.loc;
     edge:Deps.Edge.t option;
@@ -28,6 +23,9 @@ type  path_in_context =
     path: Paths.S.t
   }
 
+type module_like = P.t
+type m2l = S.t
+
 let pp ppf x =
   Format.fprintf ppf
     "@[<2>{@ path=%a;@ loc=%a;@ edge=%a;@ level=%a;@ ctx=@ (@[%a@]);@ }@]"
@@ -35,15 +33,6 @@ let pp ppf x =
     Fault.locc x.loc (Pp.opt Deps.Edge.pp) x.edge
     Module.pp_level x.level Summary.pp x.ctx
 
-let resolve param state ({edge; loc; level; path; _ }: path_in_context) =
-  let edge =
-    if not param.T.epsilon_dependencies then Some Deps.Edge.Normal
-    else edge in
-  match Env.find ?edge loc level path state.current with
-  | exception Not_found -> Error ()
-  | x ->
-    List.iter (fault param) x.msgs;
-    Ok x
 
 let path x = x.T.main
 
@@ -96,7 +85,10 @@ let empty_diff = Y.empty
 
 let final x = x
 
-module State = struct
+
+module State(Env:Stage.envt) = struct
+  type env = Env.t
+  type state = { initial:env; diff:state_diff; current:env }
   let merge state diff =
     { state with current = Env.extend state.current diff;
                  diff = Y.merge state.diff diff }
@@ -136,7 +128,36 @@ module State = struct
   let rec_patch y diff = Y.merge diff y
 
   let peek x = x
-
+  let resolve param state
+      ({edge; loc; level; path; _ }: path_in_context) =
+    let edge =
+      if not param.T.epsilon_dependencies then Some Deps.Edge.Normal
+      else edge in
+    match Env.find ?edge loc level path state.current with
+    | exception Not_found -> Error ()
+    | x ->
+      List.iter (fault param) x.msgs;
+      Ok x
 end
 
+module type state = sig
+  type state
+  type env
+  val resolve :
+  Transforms.param -> state -> path_in_context -> (query, unit) result
+  val merge : state -> state_diff -> state
+  val bind_arg : state -> module_like Module.Arg.t -> state
+  val is_alias : Transforms.param -> state -> Paths.Simple.t -> bool
+  val restart : state -> state_diff -> state
+  val bind_alias : state -> string -> Paths.Simple.t -> state_diff
+  val diff : state -> state_diff
+  val open_path :
+    param:Transforms.param -> loc:Fault.loc -> state -> path -> state
+  val from_env: ?diff:state_diff -> env -> state
+  val rec_approximate: state -> _ M2l.bind list -> state
+
+  val rec_patch: Summary.t -> state_diff -> state_diff
+
+  (** to be deleted ?*)
+  val peek: state_diff -> Summary.t
 end

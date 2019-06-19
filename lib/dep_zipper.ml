@@ -74,7 +74,7 @@ module Pre = struct
   let values = id
  end
 
-module Outline(Env:Stage.envt) = Zipper.Make(Pre)(Env)
+module Outline(Env:Stage.envt) = Zipper.Fold.Make(Pre)(Env)
 
 module Make(Env:Stage.envt)(Param:Stage.param):
   Stage.outliner with type envt := Env.t =

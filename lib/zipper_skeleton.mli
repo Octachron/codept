@@ -1,12 +1,9 @@
 type path = Transforms.answer
 type query = path Transforms.query_result
 
-
-module Make(Env:Stage.envt): sig
 type module_like
 type m2l
 type state_diff
-type state
 
 type path_in_context = {
   loc : Fault.loc;
@@ -18,8 +15,6 @@ type path_in_context = {
 
 val pp: path_in_context Pp.t
 
-val resolve :
-  Transforms.param -> state -> path_in_context -> (query, unit) result
 
 val path: query -> path
 
@@ -50,8 +45,11 @@ val bind_sig : string -> module_like -> state_diff
 val opened : Transforms.param -> loc:Fault.loc -> module_like -> state_diff
 val empty_diff: state_diff
 
-
-module State: sig
+module type state = sig
+  type state
+  type env
+  val resolve :
+  Transforms.param -> state -> path_in_context -> (query, unit) result
   val merge : state -> state_diff -> state
   val bind_arg : state -> module_like Module.Arg.t -> state
   val is_alias : Transforms.param -> state -> Paths.Simple.t -> bool
@@ -60,7 +58,7 @@ module State: sig
   val diff : state -> state_diff
   val open_path :
     param:Transforms.param -> loc:Fault.loc -> state -> path -> state
-  val from_env: ?diff:state_diff -> Env.t -> state
+  val from_env: ?diff:state_diff -> env -> state
   val rec_approximate: state -> _ M2l.bind list -> state
 
   val rec_patch: Summary.t -> state_diff -> state_diff
@@ -69,4 +67,4 @@ module State: sig
   val peek: state_diff -> Summary.t
 end
 
-end
+module State(Env:Stage.envt): state with type env = Env.t
