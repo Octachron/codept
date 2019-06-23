@@ -95,22 +95,20 @@ module type fold = sig
 
 end
 
-module Zsk = Zipper_skeleton
-
 module type s = sig
   module T : tree
   module Abbrevs: sig
     type path = (Zipper_skeleton.path, T.path) pair
-    type module_expr = (Zsk.module_like, T.module_expr) pair
+    type module_expr = (Zipper_skeleton.module_like, T.module_expr) pair
     type access = T.access
     type packed = T.packed
-    type module_type = (Zsk.module_like, T.module_type) pair
-    type m2l = (Zsk.m2l, T.m2l) pair
+    type module_type = (Zipper_skeleton.module_like, T.module_type) pair
+    type m2l = (Zipper_skeleton.m2l, T.m2l) pair
     type values = T.values
-    type bind_rec = (Zsk.state_diff, T.bind_rec) pair
+    type bind_rec = (Zipper_skeleton.state_diff, T.bind_rec) pair
     type path_expr_args = T.path_expr_args
     type opens = T.opens
-    type path_in_context = Zsk.path_in_context
+    type path_in_context = Zipper_skeleton.path_in_context
   end
   open Abbrevs
 
@@ -125,7 +123,7 @@ module type s = sig
     | Bind_sig: Name.t -> M2l.module_type expr
     | Bind_rec_sig:
         {
-          diff: Zsk.state_diff;
+          diff: Zipper_skeleton.state_diff;
           left: (Name.t * T.module_type * M2l.module_expr) list;
           name: Name.t;
           expr: M2l.module_expr;
@@ -184,7 +182,8 @@ module type s = sig
     | Apply_right: module_expr -> M2l.module_expr me
     | Fun_left: {name:string; body:M2l.module_expr} -> M2l.module_type me
     | Fun_right:
-        (module_type Arg.t * Zsk.state_diff ) option -> M2l.module_expr me
+        (module_type Arg.t * Zipper_skeleton.state_diff ) option
+        -> M2l.module_expr me
     | Constraint_left: M2l.module_type -> M2l.module_expr me
     | Constraint_right: module_expr -> M2l.module_type me
     | Str: M2l.m2l me
@@ -193,18 +192,18 @@ module type s = sig
     | Open_me_left:
         { left: opens;
           right:Paths.S.t list;
-          diff:Zsk.state_diff;
+          diff:Zipper_skeleton.state_diff;
           expr:M2l.module_expr
         } -> path_in_context me
     | Open_me_right:
-        {opens:opens; state:Zsk.state_diff} -> M2l.module_expr me
+        {opens:opens; state:Zipper_skeleton.state_diff} -> M2l.module_expr me
 
   type 'focus mt =
     | Alias: path_in_context mt
     | Ident: Paths.Expr.t mt
     | Sig: M2l.m2l mt
     | Fun_left: {name:string; body:M2l.module_type} -> M2l.module_type mt
-    | Fun_right: (module_type Arg.t * Zsk.state_diff) option
+    | Fun_right: (module_type Arg.t * Zipper_skeleton.state_diff) option
         -> M2l.module_type mt
     | With_access:
         {body:M2l.module_type; deletions: Paths.S.set} -> waccess mt
@@ -220,7 +219,7 @@ module type s = sig
   type ('elt,'from) elt =
     | M2l: {left:m2l;
             loc:Fault.loc;
-            state:Zsk.state_diff;
+            state:Zipper_skeleton.state_diff;
             right:M2l.m2l}
         -> (M2l.expression, M2l.m2l) elt
     | Expr: 'elt expr -> ('elt,M2l.expression) elt
