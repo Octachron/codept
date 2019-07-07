@@ -465,13 +465,19 @@ let rec pp_expression ppf = function
   | Bind_rec bs ->
     Pp.fp ppf "rec@[[ %a ]@]"
       (Pp.(list ~sep:(s "@, and @,")) @@ pp_bind ) bs
-and pp_annot ppf {access; values; packed} =
+
+and pp_packed ppf packed =
   let sep = Pp.s ";@ " in
   let post = Pp.s "@]" in
+  Pp.(opt_list ~sep ~pre:(s "@,@[<2>packed: ") ~post pp_opaque) ppf packed
+and pp_values ppf values =
+  Pp.(opt_list ~sep:(s ";@ ") ~pre:(s "@[<2>values: ") ~post:(s "@]")
+        pp_simple) ppf values
+and pp_annot ppf {access; values; packed} =
   Pp.fp ppf "%a%a%a"
     pp_access access
-    Pp.(opt_list ~sep ~pre:(s "@[<2>values: ") ~post pp_simple) values
-    Pp.(opt_list ~sep ~pre:(s "@,@[<2>packed: ") ~post pp_opaque) packed
+    pp_packed packed
+    pp_values values
 and pp_access ppf s =  if Paths.S.Map.cardinal s = 0 then () else
     Pp.fp ppf "@[<2>access: {%a}@]@," (Pp.list pp_access_elt) (Paths.S.Map.bindings s)
 and pp_access_elt ppf (name, (loc,edge)) =

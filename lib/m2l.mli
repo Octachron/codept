@@ -234,3 +234,6 @@ val pp_expression: Format.formatter -> expression -> unit
 val pp_annot: Format.formatter -> annotation -> unit
 val pp_me: Format.formatter -> module_expr -> unit
 val pp_mt: Format.formatter -> module_type -> unit
+val pp_access: access Pp.t
+val pp_packed: module_expr Loc.ext list Pp.t
+val pp_values: m2l list Pp.t
