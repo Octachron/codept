@@ -76,9 +76,15 @@ end
 
 let ((>>=), (>>|)) = Ok.((>>=), (>>|))
 
+module  Zpath(F:Zdef.fold): Zdef.s with module T = F = struct
+  module rec M :  Zdef.s with module T := F = M
+  include M
+  module T = F
+end
+
 module Make(F:Zdef.fold)(Env:Stage.envt) = struct
 
-  module rec Path: Zdef.s with module T := F = Path
+  module Path = Zpath(F)
   open Path
   type 'a path = 'a Path.t
   module State=Zipper_skeleton.State(Env)
@@ -457,7 +463,11 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       let f = x.focus in
       Some {Loc.loc = snd f.loc; data= State.peek f.ctx, f.path }
 
-  let pp _ppf = assert false
+
+  module Pp = Zipper_pp.Make(Path)
+  let pp ppf = function
+    | Initial m2l -> M2l.pp ppf m2l
+    | On_going g -> Pp.pp ppf g
 
   let recursive_patching ongoing y = match ongoing with
     | Initial _ as x -> x

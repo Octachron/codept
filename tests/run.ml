@@ -594,7 +594,7 @@ let result =
              "Deps"; "With_deps"; "Transforms"; "Stage" ]
           ,["List";"Format"],[]);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";
-                       "Schematic" ],
+                       "Schematic"; "Pp" ],
                       ["Format"],[]);
           "m2l.ml", (["Loc"; "Deps"; "Module"; "Mresult"; "Name";
                       "Option";"Summary";"Paths"; "Pp"; "Schematic" ],
@@ -689,8 +689,12 @@ let result =
           ,[],[]);
           "zipper_fold.ml", (
             ["Deps"; "Loc"; "M2l"; "Module"; "Mresult";
-             "Option"; "Paths"; "Stage";"Zipper_skeleton"; "Zipper_def"]
+             "Option"; "Paths"; "Stage";"Zipper_skeleton"; "Zipper_def";
+             "Zipper_pp"]
           ,["List"],[]);
+          "zipper_pp.ml", (
+            ["M2l"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
+          ,["Format"],[]);
           "zipper_fold.mli", (["Stage";"Zipper_def"], [], []);
           "zipper.ml", ([],[],[]);
           "zipper_def.ml", (

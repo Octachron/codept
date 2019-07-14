@@ -2,9 +2,8 @@ module Make(Def:Zipper_def.s) = struct
   open Def
   module Sk = Zipper_skeleton
   let path p ppf = Paths.S.pp ppf p
-  let pp_path_expr m ppf = Paths.Expr.pp ppf m
-  let leaf p = path p.Zipper_skeleton.path
-  (*  let (>>) f g = fun ppf -> f ppf; g ppf*)
+  let pp_path_expr m ppf = Format.fprintf ppf "%a?" Paths.Expr.pp m
+  let leaf p ppf = Format.fprintf ppf "%t?" (path p.Zipper_skeleton.path)
   let dlist elt l ppf = Pp.list (fun ppf x -> elt x ppf) ppf l
   let a (x,_) = path x
   let rec zipper (z: Sk.path_in_context zipper)  =
