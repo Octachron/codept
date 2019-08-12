@@ -5,7 +5,6 @@ all:
 	dune build @install
 
 
-include Makefile.config
 S=$(abspath .)
 
 make-all:
