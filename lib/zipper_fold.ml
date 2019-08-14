@@ -464,7 +464,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       Some {Loc.loc = snd f.loc; data= State.peek f.ctx, f.path }
 
 
-  module Pp = Zipper_pp.Make(Path)
+  module Pp = Zipper_pp.Make(Path)(Zipper_pp.Opaque(Path))
   let pp ppf = function
     | Initial m2l -> M2l.pp ppf m2l
     | On_going g -> Pp.pp ppf g
