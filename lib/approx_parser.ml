@@ -17,6 +17,10 @@
    dependencies from this AST will gives us an upper bound of wished dependencies.
 *)
 
+module Annot = M2l.Annot
+module Normalize = M2l.Normalize
+module M2l = M2l.Def
+
 
 let (@%) opt_name l =
   let minor x = M2l.Minor x in
@@ -125,16 +129,16 @@ and (!) f x = try f x with Lexer.Error _ ->  Loc.nowhere []
 
 
 let lower lex =
-  let r = snd @@ M2l.Normalize.all @@ inf_start lex in
+  let r = snd @@ Normalize.all @@ inf_start lex in
   stack := [];
   r
 
 let to_upper_bound m2l =
   let union x y =
-    Loc.{data = M2l.Annot.Access.merge x.data y.data; loc = merge x.loc y.loc } in
+    Loc.{data = Annot.Access.merge x.data y.data; loc = merge x.loc y.loc } in
   let add x s  =
     Loc.{ data =
-            Paths.S.Map.add x.data (x.loc, Deps.Edge.Normal) s.data;
+            M2l.Ident_map.add x.data (x.loc, Deps.Edge.Normal) s.data;
           loc = merge x.loc s.loc } in
   let open M2l in
   let open Loc in
@@ -147,7 +151,7 @@ let to_upper_bound m2l =
         | Bind {expr = Ident path; _}
         | Include (Ident path) -> add (locate path) s
         | _ -> s
-      ) (Loc.nowhere M2l.Annot.Access.empty) m2l in
+      ) (Loc.nowhere Annot.Access.empty) m2l in
   [Loc.fmap (fun access -> Minor { Annot.empty.data with access }) access]
 
 let lower_bound filename =

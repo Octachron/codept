@@ -10,7 +10,7 @@ type precision =
 type 'ext t = {
   path: Namespaced.t; (** module path of the compilation unit *)
   src: Pkg.t; (** source file of the compilation unit *)
-  kind: M2l.kind;
+  kind: M2l.Def.kind;
   precision: precision;
   code: M2l.t;
   more: 'ext
@@ -72,8 +72,8 @@ let map fs xs = { ml = fs.ml xs.ml; mli = fs.mli xs.mli}
 let unimap f xs = { ml = f xs.ml; mli = f xs.mli }
 
 let adder add p = function
-  | M2l.Structure, x -> { p with ml = add x p.ml }
-  | M2l.Signature, x -> { p with mli = add x p.mli }
+  | M2l.Def.Structure, x -> { p with ml = add x p.ml }
+  | M2l.Def.Signature, x -> { p with mli = add x p.mli }
 
 module Group = struct
 
@@ -90,7 +90,7 @@ module Group = struct
 
   let raw_add kind elt x =
     match kind with
-    | M2l.Structure -> add_ml elt x
+    | M2l.Def.Structure -> add_ml elt x
     | Signature -> add_mli elt x
   let add elt x = raw_add elt.kind elt x
 

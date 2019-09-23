@@ -11,6 +11,8 @@ type level = Module.level = Module | Module_type
 
 module Zdef = Zipper_def
 module Sk = Zipper_skeleton
+module M2lf = M2l
+module M2l = M2l.Def
 
 let apkg (f,_) = f
 module Ok = Mresult.Ok
@@ -280,7 +282,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       packed path accs vals ~param ~pkg ~state (F.add_packed loc m.user left)
         right
   and access path ~pkg ~param ~state s =
-    access_step ~state ~pkg ~param path F.access_init (Paths.S.Map.bindings s)
+    access_step ~state ~pkg ~param path F.access_init (M2l.Ident_map.bindings s)
   and access_step path left ~param ~pkg ~state = function
     | [] -> Ok (F.access left)
     | (a, (loc,edge)) :: right ->
@@ -466,7 +468,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
 
   module Pp = Zipper_pp.Make(Path)(Zipper_pp.Opaque(Path))
   let pp ppf = function
-    | Initial m2l -> M2l.pp ppf m2l
+    | Initial m2l -> M2lf.pp ppf m2l
     | On_going g -> Pp.pp ppf g
 
   let recursive_patching ongoing y = match ongoing with

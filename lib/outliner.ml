@@ -1,4 +1,5 @@
 open M2l
+open Def
 open Mresult
 
 module Y = Summary
@@ -62,8 +63,8 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
     let access n (loc,edge) m =
       find ~edge (path,loc) Module n state >>= function
       | Some _ -> m
-      | None ->  m >>| Paths.S.Map.add n (loc,edge) in
-    Paths.S.Map.fold access x (no_deps Annot.Access.empty) >>| fun access ->
+      | None ->  m >>| Ident_map.add n (loc,edge) in
+    Ident_map.fold access x (no_deps Annot.Access.empty) >>| fun access ->
     if access = Annot.Access.empty then
       Ok ()
     else
@@ -121,9 +122,9 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
     | Error h -> Error ( Bind {name; expr = h} )
     | Ok d -> Ok (Some(T.bind_summary Module name d))
 
-  let bind state module_expr (b: M2l.module_expr bind) =
+  let bind state module_expr (b: module_expr bind) =
     match b.expr with
-    | (Ident p:M2l.module_expr)
+    | (Ident p: module_expr)
     | Constraint(Abstract, Alias p)
       when Envt.is_exterior p state && transparent_aliases ->
         let path = Namespaced.of_path @@ Envt.expand_path p state in
@@ -150,7 +151,7 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
     let triple name me mt = name, me, mt in
     (* first we try to compute the signature of each argument using
        approximative signature *)
-    let mockup ({name;_}:_ M2l.bind) = M.md @@ M.mockup name in
+    let mockup ({name;_}:_ bind) = M.md @@ M.mockup name in
     let add_mockup defs arg =
       Envt.extend defs @@ Y.define [mockup arg] in
     let state' = List.fold_left add_mockup state bs in
@@ -354,7 +355,7 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
       begin
         let filename = fst loc in
         raisef Faults.extension_traversed (loc,e.name);
-        begin let open M2l in
+        begin
           match e.extension with
           | Module m ->
             begin m2l filename state m >>| function
@@ -382,10 +383,10 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
   let block x = M2l.Block.m2l (value x)
 
   let recursive_patching m2l y = With_deps.map m2l begin function
-      | { Loc.data = M2l.Defs def; loc } :: q ->
-        { Loc.data = M2l.Defs (Summary.merge def y); loc } :: q
+      | { Loc.data = Defs def; loc } :: q ->
+        { Loc.data = Defs (Summary.merge def y); loc } :: q
       | code ->
-        (Loc.nowhere @@ M2l.Defs y) :: code
+        (Loc.nowhere @@ Defs y) :: code
     end
 
   let pp ppf x =

@@ -5,95 +5,16 @@ module Arg = M.Arg
 
 module P = M.Partial
 
-type 'a bind = {name:Name.t; expr:'a}
+module Make(Path: sig
+  type t
+  module Map: Map.S with type key = t
+  val sch: t Schematic.t
+  val pp: t Pp.t
+end) = struct
+  module rec Def: M2l_ast.Def with type ident = Path.t and module Ident_map = Path.Map = Def
+  open Def
 
-type kind = Structure | Signature
-
-
-type expression =
-  | Defs of Summary.t (** Resolved module actions M = … / include … / open … *)
-  | Open of module_expr (** [open A.B.C] ⇒ [Open [A;B;C]]  *)
-  | Include of module_expr (** [struct include A end] *)
-  | SigInclude of module_type
-  (** [struct include A end] *)
-  | Bind of module_expr bind
-  (** [struct module A = struct … end] *)
-  | Bind_sig of module_type bind   (** [struct module type A = sig … end] *)
-  | Bind_rec of module_expr bind list
-  (** [module rec A = … and B = … and …] *)
-  | Minor of annotation
-  (** value level expression.
-      Invariant: for any pure interpreter [f], [ f (Minor m :: q ) ≡ f q ],
-      i.e, this expression constructor is only meaningful for dependencies
-      tracking.
- *)
-  | Extension_node of extension
-  (** [[%ext …]] *)
-and access = (Loc.t * Deps.Edge.t) Paths.S.map
-and annotation =
-  { access: access
-  (** [M.N.L.x] ⇒ access \{M = Normal \}
-      type t = A.t ⇒ access \{ M = ε \}
-  *)
-  ; values: m2l list (** − [let open A in …] ⇒ [[ Open A; …  ]]
-                         − [let module M = … ] ⇒ [[ Include A; … ]]
-                     *)
-  ; packed: module_expr Loc.ext list (** [(module M)] *)
-  }
-and module_expr =
-  | Resolved of P.t
-  (** Already resolved module expression, generally
-      used in subexpression when waiting for other parts
-      of module expression to be resolved
-  *)
-  | Ident of Paths.Simple.t (** [A.B…] **)
-  | Apply of {f: module_expr; x:module_expr} (** [F(X)] *)
-  | Fun of module_expr fn (** [functor (X:S) -> M] *)
-  | Constraint of module_expr * module_type (** [M:S] *)
-  | Str of m2l (** [struct … end] *)
-  | Val of annotation (** [val … ] *)
-  | Extension_node of extension (** [[%ext …]] *)
-  | Abstract
-  (** empty module expression, used as a placeholder.
-      In particular, it is useful for constraining first class module unpacking
-      as [Constraint(Abstract, signature)]. *)
-  | Unpacked (** [(module M)] *)
-  | Open_me of { resolved: Summary.t; opens:Paths.Simple.t list; expr:module_expr}
-  (** M.(…N.( module_expr)…)
-      Note: This construction does not exist (yet?) in OCaml proper.
-      It is used here to simplify the interaction between
-      pattern open and first class module.*)
-and module_type =
-  | Resolved of P.t (** same as in the module type *)
-  | Alias of Paths.Simple.t (** [module m = A…]  *)
-  | Ident of Paths.Expr.t
-  (** module M : F(X).s
-      Note: Paths.Expr is used due to [F.(X).s] expressions
-      that do not have an equivalent on the module level
- *)
-  | Sig of m2l (** [sig … end] *)
-  | Fun of module_type fn (** [functor (X:S) → M] *)
-  | With of {
-      body: module_type;
-      deletions: Paths.S.set;
-      access: access
-    }
-  (** [S with module N := …]
-      we are only tracking module level modification
-  *)
-  | Of of module_expr (** [module type of …] *)
-  | Extension_node of extension (** [%%… ] *)
-  | Abstract (** placeholder *)
-and extension = {name:string; extension:extension_core}
-and extension_core =
-  | Module of m2l
-  | Val of annotation
-and m2l = expression Loc.ext list
-and 'a fn = { arg: module_type Arg.t option; body:'a }
-
-type t = m2l
-
-let annot_empty = { access= Paths.S.Map.empty; values = []; packed = [] }
+let annot_empty = { access= Ident_map.empty; values = []; packed = [] }
 
 
 
@@ -146,20 +67,20 @@ module Sch = struct
   and m2l = Array expr_loc
   and access = Custom {sch=access_raw;fwd=access_fwd;rev=access_rev;
                        id=["M2l"; "access"]}
-  and access_raw = Array [Paths.S.sch; Loc.Sch.t; Deps.Edge.sch]
+  and access_raw = Array [Path.sch; Loc.Sch.t; Deps.Edge.sch]
   and access_fwd x =
-    Paths.S.Map.fold (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x L.[]
+    Ident_map.fold (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x L.[]
   and access_rev a = let open Tuple in
-    List.fold_left (fun m [k;x;y] ->Paths.S.Map.add k (x,y) m)
-      Paths.S.Map.empty a
+    List.fold_left (fun m [k;x;y] -> Ident_map.add k (x,y) m)
+      Ident_map.empty a
   and module_expr =
     Custom{ sch = me_raw ; fwd = me_fwd; rev = me_rev; id = ["M2l"; "module_expr"] }
   and me_raw =
-    Sum [ "Resolved", Module.Partial.sch; "Ident", Paths.S.sch;
+    Sum [ "Resolved", Module.Partial.sch; "Ident", Path.sch;
           "Apply", [module_expr;module_expr]; "Fun",[arg; module_expr];
           "Constraint",[module_expr;module_type]; "Str",m2l; "Val",annotation;
           "Extension_node",extension; "Abstract",Void; "Unpacked", Void;
-          "Open_me",[Summary.sch; Array Paths.S.sch; module_expr] ]
+          "Open_me",[Summary.sch; Array Path.sch; module_expr] ]
   and me_fwd = let open Tuple in
     function
     | Resolved x -> C (Z x)
@@ -187,11 +108,12 @@ module Sch = struct
     | C S S S S S S S S S E -> Unpacked
     | C S S S S S S S S S S Z [resolved;opens;expr] ->
       Open_me {resolved;opens;expr}
+    | C S E -> assert false
     | _ -> .
   and module_type =
     Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev; id=["M2l"; "module_type"]}
   and mt_sch =
-    Sum [ "Resolved",Module.Partial.sch; "Alias",Paths.S.sch;"Ident",Paths.E.sch;
+    Sum [ "Resolved",Module.Partial.sch; "Alias",Path.sch;"Ident",Paths.E.sch;
           "Sig",m2l;"Fun",[ arg; module_type ];
           "With",[ module_type; Array (Array String); access ];
           "Of", module_expr; "Extension_node", extension; "Abstract", Void ]
@@ -216,6 +138,7 @@ module Sch = struct
       | C S S S S S S Z x -> Of x
       | C S S S S S S S Z x -> Extension_node x
       | C S S S S S S S S E -> Abstract
+      | C S E -> assert false
       | _ -> .
   and annotation =
     Custom{ fwd=ann_f; rev = ann_r; sch = ann_s; id = ["M2l"; "annotation"] }
@@ -224,12 +147,12 @@ module Sch = struct
       Opt, Values.l, Array m2l; Opt, Packed.l, Array [module_expr;Loc.Sch.t]
     ]
   and ann_f x = Record.[
-    Access.l $=? (default Paths.S.Map.empty x.access);
+    Access.l $=? (default Ident_map.empty x.access);
     Values.l $=? l x.values;
     Packed.l $=? l (List.map (fun x -> Tuple.[x.Loc.data; x.loc]) x.packed)
   ]
   and ann_r = Record.(fun [_,a;_,v;_,p] ->
-      { access= a >< Paths.S.Map.empty
+      { access= a >< Ident_map.empty
       ; values = v >< [];
         packed =List.map Tuple.(fun [data;loc] -> {Loc.data;loc}) (p><[])
       })
@@ -259,94 +182,6 @@ module Sch = struct
 end let sch = Sch.m2l
 
 
-(** The Block module computes the first dependencies needed to be resolved
-    before any interpreter can make progress evaluating a given code block *)
-module Block = struct
-
-  let (+|) = Summary.(+|)
-  let either x f y =
-    Mresult.Error.bind ( fun def ->
-        Mresult.fmap
-          (fun def' -> def +| def' )
-          (fun (def', name) -> ( def +| def', name) )
-          (f y)
-          ) x
-
-  let rec first acc f = function
-    | [] -> Error acc
-    | a :: q -> match f acc a with
-      | Error acc -> first acc f q
-      | Ok _ as ok ->  ok
-
-  let data x = x.Loc.data
-
-  let lift def = function
-    | None -> Error def
-    | Some x -> Ok(def,x)
-
-  let rec me defs =
-    let err = Error defs in
-    let ok name = Ok(defs, name) in
-    function
-    | Resolved _ -> err
-    | Ident n -> ok n
-    | Apply {f; x} -> either (me defs f) (me defs)  x
-    | Fun fn ->
-      either
-        Mresult.Ok.( (lift defs fn.arg) >>= fun (defs, {Arg.signature;_}) ->
-                     mt defs signature)
-        (me defs) fn.body
-    | Constraint (e,t) -> either (me defs e) (mt defs) t
-    | Str code -> Mresult.Ok.fmap data @@ m2l defs code
-    | Val _ | Extension_node _ | Abstract | Unpacked -> err
-    | Open_me {opens = []; expr; _ } -> me defs expr
-    | Open_me {opens = a::_ ; _ } -> ok a
-  and mt defs =
-    let err = Error defs in
-    let ok x = Ok(defs, x) in
-    function
-    | Resolved _ -> err
-    | Alias n -> ok n
-    | Ident e ->  ok (List.hd @@ Paths.Expr.multiples e)
-    | Sig code -> Mresult.Ok.fmap data @@ m2l defs code
-    | Fun fn ->
-      either Mresult.Ok.( (lift defs fn.arg) >>= fun (defs, {Arg.signature;_}) ->
-                          mt defs signature)
-        (mt defs) fn.body
-    | With { body; _ } -> mt defs body
-    | Of e -> me defs e
-    | Extension_node _
-    | Abstract -> err
-  and expr defs  =
-    let err = Error defs in
-    function
-    | Defs d -> Error ( defs +| d )
-    | Open p -> me defs p
-    | Include e -> me defs e
-    | SigInclude t -> mt defs t
-    | Bind {expr;_} -> me defs expr
-    | Bind_sig {expr;_} -> mt defs expr
-    | Bind_rec l ->
-      first defs (fun defs b -> me defs b.expr) l
-    | Minor m -> minor defs m
-    | Extension_node _ -> err
-  and expr_loc defs {Loc.loc;data} =
-      Mresult.Ok.fmap (fun data -> {Loc.loc;data}) @@ expr defs data
-  and m2l defs code = first defs expr_loc code
-  and minor defs m =
-    if Paths.S.Map.cardinal m.access > 0 then
-      Ok (defs, fst @@ Paths.S.Map.choose m.access)
-    else
-      either Mresult.Ok.(first defs m2l m.values >>| data)
-        (first defs @@ fun s x -> me s x.Loc.data)
-        m.packed
-
-  let m2l code =
-    match m2l Summary.empty code with
-    | Error _ -> None
-    | Ok x -> Some x
-end
-
 module Annot = struct
   open Loc
   type t = annotation Loc.ext
@@ -355,7 +190,7 @@ module Annot = struct
 
   module Access = struct
     type t = access
-    let merge = Paths.S.Map.merge (fun _k x y -> match x, y with
+    let merge = Ident_map.merge (fun _k x y -> match x, y with
         | Some (l,x), Some (l',y) ->
           if x = Deps.Edge.Normal && y = Deps.Edge.Epsilon then
             Some(l',y)
@@ -388,12 +223,12 @@ module Annot = struct
   let access {loc;data} =
     Loc.create loc
       { annot_empty with
-        access = Paths.S.Map.singleton data (loc, Deps.Edge.Normal) }
+        access = Ident_map.singleton data (loc, Deps.Edge.Normal) }
 
   let abbrev {loc;data} =
     Loc.create loc
       { annot_empty with
-        access = Paths.S.Map.singleton data (loc, Deps.Edge.Epsilon) }
+        access = Ident_map.singleton data (loc, Deps.Edge.Epsilon) }
 
 
   let value v =
@@ -408,7 +243,7 @@ module Annot = struct
 
   let epsilon_promote = Loc.fmap @@ fun annot ->
     { annot with
-      access = Paths.S.Map.map (fun (l,_) -> l, Deps.Edge.Epsilon) annot.access }
+      access = Ident_map.map (fun (l,_) -> l, Deps.Edge.Epsilon) annot.access }
 
 end
 
@@ -550,41 +385,6 @@ and pp_expression_with_loc ppf e = Pp.fp ppf "%a(%a)"
     pp_expression e.data Loc.pp e.loc
 
 
-(** {Normalize} computes the normal form of a given m2l code fragment *)
-module Normalize = struct
-
-  let halt l = false, l
-
-  let (+:) x (more,l) =
-    more, x :: l
-
-  let cminor x = Minor x
-
-  let rec all : m2l -> bool * m2l  = function
-    | {data=Defs d1;_} :: {data=Defs d2; _ } :: q ->
-      all @@ (Loc.nowhere @@ Defs Summary.(  d1 +| d2)) :: q
-    | {data = Defs _; _ } as e :: q ->
-      let more, q = all q in more, e :: q
-    | { data = Minor m; loc } :: q ->
-      Loc.fmap cminor (minor {Loc.data=m;loc})  +: all q
-    | { data = (Open _ | Include _ | SigInclude _ | Bind_sig _ | Bind _ | Bind_rec _
-      | Extension_node _ ); _ }
-      :: _ as l ->
-      halt l
-    | [] -> halt []
-  and minor v =
-    List.fold_left value (Loc.fmap (fun data -> { data with values = [] }) v)
-      v.data.values
-  and value mn p =
-    match snd @@ all p with
-    | [] -> mn
-    | { data = Minor m; loc } :: q ->
-      let mn = Annot.merge mn {data=m;loc} in
-         { mn with data = { mn.data with values = q :: mn.data.values } }
-    | l -> Loc.fmap (fun mn -> { mn with values = l :: mn.values }) mn
-
-end
-
 
 module Sig_only = struct
 
@@ -641,5 +441,133 @@ module Sig_only = struct
     | Of e -> map (fun x -> Of x) (mex e)
 
   let filter m2l = snd @@ main m2l
+
+end
+
+end
+
+
+(** {Normalize} computes the normal form of a given m2l code fragment *)
+module Normalize = struct
+
+  let halt l = false, l
+
+  let (+:) x (more,l) =
+    more, x :: l
+
+  let cminor x = Minor x
+
+  let rec all : m2l -> bool * m2l  = function
+    | {data=Defs d1;_} :: {data=Defs d2; _ } :: q ->
+      all @@ (Loc.nowhere @@ Defs Summary.(  d1 +| d2)) :: q
+    | {data = Defs _; _ } as e :: q ->
+      let more, q = all q in more, e :: q
+    | { data = Minor m; loc } :: q ->
+      Loc.fmap cminor (minor {Loc.data=m;loc})  +: all q
+    | { data = (Open _ | Include _ | SigInclude _ | Bind_sig _ | Bind _ | Bind_rec _
+      | Extension_node _ ); _ }
+      :: _ as l ->
+      halt l
+    | [] -> halt []
+  and minor v =
+    List.fold_left value (Loc.fmap (fun data -> { data with values = [] }) v)
+      v.data.values
+  and value mn p =
+    match snd @@ all p with
+    | [] -> mn
+    | { data = Minor m; loc } :: q ->
+      let mn = Annot.merge mn {data=m;loc} in
+         { mn with data = { mn.data with values = q :: mn.data.values } }
+    | l -> Loc.fmap (fun mn -> { mn with values = l :: mn.values }) mn
+
+end
+
+
+(** The Block module computes the first dependencies needed to be resolved
+    before any interpreter can make progress evaluating a given code block *)
+module Block = struct
+
+  let (+|) = Summary.(+|)
+  let either x f y =
+    Mresult.Error.bind ( fun def ->
+        Mresult.fmap
+          (fun def' -> def +| def' )
+          (fun (def', name) -> ( def +| def', name) )
+          (f y)
+          ) x
+
+  let rec first acc f = function
+    | [] -> Error acc
+    | a :: q -> match f acc a with
+      | Error acc -> first acc f q
+      | Ok _ as ok ->  ok
+
+  let data x = x.Loc.data
+
+  let lift def = function
+    | None -> Error def
+    | Some x -> Ok(def,x)
+
+  let rec me defs =
+    let err = Error defs in
+    let ok name = Ok(defs, name) in
+    function
+    | Resolved _ -> err
+    | Ident n -> ok n
+    | Apply {f; x} -> either (me defs f) (me defs)  x
+    | Fun fn ->
+      either
+        Mresult.Ok.( (lift defs fn.arg) >>= fun (defs, {Arg.signature;_}) ->
+                     mt defs signature)
+        (me defs) fn.body
+    | Constraint (e,t) -> either (me defs e) (mt defs) t
+    | Str code -> Mresult.Ok.fmap data @@ m2l defs code
+    | Val _ | Extension_node _ | Abstract | Unpacked -> err
+    | Open_me {opens = []; expr; _ } -> me defs expr
+    | Open_me {opens = a::_ ; _ } -> ok a
+  and mt defs =
+    let err = Error defs in
+    let ok x = Ok(defs, x) in
+    function
+    | Resolved _ -> err
+    | Alias n -> ok n
+    | Ident e ->  ok (List.hd @@ Paths.Expr.multiples e)
+    | Sig code -> Mresult.Ok.fmap data @@ m2l defs code
+    | Fun fn ->
+      either Mresult.Ok.( (lift defs fn.arg) >>= fun (defs, {Arg.signature;_}) ->
+                          mt defs signature)
+        (mt defs) fn.body
+    | With { body; _ } -> mt defs body
+    | Of e -> me defs e
+    | Extension_node _
+    | Abstract -> err
+  and expr defs  =
+    let err = Error defs in
+    function
+    | Defs d -> Error ( defs +| d )
+    | Open p -> me defs p
+    | Include e -> me defs e
+    | SigInclude t -> mt defs t
+    | Bind {expr;_} -> me defs expr
+    | Bind_sig {expr;_} -> mt defs expr
+    | Bind_rec l ->
+      first defs (fun defs b -> me defs b.expr) l
+    | Minor m -> minor defs m
+    | Extension_node _ -> err
+  and expr_loc defs {Loc.loc;data} =
+      Mresult.Ok.fmap (fun data -> {Loc.loc;data}) @@ expr defs data
+  and m2l defs code = first defs expr_loc code
+  and minor defs m =
+    if Paths.S.Map.cardinal m.access > 0 then
+      Ok (defs, fst @@ Paths.S.Map.choose m.access)
+    else
+      either Mresult.Ok.(first defs m2l m.values >>| data)
+        (first defs @@ fun s x -> me s x.Loc.data)
+        m.packed
+
+  let m2l code =
+    match m2l Summary.empty code with
+    | Error _ -> None
+    | Ok x -> Some x
 
 end

@@ -95,6 +95,8 @@ module type fold = sig
 
 end
 
+module M2l = M2l.Def
+
 module type s = sig
   module T : tree
   module Abbrevs: sig

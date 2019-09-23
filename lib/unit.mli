@@ -13,7 +13,7 @@ type precision =
 type 'ext t = {
   path: Namespaced.t; (** module path of the compilation unit *)
   src: Pkg.t; (** source file of the compilation unit *)
-  kind: M2l.kind;
+  kind: M2l.Def.kind;
   precision: precision;
   code: M2l.t;
   more: 'ext
@@ -61,7 +61,7 @@ val pp_input : Format.formatter -> s -> unit
 type 'a pair = { ml : 'a; mli : 'a; }
 val map: ('a -> 'b) pair -> 'a pair -> 'b pair
 val unimap: ('a -> 'b) -> 'a pair -> 'b pair
-val adder:  ('a->'b->'b) -> 'b pair -> M2l.kind * 'a -> 'b pair
+val adder:  ('a->'b->'b) -> 'b pair -> M2l.Def.kind * 'a -> 'b pair
 
 (** {!group} handles pair of ml/mli files together *)
 module Group: sig

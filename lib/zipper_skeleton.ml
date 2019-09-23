@@ -121,7 +121,7 @@ module State(Env:Stage.envt) = struct
     { initial = env; diff; current= Env.extend env diff }
 
   let rec_approximate state l =
-    List.fold_left (fun state {M2l.expr=_; name} ->
+    List.fold_left (fun state {M2l.Def.expr=_; name} ->
         merge state (bind name @@ P.of_module @@ Module.mockup name)
       ) state l
 
@@ -154,7 +154,7 @@ module type state = sig
   val open_path :
     param:Transforms.param -> loc:Fault.loc -> state -> path -> state
   val from_env: ?diff:state_diff -> env -> state
-  val rec_approximate: state -> _ M2l.bind list -> state
+  val rec_approximate: state -> _ M2l.Def.bind list -> state
 
   val rec_patch: Summary.t -> state_diff -> state_diff
 

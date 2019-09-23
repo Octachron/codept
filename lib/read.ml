@@ -8,7 +8,7 @@ type format =
   | Cmi
 
 (** Extend M2l.kind to include the format of read file *)
-type kind = { format: format; kind: M2l.kind }
+type kind = { format: format; kind: M2l.Def.kind }
 
 type ocaml_parsing_error = Syntax of Syntaxerr.error | Lexer of Lexer.error
 type error = Ocaml of ocaml_parsing_error | Serialized of Schematic.Ext.error
@@ -34,9 +34,9 @@ let source_file kind filename =
   let input_file = Pparse.preprocess filename in
   let code =  try ok @@
       match kind with
-      | M2l.Structure ->
+      | M2l.Def.Structure ->
         Ast_converter.structure @@ parse_implementation input_file
-      | M2l.Signature ->
+      | M2l.Def.Signature ->
         Ast_converter.signature @@
         Pparse_compat.interface input_file
     with

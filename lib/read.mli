@@ -9,7 +9,7 @@ type format =
   | Cmi (** binary file: e.g. cmi *)
 
 (** Extend M2l.kind to include the format of read file *)
-type kind = { format: format; kind: M2l.kind }
+type kind = { format: format; kind: M2l.Def.kind }
 
 (** error type *)
 type ocaml_parsing_error = Syntax of Syntaxerr.error | Lexer of Lexer.error

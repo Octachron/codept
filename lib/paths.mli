@@ -3,7 +3,8 @@
 (** Path as a list of name *)
 module Simple :
   sig
-    type t = Name.t list
+    type atom = Name.t
+    type t = atom list
     val pp : Format.formatter -> string list -> unit
     val sch: t Schematic.t
     module Set : sig
@@ -29,21 +30,25 @@ module Simple :
 module S = Simple
 
 (** Module paths with application *)
-module Expr : sig
-
-  type t = { path: S.t; args: (int * t) list }
+module type Expr = sig
+  type s
+  type t = { path: s; args: (int * t) list }
 
   val sch: t Schematic.t
   exception Functor_not_expected
-  val concrete : t -> Simple.t
-  val concrete_with_f : t -> Simple.t
-  val multiples : t -> Simple.t list
-  val rev_concrete : t -> string list
-  val from_list : string list -> t
+  val concrete : t -> s
+  val concrete_with_f : t -> s
+  val multiples : t -> s list
+  val rev_concrete : t -> s
+  val from_list : s -> t
   val pp : Format.formatter -> t -> unit
   val prefix : t -> string
 end
-module E = Expr
+
+module Make_expr(Simple: sig type t val sch: t Schematic.t val pp: t Pp.t end ):
+  Expr with type s = Ident.t list
+
+module Expr: Expr with type s = Name.t list
 
 
 (** Localized path for package *)

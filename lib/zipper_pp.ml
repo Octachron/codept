@@ -2,6 +2,8 @@
 type dp = Format.formatter -> unit
 type 'a dprinter = 'a -> dp
 
+module Mpp = M2l
+module M2l = M2l.Def
 
 module type Result_printer = sig
   module T: Zipper_def.tree
@@ -46,18 +48,18 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
       path_expr rest (pp_path_expr {Paths.Expr.path=f.path; args})
     | Me (Open_me_left {left;right;expr; diff=_}) :: rest ->
       me rest (R.pp_opens left (fun ppf ->
-          Pp.fp ppf "%t.(%t.(%a))" x (dlist path right) M2l.pp_me expr
+          Pp.fp ppf "%t.(%t.(%a))" x (dlist path right) Mpp.pp_me expr
         )
         )
     | _ -> .
   and me: M2l.module_expr t -> _ = fun rest sub ->
     match rest with
     | Me (Apply_left right) :: rest ->
-      me rest (fun ppf -> Pp.fp ppf "%t(%a)" sub M2l.pp_me right)
+      me rest (fun ppf -> Pp.fp ppf "%t(%a)" sub Mpp.pp_me right)
     | Me Apply_right left :: rest -> me rest (fp2 "%t(%t)" (R.pp_me left.user) sub)
     | Me Fun_right left :: rest -> me rest (fp2 "functor (%t) ->%t" (r_arg left) sub)
     | Me Constraint_left mt :: rest ->
-      me rest (fun ppf -> Pp.fp ppf "(%t:%a)" sub M2l.pp_mt mt)
+      me rest (fun ppf -> Pp.fp ppf "(%t:%a)" sub Mpp.pp_mt mt)
     | Me Open_me_right {opens; _} :: rest -> me rest (R.pp_opens opens sub)
     | Expr Include :: rest -> expr rest (fp1 "include %t" sub)
     | Expr Bind name :: rest ->
@@ -67,7 +69,7 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
         Pp.fp ppf "%t %s: %t =%t@,%a" (R.pp_bindrec m.left.user) m.name
           (R.pp_mt m.mt) sub
           (Pp.list (fun ppf (name,_,me) ->
-               Pp.fp ppf "@,and %s:?=%a" name M2l.pp_me me)
+               Pp.fp ppf "@,and %s:?=%a" name Mpp.pp_me me)
           ) m.right in
       expr rest pp
     | Expr Open :: rest -> expr rest (fp1 "open %t" sub)
@@ -75,9 +77,9 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
       annot rest (fun ppf -> Pp.fp ppf
                      "@[Annot@ packed:%t%t ... {%a%a%a}@]"
                      (R.pp_packed p.left)
-                     sub M2l.pp_packed p.right
-                     M2l.pp_access p.access
-                     M2l.pp_values p.values
+                     sub Mpp.pp_packed p.right
+                     Mpp.pp_access p.access
+                     Mpp.pp_values p.values
                  )
     | Mt Of :: rest -> mt rest (fp1 "module type of %t" sub)
     | _ -> .
@@ -91,10 +93,10 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
       expr rest (fun ppf -> Pp.fp ppf "module type %s=%t" name sub)
     | Me Fun_left {name;body} :: rest ->
       me rest
-        (fun ppf -> Pp.fp ppf "fun(%s:%t)->%a" name sub M2l.pp_me body)
+        (fun ppf -> Pp.fp ppf "fun(%s:%t)->%a" name sub Mpp.pp_me body)
     | Mt Fun_left {name;body} :: rest ->
       mt rest
-        (fun ppf -> Pp.fp ppf "fun(%s:%t)->%a" name sub M2l.pp_mt body)
+        (fun ppf -> Pp.fp ppf "fun(%s:%t)->%a" name sub Mpp.pp_mt body)
     | Mt Fun_right left :: rest ->
       mt rest (fp2 "functor(%t)->%t" (r_arg left) sub)
     | Expr SigInclude :: rest ->
@@ -103,11 +105,11 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
       expr rest (fun ppf ->
           Pp.fp ppf "module rec %a %s:%t=%a@,%a"
             (Pp.list ~sep:(Pp.const "@ and ") (fun ppf (name,mt,me) ->
-                 Pp.fp ppf "%s:%t=%a" name  (R.pp_mt mt) M2l.pp_me me)
+                 Pp.fp ppf "%s:%t=%a" name  (R.pp_mt mt) Mpp.pp_me me)
             ) m.left
-            m.name sub M2l.pp_me m.expr
+            m.name sub Mpp.pp_me m.expr
             (Pp.list (fun ppf {M2l.name;expr} ->
-                 Pp.fp ppf "and@ %s = %a" name M2l.pp_me expr)
+                 Pp.fp ppf "and@ %s = %a" name Mpp.pp_me expr)
             ) m.right
         )
     | Me Constraint_right left :: rest -> me rest (fp2 "(%t:%t)" (R.pp_me left.user) sub)
@@ -119,7 +121,7 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
   and expr: M2l.expression t -> _ = fun rest sub -> match rest with
     | M2l m :: rest ->
       m2l rest (
-        fun ppf -> Pp.fp ppf "%t@ %t@ %a" (R.pp_m2l m.left.user) sub M2l.pp m.right
+        fun ppf -> Pp.fp ppf "%t@ %t@ %a" (R.pp_m2l m.left.user) sub Mpp.pp m.right
       )
    | _ -> .
   and access: waccess t -> _ = fun rest sub -> match rest with
@@ -128,11 +130,11 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
                      "@[Annot@ access:{%t;%t ... %a}@]"
                      (R.pp_packed a.packed)
                      sub
-                     M2l.pp_values a.values
+                     Mpp.pp_values a.values
                  )
     | Mt With_access m :: rest ->
       mt rest (fun ppf -> Pp.fp ppf "%a access %t without {%a}"
-                  M2l.pp_mt m.body sub
+                  Mpp.pp_mt m.body sub
                   (Pp.list Paths.S.pp) (Paths.S.Set.elements m.deletions)
               )
     | _ -> .
@@ -162,7 +164,7 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
             (R.pp_access a.access)
             (R.pp_values a.left)
             sub
-            M2l.pp_values a.right
+            Mpp.pp_values a.right
         )
     | Me Str :: rest -> me rest (fp1 "struct %t end" sub)
     | Mt Sig :: rest -> mt rest (fp1 "sig %t end" sub)

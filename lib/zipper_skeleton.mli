@@ -59,7 +59,7 @@ module type state = sig
   val open_path :
     param:Transforms.param -> loc:Fault.loc -> state -> path -> state
   val from_env: ?diff:state_diff -> env -> state
-  val rec_approximate: state -> _ M2l.bind list -> state
+  val rec_approximate: state -> _ M2l.Def.bind list -> state
 
   val rec_patch: Summary.t -> state_diff -> state_diff
 

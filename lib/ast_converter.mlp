@@ -8,7 +8,7 @@ module Arg = M.Arg
 
 let from_lid = Longident_converter.from_lid
 let txt x= x.Location.txt
-
+module M2l = M2l.Def
 
 let from_loc l =
   let open Location in
@@ -119,7 +119,7 @@ module Pattern = struct
 # 4.04, oo
   let open_ m { annot={ data = {values; packed; access}; loc } ; binds} =
     let values =
-      ( if Paths.S.Map.cardinal access > 0 then
+      ( if Ident_map.cardinal access > 0 then
           M2l.[{ Loc.data = Minor {Annot.empty.data with access}; loc }]
         else
           []
@@ -446,7 +446,7 @@ and pattern pat =
     Pattern.open_ (with_loc loc @@ H.npath m) @@ pattern p
 #end
 
-and type_declaration td: M2l.Annot.t  =
+and type_declaration td: Annot.t  =
   Annot.union_map (fun (_,t,_) -> core_type t) td.ptype_cstrs
   ++
   if td.ptype_kind = Ptype_abstract then
@@ -466,10 +466,10 @@ and constructor_args = function
   | Pcstr_tuple cts -> Annot.union_map core_type cts
   | Pcstr_record lds -> Annot.union_map label_declaration lds
 and label_declaration ld = core_type ld.pld_type
-and type_extension tyext: M2l.Annot.t =
+and type_extension tyext: Annot.t =
   access tyext.ptyext_path
   ++ Annot.union_map  extension_constructor tyext.ptyext_constructors
-and core_type ct : M2l.Annot.t =
+and core_type ct : Annot.t =
   let loc = ct.ptyp_loc in
   match ct.ptyp_desc with
   | Ptyp_extension ext (* [%id] *) ->
@@ -506,7 +506,7 @@ and case cs =
   ++ (Pattern.bind_fmod (pattern cs.pc_lhs) @@ expr cs.pc_rhs)
 and do_include incl =
   [ with_loc incl.pincl_loc @@ Include (module_expr incl.pincl_mod) ]
-and extension_constructor extc: M2l.Annot.t = match extc.pext_kind with
+and extension_constructor extc: Annot.t = match extc.pext_kind with
   | Pext_decl (args, cto) ->
     constructor_args args
     ++ Annot.opt core_type cto
@@ -597,8 +597,8 @@ and class_expr ce =
 and class_field_kind = function
   | Cfk_virtual ct -> core_type ct
   | Cfk_concrete (_, e) -> expr e
-and class_declaration cd: M2l.Annot.t = class_expr cd.pci_expr
-and class_type_declaration ctd: M2l.Annot.t = class_type ctd.pci_expr
+and class_declaration cd: Annot.t = class_expr cd.pci_expr
+and class_type_declaration ctd: Annot.t = class_type ctd.pci_expr
 and module_expr mexpr : M2l.module_expr =
   match mexpr.pmod_desc with
   | Pmod_ident name (* A *) ->

@@ -6,7 +6,7 @@ let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 type 'a i = { input: Unit.s; code: 'a}
 let make initial (input:Unit.s) =
   let open_namespace = List.map
-      (fun name -> Loc.nowhere @@ M2l.Open (Ident [name])) input.path.namespace in
+      (fun name -> Loc.nowhere @@ M2l.Def.Open (Ident [name])) input.path.namespace in
   { input; code = initial (open_namespace @ input.code) }
 
 module Mp = Namespaced.Map module Sp = Namespaced.Set
