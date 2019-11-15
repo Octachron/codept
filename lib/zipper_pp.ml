@@ -15,7 +15,7 @@ module type Result_printer = sig
   val pp_values: T.values dprinter
   val pp_access: T.access dprinter
   val pp_path: T.path dprinter
-  val pp_path_expr_args: T.path_expr_args dprinter
+  val pp_path_expr: T.path_expr dprinter
 
 end
 
@@ -23,13 +23,16 @@ end
 module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
   open Def
   module Sk = Zipper_skeleton
+  let option transition main x ppf = match x with
+    | None -> ()
+    | Some x -> Pp.fp ppf "%s%a" transition main x
   let fp1 fmt x ppf =Pp.fp ppf fmt x
   let fp2 fmt x y ppf =Pp.fp ppf fmt x y
+  let u f x = f x.Zipper_def.user
   let r_arg x ppf = match x with
     | None -> ()
-    | Some (l,_) -> Pp.fp ppf "%s:%t" l.Module.Arg.name (R.pp_mt l.signature.Zipper_def.user)
+    | Some (l,_) -> Pp.fp ppf "%s:%t" l.Module.Arg.name (u R.pp_mt l.signature)
   let path p ppf = Paths.S.pp ppf p
-  let pp_path_expr m ppf = Format.fprintf ppf "%a?" Paths.Expr.pp m
   let leaf p ppf = Format.fprintf ppf "%t?" (path p.Zipper_skeleton.path)
   let dlist elt l ppf = Pp.list (fun ppf x -> elt x ppf) ppf l
   let a (x,_) = path x
@@ -42,13 +45,16 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Access acc :: rest ->
       access rest
         (fun ppf -> Pp.fp ppf "access {%t;...%t}" x (dlist a acc.right))
-    | Path_expr Main args :: rest ->
-      path_expr rest (pp_path_expr {Paths.Expr.path=f.path; args})
+    | Path_expr Simple :: rest -> path_expr rest x
     | Me (Open_me_left {left;right;expr; diff=_}) :: rest ->
       me rest (R.pp_opens left (fun ppf ->
           Pp.fp ppf "%t.(%t.(%a))" x (dlist path right) M2l.pp_me expr
         )
         )
+    | Path_expr App_proj (f,a) :: rest ->
+      path_expr rest
+        (fun ppf -> Pp.fp ppf "%t(%t)%t" (u R.pp_path_expr f)  (u R.pp_path_expr a) x )
+
     | _ -> .
   and me: M2l.module_expr t -> _ = fun rest sub ->
     match rest with
@@ -138,14 +144,17 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | _ -> .
   and path_expr: Paths.Expr.t t -> _ = fun rest sub -> match rest with
     | Mt Ident :: rest -> mt rest sub
-    | Path_expr Arg a :: rest -> (* TODO *)
+    | Path_expr App_f (a,proj) :: rest -> (* TODO *)
       path_expr rest
-        (fun ppf -> Pp.fp ppf "@[%t[%t;@ %d,@ %t;@ %a]@]"
-            (R.pp_path a.main.user) (R.pp_path_expr_args a.left) a.pos sub
-            (Pp.list ~sep:(Pp.const ";@ ") (fun ppf (n,d) -> Pp.fp ppf "%d,@ %a" n Paths.E.pp d))
-            a.right
+        (fun ppf -> Pp.fp ppf "@[%t(%a)%t@]"
+            sub Paths.E.pp a (option "." Paths.S.pp proj)
         )
-    | _ -> .
+   | Path_expr App_x (f,proj) :: rest -> (* TODO *)
+      path_expr rest
+        (fun ppf -> Pp.fp ppf "@[%t(%t)%t@]"
+            (u R.pp_path_expr f) sub (option "." Paths.S.pp proj)
+        )
+   | _ -> .
   and ext: M2l.extension_core t -> _ = fun rest sub -> match rest with
     | Expr Extension_node name :: rest ->
       expr rest (fun ppf -> Pp.fp ppf "[%%%s %t]" name sub)
@@ -183,6 +192,6 @@ module Opaque(X:Zipper_def.s) : Result_printer with module T := X.T = struct
   let pp_access = const "..."
   let pp_path = const "..."
   let pp_opens _ sub = sub
-  let pp_path_expr_args = const "..."
+  let pp_path_expr = const "..."
   let pp_bindrec = const "..."
 end

@@ -41,12 +41,11 @@ module H = struct
     let open Paths.Expr in
     let x = from_lid @@ txt lid in
     let loc =  extract_loc lid in
-    match x with
-    | {path = [_]| []; args = _ } -> Annot.empty
-    | p ->
+    match multiples x with
+    | ([_]|[]):: _ | []  -> Annot.empty
+    | p :: more ->
       let f annot data = Annot.(merge annot @@ access {data; loc }) in
-      let p = { p with path = remove_last p.path } in
-      List.fold_left f Annot.empty (multiples p)
+      List.fold_left f Annot.empty (remove_last p :: more)
 
   let me_access lid =
     let open Paths.Expr in

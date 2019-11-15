@@ -39,6 +39,7 @@ struct
   type set = Set.t
   type 'a map = 'a Map.t
   let prefix = List.hd
+  let concat = List.append
 
   let extension a =
     let ext = Support.extension a in
@@ -75,45 +76,60 @@ struct
 end
 module S = Simple
 
-module Expr = struct
+module type simple_core = sig
+  type t
+  val concat: t -> t -> t
+  val prefix: t -> Name.t
+  val sch: t Schematic.t
+  val pp: t Pp.t
+end
 
-  type t = { path: S.t; args: (int * t) list }
+module Make_Expr(S:simple_core) = struct
+
+  type t =
+    | Simple of S.t
+    | Apply of { f:t; x:t; proj: S.t option }
+
 
   module Sch = struct
+    type w = W of S.t [@@unboxed]
     open Schematic
-    let rec raw = ([ S.sch; Array [Int; t] ]: _ t)
+    let wsch = Custom{rev=(fun x -> W x); fwd=(fun (W x) -> x); sch=S.sch; id=["Paths";"Expr"; "w"]}
+    let rec raw  = Sum ["S", wsch; "Apply", [ t; t; option "proj" S.sch ] ]
     and t = Custom {fwd;rev; sch=raw; id = ["Paths"; "Expr"; "t"] }
-    and fwd {path; args} = let open Tuple in
-      [path; List.map (fun (n,x) -> [n;x]) args ]
-    and rev = let open Tuple in
-      fun [path; args] ->
-        {path; args = List.map (fun [n;t] -> n, t) args }
+    and fwd  = function
+      | Apply {f;x;proj} -> C(S(Z Tuple.[f;x;proj]))
+      | Simple x -> C (Z (W x))
+    and rev = function
+      | C Z (W s) -> Simple s
+      | C S Z Tuple.[f;x;proj] -> Apply {f;x;proj}
+      | _ -> .
   end
   let sch = Sch.t
 
 
   exception Functor_not_expected
-  let concrete  = function
-      | {path; args=[] } -> path
-      | {args = _ :: _;  _ } -> raise Functor_not_expected
+ let concrete  = function
+    | Simple x -> x
+    | Apply _ -> raise Functor_not_expected
 
-  let concrete_with_f p: Simple.t = p.path
+  let rec concrete_with_f = function
+    | Simple x -> x
+    | Apply {f;proj=None; _ } -> concrete_with_f f
+    | Apply {f;proj=Some r; _ } -> S.(concat (concrete_with_f f) r)
 
-  let multiples p : Simple.t list =
-    let rec extract l = function
-    | {path; args = [] } -> path :: l
-    | {path; args } ->
-      List.fold_left (fun l (_,x) -> extract l x) (path::l) args in
-    List.rev (extract [] p)
+  let rec multiples = function
+    | Apply {f;x;proj=Some proj} -> fn f proj @ multiples x
+    | Apply {f;x;proj=None} ->  multiples f @ multiples x
+    | Simple x -> [x]
+  and fn f proj = match f with
+    | Simple x -> S.[concat x proj]
+    | Apply {proj=None; f; x } -> fn f proj @ multiples x
+    | Apply {proj=Some p; f; x } -> fn f S.(concat p proj) @ multiples x
 
-  let rev_concrete p = List.rev @@ concrete p
+  let pure path = Simple path
+  let app f x proj = Apply {f;x;proj}
 
-  let from_list path = {path; args = [] }
-
-  let rec normalize path =
-    let args = List.sort (fun (n,_) (n',_) -> compare n n') path.args in
-    let args = List.map (fun (n,x) -> n, normalize x) args in
-    { path with args }
 
   (*
   let rec raw_pp ppf { path; args} =
@@ -122,31 +138,17 @@ module Expr = struct
       S.pp path Pp.(list (pair int pp)) args
 *)
 
-  let rec pp offset ppf = function
-    | {path; args = []} -> S.pp ppf path
-    | {path; args = (n,x) :: l } -> subpath ppf offset n [] path x l
-  and subpath ppf offset n sub rest x args =
-    match n-offset, rest with
-    | 0, [a] ->
-      Format.fprintf ppf "%a(%a)"
-        S.pp (List.rev (a::sub))
-        (pp 0) x
-    | 0, a :: q ->
-      Format.fprintf ppf "%a(%a).%a"
-        S.pp (List.rev (a::sub))
-        (pp 0) x
-        (pp n) { path = q; args }
-    | _, []  -> assert false
-    | _, a :: rest ->
-      subpath ppf (offset+1) n (a::sub) rest x args
+  let rec pp ppf = function
+    | Simple path -> S.pp ppf path
+    | Apply {f;x;proj=None} -> Pp.fp ppf "%a(%a)" pp f pp x
+    | Apply {f;x;proj=Some p} -> Pp.fp ppf "%a(%a).%a" pp f pp x S.pp p
 
-  let pp ppf x = pp 0 ppf (normalize x)
-
-  let prefix = function
-    | {path = [] ; _ } ->
-      raise @@ Invalid_argument "Paths.Expr: prefix of empty path"
-    | {path= a :: _ ; _ } -> a
+  let rec prefix = function
+    | Simple s -> S.prefix s
+    | Apply r -> prefix r.f
 end
+
+module Expr = Make_Expr(Simple)
 module E = Expr
 
 module Pkg = struct
