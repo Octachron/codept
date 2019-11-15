@@ -616,7 +616,7 @@ let result =
           "paths.mli", (["Name"; "Schematic"], ["Map";"Set";"Format"],[]);
           "paths.ml", (["Name"; "Pp"; "Schematic"; "Schematic_indices"; "Support" ],
                        ["Filename";"List";"Map";"Set";
-                        "Format"; "String"],[]);
+                        "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
           "read.mli", (["M2l"; "Name"; "Schematic"],["Lexer";"Syntaxerr"],[]);
@@ -679,7 +679,7 @@ let result =
              "Pp"; "Summary"; "Transforms"]
           ,["Format"],[]);
           "dep_zipper.ml", (
-            ["Deps"; "Module"; "Stage"; "Transforms"; "Zipper"; "Zipper_fold"]
+            ["Deps"; "Module"; "Option"; "Stage"; "Transforms"; "Zipper"; "Zipper_fold"]
           ,[],[]);
           "zipper_fold.ml", (
             ["Deps"; "Loc"; "M2l"; "Module"; "Mresult";
