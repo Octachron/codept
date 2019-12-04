@@ -72,11 +72,7 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
     user (F.bind_rec_add name (F.me_constraint me.user mt))
   let path_expr_pure = user F.path_expr_pure
   let path_expr_app f x opt =
-    match opt with
-    | None ->
-      { backbone = f.backbone ; user = F.path_expr_app f.user x.user None }
-    | Some o ->
-      { backbone = f.backbone (* FIXME: + o.backbone *); user = F.path_expr_app f.user x.user (Some o.user) }
+      { backbone = f.backbone ; user = F.path_expr_app f.user x.user opt }
 end
 
 let ((>>=), (>>|)) = Ok.((>>=), (>>|))
@@ -245,19 +241,16 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       >>= fun me ->
       let left = D.bind_rec_add name me mt left in
       bind_rec path left ~loc ~state ~param right
-  and path_expr ~level ctx ~loc ~param ~state = function
-    | Simple x ->
-      resolve ~level ~loc ~state ~param (Path_expr Simple :: ctx) x >>|
+  and path_expr_gen ~level ctx ~loc ~param ~state ~post_proj = function
+    | Paths.Expr.Simple x ->
+      resolve ~level ~loc ~state ~param (Path_expr Simple :: ctx) (x @ post_proj) >>|
       D.path_expr_pure
-    | Apply {f;x;proj=None} ->
-      path_expr ~level:Module (Path_expr(App_f (x,None))::ctx) ~loc ~param ~state f >>= fun f ->
+    | Apply {f;x;proj} ->
+      let post_proj = match proj with None -> post_proj | Some x -> x @ post_proj in
+      path_expr_gen ~level (Path_expr(App_f (x,None))::ctx) ~loc ~param ~state ~post_proj f >>= fun f ->
       path_expr ~level:Module (Path_expr(App_x (f,None))::ctx) ~loc ~param ~state x >>| fun x ->
-      D.path_expr_app f x None
-    | Apply {f;x;proj=Some _proj} ->
-      path_expr ~level:Module (Path_expr(App_f (x,None))::ctx) ~loc ~param ~state f >>= fun f ->
-      path_expr ~level:Module (Path_expr(App_x (f,None))::ctx) ~loc ~param ~state x >>| fun x ->
-     (* resolve ~level ~loc ~param ~state (Path_expr(App_proj (f,x))::ctx) proj >>= fun proj -> *)
-      D.path_expr_app f x None
+      D.path_expr_app f x proj
+  and path_expr ~level ctx ~loc ~param ~state x = path_expr_gen ~level ctx ~loc ~param ~state ~post_proj:[] x
   and minor path ~pkg ~param ~state mn =
     let i = F.packed_init in
     packed path mn.access mn.values i  ~param ~pkg ~state mn.packed
@@ -321,8 +314,6 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         restart_mt ~param ~loc ~state (path: module_type path) (D.alias x)
       | Path_expr Simple :: path ->
         restart_path_expr ~param ~loc ~state path (D.path_expr_pure x)
-      | Path_expr App_proj(f,ax) :: path ->
-        restart_path_expr ~param ~loc ~state path (D.path_expr_app f ax (Some x))
       | _ -> .
   and restart_me: module_expr Path.t -> _ = fun path ~state ~loc ~param x -> match path with
     | Expr Include :: rest ->

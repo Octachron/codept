@@ -52,10 +52,6 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
           Pp.fp ppf "%t.(%t.(%a))" x (dlist path right) M2l.pp_me expr
         )
         )
-    | Path_expr App_proj (f,a) :: rest ->
-      path_expr rest
-        (fun ppf -> Pp.fp ppf "%t(%t)%t" (R.pp_path_expr f.user)  (R.pp_path_expr a.user) x )
-
     | _ -> .
   and me: M2l.module_expr t -> _ = fun rest sub ->
     match rest with
