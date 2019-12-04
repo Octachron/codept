@@ -84,7 +84,25 @@ module type simple_core = sig
   val pp: t Pp.t
 end
 
-module Make_Expr(S:simple_core) = struct
+(** Module paths with application *)
+module type Expr = sig
+  type s
+  type t = private
+    | Simple of s
+    | Apply of { f:t; x:t; proj: s option }
+
+  val sch: t Schematic.t
+  exception Functor_not_expected
+  val concrete : t -> s
+  val concrete_with_f : t -> s
+  val multiples : t -> s list
+  val pure : s -> t
+  val app: t -> t -> s option -> t
+  val pp : Format.formatter -> t -> unit
+  val prefix : t -> string
+end
+
+module Make_Expr(S:simple_core): Expr with type s := S.t = struct
 
   type t =
     | Simple of S.t
