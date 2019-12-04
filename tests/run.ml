@@ -615,7 +615,7 @@ let result =
           "pparse_compat.mli", ([], ["Parsetree"], []);
           "paths.mli", (["Name"; "Schematic"], ["Map";"Set";"Format"],[]);
           "paths.ml", (["Name"; "Pp"; "Schematic"; "Schematic_indices"; "Support" ],
-                       ["Filename";"List";"Map";"Set";
+                       ["Filename";"List";"Map";"Set";"Format";
                         "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
