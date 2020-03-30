@@ -116,10 +116,16 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
   let sig_include loc state module_type =
     gen_include loc (module_type loc state) (fun i -> SigInclude i)
 
+  let if_named name f = match name with
+    | None -> Ok None
+    | Some x -> Ok (Some (f x))
+
   let bind state module_expr {name;expr} =
    module_expr state expr >>| function
     | Error h -> Error ( Bind {name; expr = h} )
-    | Ok d -> Ok (Some(T.bind_summary Module name d))
+    | Ok d ->
+      if_named name
+        (fun name -> T.bind_summary Module name d)
 
   let bind state module_expr (b: M2l.module_expr bind) =
     match b.expr with
@@ -127,10 +133,11 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
     | Constraint(Abstract, Alias p)
       when Envt.is_exterior p state && transparent_aliases ->
         let path = Namespaced.of_path @@ Envt.expand_path p state in
-        let m = Module.Alias
-            { name = b.name; path; weak=false; phantom = None } in
-        let r = Ok ( Some (Y.define [m]) ) in
-        no_deps r
+        let bind name =
+          let m = Module.Alias
+              { name = name; path; weak=false; phantom = None } in
+          Y.define [m] in
+        no_deps (if_named b.name bind)
     | _ -> bind state module_expr b
 
 
@@ -143,16 +150,18 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
   let bind_sig state module_type {name;expr} =
     module_type state expr >>| function
     | Error h -> Error ( Bind_sig {name; expr = h} )
-    | Ok d -> Ok (Some(T.bind_summary M.Module_type name d))
+    | Ok d -> if_named name (fun name -> T.bind_summary M.Module_type name d)
 
   let bind_rec state module_expr module_type bs =
     let pair name expr = {name;expr} in
     let triple name me mt = name, me, mt in
     (* first we try to compute the signature of each argument using
        approximative signature *)
-    let mockup ({name;_}:_ M2l.bind) = M.md @@ M.mockup name in
+    let mockup ({name;_}:_ M2l.bind) = Option.fmap (fun name -> M.md @@ M.mockup name) name in
     let add_mockup defs arg =
-      Envt.extend defs @@ Y.define [mockup arg] in
+      match mockup arg with
+      | None -> defs
+      | Some m -> Envt.extend defs @@ Y.define [m] in
     let state' = List.fold_left add_mockup state bs in
     let mapper {name;expr} = match expr with
       | Constraint(me,mt) ->
@@ -167,9 +176,11 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
     | Ok defs ->
       (* if we did obtain the argument signature, we go on
          and try to resolve the whole recursive binding *)
-      let add_arg defs (name, _me, arg) =
-        Envt.extend defs
-        @@ Y.define [M.M (P.to_module ~origin:Arg name arg)] in
+      let add_arg defs (name, _me, arg) = match name with
+        | None -> defs
+        | Some name ->
+          Envt.extend defs
+          @@ Y.define [M.M (P.to_module ~origin:Arg name arg)] in
       let state' = List.fold_left add_arg state defs in
       let mapper {name;expr} =
         module_expr state' expr >>| fmap (pair name) (pair name) in
@@ -181,7 +192,10 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
         let defs =
           List.fold_left
             ( fun defs {name;expr} ->
-                Y.bind (M.M (P.to_module ~origin:Submodule name expr)) defs )
+                Option.either (fun name ->
+                    Y.bind (M.M (P.to_module ~origin:Submodule name expr)) defs )
+                  defs
+                  name)
             Y.empty defs in
         Ok ( Some defs )
 
@@ -196,7 +210,7 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
       | Some arg ->
         module_type state arg.Arg.signature >>| function
         | Error h -> Error (Some {Arg.name = arg.name; signature = h })
-        | Ok d   -> Ok (Some(P.to_arg arg.name d)) in
+        | Ok d   -> Ok (Option.fmap (fun n -> P.to_arg n d) arg.name) in
     ex_arg >>= function
     | Error me -> err (fn @@ List.fold_left demote {arg=me;body} args )
     | Ok arg ->
@@ -208,7 +222,7 @@ module Make(Envt:Stage.envt)(Param:Stage.param) = struct
       | Error me ->
         let arg = Option.(
             arg >>| fun arg ->
-            { Arg.name = arg.name;
+            { Arg.name = Some arg.name;
               signature:module_type= Resolved (P.of_module arg) }
           ) in
         Error (fn @@ List.fold_left demote {arg;body=me} args)

@@ -35,13 +35,13 @@ val m2l_init : m2l
 val final: m2l -> Module.Sig.t
 
 (** Module rec *)
-val bind_rec_add : string -> module_like -> state_diff -> state_diff
+val bind_rec_add : Name.t option -> module_like -> state_diff -> state_diff
 val bind_rec_init : state_diff
 
 (** Expr *)
 val included : Transforms.param -> Fault.loc -> module_like -> state_diff
-val bind : string -> module_like -> state_diff
-val bind_sig : string -> module_like -> state_diff
+val bind : Name.t option -> module_like -> state_diff
+val bind_sig : Name.t option -> module_like -> state_diff
 val opened : Transforms.param -> loc:Fault.loc -> module_like -> state_diff
 val empty_diff: state_diff
 
@@ -54,7 +54,7 @@ module type state = sig
   val bind_arg : state -> module_like Module.Arg.t -> state
   val is_alias : Transforms.param -> state -> Paths.Simple.t -> bool
   val restart : state -> state_diff -> state
-  val bind_alias : state -> string -> Paths.Simple.t -> state_diff
+  val bind_alias : state -> Name.t option -> Paths.Simple.t -> state_diff
   val diff : state -> state_diff
   val open_path :
     param:Transforms.param -> loc:Fault.loc -> state -> path -> state

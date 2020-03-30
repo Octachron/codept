@@ -2,7 +2,7 @@
 (** Arg submodule for functor arguments *)
 module Arg :
   sig
-    type 'a t = { name : string; signature : 'a; }
+    type 'a t = { name : Name.t option; signature : 'a; }
     type 'a arg = 'a t
 
     val pp :
@@ -131,7 +131,7 @@ type modul_ = t
 
 (** {2 Helper function} *)
 val is_exact: t -> bool
-val of_arg : arg -> m
+val of_arg : arg -> m option
 val is_functor : t -> bool
 val name: t -> Name.t
 

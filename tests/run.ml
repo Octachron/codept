@@ -693,7 +693,7 @@ let result =
              "Zipper_pp"]
           ,["List"],[]);
           "zipper_pp.ml", (
-            ["M2l"; "Module"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
+            ["M2l"; "Module"; "Name"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
           ,["Format"],[]);
           "zipper_fold.mli", (["Stage";"Zipper_def"], [], []);
           "zipper.ml", ([],[],[]);
@@ -702,11 +702,11 @@ let result =
              "Zipper_skeleton"]
           ,[],[]);
           "zipper_skeleton.ml", (
-            ["Deps"; "Fault"; "M2l"; "Module"; "Namespaced"; "Paths"; "Pp";
+            ["Deps"; "Fault"; "M2l"; "Module"; "Name"; "Namespaced"; "Option"; "Paths"; "Pp";
              "Stage"; "Standard_faults"; "Summary"; "Transforms"]
           ,["Format"; "List"],[]);
           "zipper_skeleton.mli", (
-            ["Deps"; "Fault"; "M2l"; "Module"; "Paths"; "Pp"; "Stage";
+            ["Deps"; "Fault"; "M2l"; "Module"; "Name"; "Paths"; "Pp"; "Stage";
              "Summary"; "Transforms"]
           ,[],[]);
         ])

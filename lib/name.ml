@@ -3,6 +3,9 @@ module Core = struct
   type name = t
   let compare (x:name) (y:name) = compare x y
   let pp = Pp.string
+  let pp_opt ppf = function
+    | None -> pp ppf "_"
+    | Some s -> pp ppf s
 end
 include Core
 

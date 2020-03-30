@@ -605,10 +605,19 @@ and module_expr mexpr : M2l.module_expr =
     Ident (npath name)
   | Pmod_structure str (* struct ... end *) ->
     Str (structure  str)
+# oo, 4.10
   | Pmod_functor (name, sign, mex) ->
     let name = txt name in
-    let arg = Option.( sign >>| module_type >>| fun s -> {Arg.name;signature=s} ) in
+    let arg = Option.( sign >>| module_type >>| fun s -> {Arg.name = Some name;signature=s} ) in
     Fun { arg; body = module_expr mex }
+# 4.10, oo
+  | Pmod_functor (Unit, mex) ->
+    Fun { arg = None; body = module_expr mex }
+  | Pmod_functor (Named(name,mt), mex) ->
+    let name = txt name in
+    let arg = Some {Arg.name;  signature=module_type mt } in
+    Fun { arg; body = module_expr mex }
+#end
   | Pmod_apply (f,x)  (* ME1(ME2) *) ->
     Apply {f = module_expr f; x = module_expr x }
   | Pmod_constraint (me,mt) ->
@@ -644,10 +653,18 @@ and module_binding (pmb_name, pmb_expr) =
 and module_type (mt:Parsetree.module_type) =
   match mt.pmty_desc with
   | Pmty_signature s (* sig ... end *) -> Sig (signature s)
+# oo, 4.10
   | Pmty_functor (name, arg, res) (* functor(X : MT1) -> MT2 *) ->
     let arg = let open Option in
-      arg >>| module_type >>| fun s -> { Arg.name = txt name; signature = s} in
+      arg >>| module_type >>| fun s -> { Arg.name = Some(txt name); signature = s} in
     Fun { arg; body = module_type res }
+# 4.10, oo
+  | Pmty_functor (Unit, res) (* functor(X : MT1) -> MT2 *) ->
+    Fun { arg=None; body = module_type res }
+  | Pmty_functor (Named(name,s), res) (* functor(X : MT1) -> MT2 *) ->
+    let arg = Some ( {Arg.name = txt name; signature = module_type s }) in
+    Fun { arg; body = module_type res }
+#end
   | Pmty_with (mt, wlist) (* MT with ... *) ->
     let deletions, access =
       List.fold_left with_more (Paths.S.Set.empty,Annot.Access.empty) wlist in
@@ -665,7 +682,7 @@ and module_type_declaration mdec =
   let open Option in
   let name = txt mdec.pmtd_name in
   let s = ( (mdec.pmtd_type >>| module_type) >< Abstract ) in
-  {name; expr = s }
+  {name = Some name; expr = s }
 and signature sign =
   mmap signature_item sign
 and signature_item item =
@@ -700,7 +717,7 @@ and signature_item item =
   | Psig_typesubst tds -> minor @@ Annot.union_map type_declaration tds
   | Psig_modsubst msub ->
      let ghost =
-       Bind{ name=msub.pms_name.txt; expr= Ident(npath msub.pms_manifest)} in 
+       Bind{ name= Some msub.pms_name.txt; expr= Ident(npath msub.pms_manifest)} in
      do_open msub.pms_loc (Str [with_loc msub.pms_loc ghost])
 #end
 and class_description x =  class_type_declaration x

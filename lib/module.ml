@@ -1,22 +1,22 @@
 module Pkg = Paths.Pkg
 
 module Arg = struct
-  type 'a t = { name:Name.t; signature:'a }
+  type 'a t = { name:Name.t option; signature:'a }
   type 'a arg = 'a t
 
   let pp pp ppf = function
     | Some arg ->
-      Pp.fp ppf "(%s:%a)" arg.name pp arg.signature
+      Pp.fp ppf "(%a:%a)" Name.pp_opt arg.name pp arg.signature
     | None -> Pp.fp ppf "()"
 
   let sch name sign = let open Schematic.Tuple in
     let fwd arg = [arg.name; arg.signature] in
     let rev [name;signature] = {name;signature} in
-    Schematic.custom ["Module"; "Arg"; name] Schematic.[String; sign] fwd rev
+    Schematic.custom ["Module"; "Arg"; name] Schematic.[option "Arg_name" String; sign] fwd rev
 
   let reflect pp ppf = function
     | Some arg ->
-      Pp.fp ppf {|Some {name="%s"; %a}|} arg.name pp arg.signature
+      Pp.fp ppf {|Some {name="%a"; %a}|} Name.pp_opt arg.name pp arg.signature
     | None -> Pp.fp ppf "()"
 
   let pp_s pp_sig ppf args = Pp.fp ppf "%a"
@@ -194,7 +194,9 @@ type arg = definition Arg.t
 type modul_ = t
 
 let of_arg ({name;signature}:arg) =
-  { name; origin = Arg ; args=[]; signature = Exact signature }
+  Option.fmap (fun name ->
+      { name; origin = Arg ; args=[]; signature = Exact signature }
+    ) name
 
 let is_functor = function
   | Alias _ |  M { args = []; _ } -> false

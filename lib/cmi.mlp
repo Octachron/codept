@@ -52,23 +52,34 @@ let rec signitem =
 # 4.08, oo
   | Sig_module  (id, _, md, _, _) ->
 #end
-    [module_declaration module_type (Ident.name id) md]
+    [module_declaration module_type (Some(Ident.name id)) md]
 # oo, 4.08
   | Sig_modtype (id, mtd) ->
 # 4.08, oo
   | Sig_modtype (id, mtd, _ ) ->
 #end
-  [module_type_declaration module_type (Ident.name id) mtd]
+  [module_type_declaration module_type (Some(Ident.name id)) mtd]
 and signature x = mmap signitem x
 and module_type  = function
   | Mty_ident p -> M2l.Ident (from_path p)
   | Mty_signature s -> M2l.Sig (List.map Loc.nowhere @@ signature s)
+# oo, 4.10
   | Mty_functor (id, mto, mt) ->
     let open M2l in
     let name = Ident.name id in
     let arg = Option.( mto >>|module_type >>| fun s ->
                        {Arg.name; signature = s} ) in
     Fun { arg ; body = module_type mt}
+# 4.10, oo
+  | Mty_functor (arg, mt) ->
+    let open M2l in
+    let arg = match arg with
+        | Named(name,mt) ->
+          Some {Arg.name = Option.fmap Ident.name name ; signature = module_type mt }
+        | Unit -> None
+    in
+    Fun { arg; body = module_type mt }
+#end
 # oo, 4.04
   | Mty_alias p ->
 # 4.04, 4.08

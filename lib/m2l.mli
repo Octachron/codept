@@ -29,7 +29,7 @@
 
 (** {2 Main types } *)
 
-type 'a bind = { name: Name.t; expr:'a }
+type 'a bind = { name: Name.t option; expr:'a }
 (** ['a bind] is an auxilliary type used for module/module type binding *)
 
 type kind = Structure | Signature

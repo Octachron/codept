@@ -59,6 +59,7 @@ and inf_module lexbuf =
   match token lexbuf with
   | Parser.UIDENT name ->
     let loc = locate lexbuf in
+    let name = Some name in
     begin match inf_bind lexbuf with
       | None ->
         M2l.(Loc.create loc @@ Bind { name; expr = Str []}) :: inf_start lexbuf

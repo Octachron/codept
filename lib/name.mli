@@ -3,6 +3,7 @@
 type t = string
 type name = t
 val pp: Format.formatter -> t -> unit
+val pp_opt: Format.formatter -> t option -> unit
 
 module Set: sig
   include Set.S with type elt = t

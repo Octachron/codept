@@ -48,7 +48,7 @@ let fn arg f =
   match arg with
   | None -> { f with P.args = None :: f.P.args }
   | Some {Arg.signature; name } ->
-    { f with P.args = Some(P.to_arg name signature) :: f.args }
+    { f with P.args = Option.fmap (fun name -> (P.to_arg name signature)) name :: f.args }
 
 
 let str = P.no_arg
@@ -73,12 +73,15 @@ let m_with dels mt =
   let result = T.with_deletions dels mt.P.result in
   { mt with result }
 
-let bind name me = T.bind_summary Module name me
-let bind_sig name m = T.bind_summary Module_type name m
-
+let bind name me = match name with
+    | None -> Y.empty
+    | Some name -> T.bind_summary Module name me
+let bind_sig name m = match name with
+  | Some name ->  T.bind_summary Module_type name m
+  | None -> Y.empty
 
 let bind_rec_add name expr y =
-  Y.merge y (T.bind_summary Module name expr)
+  Y.merge y @@ Option.either (fun name -> (T.bind_summary Module name expr)) Y.empty name
 let bind_rec_init = Y.empty
 let opened param ~loc m = T.open_ param.T.policy loc m
 let empty_diff = Y.empty
@@ -94,8 +97,11 @@ module State(Env:Stage.envt) = struct
                  diff = Y.merge state.diff diff }
 
   let bind_arg st {Arg.name;signature} =
-    let m = M.M (P.to_module ~origin:Arg name signature) in
-    merge st (Y.define [m])
+    match name with
+    | None -> st
+    | Some name ->
+      let m = M.M (P.to_module ~origin:Arg name signature) in
+      merge st (Y.define [m])
 
   let is_alias param state s =
     param.T.transparent_aliases && Env.is_exterior s state.current
@@ -107,10 +113,13 @@ module State(Env:Stage.envt) = struct
     }
 
   let bind_alias state name p =
-    let path = Namespaced.of_path @@ Env.expand_path p state.current in
-    let m = Module.Alias
-        { name = name; path; weak=false; phantom = None } in
-    Y.define [m]
+    match name with
+    | None -> Y.empty
+    | Some name ->
+      let path = Namespaced.of_path @@ Env.expand_path p state.current in
+      let m = Module.Alias
+          { name = name; path; weak=false; phantom = None } in
+      Y.define [m]
 
   let diff s = s.diff
 
@@ -122,7 +131,10 @@ module State(Env:Stage.envt) = struct
 
   let rec_approximate state l =
     List.fold_left (fun state {M2l.expr=_; name} ->
-        merge state (bind name @@ P.of_module @@ Module.mockup name)
+        match name with
+        | None -> state
+        | Some ename ->
+          merge state (bind name @@ P.of_module @@ Module.mockup ename)
       ) state l
 
   let rec_patch y diff = Y.merge diff y
@@ -149,7 +161,7 @@ module type state = sig
   val bind_arg : state -> module_like Module.Arg.t -> state
   val is_alias : Transforms.param -> state -> Paths.Simple.t -> bool
   val restart : state -> state_diff -> state
-  val bind_alias : state -> string -> Paths.Simple.t -> state_diff
+  val bind_alias : state -> Name.t option -> Paths.Simple.t -> state_diff
   val diff : state -> state_diff
   val open_path :
     param:Transforms.param -> loc:Fault.loc -> state -> path -> state

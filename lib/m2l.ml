@@ -5,7 +5,7 @@ module Arg = M.Arg
 
 module P = M.Partial
 
-type 'a bind = {name:Name.t; expr:'a}
+type 'a bind = {name:Name.t option; expr:'a}
 
 type kind = Structure | Signature
 
@@ -112,8 +112,9 @@ module Sch = struct
 
   let rec raw_expr =
     Sum [ "Defs", Summary.sch; "Open", module_expr; "Include_me", module_expr;
-          "SigInclude", module_type; "Bind", [String; module_expr];
-          "Bind_sig", [String; module_type]; "Bind_rec", Array [String;module_expr];
+          "SigInclude", module_type; "Bind", [option "Bound_name" String; module_expr];
+          "Bind_sig", [option "Bound_name" String; module_type];
+          "Bind_rec", Array [option "Bound_name" String;module_expr];
           "Minor", annotation; "Extension_node", extension ]
   and expr = Custom{fwd=expr_fwd;rev=expr_bwd;id=["M2l"; "expr"] ;sch=raw_expr}
   and expr_fwd = let open Tuple in function
@@ -246,7 +247,7 @@ module Sch = struct
   and ext_fwd = function Module x -> C (Z x) | Val x-> C (S (Z x))
   and ext_rev =function C Z x -> Module x | C S Z x -> Val x | _ -> .
   and arg =
-    Custom { sch = Sum[ "None",Void; "Some",[String; module_type] ];
+    Custom { sch = Sum[ "None",Void; "Some",[option "Arg_name" String; module_type] ];
              fwd = arg_fwd;
              rev = arg_rev;
              id = ["M2l"; "arg"] }
@@ -450,7 +451,6 @@ module Build = struct
 
 end
 
-
 let rec pp_expression ppf = function
   | Defs defs -> Pp.fp ppf "define %a" Summary.pp defs
 
@@ -488,13 +488,13 @@ and pp_opaque ppf me = Pp.fp ppf "⟨%a(%a)⟩" pp_me me.data Loc.pp me.loc
 and pp_bind ppf {name;expr} =
   match expr with
   | Constraint(Abstract, Alias np) ->
-    Pp.fp ppf "@[module %s ≡ %a@]" name Paths.Simple.pp np
+    Pp.fp ppf "@[module %a ≡ %a@]" Name.pp_opt name Paths.Simple.pp np
   | Constraint(Abstract, mt) ->
-    Pp.fp ppf "@[<2>module %s:%a@]" name pp_mt mt
+    Pp.fp ppf "@[<2>module %a:%a@]" Name.pp_opt name pp_mt mt
   | Constraint(Unpacked, mt) ->
-    Pp.fp ppf "@[<2>(module %s:%a)@]" name pp_mt mt
+    Pp.fp ppf "@[<2>(module %a:%a)@]" Name.pp_opt name pp_mt mt
   | Unpacked ->
-    Pp.fp ppf "(module %s)" name
+    Pp.fp ppf "(module %a)" Name.pp_opt name
   | Open_me {opens = a :: q ; resolved; expr} ->
     Pp.fp ppf "%a.(%a)" Paths.Simple.pp a pp_bind
       {name; expr = Open_me{opens=q;resolved;expr} }
@@ -502,15 +502,15 @@ and pp_bind ppf {name;expr} =
     Pp.fp ppf "⟨context:%a⟩ %a"
       Summary.pp resolved pp_bind {name;expr}
   | _ ->
-    Pp.fp ppf "@[<2>module %s =@ %a@]" name pp_me expr
+    Pp.fp ppf "@[<2>module %a =@ %a@]" Name.pp_opt name pp_me expr
 and pp_bind_sig ppf {name;expr} =
   match expr with
   | Alias id ->
-    Pp.fp ppf "@[module type %s ≡ %a@]" name Paths.Simple.pp id
+    Pp.fp ppf "@[module type %a ≡ %a@]" Name.pp_opt name Paths.Simple.pp id
   | Abstract ->
-    Pp.fp ppf "@[module type %s@]" name
+    Pp.fp ppf "@[module type %a@]" Name.pp_opt name
   | _ ->
-    Pp.fp ppf "@[<2>module type %s =@ %a @]" name pp_mt expr
+    Pp.fp ppf "@[<2>module type %a =@ %a @]" Name.pp_opt name pp_mt expr
 and pp_me ppf = function
   | Resolved fdefs -> Pp.fp ppf "✔%a" P.pp fdefs
   | Ident np -> Paths.Simple.pp ppf np

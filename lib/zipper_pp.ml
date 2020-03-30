@@ -25,9 +25,12 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
   module Sk = Zipper_skeleton
   let fp1 fmt x ppf =Pp.fp ppf fmt x
   let fp2 fmt x y ppf =Pp.fp ppf fmt x y
+  let optname ppf = function
+    | None -> Format.fprintf ppf "_"
+    | Some s -> Format.pp_print_string ppf s
   let r_arg x ppf = match x with
     | None -> ()
-    | Some (l,_) -> Pp.fp ppf "%s:%t" l.Module.Arg.name (R.pp_mt l.signature.Zipper_def.user)
+    | Some (l,_) -> Pp.fp ppf "%a:%t" Name.pp_opt l.Module.Arg.name (R.pp_mt l.signature.Zipper_def.user)
   let path p ppf = Paths.S.pp ppf p
   let pp_path_expr m ppf = Format.fprintf ppf "%a?" Paths.Expr.pp m
   let leaf p ppf = Format.fprintf ppf "%t?" (path p.Zipper_skeleton.path)
@@ -61,13 +64,13 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Me Open_me_right {opens; _} :: rest -> me rest (R.pp_opens opens sub)
     | Expr Include :: rest -> expr rest (fp1 "include %t" sub)
     | Expr Bind name :: rest ->
-      expr rest (fun ppf -> Pp.fp ppf "module %s=%t" name sub)
+      expr rest (fun ppf -> Pp.fp ppf "module %a=%t" optname name sub)
     | Expr Bind_rec m :: rest ->
       let pp ppf =
-        Pp.fp ppf "%t %s: %t =%t@,%a" (R.pp_bindrec m.left.user) m.name
+        Pp.fp ppf "%t %a: %t =%t@,%a" (R.pp_bindrec m.left.user) Name.pp_opt m.name
           (R.pp_mt m.mt) sub
           (Pp.list (fun ppf (name,_,me) ->
-               Pp.fp ppf "@,and %s:?=%a" name M2l.pp_me me)
+               Pp.fp ppf "@,and %a:?=%a" Name.pp_opt name M2l.pp_me me)
           ) m.right in
       expr rest pp
     | Expr Open :: rest -> expr rest (fp1 "open %t" sub)
@@ -88,26 +91,26 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | _ -> .
   and mt: M2l.module_type t -> _ = fun rest sub -> match rest with
     | Expr Bind_sig name :: rest ->
-      expr rest (fun ppf -> Pp.fp ppf "module type %s=%t" name sub)
+      expr rest (fun ppf -> Pp.fp ppf "module type %a=%t" optname name sub)
     | Me Fun_left {name;body} :: rest ->
       me rest
-        (fun ppf -> Pp.fp ppf "fun(%s:%t)->%a" name sub M2l.pp_me body)
+        (fun ppf -> Pp.fp ppf "fun(%a:%t)->%a" Name.pp_opt name sub M2l.pp_me body)
     | Mt Fun_left {name;body} :: rest ->
       mt rest
-        (fun ppf -> Pp.fp ppf "fun(%s:%t)->%a" name sub M2l.pp_mt body)
+        (fun ppf -> Pp.fp ppf "fun(%a:%t)->%a" Name.pp_opt name sub M2l.pp_mt body)
     | Mt Fun_right left :: rest ->
       mt rest (fp2 "functor(%t)->%t" (r_arg left) sub)
     | Expr SigInclude :: rest ->
       expr rest (fun ppf -> Pp.fp ppf "include %t" sub)
     | Expr Bind_rec_sig m :: rest ->
       expr rest (fun ppf ->
-          Pp.fp ppf "module rec %a %s:%t=%a@,%a"
+          Pp.fp ppf "module rec %a %a:%t=%a@,%a"
             (Pp.list ~sep:(Pp.const "@ and ") (fun ppf (name,mt,me) ->
-                 Pp.fp ppf "%s:%t=%a" name  (R.pp_mt mt) M2l.pp_me me)
+                 Pp.fp ppf "%a:%t=%a" optname name  (R.pp_mt mt) M2l.pp_me me)
             ) m.left
-            m.name sub M2l.pp_me m.expr
+            optname m.name sub M2l.pp_me m.expr
             (Pp.list (fun ppf {M2l.name;expr} ->
-                 Pp.fp ppf "and@ %s = %a" name M2l.pp_me expr)
+                 Pp.fp ppf "and@ %a = %a" optname name M2l.pp_me expr)
             ) m.right
         )
     | Me Constraint_right left :: rest -> me rest (fp2 "(%t:%t)" (R.pp_me left.user) sub)

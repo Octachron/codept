@@ -38,13 +38,13 @@ module type fold = sig
 
   val apply : Fault.loc -> module_expr -> module_expr -> module_expr
 
-  val bind : Name.t -> module_expr -> expr
-  val bind_alias: Name.t -> Paths.S.t -> expr
+  val bind : Name.t option -> module_expr -> expr
+  val bind_alias: Name.t option -> Paths.S.t -> expr
   val bind_rec : bind_rec -> expr
   val bind_rec_add :
-    string -> module_expr -> bind_rec -> bind_rec
+    Name.t option -> module_expr -> bind_rec -> bind_rec
   val bind_rec_init : bind_rec
-  val bind_sig : string -> module_type -> expr
+  val bind_sig : Name.t option -> module_type -> expr
 
   val expr_ext : string -> ext -> expr
   val expr_include : loc:Fault.loc -> module_expr -> expr
@@ -119,22 +119,22 @@ module type s = sig
     | Open: M2l.module_expr expr
     | Include:  M2l.module_expr expr
     | SigInclude:  M2l.module_type expr
-    | Bind: Name.t ->  M2l.module_expr expr
-    | Bind_sig: Name.t -> M2l.module_type expr
+    | Bind: Name.t option ->  M2l.module_expr expr
+    | Bind_sig: Name.t option -> M2l.module_type expr
     | Bind_rec_sig:
         {
           diff: Zipper_skeleton.state_diff;
-          left: (Name.t * T.module_type * M2l.module_expr) list;
-          name: Name.t;
+          left: (Name.t option * T.module_type * M2l.module_expr) list;
+          name: Name.t option;
           expr: M2l.module_expr;
           right: M2l.module_expr M2l.bind list
         } -> M2l.module_type expr
     | Bind_rec:
         {
           left: bind_rec;
-          name:Name.t;
+          name:Name.t option;
           mt: T.module_type;
-          right: (Name.t * T.module_type * M2l.module_expr) list;
+          right: (Name.t option * T.module_type * M2l.module_expr) list;
         } -> M2l.module_expr expr
     | Minor:  M2l.annotation expr
     | Extension_node: string ->  M2l.extension_core expr
@@ -180,7 +180,7 @@ module type s = sig
     | Ident: path_in_context me
     | Apply_left: M2l.module_expr -> M2l.module_expr me
     | Apply_right: module_expr -> M2l.module_expr me
-    | Fun_left: {name:string; body:M2l.module_expr} -> M2l.module_type me
+    | Fun_left: {name:Name.t option; body:M2l.module_expr} -> M2l.module_type me
     | Fun_right:
         (module_type Arg.t * Zipper_skeleton.state_diff ) option
         -> M2l.module_expr me
@@ -202,7 +202,7 @@ module type s = sig
     | Alias: path_in_context mt
     | Ident: Paths.Expr.t mt
     | Sig: M2l.m2l mt
-    | Fun_left: {name:string; body:M2l.module_type} -> M2l.module_type mt
+    | Fun_left: {name:Name.t option; body:M2l.module_type} -> M2l.module_type mt
     | Fun_right: (module_type Arg.t * Zipper_skeleton.state_diff) option
         -> M2l.module_type mt
     | With_access:
