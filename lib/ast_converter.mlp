@@ -9,6 +9,13 @@ module Arg = M.Arg
 let from_lid = Longident_converter.from_lid
 let txt x= x.Location.txt
 
+# oo, 4.10
+  let bound_name x = Some x
+# 4.10, oo
+  let bound_name x = x
+#end
+
+
 
 let from_loc l =
   let open Location in
@@ -114,8 +121,9 @@ module Pattern = struct
 
   let opt f x = Option.( x >>| f >< empty )
 
+
   let bind loc name sign =
-    { empty with binds = [Loc.create loc {M2l.name; expr = sign }] }
+    { empty with binds = [Loc.create loc {M2l.name = bound_name name; expr = sign }] }
 # 4.04, oo
   let open_ m { annot={ data = {values; packed; access}; loc } ; binds} =
     let values =
@@ -428,7 +436,7 @@ and pattern pat =
       {ptyp_desc=Ptyp_package s; _ } ) ->
     let name = txt name in
     let mt, others = full_package_type s in
-    let bind = {M2l.name; expr = M2l.Constraint(Unpacked, mt) } in
+    let bind = {M2l.name = bound_name name; expr = M2l.Constraint(Unpacked, mt) } in
     { others with binds = [with_loc loc bind] }
   (* todo : catch higher up *)
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
@@ -649,7 +657,7 @@ and value_bindings x = val_bindings vb_pair x
 and module_binding_raw mb =
   module_binding (mb.pmb_name, mb.pmb_expr)
 and module_binding (pmb_name, pmb_expr) =
-  { name = txt pmb_name; expr = module_expr pmb_expr }
+  { name = bound_name (txt pmb_name); expr = module_expr pmb_expr }
 and module_type (mt:Parsetree.module_type) =
   match mt.pmty_desc with
   | Pmty_signature s (* sig ... end *) -> Sig (signature s)
@@ -677,7 +685,7 @@ and module_type (mt:Parsetree.module_type) =
   | Pmty_ident lid (* S *) -> Ident (epath lid)
 and module_declaration mdec =
   let s = module_type mdec.pmd_type in
-  { name = txt mdec.pmd_name; expr = Constraint( Abstract, s) }
+  { name = bound_name (txt mdec.pmd_name); expr = Constraint( Abstract, s) }
 and module_type_declaration mdec =
   let open Option in
   let name = txt mdec.pmtd_name in

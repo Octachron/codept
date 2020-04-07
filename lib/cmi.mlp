@@ -10,16 +10,26 @@ let rec mmap f l = match l with
 
 open Types
 
+module Ident = struct
 # oo, 4.06
-  module Ident = struct let name x= x.Ident.name end
+  let name x= x.Ident.name
+# 4.06, oo
+  let name x = Ident.name x
 #end
+# oo, 4.10
+  let make x = Some x
+  let pure x = x
+# 4.10, oo
+  let make x = x
+  let pure x = Some x
+#end
+end
 
 let bind id mt = let open M2l in
-  Bind {name=id; expr = Constraint(Abstract,mt)}
+  Bind {name= Ident.make id; expr = Constraint(Abstract,mt)}
 
 let bind_sig id mt = let open M2l in
-  Bind_sig { name = id; expr = Option.( mt >< Abstract)}
-
+  Bind_sig { name = Ident.make id; expr = Option.( mt >< Abstract)}
 
 let module_declaration module_type id md = bind id @@ module_type md.md_type
 let module_type_declaration module_type id mtd =
@@ -52,13 +62,13 @@ let rec signitem =
 # 4.08, oo
   | Sig_module  (id, _, md, _, _) ->
 #end
-    [module_declaration module_type (Some(Ident.name id)) md]
+    [module_declaration module_type Ident.(pure (name id)) md]
 # oo, 4.08
   | Sig_modtype (id, mtd) ->
 # 4.08, oo
   | Sig_modtype (id, mtd, _ ) ->
 #end
-  [module_type_declaration module_type (Some(Ident.name id)) mtd]
+  [module_type_declaration module_type Ident.(pure (name id)) mtd]
 and signature x = mmap signitem x
 and module_type  = function
   | Mty_ident p -> M2l.Ident (from_path p)
@@ -68,7 +78,7 @@ and module_type  = function
     let open M2l in
     let name = Ident.name id in
     let arg = Option.( mto >>|module_type >>| fun s ->
-                       {Arg.name; signature = s} ) in
+                       {Arg.name = Ident.make name; signature = s} ) in
     Fun { arg ; body = module_type mt}
 # 4.10, oo
   | Mty_functor (arg, mt) ->
