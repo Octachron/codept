@@ -113,8 +113,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
   let fn_me = fn_gen F.me_fun (fun x -> Me (Fun_right x))
   let fn_mt = fn_gen F.mt_fun (fun x -> Mt (Fun_right x))
 
-  let rec m2l ~param path left ~pkg ~state = function
-    | L.[] -> Ok (D.m2l left)
+  let rec m2l ~param path left ~pkg ~state : _ L.t -> _ = function
+    | [] -> Ok (D.m2l left)
     | {Loc.loc; data=a} :: right ->
       let loc = pkg, loc in
       expr ~param ~loc ~state
@@ -186,8 +186,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
   and open_right path expr ~param ~loc ~state opens =
     me (Me (Open_me_right {state=State.diff state;opens}) :: path)
       ~param ~loc ~state expr >>| D.open_me opens
-  and open_all_rec path expr left ~loc ~param ~diff ~state = function
-    | L.[] -> open_right path expr ~param ~loc ~state left
+  and open_all_rec path expr left ~loc ~param ~diff ~state : _ L.t -> _ = function
+    | [] -> open_right path expr ~param ~loc ~state left
     | a :: right ->
       let path' = Me (Open_me_left {left; right; diff; expr}) :: path in
       resolve path' ~param ~state ~loc ~level:Module a >>= fun a ->
@@ -224,8 +224,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       ext ~pkg:(apkg loc) ~param ~state (Mt (Extension_node name)::path)  e
       >>| D.mt_ext loc name
     | Abstract -> Ok D.sig_abstract
-  and bind_rec_sig path diff left ~param ~loc ~state = function
-    | L.[] ->
+  and bind_rec_sig path diff left ~param ~loc ~state : _ L.t -> _ = function
+    | [] ->
       let state = State.merge state diff in
       bind_rec path (D.init_rec diff) ~param ~loc ~state (List.rev left)
     | {M2l.name; expr=M2l.Constraint(me,ty)} :: right ->
@@ -236,15 +236,15 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | {M2l.name; expr} :: right ->
       bind_rec_sig path diff left ~param ~loc ~state
         ({M2l.name; expr=M2l.(Constraint(expr,Abstract))}::right)
-  and bind_rec path left ~param ~loc ~state = function
-    | L.[] -> Ok (D.bind_rec left)
+  and bind_rec path left ~param ~loc ~state : _ L.t -> _ = function
+    | [] -> Ok (D.bind_rec left)
     | (name,mt,mex) :: right ->
       me (Expr(Bind_rec{left;name;mt;right}) :: path) ~loc ~param ~state mex
       >>= fun me ->
       let left = D.bind_rec_add name me mt left in
       bind_rec path left ~loc ~state ~param right
-  and path_expr_args path ~loc ~state ~param main left = function
-    | L.[] -> Ok (D.path_expr left main)
+  and path_expr_args path ~loc ~state ~param main left : _ L.t -> _ = function
+    | [] -> Ok (D.path_expr left main)
     | (n, arg) :: right ->
       let path_arg = Path_expr (Arg {main;left;pos=n;right})::path in
       path_expr ~level:Module path_arg arg ~loc ~state ~param >>= fun x ->
@@ -260,15 +260,15 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
   and values path packed ~param ~pkg ~state values access =
     m2ls path packed access ~param ~state ~pkg F.value_init values >>|
     F.annot packed access
-  and m2ls path packed access ~param ~pkg ~state left = function
-    | L.[] -> Ok (F.values left)
+  and m2ls path packed access ~param ~pkg ~state left : _ L.t -> _ = function
+    | [] -> Ok (F.values left)
     | a :: right ->
       let fpath = Annot (Values {packed;access; left;right}) :: path in
       m2l_start fpath ~param ~pkg ~state a >>= fun a ->
       m2ls path packed access (F.value_add a.user left)
         ~param ~pkg ~state right
   and packed path accs vals left ~param ~pkg ~state = function
-    | L.[] ->
+    | [] ->
       let fpath = Annot (Access {packed=left; values=vals}) :: path in
       access fpath ~pkg ~param ~state accs >>=
       values path left ~param ~pkg ~state vals
@@ -281,7 +281,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         right
   and access path ~pkg ~param ~state s =
     access_step ~state ~pkg ~param path F.access_init (Paths.S.Map.bindings s)
-  and access_step path left ~param ~pkg ~state = function
+  and access_step path left ~param ~pkg ~state : _ L.t -> _ = function
     | [] -> Ok (F.access left)
     | (a, (loc,edge)) :: right ->
       let loc = pkg, loc in
@@ -304,31 +304,31 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Error _ -> Error z
     | Ok x -> match z.path with
       | Me Ident :: rest ->
-        restart_me ~param ~state ~loc rest (D.me_ident x)
+        restart_me ~param ~state ~loc (rest: module_expr path) (D.me_ident x)
       | Me Open_me_left {left;right;diff;expr} :: path ->
         let state = State.open_path ~param ~loc state x.backbone in
         open_all ~state ~param ~loc path expr (F.open_add x.user left) right >>=
-        restart_me ~param ~state:(State.restart state diff) ~loc path
+        restart_me ~param ~state:(State.restart state diff) ~loc (path:module_expr path)
       | Access a :: rest ->
         let r = F.access_add x.user v.loc (default_edge v.edge) a.left in
         access_step rest ~pkg:(apkg loc) ~param ~state r a.right
         >>= restart_access ~param ~loc ~state (rest: waccess path)
       | Mt Alias :: path ->
-        restart_mt ~param ~loc ~state path (D.alias x)
+        restart_mt ~param ~loc ~state (path:module_type path) (D.alias x)
       | Path_expr Main args :: path ->
         path_expr_args ~param ~state ~loc path x F.path_expr_arg_init args >>=
-        restart_path_expr ~param ~loc ~state path
+        restart_path_expr ~param ~loc ~state (path: Paths.E.t path)
       | _ -> .
   and restart_me: module_expr Path.t -> _ = fun path ~state ~loc ~param x -> match path with
     | Expr Include :: rest ->
-      restart_expr ~state ~param rest (D.expr_include param loc x)
+      restart_expr ~state ~param (rest: expression path) (D.expr_include param loc x)
     | Expr Open :: rest ->
-      restart_expr ~param ~state rest (D.expr_open param loc x)
+      restart_expr ~param ~state (rest: expression path) (D.expr_open param loc x)
     | Annot (Packed p) :: path ->
       let pkg = apkg loc in
       let left = F.add_packed p.loc x.user p.left in
       packed path p.access p.values left ~param ~pkg ~state p.right >>=
-      restart_annot ~loc ~param ~state path
+      restart_annot ~loc ~param ~state (path: annotation path)
     | Me (Apply_left xx) :: path ->
       me (Me (Apply_right x)::path) ~param ~state ~loc xx
       >>| D.apply param loc x
@@ -348,11 +348,11 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       let state = State.restart state diff in
       restart_me path ~loc ~state ~param (D.open_me opens x)
     | Expr (Bind name) :: path ->
-      restart_expr path ~state ~param (D.bind name x)
+      restart_expr (path: expression path) ~state ~param (D.bind name x)
     | Expr (Bind_rec {left;name;mt;right}) :: path  ->
       let left = D.bind_rec_add name x mt left in
       bind_rec path left ~loc ~param ~state right >>=
-      restart_expr ~state ~param path
+      restart_expr ~state ~param (path: expression path)
     | _ -> .
   and restart_expr: expression path -> _ =
     fun path ~state ~param x ->
@@ -360,7 +360,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | M2l {left;loc;right; state=restart } :: path ->
       let state, left = D.m2l_add state loc x left in
       m2l path left ~pkg:(apkg loc) ~param ~state right >>=
-      restart_m2l ~param ~loc ~state:(State.restart state restart) path
+      restart_m2l ~param ~loc ~state:(State.restart state restart) (path: m2l path)
     | _ -> .
   and restart_mt: module_type path -> _ = fun path ~state ~param ~loc x ->
     match path with
@@ -410,7 +410,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     fun path ~loc ~param ~state x -> match path with
     | Expr Minor :: path -> restart_expr ~param ~state path (D.minor x)
     | Me Val :: path -> restart_me ~loc ~param ~state path (D.me_val x)
-    | Ext Val :: path -> restart_ext path ~param ~loc ~state (F.ext_val x)
+    | Ext Val :: path -> restart_ext (path: extension_core path) ~param ~loc ~state (F.ext_val x)
     | _ -> .
   and restart_ext: extension_core path -> _ =
     fun path ~loc ~param ~state x -> match path with

@@ -19,7 +19,6 @@ module type Result_printer = sig
 
 end
 
-
 module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
   open Def
   module Sk = Zipper_skeleton
@@ -40,15 +39,15 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     let f = z.focus in
     let x = leaf f in
     match z.path with
-    | Me Ident :: rest -> me rest x
-    | Mt Alias :: rest -> mt rest x
+    | Me Ident :: rest -> me (rest:M2l.module_expr t) x
+    | Mt Alias :: rest -> mt (rest:M2l.module_type t) x
     | Access acc :: rest ->
-      access rest
+      access (rest: waccess t)
         (fun ppf -> Pp.fp ppf "access {%t;...%t}" x (dlist a acc.right))
     | Path_expr Main args :: rest ->
-      path_expr rest (pp_path_expr {Paths.Expr.path=f.path; args})
+      path_expr (rest:Paths.E.t t) (pp_path_expr {Paths.Expr.path=f.path; args})
     | Me (Open_me_left {left;right;expr; diff=_}) :: rest ->
-      me rest (R.pp_opens left (fun ppf ->
+      me (rest: M2l.module_expr t) (R.pp_opens left (fun ppf ->
           Pp.fp ppf "%t.(%t.(%a))" x (dlist path right) M2l.pp_me expr
         )
         )
@@ -62,9 +61,9 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Me Constraint_left mt :: rest ->
       me rest (fun ppf -> Pp.fp ppf "(%t:%a)" sub M2l.pp_mt mt)
     | Me Open_me_right {opens; _} :: rest -> me rest (R.pp_opens opens sub)
-    | Expr Include :: rest -> expr rest (fp1 "include %t" sub)
+    | Expr Include :: rest -> expr (rest: M2l.expression t) (fp1 "include %t" sub)
     | Expr Bind name :: rest ->
-      expr rest (fun ppf -> Pp.fp ppf "module %a=%t" optname name sub)
+      expr (rest: M2l.expression t) (fun ppf -> Pp.fp ppf "module %a=%t" optname name sub)
     | Expr Bind_rec m :: rest ->
       let pp ppf =
         Pp.fp ppf "%t %a: %t =%t@,%a" (R.pp_bindrec m.left.user) Name.pp_opt m.name
@@ -72,22 +71,23 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
           (Pp.list (fun ppf (name,_,me) ->
                Pp.fp ppf "@,and %a:?=%a" Name.pp_opt name M2l.pp_me me)
           ) m.right in
-      expr rest pp
-    | Expr Open :: rest -> expr rest (fp1 "open %t" sub)
+      expr (rest:M2l.expression t) pp
+    | Expr Open :: rest -> expr (rest:M2l.expression t) (fp1 "open %t" sub)
     | Annot Packed p :: rest ->
-      annot rest (fun ppf -> Pp.fp ppf
-                     "@[Annot@ packed:%t%t ... {%a%a%a}@]"
-                     (R.pp_packed p.left)
-                     sub M2l.pp_packed p.right
-                     M2l.pp_access p.access
-                     M2l.pp_values p.values
-                 )
+      annot (rest:M2l.annotation t)
+        (fun ppf -> Pp.fp ppf
+            "@[Annot@ packed:%t%t ... {%a%a%a}@]"
+            (R.pp_packed p.left)
+            sub M2l.pp_packed p.right
+            M2l.pp_access p.access
+            M2l.pp_values p.values
+        )
     | Mt Of :: rest -> mt rest (fp1 "module type of %t" sub)
     | _ -> .
   and annot: M2l.annotation t -> _ = fun rest sub -> match rest with
     | Expr Minor :: rest -> expr rest sub
     | Me Val :: rest -> me rest (fp1 "(val %t)" sub)
-    | Ext Val :: rest -> ext rest sub
+    | Ext Val :: rest -> ext (rest:M2l.extension_core t) sub
     | _ -> .
   and mt: M2l.module_type t -> _ = fun rest sub -> match rest with
     | Expr Bind_sig name :: rest ->
@@ -121,7 +121,7 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | _ -> .
   and expr: M2l.expression t -> _ = fun rest sub -> match rest with
     | M2l m :: rest ->
-      m2l rest (
+      m2l (rest:M2l.m2l t) (
         fun ppf -> Pp.fp ppf "%t@ %t@ %a" (R.pp_m2l m.left.user) sub M2l.pp m.right
       )
    | _ -> .
