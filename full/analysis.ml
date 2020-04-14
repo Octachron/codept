@@ -155,7 +155,7 @@ let solve param (E((module Envt), core)) (units: _ Unit.pair) =
 
 let solve_from_seeds seeds loader files param
     (E((module Envt), core)) =
-  let module Engine = Outliner.Make(Envt)((val lift param)) in
+  let module Engine = Dep_zipper.Make(Envt)((val lift param)) in
   let module S = Solver.Directed(Envt)((val lift param))(Engine) in
   snd @@ S.solve loader files core seeds
 

@@ -40,7 +40,6 @@ type m2l = expression Loc.ext list
 
 (** The [expression] type is the basic building block of the m2l AST *)
 and expression =
-  | Defs of Summary.t (** Resolved module actions M = … / include … / open … *)
   | Open of module_expr (** [open A.B.C] ⇒ [Open [A;B;C]]  *)
   | Include of module_expr (** [struct include A end] *)
   | SigInclude of module_type
@@ -77,11 +76,6 @@ and access = (Loc.t * Deps.Edge.t) Paths.S.map
 
 (** Module level expression representation *)
 and module_expr =
-  | Resolved of Module.Partial.t
-  (** Already resolved module expression, generally
-      used in subexpression when waiting for other parts
-      of module expression to be resolved
-  *)
   | Ident of Paths.Simple.t (** [A.B…] **)
   | Apply of {f: module_expr; x:module_expr} (** [F(X)] *)
   | Fun of module_expr fn (** [functor (X:S) -> M] *)
@@ -94,7 +88,7 @@ and module_expr =
       In particular, it is useful for constraining first class module unpacking
       as [Constraint(Abstract, signature)]. *)
   | Unpacked (** [(module M)] *)
-  | Open_me of { resolved: Summary.t; opens:Paths.Simple.t list; expr:module_expr}
+  | Open_me of { opens:Paths.Simple.t list; expr:module_expr}
   (** [M.(…N.( module_expr)…)]
       Note: This construction does not exist (yet?) in OCaml proper.
       It is used here to simplify the interaction between
@@ -102,7 +96,6 @@ and module_expr =
 
 (** Module type level representation *)
 and module_type =
-  | Resolved of Module.Partial.t (** same as in the module type *)
   | Alias of Paths.Simple.t (** [module m = A…]  *)
   | Ident of Paths.Expr.t
   (** [module M : F(X).s]
@@ -186,11 +179,6 @@ module Build: sig
 
   val open_me: Paths.Simple.t list -> module_expr -> module_expr
 
-  val demote_str: module_expr fn -> Summary.t Module.Arg.t option
-    -> module_expr fn
-  val demote_sig: module_type fn -> Summary.t Module.Arg.t option
-    -> module_type fn
-
   val fn_sig: module_type fn -> module_type
   val fn: module_expr fn -> module_expr
 end
@@ -201,25 +189,6 @@ end
 
 *)
 
-(**
-   The Block module gathers functions that aims to compute the first
-   dependencies that need to be resolved before any outliner can make
-   progress evaluating a given code block *)
-module Block: sig
-  val m2l: m2l -> (Summary.t * Paths.S.t) Loc.ext option
-end
-
-(** {!Normalize} computes the normal form of a given m2l code fragment.
-    When possible, successive expression of the same kind are merged.
- *)
-module Normalize: sig
-
-  val all: m2l -> bool * m2l
-  (** [all fragment ≡ (has_some_simplification_been_made, resulting_m2l) ] *)
-
-  val minor: Annot.t -> Annot.t
-  val value: Annot.t -> m2l -> Annot.t
-end
 
 (** {2 Signature filter} *)
 module Sig_only: sig

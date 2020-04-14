@@ -11,7 +11,6 @@ type single = string -> Io.writer -> Format.formatter -> Params.t
 
 module Pkg = Paths.Pkg
 open Params
-open M2l
 
 (** approx *)
 let approx filename = Approx_parser.(to_upper_bound @@ lower_bound filename)
@@ -62,8 +61,6 @@ let m2l_info _ _ ppf param f =
   let open Option in
   start
   >>| snd
-  >>| Normalize.all
-  >>| snd
   >>| Pp.fp ppf  "%a@." M2l.pp
   >< ()
 
@@ -75,8 +72,6 @@ let m2l filename (writer:Io.writer) ppf param f =
   start
   >>| begin fun (k,m) ->
     m
-    |> Normalize.all
-    |> snd
     |> writer.m2l fmt (k,filename) ppf
   end
       >< ()

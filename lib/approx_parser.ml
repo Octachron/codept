@@ -126,7 +126,7 @@ and (!) f x = try f x with Lexer.Error _ ->  Loc.nowhere []
 
 
 let lower lex =
-  let r = snd @@ M2l.Normalize.all @@ inf_start lex in
+  let r = inf_start lex in
   stack := [];
   r
 

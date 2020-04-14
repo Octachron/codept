@@ -125,7 +125,6 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
   and m2l_start ~param path ~pkg ~state =
     m2l ~param path {backbone=Sk.m2l_init; user=F.m2l_init} ~pkg ~state
   and expr ~param path ~loc ~state expr = match expr with
-    | Defs _ -> assert false (* to be removed *)
     | Open m -> me ~param (Expr Open::path) ~loc ~state m
       >>| D.expr_open param loc
     | Include m ->
@@ -152,7 +151,6 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       ext ~pkg:(apkg loc) ~param ~state (Expr (Extension_node name) :: path)
         extension >>| D.expr_ext name
   and me path  ~param ~loc ~state = function
-    | Resolved _ -> assert false (* to be removed *)
     | Ident s ->
       resolve (Me Ident :: path) ~param ~loc ~state ~level:Module s
       >>| D.me_ident
@@ -197,7 +195,6 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
   and open_all path expr left ~state ~loc ~param =
     open_all_rec path expr left ~param ~loc ~diff:(State.diff state) ~state
   and mt path ~param ~loc ~state = function
-    | Resolved _ -> assert false (* to be removed *)
     | Alias id ->
       resolve (Mt Alias :: path) ~param ~loc ~state ~level:Module id
       >>| D.alias

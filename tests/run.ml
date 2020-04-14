@@ -587,17 +587,10 @@ let result =
              "Standard_faults";"Standard_policies";"Option";"Pp"],
             ["Array"; "Filename";"List";"Sys"; "Format"],
             []);
-          "outliner.mli", (["Stage"], [],[]);
-          "outliner.ml", (
-            ["Summary"; "Loc"; "M2l"; "Module"; "Name"; "Namespaced";
-             "Option"; "Paths"; "Mresult"; "Fault"; "Standard_faults";
-             "Deps"; "With_deps"; "Transforms"; "Stage" ]
-          ,["List";"Format"],[]);
-          "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Summary";"Paths";
-                       "Schematic"; "Pp" ],
+          "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Paths"; "Pp"; "Schematic" ],
                       ["Format"],[]);
-          "m2l.ml", (["Loc"; "Deps"; "Module"; "Mresult"; "Name";
-                      "Option";"Summary";"Paths"; "Pp"; "Schematic" ],
+          "m2l.ml", (["Loc"; "Deps"; "Module"; "Name";
+                      "Option";"Paths"; "Pp"; "Schematic" ],
                      ["List"],[]);
           "fault.ml", (["Format_tags"; "Loc"; "Option"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"; "Map"],[]);
