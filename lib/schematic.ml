@@ -58,40 +58,36 @@ open Record
 
 type ('a,'b) bijection = { fwd:'a->'b;rev:'b -> 'a}
 
-type ('hole, 'free) t =
-  | Float: (float, 'free) t
-  | Int: (int, 'free) t
-  | Bool: (bool, 'free) t
-  | String: (string, 'free) t
-  | Void: (void, 'free) t
-  | Array: ('hole,'free) t -> ('hole list, 'free) t
-  | (::) : ('a,'free) t * ('b tuple, 'free) t -> (('a * 'b) tuple, 'free) t
-  | []: (void tuple, 'free) t
-  | Obj: ('a,'free) record_declaration -> ('a record, 'free) t
-  | Custom: ('a,'b,'free) custom -> ('a, 'free) t
-  | Sum: ('a,'free) sum_decl -> ('a sum,'free) t
-  | Description: string * ('hole,'free) t -> ('hole, 'free) t
+type ('hole, 'free) s =
+  | Float: (float, 'free) s
+  | Int: (int, 'free) s
+  | Bool: (bool, 'free) s
+  | String: (string, 'free) s
+  | Void: (void, 'free) s
+  | Array: ('hole,'free) s -> ('hole list, 'free) s
+  | (::) : ('a,'free) s * ('b tuple, 'free) s -> (('a * 'b) tuple, 'free) s
+  | []: (void tuple, 'free) s
+  | Obj: ('a,'free) record_declaration -> ('a record, 'free) s
+  | Custom: ('a,'b,'free) custom -> ('a, 'free) s
+  | Sum: ('a,'free) sum_decl -> ('a sum,'free) s
+  | Description: string * ('hole,'free) s -> ('hole, 'free) s
   | Rec: { id: string list; defs:('defs,'defs) rec_defs; proj: ('defs, 'res) index}
-      -> ('res,'free) t
-  | Var: ('free,'result) index -> ('result,'free) t
-
-and (_,_) index =
-  | Zn: ('a * 'b ,'a) index
-  | Sn: ('list,'res) index -> ( _ * 'list, 'res) index
+      -> ('res,'free) s
+  | Var: ('free,'result) index -> ('result,'free) s
 
 and (_,_) rec_defs =
   | []: (void,'free) rec_defs
-  | (::): ('a,'free) t * ('l, 'free) rec_defs -> ('a * 'l, 'free) rec_defs
+  | (::): ('a,'free) s * ('l, 'free) rec_defs -> ('a * 'l, 'free) rec_defs
 
-and ('a,'b,'free) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:('b,'free) t; id:string list }
+and ('a,'b,'free) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:('b,'free) s; id:string list }
 and ('a,'free) record_declaration =
   | []: (void, 'free) record_declaration
-  | (::): ( ('m,'x,'fx) modal * 'a label * ('x,'free) t) * ('c,'free) record_declaration
+  | (::): ( ('m,'x,'fx) modal * 'a label * ('x,'free) s) * ('c,'free) record_declaration
     -> (  'a * 'fx * 'c, 'free) record_declaration
 
 and ('a,'mu) sum_decl =
     | [] : (<before:void>, 'mu) sum_decl
-    | (::): (string * ('a,'mu) t) * ('b,'mu) sum_decl
+    | (::): (string * ('a,'mu) s) * ('b,'mu) sum_decl
         -> (<at:'a; before:'b>,'mu) sum_decl
 
 and (_,_) cons =
@@ -101,28 +97,23 @@ and (_,_) cons =
 
 and 'a sum = C: ('a, 'elt ) cons -> 'a sum
 
-type 'a schematic = ('a,void) t
-
-type (_,_,_,_) n =
-  | Z: ('a * 'l, void, 'a, 'l) n
-  | S: ('all, 'l, 'at, 'x * 'r) n -> ('all, 'at * 'l, 'x, 'r) n
-
-let rec get: type a b all l f r. (a,all) rec_defs -> (all,b,r,a) n -> (r,all) t =
-  fun defs n ->
-  match defs, n with
-  | a::_, Z -> a
-  | _ :: q, S x -> get q x
-  | _ -> .
+and (_,_) index =
+  | Zn: ('a * 'b ,'a) index
+  | Sn: ('list,'res) index -> ( _ * 'list, 'res) index
 
 
-let rec get: type a all res. (a,all) rec_defs -> (a,res) index -> (res,all) t = fun l x ->
+type 'a t = ('a,void) s
+type 'a schematic = 'a t
+
+
+let rec get: type a all res. (a,all) rec_defs -> (a,res) index -> (res,all) s = fun l x ->
   match l, x with
   | a::_ , Zn -> a
   | _ :: q, Sn x -> get q x
   | [], _ -> .
 
 
-let rec reopen: type a b. (a,void) t -> (a,b) t =
+let rec reopen: type a b. (a,void) s -> (a,b) s =
   function
   | Float -> Float
   | Int -> Int
@@ -135,7 +126,7 @@ let rec reopen: type a b. (a,void) t -> (a,b) t =
   | x :: q -> reopen x :: reopen q
   | Array x -> Array (reopen x)
   | Obj q -> Obj (reopen_obj q)
-  | Custom {rev;id;fwd;sch} -> Custom {rev;id;fwd;sch=reopen sch}
+  | Custom {rev;id;fwd;sch} -> Custom {rev;id;fwd;sch=Obj.magic sch}
   | Sum x -> Sum (reopen_sum x)
   | Description(d,x) -> Description(d, reopen x)
 and reopen_obj: type a f. (a,void) record_declaration -> (a,f) record_declaration = function
@@ -191,13 +182,13 @@ module Path_map=
     type t= string list
     let compare (x:string list) y = compare x y
   end)
-type dyn = Dyn: ('f,'f) rec_defs * ('a,'f) t -> dyn
+type dyn = Dyn: ('f,'f) rec_defs * ('a,'f) s -> dyn
 type effective_paths = (string list * int) list Path_map.t
 type context = { stamp:int; mapped: effective_paths  }
 let id x = Hashtbl.hash x
 
 type def = { desc: string list; ctx: context; map: dyn forest }
-let add_path (type a f) path (defs:(f,f) rec_defs) (x:(a,f) t) {desc;ctx;map} =
+let add_path (type a f) path (defs:(f,f) rec_defs) (x:(a,f) s) {desc;ctx;map} =
   let open L in
   let rec add_path ctx path x map =
     match path with
@@ -239,7 +230,7 @@ let find_path (path,x) mapped =
 
 let extract_def defs s =
   let rec extract_def:
-    type a f. (f,f) rec_defs -> (a,f) t -> def -> def =
+    type a f. (f,f) rec_defs -> (a,f) s -> def -> def =
     fun defs sch data -> match sch with
       | Float -> data | Int -> data | String -> data | Bool -> data | Void -> data
       | Array t -> data |> extract_def defs t
@@ -277,8 +268,12 @@ let pp_descr ppf l =
 
 let tyd ppf (dl,typ) = Pp.fp ppf "%a%a" pp_descr dl ty typ
 
+let rec to_int: type l x. (l,x) index -> int = function
+  | Zn -> 0
+  | Sn x -> 1 + to_int x
+
 let rec json_type: type a f. effective_paths
-  -> string list -> Format.formatter -> (a,f) t -> unit =
+  -> string list -> Format.formatter -> (a,f) s -> unit =
   fun epaths descr ppf -> function
     | Float -> tyd ppf (descr,"number")
     | Int -> tyd ppf (descr,"number")
@@ -308,9 +303,9 @@ let rec json_type: type a f. effective_paths
         k "oneOf" (json_sum epaths true 0) decl
     | Description (d, sch) -> json_type epaths L.(d::descr) ppf sch
     | Rec {proj; defs; _ } -> json_type epaths descr ppf (get defs proj)
-    | Var _ -> assert false (* TODO REC schema *)
+    | Var n -> Pp.fp ppf "@[TODO mu_%d@]" (to_int n)
 and json_schema_tuple:
-  type a f. effective_paths -> Format.formatter -> (a tuple,f) t -> unit =
+  type a f. effective_paths -> Format.formatter -> (a tuple,f) s -> unit =
   fun epath ppf -> function
     | [] -> ()
     | [a] -> Pp.fp ppf {|@[<hov 2>{@ %a@ }@]|}
@@ -321,7 +316,7 @@ and json_schema_tuple:
     | Custom _ -> assert false
     | Description _ -> assert false
     | Rec {proj; defs; _ } -> json_schema_tuple epath ppf (get defs proj)
-    | Var _ -> assert false (* TODO REC schema *)
+    | Var x -> Pp.fp ppf "@[TODO mu_%d@]" (to_int x)
 and json_properties:
   type a f. effective_paths -> Format.formatter -> (a,f) record_declaration -> unit =
   fun epath ppf -> function
@@ -349,12 +344,11 @@ and json_sum:
       if not first then Pp.fp ppf ",@,";
       Pp.fp ppf "@[{%a@ :@ [\"%s\"]}@]%a" k "enum" s
         (json_sum epaths false @@ n + 1) q
-    | (_s,_a)::_q -> assert false (*
+    | (s,a)::q ->
       if not first then Pp.fp ppf ",@,";
       let module N = Label(struct let l = s end) in
       Pp.fp ppf "{%a}%a" (json_type epaths L.[]) (Obj[Req,N.l,a])
         (json_sum epaths false @@ n + 1) q
-    | (_s,Mu)::_q -> assert false*)
 
 
 let json_definitions epaths ppf map =
@@ -370,7 +364,7 @@ let json_definitions epaths ppf map =
   and json_defs ppf m = ignore (Name.Map.fold (json_def ppf) m false) in
   json_defs ppf map
 
-let rec json: type a f. (f,f) rec_defs -> (a,f) t -> Format.formatter -> a -> unit =
+let rec json: type a f. (f,f) rec_defs -> (a,f) s -> Format.formatter -> a -> unit =
   fun defs sch ppf x -> match sch, x with
     | Int, n -> Pp.fp ppf "%d" n
     | Float, f -> Pp.fp ppf "%f" f
@@ -399,7 +393,7 @@ and json_sum: type all x all. int -> (all,all) rec_defs -> (x,all) sum_decl  ->
     | _ :: q, C S c -> json_sum (n+1) defs q ppf (C c)
     | [], _ -> .
 
-and json_tuple: type a f. (f,f) rec_defs -> (a tuple,f) t -> Format.formatter -> a tuple -> unit =
+and json_tuple: type a f. (f,f) rec_defs -> (a tuple,f) s -> Format.formatter -> a tuple -> unit =
   fun defs sch ppf x -> match sch, x with
     | [], [] -> ()
     | [a], [x] -> json defs a ppf x
@@ -425,8 +419,6 @@ and json_obj: type a r.
       json_obj not_first defs q ppf xs
 
 
-
-let ctx_json = json
 let json x = json [] x
 
 let cstring ppf s =
@@ -437,7 +429,7 @@ let cstring ppf s =
       Not_found -> Pp.string ppf s
   end
 
-let rec sexp: type a all. (all,all) rec_defs -> (a,all) t -> Format.formatter -> a -> unit =
+let rec sexp: type a all. (all,all) rec_defs -> (a,all) s -> Format.formatter -> a -> unit =
   fun defs sch ppf x -> match sch, x with
     | Int, n -> Pp.fp ppf "%d" n
     | Float, f -> Pp.fp ppf "%f" f
@@ -456,7 +448,7 @@ let rec sexp: type a all. (all,all) rec_defs -> (a,all) t -> Format.formatter ->
     | Rec { defs; proj; _ }, x ->
       sexp defs (get defs proj) ppf x
     | Var proj, x -> sexp defs (get defs proj) ppf x
-and sexp_tuple: type all a. (all,all) rec_defs -> (a Tuple.t,all) t -> Format.formatter -> a Tuple.t -> unit =
+and sexp_tuple: type all a. (all,all) rec_defs -> (a Tuple.t,all) s -> Format.formatter -> a Tuple.t -> unit =
   fun defs ty ppf t -> match ty, t with
     | [], [] -> ()
     | [a], [x] -> sexp defs a ppf x
@@ -520,7 +512,7 @@ let promote_to_obj l =
   let promote_pair = function List [Atom x;y] -> Some(x,y) | _ -> None in
   Option.List'.map promote_pair l
 
-let rec retype: type a f. (f,f) rec_defs -> (a,f) t -> untyped -> a option =
+let rec retype: type a f. (f,f) rec_defs -> (a,f) s -> untyped -> a option =
   let open Option in
   fun defs sch u -> match sch, u with
     | Int, Atom u -> Support.opt int_of_string u
@@ -608,7 +600,7 @@ let minify ppf =
 
 let default x y = if x = y then None else Some y
 
-let option (type a f) name (sch:(a,void) t) =
+let option (type a f) name (sch: (a,f) s) =
   custom ["Option.";name] (Sum ["None", Void; "Some", sch])
     (function None -> C E | Some x -> C (S(Z x)))
     (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
@@ -617,12 +609,12 @@ let (<?>) x y = Description(y,x)
 
 module Ext = struct
 
-  type ('lbl,'a,'f) ext = {
+  type ('lbl,'a) ext = {
     title: string;
     description: string;
     version: Version.t;
     label: 'lbl label;
-    inner: ('a,'f) t;
+    inner: 'a t;
   }
 
   type 'a diff = {expected: 'a; got:'a}
@@ -633,11 +625,11 @@ module Ext = struct
     | Parse_error
 
 
-  type bound = B: ('a,void) t * 'a -> bound
+  type bound = B: 'a t * 'a -> bound
 
   let bind sch x = B(sch,x)
 
-  let schema_gen (ext: (_,_,_) ext): _ t =
+  let schema_gen (ext: (_,_) ext): _ t =
     (Obj [ Req, Version.Lbl.l, Version.sch; Req, ext.label, ext.inner ])
 
   let schema_obj: _ t -> _ t = function
@@ -656,12 +648,12 @@ module Ext = struct
       Custom {fwd; rev; sch; id}
     | _ -> assert false
 
-  let schema (type a b c) (sch: (a,b,void) ext) = match sch.inner with
+  let schema (type a b) (sch: (a,b) ext) = match sch.inner with
     | Obj _ as x -> Dyn ([],schema_obj x)
     | Custom { sch = Obj _; _} -> Dyn([],schema_custom sch)
     | _ -> Dyn ([],schema_gen sch)
 
-  let extend (type a b c) (sch: (a,b,void) ext) (x: b) = match sch.inner, x with
+  let extend (type a b) (sch: (a,b) ext) (x: b) = match sch.inner, x with
     | Obj _ as s , x ->
       bind (schema_obj s)
         ((Version.Lbl.l $= sch.version) :: x)
@@ -717,6 +709,6 @@ module Ext = struct
       Error (Mismatched_kind { expected = show s.label; got = name  } )
     | Array _ | Atom _ | Obj _ -> Error Unknown_format
 
-  type ('a,'b,'f) t = ('a,'b,'f) ext
+  type ('a,'b) t = ('a,'b) ext
 
 end

@@ -103,55 +103,86 @@ module Sch = struct
   module Packed = Label(struct let l = "packed" end)
 
 
-  let rec raw_expr =
-    Sum [ "Open", module_expr; "Include_me", module_expr;
-          "SigInclude", module_type; "Bind", [option "Bound_name" String; module_expr];
-          "Bind_sig", [option "Bound_name" String; module_type];
-          "Bind_rec", Array [option "Bound_name" String;module_expr];
-          "Minor", annotation; "Extension_node", extension ]
-  and expr = Custom{fwd=expr_fwd;rev=expr_bwd;id=["M2l"; "expr"] ;sch=raw_expr}
-  and expr_fwd = let open Tuple in function
-    | Open p -> C (Z p)
-    | Include me -> C (S(Z me))
-    | SigInclude mt -> C(S(S(Z mt)))
-    | Bind {expr;name} -> C(S(S(S(Z [name;expr]))))
-    | Bind_sig {expr;name} -> C(S(S(S(S(Z [name;expr])))))
-    | Bind_rec rb ->
-      C(S(S(S(S(S(Z (List.map (fun {expr;name} -> [name;expr]) rb)))))))
-    | Minor a -> C(S(S(S(S(S(S(Z a)))))))
-    | Extension_node ext -> C(S(S(S(S(S(S(S(Z ext))))))))
-  and expr_bwd = let open Tuple in function
-    | C Z x -> Open x
-    | C S Z x -> Include x
-    | C S S Z x -> SigInclude x
-    | C S S S Z [name;expr] -> Bind {name;expr}
-    | C S S S S Z [name;expr] -> Bind_sig {name;expr}
-    | C S S S S S Z x -> Bind_rec (List.map (fun [name;expr] -> {name;expr}) x)
-    | C S S S S S S Z x -> Minor x
-    | C S S S S S S S Z x -> Extension_node x
-    | _ -> .
-  and expr_loc = Custom { sch = [expr;Loc.Sch.t];
-                          fwd = (fun x -> Tuple.[x.Loc.data;x.loc]);
-                          rev = Tuple.(fun [data;loc] -> {data;loc});
-                          id = [ "M2l"; "with_loc"; "expr"];
-                        }
-  and m2l = Array expr_loc
-  and access = Custom {sch=access_raw;fwd=access_fwd;rev=access_rev;
-                       id=["M2l"; "access"]}
-  and access_raw = Array [Paths.S.sch; Loc.Sch.t; Deps.Edge.sch]
-  and access_fwd x =
-    Paths.S.Map.fold (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x L.[]
-  and access_rev a = let open Tuple in
-    List.fold_left (fun m [k;x;y] ->Paths.S.Map.add k (x,y) m)
-      Paths.S.Map.empty a
-  and module_expr =
+
+  module Mu = struct
+    let m2l, expr, module_expr, module_type, expr_loc, annotation, extension, arg =
+      Var(Zn),
+      Var(Sn Zn),
+      Var(Sn(Sn Zn)),
+      Var(Sn(Sn(Sn Zn))),
+      Var(Sn(Sn(Sn(Sn(Zn))))),
+      Var(Sn(Sn(Sn(Sn(Sn(Zn)))))),
+      Var(Sn(Sn(Sn(Sn(Sn(Sn(Zn))))))),
+      Var(Sn(Sn(Sn(Sn(Sn(Sn(Sn(Zn))))))))
+  end
+
+   let access =
+     let sch = Array [Paths.S.sch; Loc.Sch.t; Deps.Edge.sch] in
+     let fwd x =
+       Paths.S.Map.fold (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x L.[] in
+     let rev a = let open Tuple in
+       List.fold_left (fun m [k;x;y] ->Paths.S.Map.add k (x,y) m)
+         Paths.S.Map.empty a in
+     Custom {sch;fwd;rev; id=["M2l"; "access"]}
+
+  let me_raw =
+    Sum [ "Ident", reopen Paths.S.sch;
+          "Apply", [Mu.module_expr; Mu.module_expr];
+          "Fun",[Mu.arg; Mu.module_expr];
+          "Constraint",[Mu.module_expr; Mu.module_type];
+          "Str",Mu.m2l; "Val", Mu.annotation;
+          "Extension_node", Mu.extension;
+          "Abstract",Void;
+          "Unpacked", Void;
+          "Open_me",[Array (reopen Paths.S.sch); Mu.module_expr]
+        ]
+
+  let mt_sch =
+    Sum [ "Alias", reopen Paths.S.sch;
+          "Ident", reopen Paths.E.sch;
+          "Sig", Mu.m2l;
+          "Fun",[ Mu.arg; Mu.module_type ];
+          "With",[ Mu.module_type; Array (Array String); reopen access ];
+          "Of", Mu.module_expr;
+          "Extension_node", Mu.extension;
+          "Abstract", Void
+        ]
+
+  let expr  =
+    let sch: ('a sum,_) s =
+      Sum [ "Open", Mu.module_expr; "Include_me", Mu.module_expr;
+            "SigInclude", Mu.module_type; "Bind", [option "Bound_name" String; Mu.module_expr];
+            "Bind_sig", [option "Bound_name" String; Mu.module_type];
+            "Bind_rec", Array [option "Bound_name" String; Mu.module_expr];
+            "Minor", Mu.annotation; "Extension_node", Mu.extension ] in
+    let fwd: _ -> 'a sum = let open Tuple in function
+        | Open p -> C (Z p)
+        | Include me -> C (S(Z me))
+        | SigInclude mt -> C(S(S(Z mt)))
+        | Bind {expr;name} -> C(S(S(S(Z [name;expr]))))
+        | Bind_sig {expr;name} -> C(S(S(S(S(Z [name;expr])))))
+        | Bind_rec rb ->
+          C(S(S(S(S(S(Z (List.map (fun {expr;name} -> [name;expr]) rb)))))))
+        | Minor a -> C(S(S(S(S(S(S(Z a)))))))
+        | Extension_node ext -> C(S(S(S(S(S(S(S(Z ext))))))))
+    in
+    let rev:  'a sum -> _ = let open Tuple in function
+        | C Z x -> Open x
+        | C S Z x -> Include x
+        | C S S Z x -> SigInclude x
+        | C S S S Z [name;expr] -> Bind {name;expr}
+        | C S S S S Z [name;expr] -> Bind_sig {name;expr}
+        | C S S S S S Z x -> Bind_rec (List.map (fun [name;expr] -> {name;expr}) x)
+        | C S S S S S S Z x -> Minor x
+        | C S S S S S S S Z x -> Extension_node x
+        | _ -> .
+    in
+    Custom{fwd; rev;id=["M2l"; "expr"] ;sch}
+
+
+  let rec module_expr =
     Custom{ sch = me_raw ; fwd = me_fwd; rev = me_rev; id = ["M2l"; "module_expr"] }
-  and me_raw =
-    Sum [ "Ident", Paths.S.sch;
-          "Apply", [module_expr;module_expr]; "Fun",[arg; module_expr];
-          "Constraint",[module_expr;module_type]; "Str",m2l; "Val",annotation;
-          "Extension_node",extension; "Abstract",Void; "Unpacked", Void;
-          "Open_me",[Array Paths.S.sch; module_expr] ]
+
   and me_fwd = let open Tuple in
     function
     | Ident x -> C(Z x)
@@ -178,13 +209,10 @@ module Sch = struct
     | C S S S S S S S S S Z [opens;expr] ->
       Open_me {opens;expr}
     | _ -> .
-  and module_type =
+
+
+  let rec module_type =
     Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev; id=["M2l"; "module_type"]}
-  and mt_sch =
-    Sum [ "Alias",Paths.S.sch;"Ident",Paths.E.sch;
-          "Sig",m2l;"Fun",[ arg; module_type ];
-          "With",[ module_type; Array (Array String); access ];
-          "Of", module_expr; "Extension_node", extension; "Abstract", Void ]
   and mt_fwd = let open Tuple in function
       | Alias x -> C (Z x)
       | Ident x -> C (S (Z x))
@@ -205,11 +233,21 @@ module Sch = struct
       | C S S S S S S Z x -> Extension_node x
       | C S S S S S S S E -> Abstract
       | _ -> .
-  and annotation =
+
+
+  let m2l = Array Mu.expr_loc
+
+  let expr_loc = Custom { sch = [ Mu.expr; reopen Loc.Sch.t];
+                          fwd = (fun x -> Tuple.[x.Loc.data;x.loc]);
+                          rev = Tuple.(fun [data;loc] -> {data;loc});
+                          id = [ "M2l"; "with_loc"; "expr"];
+                        }
+
+  let rec annotation =
     Custom{ fwd=ann_f; rev = ann_r; sch = ann_s; id = ["M2l"; "annotation"] }
   and ann_s = Obj [
-      Opt, Access.l, access;
-      Opt, Values.l, Array m2l; Opt, Packed.l, Array [module_expr;Loc.Sch.t]
+      Opt, Access.l, reopen access;
+      Opt, Values.l, Array Mu.m2l; Opt, Packed.l, Array [ Mu.module_expr; reopen Loc.Sch.t]
     ]
   and ann_f x = Record.[
     Access.l $=? (default Paths.S.Map.empty x.access);
@@ -222,27 +260,41 @@ module Sch = struct
         packed =List.map Tuple.(fun [data;loc] -> {Loc.data;loc}) (p><[])
       })
 
-  and extension =
+  let rec extension =
     Custom {sch = [ String; ext ];
             fwd = (fun {name;extension} -> Tuple.[name;extension] );
             rev = Tuple.(fun [name;extension] -> {name;extension} );
             id = ["M2l";"extension"]
            }
   and ext =
-    Custom {sch = Sum["Module",m2l;"Val",annotation];
+    Custom {sch = Sum["Module", Mu.m2l;"Val", Mu.annotation];
             fwd = ext_fwd; rev = ext_rev; id=["M2l"; "ext"] }
   and ext_fwd = function Module x -> C (Z x) | Val x-> C (S (Z x))
   and ext_rev =function C Z x -> Module x | C S Z x -> Val x | _ -> .
-  and arg =
-    Custom { sch = Sum[ "None",Void; "Some",[option "Arg_name" String; module_type] ];
+
+  let arg_raw =  Sum[ "None",Void; "Some", [option "Arg_name" String; Mu.module_type] ]
+
+  let rec arg =
+    Custom { sch = arg_raw;
              fwd = arg_fwd;
              rev = arg_rev;
              id = ["M2l"; "arg"] }
   and arg_fwd = function
     | None -> C E
-    | Some (a:_ Module.Arg.t) -> C(S(Z Tuple.[a.name;a.signature]))
+    | Some (a:module_type Module.Arg.t) -> C(S(Z Tuple.[a.name;a.signature]))
   and arg_rev = let open Tuple in
     function C E -> None | C S Z [n;s] -> Some {name=n;signature=s} | _ -> .
+
+  let defs: _ rec_defs =
+    [m2l; expr; module_expr; module_type; expr_loc; annotation; extension; arg]
+
+  let m2l =
+    Rec { id = ["m2l"]; defs; proj = Zn }
+  let expr = Rec { id = ["m2l"; "expr" ]; defs; proj = Sn Zn }
+  let module_expr = Rec { id = ["m2l"; "module_expr" ]; defs; proj = Sn(Sn Zn) }
+  let module_type = Rec { id = ["m2l"; "module_type" ]; defs; proj = Sn(Sn(Sn Zn)) }
+  let annotation = Rec { id = ["m2l"; "annotation" ]; defs;  proj = Sn(Sn(Sn(Sn(Sn Zn)))) }
+
 
 end let sch = Sch.m2l
 

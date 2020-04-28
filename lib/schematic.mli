@@ -43,38 +43,54 @@ end
 
 type ('a,'b) bijection = { fwd:'a->'b;rev:'b -> 'a}
 
-type 'hole t =
-  | Float: float t
-  | Int: int t
-  | Bool: bool t
-  | String: string t
-  | Void: void t
-  | Array: 'hole t -> 'hole list t
-  | (::) : 'a t * 'b Tuple.t t -> ('a * 'b) Tuple.t t
-  | []: void Tuple.t t
-  | Obj:'a record_declaration -> 'a Record.t t
-  | Custom: ('a,'b) custom -> 'a t
-  | Sum: 'a sum_decl -> 'a sum t
-  | Description: string * 'hole t -> 'hole t
 
-and ('a,'b) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:'b t; id: string list}
-and 'a record_declaration =
-  | []: void record_declaration
-  | (::):  ( ('m,'x,'fx) modal * 'a label * 'x t) * 'c record_declaration
-    -> (  'a * 'fx * 'c ) record_declaration
+type ('hole, 'free) s =
+  | Float: (float, 'free) s
+  | Int: (int, 'free) s
+  | Bool: (bool, 'free) s
+  | String: (string, 'free) s
+  | Void: (void, 'free) s
+  | Array: ('hole,'free) s -> ('hole list, 'free) s
+  | (::) : ('a,'free) s * ('b Tuple.t, 'free) s -> (('a * 'b) Tuple.t, 'free) s
+  | []: (void Tuple.t, 'free) s
+  | Obj: ('a,'free) record_declaration -> ('a Record.t, 'free) s
+  | Custom: ('a,'b,'free) custom -> ('a, 'free) s
+  | Sum: ('a,'free) sum_decl -> ('a sum,'free) s
+  | Description: string * ('hole,'free) s -> ('hole, 'free) s
+  | Rec: { id: string list; defs:('defs,'defs) rec_defs; proj: ('defs, 'res) index}
+      -> ('res,'free) s
+  | Var: ('free,'result) index -> ('result,'free) s
 
-and 'a sum_decl =
-    | [] : void sum_decl
-    | (::): (string * 'a t) * 'b sum_decl -> ('a * 'b) sum_decl
+and (_,_) index =
+  | Zn: ('a * 'b ,'a) index
+  | Sn: ('list,'res) index -> ( _ * 'list, 'res) index
+
+and (_,_) rec_defs =
+  | []: (void,'free) rec_defs
+  | (::): ('a,'free) s * ('l, 'free) rec_defs -> ('a * 'l, 'free) rec_defs
+
+and ('a,'b,'free) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:('b,'free) s; id:string list }
+and ('a,'free) record_declaration =
+  | []: (void, 'free) record_declaration
+  | (::): ( ('m,'x,'fx) modal * 'a label * ('x,'free) s) * ('c,'free) record_declaration
+    -> (  'a * 'fx * 'c, 'free) record_declaration
+
+and ('a,'mu) sum_decl =
+    | [] : (<before:void>, 'mu) sum_decl
+    | (::): (string * ('a,'mu) s) * ('b,'mu) sum_decl
+        -> (<at:'a; before:'b>,'mu) sum_decl
 
 and (_,_) cons =
-  | Z: 'a -> ('a * 'any,'a) cons
-  | E: (void * 'any,'a) cons
-  | S: ('a, 'n ) cons -> ('any * 'a, 'n) cons
+  | Z: 'a -> (<at:'a; before: 'any>,'a) cons
+  | E: (<at:void; before:'any>,'a) cons
+  | S: ('a, 'n ) cons -> (<at:'any; before:'a>, 'n) cons
 
 and 'a sum = C: ('a, 'elt ) cons -> 'a sum
 
+type 'a t = ('a,void) s
 type 'a schematic = 'a t
+
+val reopen: 'a t -> ('a,'b) s
 
 module Version: sig
   type lbl
@@ -107,8 +123,8 @@ val retype: 'a t -> Untyped.t -> 'a option
 val minify: Format.formatter -> ('a, Format.formatter, unit, unit) format4 -> 'a
 
 val default: 'a -> 'a -> 'a option
-val option: Name.t -> 'a t -> 'a option t
-val (<?>): 'a t -> string -> 'a t
+val option: Name.t -> ('a,'f) s -> ('a option,'f) s
+val (<?>): ('a,'f) s -> string -> ('a,'f) s
 
 module Ext: sig
 type ('lbl,'a) ext = {
