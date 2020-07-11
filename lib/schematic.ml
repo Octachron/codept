@@ -19,7 +19,6 @@ end
 open Tuple
 
 
-
 module type label = sig type t val l:string end
 type 'a label = (module label with type t = 'a)
 module Label(X:sig val l:string end) =
@@ -39,12 +38,6 @@ type optional = private Optional
 type (_,_,_) modal =
   | Opt:(optional,'a,'a option) modal
   | Req:(required,'a,'a) modal
-
-(*
-type ('m,'a) elt =
-  | Just: 'a -> ('any,'a) elt
-  | Nothing: (optional,'any) elt
-*)
 
 
 module Record = struct
@@ -77,9 +70,9 @@ type ('hole, 'free) s =
 
 and (_,_) rec_defs =
   | []: (void,'free) rec_defs
-  | (::): ('a,'free) s * ('l, 'free) rec_defs -> ('a * 'l, 'free) rec_defs
+  | (::): (string * ('a,'free) s) * ('l, 'free) rec_defs -> ('a * 'l, 'free) rec_defs
 
-and ('a,'b,'free) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:('b,'free) s; id:string list }
+and ('a,'b,'free) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:('b,'free) s }
 and ('a,'free) record_declaration =
   | []: (void, 'free) record_declaration
   | (::): ( ('m,'x,'fx) modal * 'a label * ('x,'free) s) * ('c,'free) record_declaration
@@ -108,7 +101,7 @@ type 'a schematic = 'a t
 
 let rec get: type a all res. (a,all) rec_defs -> (a,res) index -> (res,all) s = fun l x ->
   match l, x with
-  | a::_ , Zn -> a
+  | (_,a)::_ , Zn -> a
   | _ :: q, Sn x -> get q x
   | [], _ -> .
 
@@ -126,7 +119,7 @@ let rec reopen: type a b. (a,void) s -> (a,b) s =
   | x :: q -> reopen x :: reopen q
   | Array x -> Array (reopen x)
   | Obj q -> Obj (reopen_obj q)
-  | Custom {rev;id;fwd;sch} -> Custom {rev;id;fwd;sch=Obj.magic sch}
+  | Custom {rev;fwd;sch} -> Custom {rev;fwd;sch=reopen sch}
   | Sum x -> Sum (reopen_sum x)
   | Description(d,x) -> Description(d, reopen x)
 and reopen_obj: type a f. (a,void) record_declaration -> (a,f) record_declaration = function
@@ -137,14 +130,14 @@ and reopen_sum: type a f. (a,void) sum_decl -> (a,f) sum_decl = function
     | (name, a) :: q -> (name, reopen a) :: reopen_sum q
     | [] -> []
 
-let custom id sch fwd rev = Custom {fwd;rev; sch; id}
+let custom sch fwd rev = Custom {fwd;rev; sch}
 module Version = struct
   type t = { major:int; minor:int; patch:int }
   module Lbl = Label(struct let l = "version" end)
   type lbl = Lbl.t
 
   let sch =
-  custom ["version"] [Int;Int;Int]
+  custom [Int;Int;Int]
     (fun x -> [x.major;x.minor;x.patch])
     (fun [major;minor;patch] -> {major;minor;patch})
 
@@ -221,7 +214,9 @@ let mem (path,x) ctx = match Path_map.find path ctx.mapped with
   | exception Not_found -> false
   | l -> List.exists (fun (_,h) -> h = id x) l
 
-let find_path (path,x) mapped =
+
+(* For recursive definition, rewire *)
+let _find_path (path,x) mapped =
   String.concat "/" @@ fst
   @@ List.find (fun (_,idy) -> id x = idy) @@ Path_map.find path mapped
 
@@ -240,14 +235,12 @@ let extract_def defs s =
       | [] -> data
       | a :: q -> data |> extract_def defs a |> extract_def defs q
       | Sum x -> extract_sum_def defs x data
-      | Custom{id; sch; _ } ->
-        if mem (id,sch) data.ctx then data
-        else data |> add_path id defs sch |> extract_def defs sch
+      | Custom{sch; _ } -> extract_def defs sch data
       | Description (_,x) -> extract_def defs x data
       | Rec { id; proj; defs=defs' } ->
         if mem (id, sch) data.ctx then data else
           data |> add_path id defs sch |> extract_def defs' (get defs' proj)
-      | Var k ->  extract_def defs (get defs k) data
+      | Var _ -> data
   and extract_sum_def: type a b. (b,b) rec_defs ->(a,b) sum_decl -> def -> def =
     fun defs s data ->
     match s with
@@ -294,9 +287,7 @@ let rec json_type: type a f. effective_paths
         (json_properties epaths) r
         k "required"
         (json_required true) r
-    | Custom { id ; sch;  _ } ->
-      Pp.fp ppf "@[<hov 2>%a@ :@ \"#/definitions/%s\"@]" k "$ref"
-        (find_path (id,sch) epaths)
+    | Custom { sch;  _ } -> json_type epaths descr ppf sch
     | Sum decl ->
       Pp.fp ppf "@[<hov 2>%a%a :[%a]@]"
         pp_descr descr
@@ -600,8 +591,8 @@ let minify ppf =
 
 let default x y = if x = y then None else Some y
 
-let option (type a f) name (sch: (a,f) s) =
-  custom ["Option.";name] (Sum ["None", Void; "Some", sch])
+let option (type a f) (sch: (a,f) s) =
+  custom (Sum ["None", Void; "Some", sch])
     (function None -> C E | Some x -> C (S(Z x)))
     (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
 
@@ -639,13 +630,13 @@ module Ext = struct
 
   let schema_custom ext =
     match ext.inner with
-    | Custom {fwd;rev;sch=(Obj _ as sch);id} ->
+    | Custom {fwd;rev;sch=(Obj _ as sch)} ->
       let sch = schema_obj sch in
       let rev ( (l,v) :: q :  _ record): _ record =
         [l $= v; ext.label $= rev q] in
       let fwd ([ (lv,v); (_,x)]: _ record) =
         ((lv $= v) :: fwd x: _ record) in
-      Custom {fwd; rev; sch; id}
+      Custom {fwd; rev; sch}
     | _ -> assert false
 
   let schema (type a b) (sch: (a,b) ext) = match sch.inner with

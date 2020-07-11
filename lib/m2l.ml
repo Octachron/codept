@@ -106,14 +106,7 @@ module Sch = struct
 
   module Mu = struct
     let m2l, expr, module_expr, module_type, expr_loc, annotation, extension, arg =
-      Var(Zn),
-      Var(Sn Zn),
-      Var(Sn(Sn Zn)),
-      Var(Sn(Sn(Sn Zn))),
-      Var(Sn(Sn(Sn(Sn(Zn))))),
-      Var(Sn(Sn(Sn(Sn(Sn(Zn)))))),
-      Var(Sn(Sn(Sn(Sn(Sn(Sn(Zn))))))),
-      Var(Sn(Sn(Sn(Sn(Sn(Sn(Sn(Zn))))))))
+      Schematic_indices.eight
   end
 
    let access =
@@ -123,7 +116,7 @@ module Sch = struct
      let rev a = let open Tuple in
        List.fold_left (fun m [k;x;y] ->Paths.S.Map.add k (x,y) m)
          Paths.S.Map.empty a in
-     Custom {sch;fwd;rev; id=["M2l"; "access"]}
+     Custom {sch;fwd;rev}
 
   let me_raw =
     Sum [ "Ident", reopen Paths.S.sch;
@@ -151,9 +144,9 @@ module Sch = struct
   let expr  =
     let sch: ('a sum,_) s =
       Sum [ "Open", Mu.module_expr; "Include_me", Mu.module_expr;
-            "SigInclude", Mu.module_type; "Bind", [option "Bound_name" String; Mu.module_expr];
-            "Bind_sig", [option "Bound_name" String; Mu.module_type];
-            "Bind_rec", Array [option "Bound_name" String; Mu.module_expr];
+            "SigInclude", Mu.module_type; "Bind", [option String; Mu.module_expr];
+            "Bind_sig", [option String; Mu.module_type];
+            "Bind_rec", Array [option String; Mu.module_expr];
             "Minor", Mu.annotation; "Extension_node", Mu.extension ] in
     let fwd: _ -> 'a sum = let open Tuple in function
         | Open p -> C (Z p)
@@ -177,11 +170,11 @@ module Sch = struct
         | C S S S S S S S Z x -> Extension_node x
         | _ -> .
     in
-    Custom{fwd; rev;id=["M2l"; "expr"] ;sch}
+    Custom{fwd; rev;sch}
 
 
   let rec module_expr =
-    Custom{ sch = me_raw ; fwd = me_fwd; rev = me_rev; id = ["M2l"; "module_expr"] }
+    Custom{ sch = me_raw ; fwd = me_fwd; rev = me_rev }
 
   and me_fwd = let open Tuple in
     function
@@ -212,7 +205,7 @@ module Sch = struct
 
 
   let rec module_type =
-    Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev; id=["M2l"; "module_type"]}
+    Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev }
   and mt_fwd = let open Tuple in function
       | Alias x -> C (Z x)
       | Ident x -> C (S (Z x))
@@ -240,11 +233,10 @@ module Sch = struct
   let expr_loc = Custom { sch = [ Mu.expr; reopen Loc.Sch.t];
                           fwd = (fun x -> Tuple.[x.Loc.data;x.loc]);
                           rev = Tuple.(fun [data;loc] -> {data;loc});
-                          id = [ "M2l"; "with_loc"; "expr"];
                         }
 
   let rec annotation =
-    Custom{ fwd=ann_f; rev = ann_r; sch = ann_s; id = ["M2l"; "annotation"] }
+    Custom{ fwd=ann_f; rev = ann_r; sch = ann_s}
   and ann_s = Obj [
       Opt, Access.l, reopen access;
       Opt, Values.l, Array Mu.m2l; Opt, Packed.l, Array [ Mu.module_expr; reopen Loc.Sch.t]
@@ -264,21 +256,20 @@ module Sch = struct
     Custom {sch = [ String; ext ];
             fwd = (fun {name;extension} -> Tuple.[name;extension] );
             rev = Tuple.(fun [name;extension] -> {name;extension} );
-            id = ["M2l";"extension"]
            }
   and ext =
     Custom {sch = Sum["Module", Mu.m2l;"Val", Mu.annotation];
-            fwd = ext_fwd; rev = ext_rev; id=["M2l"; "ext"] }
+            fwd = ext_fwd; rev = ext_rev }
   and ext_fwd = function Module x -> C (Z x) | Val x-> C (S (Z x))
   and ext_rev =function C Z x -> Module x | C S Z x -> Val x | _ -> .
 
-  let arg_raw =  Sum[ "None",Void; "Some", [option "Arg_name" String; Mu.module_type] ]
+  let arg_raw =  Sum[ "None",Void; "Some", [option String; Mu.module_type] ]
 
   let rec arg =
     Custom { sch = arg_raw;
              fwd = arg_fwd;
              rev = arg_rev;
-             id = ["M2l"; "arg"] }
+           }
   and arg_fwd = function
     | None -> C E
     | Some (a:module_type Module.Arg.t) -> C(S(Z Tuple.[a.name;a.signature]))
@@ -286,7 +277,16 @@ module Sch = struct
     function C E -> None | C S Z [n;s] -> Some {name=n;signature=s} | _ -> .
 
   let defs: _ rec_defs =
-    [m2l; expr; module_expr; module_type; expr_loc; annotation; extension; arg]
+    [
+      "m2l", m2l;
+      "expr", expr;
+      "module_expr", module_expr;
+      "module_type", module_type;
+     "expr_loc", expr_loc;
+     "annotation", annotation;
+     "extension", extension;
+     "arg",arg
+    ]
 
   let m2l =
     Rec { id = ["m2l"]; defs; proj = Zn }

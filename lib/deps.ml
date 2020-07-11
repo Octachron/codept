@@ -5,7 +5,7 @@ module Edge = struct
   let min x y = if x = Normal then x else y
 
   let sch = let open Schematic in
-    custom ["Deps"; "edge"] (Sum["Normal", Void; "Epsilon", Void ])
+    custom  (Sum["Normal", Void; "Epsilon", Void ])
       (function Normal -> C E | Epsilon -> C (S E))
       (function C E -> Normal | C S
            E -> Epsilon | _ -> . )
@@ -30,7 +30,7 @@ let sch: t Schematic.t =
   let to_list m =
     Map.fold (fun k {edge;pkg;aliases} l -> T.[k;edge;pkg;aliases] :: l) m [] in
   let open Schematic in
-  custom ["Deps"; "t"] (Array [Paths.S.sch; Edge.sch; Paths.P.sch; S.sch])
+  custom (Array [Paths.S.sch; Edge.sch; Paths.P.sch; S.sch])
     to_list from_list
 
 module Pth = Paths.S

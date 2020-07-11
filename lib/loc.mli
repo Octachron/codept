@@ -20,5 +20,5 @@ val list: 'a ext list -> t
 
 module Sch: sig
   val t: t Schematic.t
-  val ext: Name.t -> 'a Schematic.t -> 'a ext Schematic.t
+  val ext: 'a Schematic.t -> 'a ext Schematic.t
 end

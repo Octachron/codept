@@ -590,7 +590,7 @@ let result =
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Paths"; "Pp"; "Schematic" ],
                       ["Format"],[]);
           "m2l.ml", (["Loc"; "Deps"; "Module"; "Name";
-                      "Option";"Paths"; "Pp"; "Schematic" ],
+                      "Option";"Paths"; "Pp"; "Schematic"; "Schematic_indices" ],
                      ["List"],[]);
           "fault.ml", (["Format_tags"; "Loc"; "Option"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"; "Map"],[]);
@@ -600,7 +600,7 @@ let result =
           "module.mli", ( ["Loc";"Paths";"Name";"Namespaced"; "Schematic"],
                           ["Format"], [] );
           "module.ml", ( ["Loc";"Paths";"Name"; "Namespaced"; "Option"; "Pp"
-                         ; "Schematic"  ],
+                         ; "Schematic"; "Schematic_indices" ],
                          ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map";"List"], [] );
@@ -614,7 +614,7 @@ let result =
           "option.ml", ([],["List";"Lazy"],[]);
           "pparse_compat.mli", ([], ["Parsetree"], []);
           "paths.mli", (["Name"; "Schematic"], ["Map";"Set";"Format"],[]);
-          "paths.ml", (["Name"; "Pp"; "Schematic"; "Support" ],
+          "paths.ml", (["Name"; "Pp"; "Schematic"; "Schematic_indices"; "Support" ],
                        ["Filename";"List";"Map";"Set";
                         "Format"; "String"],[]);
           "pp.mli", ([], ["Format"],[]);
@@ -633,6 +633,8 @@ let result =
           "schema.mli", (["M2l"; "Module"; "Paths"; "Schematic"], [], []);
           "schematic.mli", (["Name"],
                        [ "Format"], [] );
+          "schematic_indices.ml", (["Schematic"],[],[]);
+
           "schematic.ml", (["Format_compat"; "Name"; "Mresult"; "Pp";
                             "Support";"Option"],
                            ["Format"; "Hashtbl"; "List"; "Map"; "String"],

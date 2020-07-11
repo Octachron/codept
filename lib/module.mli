@@ -14,7 +14,7 @@ module Arg :
       (Format.formatter -> 'a -> unit) ->
       Format.formatter -> 'a arg option -> unit
 
-    val sch:  Name.t -> 'a Schematic.t -> 'a t Schematic.t
+    val sch: 'a Schematic.t -> 'a t Schematic.t
 
     val pp_s :
       (Format.formatter -> 'a -> unit) ->

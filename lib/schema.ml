@@ -45,7 +45,7 @@ let raw_assoc =
        and interface file (.mli) provided a toplevel module"
 
 let local_association =
-  custom ["deps"; "local" ] raw_assoc
+  custom raw_assoc
     (fun r -> [Module.l $= r.path; Ml.l $=? r.ml; Mli.l $=? r.mli])
     Record.(fun [_, path; _,ml; _, mli ] -> { path; ml; mli } )
 
@@ -54,7 +54,7 @@ module Lib = Label(struct let l = "lib" end)
 
 module R = Schematic.Record
 let lib =
-  custom ["deps";"lib_association"]
+  custom
     (Obj [Req, Module.l, path; Req, Lib.l, path] <?>
      "Library dependency: module path followed by the library path")
     (fun (r: library_module) -> [Module.l $= r.path; Lib.l $= r.lib])
@@ -79,7 +79,7 @@ let raw_unit =
 let unit =
   let e: _ list = [] in
   let ($=$) x l = if l = L.[] then x $=? None else x $=? Some l in
-  custom ["deps"; "unit"; "deps"] raw_unit
+  custom  raw_unit
     (fun d -> [ File.l $= d.file; Deps.l $=$ d.deps ])
     (let open R in fun [_, file; _,deps] -> {file; deps = Option.default e deps } )
 
@@ -106,7 +106,7 @@ let deps =
   let list x = Option.default ([]: _ list) x in
   let ($=$) x l = if l = L.[] then x $=? None else x $=? Some l in
   let open Record in
-  custom ["deps"; "main"] deps
+  custom  deps
     (fun {dependencies; local; library; unknown }->
        [ Dependencies.l $= dependencies;
          Local.l $=$ local;

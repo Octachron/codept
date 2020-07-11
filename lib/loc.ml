@@ -48,7 +48,7 @@ module Sch = struct
           "Multiline", [ [Int;Int]; [Int;Int] ] ]
 
   let t = let open Tuple in
-    custom ["Loc" ; "t"] raw_sch
+    custom  raw_sch
       (function
         | Nowhere -> C E
         | Simple {line;start;stop} -> C(S (Z [line;start;stop]))
@@ -61,7 +61,7 @@ module Sch = struct
         | _ -> .
       )
 
-  let ext name inner = let open Tuple in
-    custom ["Loc"; "ext"; name]
+  let ext inner = let open Tuple in
+    custom
       [ inner; t ] (fun r -> [r.data;r.loc]) (fun [data;loc] -> {data;loc})
 end

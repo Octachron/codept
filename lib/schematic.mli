@@ -67,9 +67,9 @@ and (_,_) index =
 
 and (_,_) rec_defs =
   | []: (void,'free) rec_defs
-  | (::): ('a,'free) s * ('l, 'free) rec_defs -> ('a * 'l, 'free) rec_defs
+  | (::): (string * ('a,'free)s)  * ('l, 'free) rec_defs -> ('a * 'l, 'free) rec_defs
 
-and ('a,'b,'free) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:('b,'free) s; id:string list }
+and ('a,'b,'free) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:('b,'free) s }
 and ('a,'free) record_declaration =
   | []: (void, 'free) record_declaration
   | (::): ( ('m,'x,'fx) modal * 'a label * ('x,'free) s) * ('c,'free) record_declaration
@@ -107,7 +107,7 @@ val skip: 'a label -> ('a label * 'b option)
 val ($=?): 'a label -> 'b option -> ('a label * 'b option)
 
 val obj: 'a Record.t -> 'a Record.t
-val custom: string list -> 'b t -> ('a -> 'b) -> ('b -> 'a) -> 'a t
+val custom: 'b t -> ('a -> 'b) -> ('b -> 'a) -> 'a t
 
 module Untyped: sig
   type t =
@@ -123,7 +123,7 @@ val retype: 'a t -> Untyped.t -> 'a option
 val minify: Format.formatter -> ('a, Format.formatter, unit, unit) format4 -> 'a
 
 val default: 'a -> 'a -> 'a option
-val option: Name.t -> ('a,'f) s -> ('a option,'f) s
+val option: ('a,'f) s -> ('a option,'f) s
 val (<?>): ('a,'f) s -> string -> ('a,'f) s
 
 module Ext: sig

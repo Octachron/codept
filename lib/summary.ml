@@ -78,7 +78,7 @@ let pp ppf x = Pp.fp ppf "@[[@,%a@,]@]"
     pp_view x.visible
 
 let sch = let open Schematic in
-  custom ["Summary"; "t"]
+  custom
     [Module.Sig.sch;Module.Sig.sch]
     Tuple.(fun r -> [r.defined; r.visible] )
     Tuple.(fun [defined;visible] -> {defined;visible})

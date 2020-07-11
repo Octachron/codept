@@ -27,7 +27,7 @@ struct
     include Set.Make(Core)
     let pp ppf s = Pp.(clist Core.pp) ppf (elements s)
     let sch = let open Schematic in
-      custom ["Paths"; "Simple"; "Sets"] (Array sch)
+      custom (Array sch)
         elements
         (List.fold_left (fun s x -> add x s) empty)
   end
@@ -81,13 +81,15 @@ module Expr = struct
 
   module Sch = struct
     open Schematic
-    let rec raw = ([ S.sch; Array [Int; t] ]: _ t)
-    and t = Custom {fwd;rev; sch=raw; id = ["Paths"; "Expr"; "t"] }
+    let mu = Schematic_indices.one
+    let raw: _ s = [ S.sch; Array [Int; mu] ]
+    let rec c = Custom {fwd;rev; sch=raw }
     and fwd {path; args} = let open Tuple in
       [path; List.map (fun (n,x) -> [n;x]) args ]
     and rev = let open Tuple in
       fun [path; args] ->
         {path; args = List.map (fun [n;t] -> n, t) args }
+    let t = Rec { id = ["Paths"; "Expr"; "t"]; defs = ["c", c]; proj = Zn }
   end
   let sch = Sch.t
 
@@ -160,7 +162,7 @@ module Pkg = struct
   module Sch = struct open Schematic
     let raw_source = Sum [ "Local", Void; "Unknown", Void;
                            "Pkg", Simple.sch; "Special", String ]
-    let source = custom ["Paths"; "Pkg"; "source"] raw_source
+    let source = custom raw_source
         (function
           | Local -> C E
           | Unknown -> C (S E)
@@ -175,7 +177,7 @@ module Pkg = struct
           | _ -> .
         )
     let all =
-        custom ["Paths"; "Pkg"; "t"] [source; Simple.sch]
+        custom [source; Simple.sch]
           (fun {source;file} -> Tuple.[source;file])
           Tuple.(fun [source;file] ->  {source;file} )
   end let sch = Sch.all
