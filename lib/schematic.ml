@@ -94,7 +94,6 @@ and (_,_) index =
   | Zn: ('a * 'b ,'a) index
   | Sn: ('list,'res) index -> ( _ * 'list, 'res) index
 
-
 type 'a t = ('a,void) s
 type 'a schematic = 'a t
 
@@ -175,13 +174,16 @@ module Path_map=
     type t= string list
     let compare (x:string list) y = compare x y
   end)
-type dyn = Dyn: ('f,'f) rec_defs * ('a,'f) s -> dyn
+
+
+type 'a pending_rec_def = { id: string list; defs: ('a,'a) rec_defs }
+type dyn = Dyn: 'f pending_rec_def option * ('a,'f) s -> dyn
 type effective_paths = (string list * int) list Path_map.t
 type context = { stamp:int; mapped: effective_paths  }
-let id x = Hashtbl.hash x
+let id (x: (_,_) s) = Hashtbl.hash x
 
 type def = { desc: string list; ctx: context; map: dyn forest }
-let add_path (type a f) path (defs:(f,f) rec_defs) (x:(a,f) s) {desc;ctx;map} =
+let add_path (type a f) path (defs:f pending_rec_def option) (x:(a,f) s) {desc;ctx;map} =
   let open L in
   let rec add_path ctx path x map =
     match path with
@@ -216,38 +218,55 @@ let mem (path,x) ctx = match Path_map.find path ctx.mapped with
 
 
 (* For recursive definition, rewire *)
-let _find_path (path,x) mapped =
-  String.concat "/" @@ fst
-  @@ List.find (fun (_,idy) -> id x = idy) @@ Path_map.find path mapped
+let find_path (path,(x:(_,_) s)) mapped = try
+    String.concat "/" @@ fst
+    @@ List.find (fun (_,idy) -> id x = idy) @@ Path_map.find path mapped
+  with
+  | Not_found ->
+    Format.eprintf "Unbound schema definition: %a@." Pp.(list ~sep:(const "/") string) path; exit 2
+
+let rec to_int: type l x. (l,x) index -> int = function
+  | Zn -> 0
+  | Sn x -> 1 + to_int x
 
 
-
-
-let extract_def defs s =
+let extract_def ?defs s =
   let rec extract_def:
-    type a f. (f,f) rec_defs -> (a,f) s -> def -> def =
-    fun defs sch data -> match sch with
+    type a f. ?defs:f pending_rec_def -> (a,f) s -> def -> def =
+    fun ?defs sch data ->
+      let traverse x = extract_def ?defs x in
+      match sch with
       | Float -> data | Int -> data | String -> data | Bool -> data | Void -> data
-      | Array t -> data |> extract_def defs t
+      | Array t -> data |> traverse t
       | Obj [] -> data
       | Obj ( (_,_,x) :: q ) ->
-        data |> extract_def defs x |> extract_def defs (Obj q)
+        data |> traverse x |> traverse (Obj q)
       | [] -> data
-      | a :: q -> data |> extract_def defs a |> extract_def defs q
-      | Sum x -> extract_sum_def defs x data
-      | Custom{sch; _ } -> extract_def defs sch data
-      | Description (_,x) -> extract_def defs x data
+      | a :: q -> data |> traverse a |> traverse q
+      | Sum x -> extract_sum_def ?defs x data
+      | Custom{sch; _ } -> traverse sch data
+      | Description (_,x) -> traverse x data
       | Rec { id; proj; defs=defs' } ->
-        if mem (id, sch) data.ctx then data else
-          data |> add_path id defs sch |> extract_def defs' (get defs' proj)
-      | Var _ -> data
-  and extract_sum_def: type a b. (b,b) rec_defs ->(a,b) sum_decl -> def -> def =
-    fun defs s data ->
+        let n = string_of_int @@ to_int proj in
+        let p = L.( id @ [n] ) in
+        let sch =  get defs' proj in
+        if mem (p, sch) data.ctx then data else
+          data |> add_path p (Some {id;defs=defs'}) sch |> extract_def ~defs:{id;defs=defs'} sch
+      | Var n ->
+        match defs with
+        | None -> assert false
+        | Some defs ->
+          let path = L.( defs.id @ [string_of_int (to_int n)]) in
+          let sch = get defs.defs n in
+          if mem (path, sch) data.ctx then data else
+            data |> add_path path (Some defs) sch |> extract_def ~defs sch
+  and extract_sum_def: type a b. ?defs:b pending_rec_def ->(a,b) sum_decl -> def -> def =
+    fun ?defs s data ->
     match s with
       | [] -> data
-      | (_,t) :: q -> data |> extract_def defs t |> extract_sum_def defs q
+      | (_,t) :: q -> data |> extract_def ?defs t |> extract_sum_def ?defs q
 
-  in extract_def defs s
+  in extract_def ?defs s
     { desc = L.[];
       ctx = {stamp=1;mapped=Path_map.empty};
       map = Name.Map.empty
@@ -261,13 +280,9 @@ let pp_descr ppf l =
 
 let tyd ppf (dl,typ) = Pp.fp ppf "%a%a" pp_descr dl ty typ
 
-let rec to_int: type l x. (l,x) index -> int = function
-  | Zn -> 0
-  | Sn x -> 1 + to_int x
-
-let rec json_type: type a f. effective_paths
+let rec json_type: type a f. effective_paths -> recs: f pending_rec_def option
   -> string list -> Format.formatter -> (a,f) s -> unit =
-  fun epaths descr ppf -> function
+  fun epaths ~recs descr ppf -> function
     | Float -> tyd ppf (descr,"number")
     | Int -> tyd ppf (descr,"number")
     | String -> tyd ppf (descr,"string")
@@ -275,48 +290,54 @@ let rec json_type: type a f. effective_paths
     | Void -> ()
     | Array t -> Pp.fp ppf
                    "%a,@;@[<hov 2>%a : {@ %a@ }@]"
-                   tyd (descr,"array") k "items" (json_type epaths L.[]) t
+                   tyd (descr,"array") k "items" (json_type ~recs epaths L.[]) t
     | [] -> ()
     | _ :: _ as l ->
       Pp.fp ppf "%a,@; @[<hov 2>%a :[@ %a@ ]@]" tyd (descr,"array") k "items"
-        (json_schema_tuple epaths) l
+        (json_schema_tuple epaths ~recs ) l
     | Obj r ->
       Pp.fp ppf "%a,@;@[<v 2>%a : {@ %a@ }@],@;@[<hov 2>%a@ :@ [@ %a@ ]@]"
         tyd (descr,"object")
         k "properties"
-        (json_properties epaths) r
+        (json_properties ~recs epaths) r
         k "required"
         (json_required true) r
-    | Custom { sch;  _ } -> json_type epaths descr ppf sch
+    | Custom { sch;  _ } -> json_type ~recs epaths descr ppf sch
     | Sum decl ->
       Pp.fp ppf "@[<hov 2>%a%a :[%a]@]"
         pp_descr descr
-        k "oneOf" (json_sum epaths true 0) decl
-    | Description (d, sch) -> json_type epaths L.(d::descr) ppf sch
-    | Rec {proj; defs; _ } -> json_type epaths descr ppf (get defs proj)
-    | Var n -> Pp.fp ppf "@[TODO mu_%d@]" (to_int n)
+        k "oneOf" (json_sum ~recs epaths true 0) decl
+    | Description (d, sch) -> json_type ~recs epaths L.(d::descr) ppf sch
+    | Rec {proj; defs; id } -> json_type ~recs:(Some { id; defs }) epaths descr ppf (get defs proj)
+    | Var n ->
+      match recs with
+      | None -> assert false
+      | Some recs ->
+        let path = L. (recs.id @ [string_of_int (to_int n)] ) in
+        let epath = find_path (path, get recs.defs n) epaths in
+        Pp.fp ppf {|@["$ref":#/definitions/%s"@]|} epath
 and json_schema_tuple:
-  type a f. effective_paths -> Format.formatter -> (a tuple,f) s -> unit =
-  fun epath ppf -> function
+  type a f. effective_paths -> recs:f pending_rec_def option -> Format.formatter -> (a tuple,f) s -> unit =
+  fun epath ~recs ppf -> function
     | [] -> ()
     | [a] -> Pp.fp ppf {|@[<hov 2>{@ %a@ }@]|}
-               (json_type epath L.[]) a
+               (json_type ~recs epath L.[]) a
     | a :: q ->
       Pp.fp ppf {|@[<hov 2>{@ %a@ }@],@; %a|}
-        (json_type epath L.[]) a (json_schema_tuple epath) q
+        (json_type epath ~recs L.[]) a (json_schema_tuple ~recs epath) q
     | Custom _ -> assert false
     | Description _ -> assert false
-    | Rec {proj; defs; _ } -> json_schema_tuple epath ppf (get defs proj)
-    | Var x -> Pp.fp ppf "@[TODO mu_%d@]" (to_int x)
+    | Rec _  ->  assert false
+    | Var _ -> assert false
 and json_properties:
-  type a f. effective_paths -> Format.formatter -> (a,f) record_declaration -> unit =
-  fun epath ppf -> function
+  type a f. effective_paths -> recs:f pending_rec_def option -> Format.formatter -> (a,f) record_declaration -> unit =
+  fun epath ~recs ppf -> function
   | [] -> ()
   | [_, n, a] -> Pp.fp ppf {|@[<hov 2>"%s" : {@ %a@ }@]|}
-      (show n) (json_type epath L.[]) a
+      (show n) (json_type ~recs epath L.[]) a
   | (_, n, a) :: q ->
      Pp.fp ppf {|@[<hov 2>"%s" : {@ %a@ }@],@;%a|}
-       (show n) (json_type epath L.[]) a (json_properties epath) q
+       (show n) (json_type ~recs epath L.[]) a (json_properties ~recs epath) q
 and json_required: type a f. bool ->Format.formatter -> (a,f) record_declaration
   -> unit =
   fun first ppf -> function
@@ -328,27 +349,27 @@ and json_required: type a f. bool ->Format.formatter -> (a,f) record_declaration
       (json_required false) q
   | _ :: q -> json_required first ppf q
 and json_sum:
-  type a b. effective_paths -> bool -> int -> Format.formatter -> (a,b) sum_decl -> unit =
-  fun epaths first n ppf -> function
+  type a b. effective_paths -> recs: b pending_rec_def option -> bool -> int -> Format.formatter -> (a,b) sum_decl -> unit =
+  fun epaths ~recs first n ppf -> function
     | [] -> ()
     | (s, []) :: q  ->
       if not first then Pp.fp ppf ",@,";
       Pp.fp ppf "@[{%a@ :@ [\"%s\"]}@]%a" k "enum" s
-        (json_sum epaths false @@ n + 1) q
+        (json_sum ~recs epaths false @@ n + 1) q
     | (s,a)::q ->
       if not first then Pp.fp ppf ",@,";
       let module N = Label(struct let l = s end) in
-      Pp.fp ppf "{%a}%a" (json_type epaths L.[]) (Obj[Req,N.l,a])
-        (json_sum epaths false @@ n + 1) q
+      Pp.fp ppf "{%a}%a" (json_type ~recs epaths L.[]) (Obj[Req,N.l,a])
+        (json_sum epaths ~recs false @@ n + 1) q
 
 
 let json_definitions epaths ppf map =
   let rec json_def ppf name x not_first =
     if not_first then Pp.fp ppf ",@,";
     match x with
-    | Item (d, Dyn (_ctx,x)) ->
+    | Item (d, Dyn (ctx,x)) ->
       Pp.fp ppf "@[%a%a@ :@ {@ %a@ }@]" pp_descr d
-        k name (json_type epaths L.[]) x;
+        k name (json_type ~recs:ctx epaths L.[]) x;
       true
     | M m ->
       Pp.fp ppf "@[%a@ :@ {@ %a@ }@ @]" k name json_defs m; true
@@ -640,9 +661,9 @@ module Ext = struct
     | _ -> assert false
 
   let schema (type a b) (sch: (a,b) ext) = match sch.inner with
-    | Obj _ as x -> Dyn ([],schema_obj x)
-    | Custom { sch = Obj _; _} -> Dyn([],schema_custom sch)
-    | _ -> Dyn ([],schema_gen sch)
+    | Obj _ as x -> Dyn (None,schema_obj x)
+    | Custom { sch = Obj _; _} -> Dyn(None,schema_custom sch)
+    | _ -> Dyn (None,schema_gen sch)
 
   let extend (type a b) (sch: (a,b) ext) (x: b) = match sch.inner, x with
     | Obj _ as s , x ->
@@ -661,8 +682,8 @@ module Ext = struct
     json sch ppf x
 
   let json_schema ppf s =
-    let Dyn (ctx,sch) = schema s in
-    let {ctx; map; _ } = extract_def ctx sch in
+    let Dyn (rctx,sch) = schema s in
+    let {ctx; map; _ } = extract_def ?defs:rctx sch in
     Pp.fp ppf
       "@[<v 2>{@ \
        %a,@;\
@@ -675,7 +696,7 @@ module Ext = struct
       p ("title", s.title)
       p ("description", s.description)
       k "definitions" (json_definitions ctx.mapped) map
-      (json_type ctx.mapped L.[]) sch
+      (json_type ~recs:rctx ctx.mapped L.[]) sch
 
   let sexp s ppf x =
     let B(s,x) = extend s x in

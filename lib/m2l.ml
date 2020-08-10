@@ -282,18 +282,19 @@ module Sch = struct
       "expr", expr;
       "module_expr", module_expr;
       "module_type", module_type;
-     "expr_loc", expr_loc;
-     "annotation", annotation;
-     "extension", extension;
-     "arg",arg
+      "expr_loc", expr_loc;
+      "annotation", annotation;
+      "extension", extension;
+      "arg",arg
     ]
 
+  let id = L.["m2l"]
   let m2l =
-    Rec { id = ["m2l"]; defs; proj = Zn }
-  let expr = Rec { id = ["m2l"; "expr" ]; defs; proj = Sn Zn }
-  let module_expr = Rec { id = ["m2l"; "module_expr" ]; defs; proj = Sn(Sn Zn) }
-  let module_type = Rec { id = ["m2l"; "module_type" ]; defs; proj = Sn(Sn(Sn Zn)) }
-  let annotation = Rec { id = ["m2l"; "annotation" ]; defs;  proj = Sn(Sn(Sn(Sn(Sn Zn)))) }
+    Rec { id; defs; proj = Zn }
+  let expr = Rec { id; defs; proj = Sn Zn }
+  let module_expr = Rec { id; defs; proj = Sn(Sn Zn) }
+  let module_type = Rec { id; defs; proj = Sn(Sn(Sn Zn)) }
+  let annotation = Rec { id; defs;  proj = Sn(Sn(Sn(Sn(Sn Zn)))) }
 
 
 end let sch = Sch.m2l
