@@ -608,7 +608,7 @@ let result =
                               ["Set";"Map"], [] );
           "namespaced.ml", ( ["Name"; "Paths"; "Pp"],
                              ["Format";"List";"Set";"Map"], [] );
-          "loc.mli", ( ["Name";"Schematic"], ["Format"], []);
+          "loc.mli", ( ["Schematic"], ["Format"], []);
           "loc.ml", ( ["Pp";"Schematic"], ["List"], []);
           "option.mli", ([],["Lazy"],[]);
           "option.ml", ([],["List";"Lazy"],[]);
@@ -631,8 +631,7 @@ let result =
           "schema.ml", (["M2l"; "Module"; "Option"; "Paths"; "Schematic"],
                         [],  []);
           "schema.mli", (["M2l"; "Module"; "Paths"; "Schematic"], [], []);
-          "schematic.mli", (["Name"],
-                       [ "Format"], [] );
+          "schematic.mli", ([],["Format"], []);
           "schematic_indices.ml", (["Schematic"],[],[]);
 
           "schematic.ml", (["Format_compat"; "Name"; "Mresult"; "Pp";
