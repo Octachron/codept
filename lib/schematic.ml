@@ -317,7 +317,7 @@ let rec json_type: type a f. effective_paths -> recs: f pending_rec_def
       let Pending recs = recs in 
       let path = L. (recs.id @ [string_of_int (to_int n)] ) in
       let epath = find_path (path, get recs.defs n) epaths in
-      Pp.fp ppf {|@["$ref":#/definitions/%s"@]|} epath
+      Pp.fp ppf {|@["$ref":"#/definitions/%s"@]|} epath
 and json_schema_tuple:
   type a f. effective_paths -> recs:f pending_rec_def -> Format.formatter -> (a tuple,f) s -> unit =
   fun epaths ~recs ppf -> function
@@ -359,6 +359,10 @@ and json_sum:
   fun epaths ~recs first n ppf -> function
     | [] -> ()
     | (s, []) :: q  ->
+      if not first then Pp.fp ppf ",@,";
+      Pp.fp ppf "@[{%a@ :@ [\"%s\"]}@]%a" k "enum" s
+        (json_sum ~recs epaths false @@ n + 1) q
+    | (s, Void) :: q  ->
       if not first then Pp.fp ppf ",@,";
       Pp.fp ppf "@[{%a@ :@ [\"%s\"]}@]%a" k "enum" s
         (json_sum ~recs epaths false @@ n + 1) q
