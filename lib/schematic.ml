@@ -51,6 +51,8 @@ open Record
 
 type ('a,'b) bijection = { fwd:'a->'b;rev:'b -> 'a}
 
+type 'a r = Indexed
+
 type ('hole, 'free) s =
   | Float: (float, 'free) s
   | Int: (int, 'free) s
@@ -64,13 +66,13 @@ type ('hole, 'free) s =
   | Custom: ('a,'b,'free) custom -> ('a, 'free) s
   | Sum: ('a,'free) sum_decl -> ('a sum,'free) s
   | Description: string * ('hole,'free) s -> ('hole, 'free) s
-  | Rec: { id: string list; defs:('defs,'defs) rec_defs; proj: ('defs, 'res) index}
+  | Rec: { id: string list; defs:('defs,'defs r) rec_defs; proj: ('defs, 'res) index}
       -> ('res,'free) s
-  | Var: ('free,'result) index -> ('result,'free) s
+  | Var: ('free, 'result) index -> ('result,'free r) s
 
 and (_,_) rec_defs =
-  | []: (void,'free) rec_defs
-  | (::): (string * ('a,'free) s) * ('l, 'free) rec_defs -> ('a * 'l, 'free) rec_defs
+  | []: (void,'free r) rec_defs
+  | (::): (string * ('a,'free r) s) * ('l, 'free r) rec_defs -> ('a * 'l, 'free r) rec_defs
 
 and ('a,'b,'free) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:('b,'free) s }
 and ('a,'free) record_declaration =
@@ -91,28 +93,27 @@ and (_,_) cons =
 and 'a sum = C: ('a, 'elt ) cons -> 'a sum
 
 and (_,_) index =
-  | Zn: ('a * 'b ,'a) index
-  | Sn: ('list,'res) index -> ( _ * 'list, 'res) index
+  | Zn: ( 'a * 'b  , 'a) index
+  | Sn: ('list, 'res) index -> ( _ * 'list, 'res) index
 
 type 'a t = ('a,void) s
 type 'a schematic = 'a t
 
 
-let rec get: type a all res. (a,all) rec_defs -> (a,res) index -> (res,all) s = fun l x ->
+let rec get: type a all res. (a,all r) rec_defs -> (a, res) index -> (res,all r) s = fun l x ->
   match l, x with
   | (_,a)::_ , Zn -> a
   | _ :: q, Sn x -> get q x
   | [], _ -> .
 
 
-let rec reopen: type a b. (a,void) s -> (a,b) s =
+let rec reopen: type a b. a t -> (a,b) s =
   function
   | Float -> Float
   | Int -> Int
   | Void -> Void
   | Bool -> Bool
   | String -> String
-  | Var _ -> .
   | Rec {id;proj;defs} -> Rec {id;proj;defs}
   | [] -> []
   | x :: q -> reopen x :: reopen q
@@ -121,6 +122,7 @@ let rec reopen: type a b. (a,void) s -> (a,b) s =
   | Custom {rev;fwd;sch} -> Custom {rev;fwd;sch=reopen sch}
   | Sum x -> Sum (reopen_sum x)
   | Description(d,x) -> Description(d, reopen x)
+  |   _ -> .
 and reopen_obj: type a f. (a,void) record_declaration -> (a,f) record_declaration = function
   | [] -> []
   | (Req, lbl, a) :: q -> (Req, lbl, reopen a) :: reopen_obj q
@@ -176,14 +178,18 @@ module Path_map=
   end)
 
 
-type 'a pending_rec_def = { id: string list; defs: ('a,'a) rec_defs }
-type dyn = Dyn: 'f pending_rec_def option * ('a,'f) s -> dyn
+type 'a pending_rec_def =
+  | Pending: { id: string list; defs: ('a,'a r) rec_defs } -> 'a r pending_rec_def
+  | Closed: void pending_rec_def
+
+type dyn = Dyn: 'f pending_rec_def * ('a,'f) s -> dyn
+
 type effective_paths = (string list * int) list Path_map.t
 type context = { stamp:int; mapped: effective_paths  }
 let id (x: (_,_) s) = Hashtbl.hash x
 
 type def = { desc: string list; ctx: context; map: dyn forest }
-let add_path (type a f) path (defs:f pending_rec_def option) (x:(a,f) s) {desc;ctx;map} =
+let add_path (type a f) path (defs:f pending_rec_def) (x:(a,f) s) {desc;ctx;map} =
   let open L in
   let rec add_path ctx path x map =
     match path with
@@ -230,11 +236,11 @@ let rec to_int: type l x. (l,x) index -> int = function
   | Sn x -> 1 + to_int x
 
 
-let extract_def ?defs s =
+let extract_def defs s =
   let rec extract_def:
-    type a f. ?defs:f pending_rec_def -> (a,f) s -> def -> def =
-    fun ?defs sch data ->
-      let traverse x = extract_def ?defs x in
+    type a f. defs:f pending_rec_def -> (a,f) s -> def -> def =
+    fun ~defs sch data ->
+      let traverse x = extract_def ~defs x in
       match sch with
       | Float -> data | Int -> data | String -> data | Bool -> data | Void -> data
       | Array t -> data |> traverse t
@@ -243,7 +249,7 @@ let extract_def ?defs s =
         data |> traverse x |> traverse (Obj q)
       | [] -> data
       | a :: q -> data |> traverse a |> traverse q
-      | Sum x -> extract_sum_def ?defs x data
+      | Sum x -> extract_sum_def ~defs x data
       | Custom{sch; _ } -> traverse sch data
       | Description (_,x) -> traverse x data
       | Rec { id; proj; defs=defs' } ->
@@ -251,22 +257,20 @@ let extract_def ?defs s =
         let p = L.( id @ [n] ) in
         let sch =  get defs' proj in
         if mem (p, sch) data.ctx then data else
-          data |> add_path p (Some {id;defs=defs'}) sch |> extract_def ~defs:{id;defs=defs'} sch
+          data |> add_path p (Pending {id;defs=defs'}) sch |> extract_def ~defs:(Pending {id;defs=defs'}) sch
       | Var n ->
-        match defs with
-        | None -> assert false
-        | Some defs ->
-          let path = L.( defs.id @ [string_of_int (to_int n)]) in
-          let sch = get defs.defs n in
-          if mem (path, sch) data.ctx then data else
-            data |> add_path path (Some defs) sch |> extract_def ~defs sch
-  and extract_sum_def: type a b. ?defs:b pending_rec_def ->(a,b) sum_decl -> def -> def =
-    fun ?defs s data ->
+        let Pending defs as p = defs in
+        let path = L.( defs.id @ [string_of_int (to_int n)]) in
+        let sch = get defs.defs n in
+        if mem (path, sch) data.ctx then data else
+          data |> add_path path (Pending defs) sch |> extract_def ~defs:p sch
+  and extract_sum_def: type a b. defs:b pending_rec_def ->(a,b) sum_decl -> def -> def =
+    fun ~defs s data ->
     match s with
       | [] -> data
-      | (_,t) :: q -> data |> extract_def ?defs t |> extract_sum_def ?defs q
+      | (_,t) :: q -> data |> extract_def ~defs t |> extract_sum_def ~defs q
 
-  in extract_def ?defs s
+  in extract_def ~defs s
     { desc = L.[];
       ctx = {stamp=1;mapped=Path_map.empty};
       map = Name.Map.empty
@@ -280,7 +284,7 @@ let pp_descr ppf l =
 
 let tyd ppf (dl,typ) = Pp.fp ppf "%a%a" pp_descr dl ty typ
 
-let rec json_type: type a f. effective_paths -> recs: f pending_rec_def option
+let rec json_type: type a f. effective_paths -> recs: f pending_rec_def
   -> string list -> Format.formatter -> (a,f) s -> unit =
   fun epaths ~recs descr ppf -> function
     | Float -> tyd ppf (descr,"number")
@@ -308,29 +312,31 @@ let rec json_type: type a f. effective_paths -> recs: f pending_rec_def option
         pp_descr descr
         k "oneOf" (json_sum ~recs epaths true 0) decl
     | Description (d, sch) -> json_type ~recs epaths L.(d::descr) ppf sch
-    | Rec {proj; defs; id } -> json_type ~recs:(Some { id; defs }) epaths descr ppf (get defs proj)
+    | Rec {proj; defs; id } -> json_type ~recs:(Pending { id; defs }) epaths descr ppf (get defs proj)
     | Var n ->
-      match recs with
-      | None -> assert false
-      | Some recs ->
-        let path = L. (recs.id @ [string_of_int (to_int n)] ) in
-        let epath = find_path (path, get recs.defs n) epaths in
-        Pp.fp ppf {|@["$ref":#/definitions/%s"@]|} epath
+      let Pending recs = recs in 
+      let path = L. (recs.id @ [string_of_int (to_int n)] ) in
+      let epath = find_path (path, get recs.defs n) epaths in
+      Pp.fp ppf {|@["$ref":#/definitions/%s"@]|} epath
 and json_schema_tuple:
-  type a f. effective_paths -> recs:f pending_rec_def option -> Format.formatter -> (a tuple,f) s -> unit =
-  fun epath ~recs ppf -> function
+  type a f. effective_paths -> recs:f pending_rec_def -> Format.formatter -> (a tuple,f) s -> unit =
+  fun epaths ~recs ppf -> function
     | [] -> ()
-    | [a] -> Pp.fp ppf {|@[<hov 2>{@ %a@ }@]|}
-               (json_type ~recs epath L.[]) a
+    | [a] -> Pp.fp ppf {|@[<hov 2>{@ %a@ }@]|} (json_type ~recs epaths L.[]) a
     | a :: q ->
       Pp.fp ppf {|@[<hov 2>{@ %a@ }@],@; %a|}
-        (json_type epath ~recs L.[]) a (json_schema_tuple ~recs epath) q
+        (json_type epaths ~recs L.[]) a (json_schema_tuple ~recs epaths) q
+    | Description(_, x) -> json_schema_tuple ~recs epaths ppf x
+    | Rec {proj; defs; id } -> json_schema_tuple ~recs:(Pending { id; defs }) epaths ppf (get defs proj)
+    | Var n ->
+      let Pending recs = recs in
+      let path = L. (recs.id @ [string_of_int (to_int n)] ) in
+      let epath = find_path (path, get recs.defs n) epaths in
+      Pp.fp ppf {|@["$ref":#/definitions/%s"@]|} epath
     | Custom _ -> assert false
-    | Description _ -> assert false
-    | Rec _  ->  assert false
-    | Var _ -> assert false
+    | _ -> .
 and json_properties:
-  type a f. effective_paths -> recs:f pending_rec_def option -> Format.formatter -> (a,f) record_declaration -> unit =
+  type a f. effective_paths -> recs:f pending_rec_def -> Format.formatter -> (a,f) record_declaration -> unit =
   fun epath ~recs ppf -> function
   | [] -> ()
   | [_, n, a] -> Pp.fp ppf {|@[<hov 2>"%s" : {@ %a@ }@]|}
@@ -349,7 +355,7 @@ and json_required: type a f. bool ->Format.formatter -> (a,f) record_declaration
       (json_required false) q
   | _ :: q -> json_required first ppf q
 and json_sum:
-  type a b. effective_paths -> recs: b pending_rec_def option -> bool -> int -> Format.formatter -> (a,b) sum_decl -> unit =
+  type a b. effective_paths -> recs: b pending_rec_def -> bool -> int -> Format.formatter -> (a,b) sum_decl -> unit =
   fun epaths ~recs first n ppf -> function
     | [] -> ()
     | (s, []) :: q  ->
@@ -376,7 +382,7 @@ let json_definitions epaths ppf map =
   and json_defs ppf m = ignore (Name.Map.fold (json_def ppf) m false) in
   json_defs ppf map
 
-let rec json: type a f. (f,f) rec_defs -> (a,f) s -> Format.formatter -> a -> unit =
+let rec json: type a f. f pending_rec_def -> (a,f) s -> Format.formatter -> a -> unit =
   fun defs sch ppf x -> match sch, x with
     | Int, n -> Pp.fp ppf "%d" n
     | Float, f -> Pp.fp ppf "%f" f
@@ -392,9 +398,11 @@ let rec json: type a f. (f,f) rec_defs -> (a,f) s -> Format.formatter -> a -> un
     | Custom c, x -> json defs c.sch ppf (c.fwd x)
     | Sum q, x -> json_sum 0 defs q ppf x
     | Description(_,sch), x -> json defs sch ppf x
-    | Var n, x -> json defs (get defs n) ppf x
-    | Rec { defs; proj; _ }, x -> json defs (get defs proj) ppf x
-and json_sum: type all x all. int -> (all,all) rec_defs -> (x,all) sum_decl  ->
+    | Var n, x ->
+      let Pending p = defs in
+      json defs (get p.defs n) ppf x
+    | Rec { defs; id; proj; _ }, x -> json (Pending {defs; id}) (get defs proj) ppf x
+and json_sum: type all x. int -> all pending_rec_def -> (x,all) sum_decl  ->
   Format.formatter -> x sum -> unit =
   fun n defs sch ppf x -> match sch, x with
     | (n,a) :: _ , C Z x ->
@@ -405,18 +413,20 @@ and json_sum: type all x all. int -> (all,all) rec_defs -> (x,all) sum_decl  ->
     | _ :: q, C S c -> json_sum (n+1) defs q ppf (C c)
     | [], _ -> .
 
-and json_tuple: type a f. (f,f) rec_defs -> (a tuple,f) s -> Format.formatter -> a tuple -> unit =
+and json_tuple: type a f. f pending_rec_def -> (a tuple,f) s -> Format.formatter -> a tuple -> unit =
   fun defs sch ppf x -> match sch, x with
     | [], [] -> ()
     | [a], [x] -> json defs a ppf x
     | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json defs a) x (json_tuple defs q) xs
     | Custom _, _ -> assert false
     | Description _, _ -> assert false
-    | Rec { defs; proj; _ }, x -> json_tuple defs (get defs proj) ppf x
-    | Var proj, x -> json_tuple defs (get defs proj) ppf x
+    | Rec { defs; proj; id; _ }, x -> json_tuple (Pending {id;defs}) (get defs proj) ppf x
+    | Var proj, x ->
+      let Pending p =  defs in
+      json_tuple defs (get p.defs proj) ppf x
 
 and json_obj: type a r.
-  bool -> (r,r) rec_defs -> (a,r) record_declaration -> Format.formatter -> a record -> unit =
+  bool -> r pending_rec_def -> (a,r) record_declaration -> Format.formatter -> a record -> unit =
   fun not_first defs sch ppf x -> match sch, x with
     | [], [] -> ()
     | (Req, name,sch) :: q ,   (_, x) :: xs ->
@@ -431,7 +441,7 @@ and json_obj: type a r.
       json_obj not_first defs q ppf xs
 
 
-let json x = json [] x
+let json x = json Closed x
 
 let cstring ppf s =
   begin try
@@ -441,7 +451,7 @@ let cstring ppf s =
       Not_found -> Pp.string ppf s
   end
 
-let rec sexp: type a all. (all,all) rec_defs -> (a,all) s -> Format.formatter -> a -> unit =
+let rec sexp: type a all. all pending_rec_def -> (a,all) s -> Format.formatter -> a -> unit =
   fun defs sch ppf x -> match sch, x with
     | Int, n -> Pp.fp ppf "%d" n
     | Float, f -> Pp.fp ppf "%f" f
@@ -457,20 +467,24 @@ let rec sexp: type a all. (all,all) rec_defs -> (a,all) s -> Format.formatter ->
     | Custom r, x -> sexp defs r.sch ppf (r.fwd x)
     | Sum s, x -> sexp_sum 0 defs s ppf x
     | Description(_,sch), x -> sexp defs sch ppf x
-    | Rec { defs; proj; _ }, x ->
-      sexp defs (get defs proj) ppf x
-    | Var proj, x -> sexp defs (get defs proj) ppf x
-and sexp_tuple: type all a. (all,all) rec_defs -> (a Tuple.t,all) s -> Format.formatter -> a Tuple.t -> unit =
+    | Rec { defs; proj; id }, x ->
+      sexp (Pending {defs;id}) (get defs proj) ppf x
+    | Var proj, x ->
+      let Pending p = defs in
+      sexp defs (get p.defs proj) ppf x
+and sexp_tuple: type all a. all pending_rec_def -> (a Tuple.t,all) s -> Format.formatter -> a Tuple.t -> unit =
   fun defs ty ppf t -> match ty, t with
     | [], [] -> ()
     | [a], [x] -> sexp defs a ppf x
     | a :: q, x :: xs -> Pp.fp ppf "%a@ %a" (sexp defs a) x (sexp_tuple defs q) xs
     | Custom _, _ -> assert false
     | Description _, _ -> assert false
-    | Rec { defs; proj; _ }, x ->
-      sexp_tuple defs (get defs proj) ppf x
-    | Var proj, x -> sexp_tuple defs (get defs proj) ppf x
-and sexp_sum: type all a. int -> (all,all) rec_defs -> (a, all) sum_decl -> Format.formatter ->
+    | Rec { defs; proj; id }, x ->
+      sexp_tuple (Pending {id;defs}) (get defs proj) ppf x
+    | Var proj, x ->
+      let Pending p = defs in
+      sexp_tuple defs (get p.defs proj) ppf x
+and sexp_sum: type all a. int -> all pending_rec_def -> (a, all) sum_decl -> Format.formatter ->
   a sum -> unit =
   fun n defs decl ppf x -> match decl, x with
     | (n,a) :: _ , C Z x -> sexp defs [String;a] ppf Tuple.[n;x]
@@ -478,7 +492,7 @@ and sexp_sum: type all a. int -> (all,all) rec_defs -> (a, all) sum_decl -> Form
     | _ :: q, C S c -> sexp_sum (n+1) defs q ppf (C c)
     | [] , _ -> .
 and sexp_obj: type a all.
-  (all,all) rec_defs -> (a,all) record_declaration -> Format.formatter -> a record -> unit =
+  all pending_rec_def -> (a,all) record_declaration -> Format.formatter -> a record -> unit =
   fun defs sch ppf x -> match sch, x with
     | [], [] -> ()
     | (Req, name,sch) :: q ,   (_, x) :: xs ->
@@ -496,7 +510,7 @@ and sexp_obj: type a all.
 
     | (Opt,_,_) :: q, (_, None ) :: xs -> sexp_obj defs q ppf xs
 
-let sexp x = sexp [] x
+let sexp x = sexp Closed x
 
 let skip name = name, None
 
@@ -524,7 +538,7 @@ let promote_to_obj l =
   let promote_pair = function List [Atom x;y] -> Some(x,y) | _ -> None in
   Option.List'.map promote_pair l
 
-let rec retype: type a f. (f,f) rec_defs -> (a,f) s -> untyped -> a option =
+let rec retype: type a f. f pending_rec_def -> (a,f) s -> untyped -> a option =
   let open Option in
   fun defs sch u -> match sch, u with
     | Int, Atom u -> Support.opt int_of_string u
@@ -548,12 +562,13 @@ let rec retype: type a f. (f,f) rec_defs -> (a,f) s -> untyped -> a option =
       retype_const_sum s x
     | Sum s, (Obj[x,y]|List[Atom x;y]) ->
       retype_sum defs s x y
-    | Rec {defs;proj; _}, x ->
-      retype defs (get defs proj) x
+    | Rec {defs;proj; id}, x ->
+      retype (Pending {defs;id}) (get defs proj) x
     | Var proj, x ->
-      retype defs (get defs proj) x
+      let Pending p = defs in
+      retype defs (get p.defs proj) x
     | _ -> None
-and retype_obj: type a f. (f,f) rec_defs -> (a,f) record_declaration -> (string * untyped) list ->
+and retype_obj: type a f. f pending_rec_def -> (a,f) record_declaration -> (string * untyped) list ->
   a record option = fun defs sch x ->
   let open Option in
   match sch, x with
@@ -571,7 +586,7 @@ and retype_obj: type a f. (f,f) rec_defs -> (a,f) record_declaration -> (string 
     Record.( skip field :: l )
   | _ -> None
 
-and retype_sum: type all a. (all,all) rec_defs -> (a,all) sum_decl -> string
+and retype_sum: type all a. all pending_rec_def -> (a,all) sum_decl -> string
   -> untyped -> a sum option =
   let open Option in
   fun defs decl n u ->
@@ -590,7 +605,7 @@ and retype_const_sum: type a b. (a,b) sum_decl -> string -> a sum option =
     | _ :: q ->
       retype_const_sum q n >>| fun (C c) -> (C (S c))
 
-let retype x = retype [] x
+let retype x = retype Closed x
 
 let minify ppf =
   let f = Format.pp_get_formatter_out_functions ppf () in
@@ -661,9 +676,9 @@ module Ext = struct
     | _ -> assert false
 
   let schema (type a b) (sch: (a,b) ext) = match sch.inner with
-    | Obj _ as x -> Dyn (None,schema_obj x)
-    | Custom { sch = Obj _; _} -> Dyn(None,schema_custom sch)
-    | _ -> Dyn (None,schema_gen sch)
+    | Obj _ as x -> Dyn (Closed,schema_obj x)
+    | Custom { sch = Obj _; _} -> Dyn(Closed,schema_custom sch)
+    | _ -> Dyn (Closed,schema_gen sch)
 
   let extend (type a b) (sch: (a,b) ext) (x: b) = match sch.inner, x with
     | Obj _ as s , x ->
@@ -683,7 +698,7 @@ module Ext = struct
 
   let json_schema ppf s =
     let Dyn (rctx,sch) = schema s in
-    let {ctx; map; _ } = extract_def ?defs:rctx sch in
+    let {ctx; map; _ } = extract_def rctx sch in
     Pp.fp ppf
       "@[<v 2>{@ \
        %a,@;\

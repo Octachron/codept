@@ -42,7 +42,7 @@ module Record: sig
 end
 
 type ('a,'b) bijection = { fwd:'a->'b;rev:'b -> 'a}
-
+type 'a r = Indexed
 
 type ('hole, 'free) s =
   | Float: (float, 'free) s
@@ -57,17 +57,17 @@ type ('hole, 'free) s =
   | Custom: ('a,'b,'free) custom -> ('a, 'free) s
   | Sum: ('a,'free) sum_decl -> ('a sum,'free) s
   | Description: string * ('hole,'free) s -> ('hole, 'free) s
-  | Rec: { id: string list; defs:('defs,'defs) rec_defs; proj: ('defs, 'res) index}
+  | Rec: { id: string list; defs:('defs,'defs r) rec_defs; proj: ('defs, 'res) index}
       -> ('res,'free) s
-  | Var: ('free,'result) index -> ('result,'free) s
+  | Var: ('free,'result) index -> ('result,'free r) s
 
 and (_,_) index =
   | Zn: ('a * 'b ,'a) index
   | Sn: ('list,'res) index -> ( _ * 'list, 'res) index
 
 and (_,_) rec_defs =
-  | []: (void,'free) rec_defs
-  | (::): (string * ('a,'free)s)  * ('l, 'free) rec_defs -> ('a * 'l, 'free) rec_defs
+  | []: (void,'free r) rec_defs
+  | (::): (string * ('a,'free r)s)  * ('l, 'free r) rec_defs -> ('a * 'l, 'free r) rec_defs
 
 and ('a,'b,'free) custom = { fwd:'a -> 'b; rev:'b -> 'a; sch:('b,'free) s }
 and ('a,'free) record_declaration =
