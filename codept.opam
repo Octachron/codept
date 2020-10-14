@@ -13,7 +13,7 @@ build: [
 run-test: [
   ["dune" "runtest"]
 ]
-depends: ["dune" {build} "menhir" {build} "ocaml" {>="4.03" & < "4.11"}]
+depends: ["dune" {build} "menhir" {build} "ocaml" {>="4.03" & < "4.13"}]
 synopsis: "Alternative ocaml dependency analyzer"
 description:"""
 Codept intends to be a dependency solver for OCaml project and an alternative to ocamldep. Compared to ocamldep, codept major features are:
