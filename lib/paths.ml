@@ -102,12 +102,11 @@ module type Expr = sig
   val prefix : t -> string
 end
 
-module Make_Expr(S:simple_core): Expr with type s := S.t = struct
+module Make_expr(S:simple_core): Expr with type s := S.t = struct
 
   type t =
     | Simple of S.t
     | Apply of { f:t; x:t; proj: Simple.t option }
-
 
   module Sch = struct
     type w = W of S.t [@@unboxed]

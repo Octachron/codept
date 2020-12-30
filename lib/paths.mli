@@ -45,6 +45,16 @@ module type Expr = sig
   val pp : Format.formatter -> t -> unit
   val prefix : t -> string
 end
+
+module type simple_core = sig
+  type t
+  val concat: t -> Simple.t -> t
+  val prefix: t -> Name.t
+  val sch: t Schematic.t
+  val pp: t Pp.t
+end
+
+module Make_expr: functor(S:simple_core) -> Expr with type s := S.t
 module Expr: Expr with type s := S.t
 module E = Expr
 
