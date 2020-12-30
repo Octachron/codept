@@ -90,10 +90,6 @@ module type Expr = sig
   type t = private
     | Simple of s
     | Apply of { f:t; x:t; proj: Simple.t option }
-
-  module Map: Map.S with type key = t
-  type 'a map = 'a Map.t
-
   val sch: t Schematic.t
   exception Functor_not_expected
   val concrete : t -> s
@@ -103,6 +99,8 @@ module type Expr = sig
   val app: t -> t -> Simple.t option -> t
   val pp : Format.formatter -> t -> unit
   val prefix : t -> string
+  module Map: Map.S with type key = t
+  type 'a map = 'a Map.t
 end
 
 module Make_expr(S:simple_core): Expr with type s := S.t = struct
@@ -110,12 +108,6 @@ module Make_expr(S:simple_core): Expr with type s := S.t = struct
   type t =
     | Simple of S.t
     | Apply of { f:t; x:t; proj: Simple.t option }
-
-  module Map = Map.Make(struct
-      let compare = compare
-      type nonrec t = t
-    end)
-  type 'a map = 'a Map.t
 
   module Sch = struct
     type w = W of S.t [@@unboxed]
@@ -174,9 +166,16 @@ module Make_expr(S:simple_core): Expr with type s := S.t = struct
   let rec prefix = function
     | Simple s -> S.prefix s
     | Apply r -> prefix r.f
+
+  module Map = Map.Make(struct
+      let compare = compare
+      type nonrec t = t
+    end)
+  type 'a map = 'a Map.t
+
 end
 
-module Expr = Make_Expr(Simple)
+module Expr = Make_expr(Simple)
 module E = Expr
 
 module Pkg = struct
