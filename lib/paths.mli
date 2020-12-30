@@ -44,6 +44,10 @@ module type Expr = sig
   val app: t -> t -> Simple.t option -> t
   val pp : Format.formatter -> t -> unit
   val prefix : t -> string
+
+  module Map: Map.S with type key = t
+  type 'a map = 'a Map.t
+
 end
 
 module type simple_core = sig
