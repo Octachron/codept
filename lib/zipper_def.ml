@@ -79,11 +79,8 @@ module type fold = sig
 
   val packed_init : packed
 
-  val path_expr :
-    path -> path_expr_args -> path_expr
-  val path_expr_arg :
-    int -> path_expr -> path_expr_args -> path_expr_args
-  val path_expr_arg_init : path_expr_args
+  val path_expr_pure : path -> path_expr
+  val path_expr_app : path_expr -> path_expr -> Paths.S.t option -> path_expr
   val sig_abstract : module_type
   val sig_include : loc:Fault.loc -> module_type -> expr
   val str : m2l -> module_expr
@@ -106,7 +103,7 @@ module type s = sig
     type m2l = (Zipper_skeleton.m2l, T.m2l) pair
     type values = T.values
     type bind_rec = (Zipper_skeleton.state_diff, T.bind_rec) pair
-    type path_expr_args = T.path_expr_args
+    type path_expr_t = (Zipper_skeleton.path, T.path_expr) pair
     type opens = T.opens
     type path_in_context = Zipper_skeleton.path_in_context
   end
@@ -167,14 +164,9 @@ module type s = sig
     }
 
   type  'f path_expr =
-    | Main: (int * Paths.Expr.t) list -> path_in_context path_expr
-    | Arg: {
-        main: path;
-        left: path_expr_args;
-        pos:int;
-        right: (int * Paths.Expr.t) list
-      } -> Paths.Expr.t path_expr
-
+    | Simple: path_in_context path_expr
+    | App_f: Paths.Expr.t * Paths.S.t option -> Paths.Expr.t path_expr
+    | App_x: path_expr_t * Paths.S.t option -> Paths.Expr.t path_expr
 
   type 'focus me =
     | Ident: path_in_context me

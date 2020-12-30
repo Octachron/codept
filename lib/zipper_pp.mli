@@ -15,7 +15,7 @@ module type Result_printer = sig
   val pp_values: T.values dprinter
   val pp_access: T.access dprinter
   val pp_path: T.path dprinter
-  val pp_path_expr_args: T.path_expr_args dprinter
+  val pp_path_expr: T.path_expr dprinter
 
 end
 

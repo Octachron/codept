@@ -29,20 +29,23 @@ module Simple :
 module S = Simple
 
 (** Module paths with application *)
-module Expr : sig
-
-  type t = { path: S.t; args: (int * t) list }
+module type Expr = sig
+  type s
+  type t = private
+    | Simple of s
+    | Apply of { f:t; x:t; proj: Simple.t option }
 
   val sch: t Schematic.t
   exception Functor_not_expected
-  val concrete : t -> Simple.t
-  val concrete_with_f : t -> Simple.t
-  val multiples : t -> Simple.t list
-  val rev_concrete : t -> string list
-  val from_list : string list -> t
+  val concrete : t -> s
+  val concrete_with_f : t -> s
+  val multiples : t -> s list
+  val pure : s -> t
+  val app: t -> t -> Simple.t option -> t
   val pp : Format.formatter -> t -> unit
   val prefix : t -> string
 end
+module Expr: Expr with type s := S.t
 module E = Expr
 
 

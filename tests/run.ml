@@ -615,8 +615,8 @@ let result =
           "pparse_compat.mli", ([], ["Parsetree"], []);
           "paths.mli", (["Name"; "Schematic"], ["Map";"Set";"Format"],[]);
           "paths.ml", (["Name"; "Pp"; "Schematic"; "Schematic_indices"; "Support" ],
-                       ["Filename";"List";"Map";"Set";
-                        "Format"; "String"],[]);
+                       ["Filename";"List";"Map";"Set";"Format";
+                        "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
           "read.mli", (["M2l"; "Name"; "Schematic"],["Lexer";"Syntaxerr"],[]);
@@ -682,8 +682,8 @@ let result =
             ["Deps"; "Module"; "Stage"; "Transforms"; "Zipper"; "Zipper_fold"]
           ,[],[]);
           "zipper_fold.ml", (
-            ["Deps"; "Loc"; "M2l"; "Module"; "Mresult";
-             "Option"; "Paths"; "Stage";"Zipper_skeleton"; "Zipper_def";
+            ["Deps"; "Loc"; "M2l"; "Module"; "Mresult"; "Option";
+             "Paths"; "Stage";"Zipper_skeleton"; "Zipper_def";
              "Zipper_pp"]
           ,["List"],[]);
           "zipper_pp.ml", (
@@ -692,7 +692,7 @@ let result =
           "zipper_fold.mli", (["Stage";"Zipper_def"], [], []);
           "zipper.ml", ([],[],[]);
           "zipper_def.ml", (
-            ["Deps"; "Loc"; "M2l";"Fault"; "Module"; "Name"; "Paths";
+            ["Deps"; "Loc"; "M2l";"Fault"; "Module"; "Name";"Paths";
              "Zipper_skeleton"]
           ,[],[]);
           "zipper_skeleton.ml", (

@@ -1,17 +1,13 @@
 module L = Longident
 
-let from_lid  =
+let from_lid x =
   let open Paths.Expr in
-  let rec at_pos path = function
-    | L.Lident s -> 0, {path = s::path; args= [] }
-    | L.Ldot (lid,s) ->
-      let n, p = at_pos (s::path) lid in
-      n + 1, p
+  let proj = function
+    | [] -> None
+    | l -> Some l in
+  let rec pathlike acc = function
+    | L.Lident s -> pure (s::acc)
+    | L.Ldot (lid,s) -> pathlike (s::acc) lid
     | L.Lapply (f,x) ->
-      let n, path = at_pos path f in
-      let arg = full x in
-      n, { path with args = (n, arg) :: path.args  }
-  and full x =
-    let _, p = at_pos [] x in
-    { p with args = List.rev p.args } in
-  full
+      app (pathlike [] f) (pathlike [] x) (proj acc) in
+  pathlike [] x
