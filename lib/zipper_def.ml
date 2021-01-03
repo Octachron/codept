@@ -1,7 +1,7 @@
 
 type ('a,'b) pair = { backbone:'a; user:'b }
 
-type a = Paths.Simple.t * (Loc.t * Deps.Edge.t)
+type a = Paths.Expr.t * (Loc.t * Deps.Edge.t)
 module Arg = Module.Arg
 
 
@@ -9,12 +9,11 @@ module type tree = sig
   type path
   type module_expr
   type access
-  type packed
+  type minor
+  type minors
   type module_type
   type m2l
   type expr
-  type values
-  type annotation
   type bind_rec
   type ext
   type path_expr
@@ -27,14 +26,18 @@ module type fold = sig
   include tree
   val path : Zipper_skeleton.query -> path
   val abstract : module_expr
-  val access :  access -> access
-  val access_add :
-    path -> Fault.loc -> Deps.Edge.t -> access -> access
-  val access_init : access
-  val add_packed :
-    Fault.loc -> module_expr -> packed -> packed
   val alias : path -> module_type
-  val annot : packed -> access -> values -> annotation
+
+  val access_add :
+    path_expr -> Fault.loc -> Deps.Edge.t -> access -> access
+  val access_init : access
+  val access : access -> minor
+  val pack: module_expr -> minor
+  val minor_ext: loc:Fault.loc -> string -> ext -> minor
+  val local_open: module_expr -> minors -> minor
+  val local_bind: Name.t option -> module_expr -> minors -> minor
+  val empty_minors: minors
+  val add_minor: minor -> minors -> minors
 
   val apply : Fault.loc -> module_expr -> module_expr -> module_expr
 
@@ -50,7 +53,7 @@ module type fold = sig
   val expr_include : loc:Fault.loc -> module_expr -> expr
   val expr_open : loc:Fault.loc -> module_expr -> expr
   val ext_module : m2l -> ext
-  val ext_val : annotation -> ext
+  val ext_val : minors -> ext
 
   val m2l_add : Fault.loc -> expr -> m2l -> m2l
   val m2l_init : m2l
@@ -61,8 +64,8 @@ module type fold = sig
   val me_fun :
     module_type Arg.t option -> module_expr -> module_expr
   val me_ident : path -> module_expr
-  val me_val : annotation -> module_expr
-  val minor : annotation -> expr
+  val me_val : minors -> module_expr
+  val minor : minors -> expr
 
   val mt_ext : loc:Fault.loc -> string -> ext -> module_type
   val mt_fun :
@@ -71,13 +74,11 @@ module type fold = sig
   val mt_of : module_expr -> module_type
   val mt_sig : m2l -> module_type
   val mt_with :
-    access -> Paths.Simple.set -> module_type -> module_type
+    minors -> Paths.Simple.set -> module_type -> module_type
   val open_add :
     path -> opens -> opens
   val open_init : opens
   val open_me : opens -> module_expr -> module_expr
-
-  val packed_init : packed
 
   val path_expr_pure : path -> path_expr
   val path_expr_app : path_expr -> path_expr -> Paths.S.t option -> path_expr
@@ -85,10 +86,6 @@ module type fold = sig
   val sig_include : loc:Fault.loc -> module_type -> expr
   val str : m2l -> module_expr
   val unpacked : module_expr
-
-  val value_add : m2l -> values -> values
-  val value_init : values
-  val values : values -> values
 
 end
 
@@ -98,10 +95,10 @@ module type s = sig
     type path = (Zipper_skeleton.path, T.path) pair
     type module_expr = (Zipper_skeleton.module_like, T.module_expr) pair
     type access = T.access
-    type packed = T.packed
+    type minor = T.minor
+    type minors = T.minors
     type module_type = (Zipper_skeleton.module_like, T.module_type) pair
     type m2l = (Zipper_skeleton.m2l, T.m2l) pair
-    type values = T.values
     type bind_rec = (Zipper_skeleton.state_diff, T.bind_rec) pair
     type path_expr_t = (Zipper_skeleton.path, T.path_expr) pair
     type opens = T.opens
@@ -133,30 +130,19 @@ module type s = sig
           mt: T.module_type;
           right: (Name.t option * T.module_type * M2l.module_expr) list;
         } -> M2l.module_expr expr
-    | Minor:  M2l.annotation expr
+    | Minors: M2l.minor list expr
     | Extension_node: string ->  M2l.extension_core expr
 
-  type 'focus annot =
-    | Packed: {
-        left:packed;
-        loc:Fault.loc;
-        right: M2l.module_expr Loc.ext list;
-        access: M2l.access;
-        values: M2l.m2l list }
-        -> M2l.module_expr annot
-    | Access :
-        {
-          packed: packed;
-          values: M2l.m2l list
-        }
-        -> waccess annot
-    | Values:
-        { packed: packed;
-          access: access;
-          left: values;
-          right: M2l.m2l list
-        }
-        -> M2l.m2l annot
+  type 'focus minor =
+    | Access : waccess minor
+    | Pack : M2l.module_expr minor
+    | Extension_node : Name.t -> M2l.extension_core minor
+
+    | Local_open_left : M2l.minor list -> M2l.module_expr minor
+    | Local_open_right: module_expr -> M2l.minor list minor
+
+    | Local_bind_left: Name.t option * M2l.minor list -> M2l.module_expr minor
+    | Local_bind_right: Name.t option * module_expr -> M2l.minor list minor
 
   type acc =
     {left: access;
@@ -179,7 +165,7 @@ module type s = sig
     | Constraint_left: M2l.module_type -> M2l.module_expr me
     | Constraint_right: module_expr -> M2l.module_type me
     | Str: M2l.m2l me
-    | Val: M2l.annotation me
+    | Val: M2l.minor list me
     | Extension_node: string -> M2l.extension_core me
     | Open_me_left:
         { left: opens;
@@ -198,15 +184,15 @@ module type s = sig
     | Fun_right: (module_type Arg.t * Zipper_skeleton.state_diff) option
         -> M2l.module_type mt
     | With_access:
-        {body:M2l.module_type; deletions: Paths.S.set} -> waccess mt
+        {body:M2l.module_type; deletions: Paths.S.set} -> M2l.minor list mt
     | With_body:
-        {access:access; deletions:Paths.S.set } -> M2l.module_type mt
+        {minors:minors; deletions:Paths.S.set } -> M2l.module_type mt
     | Of: M2l.module_expr mt
     | Extension_node: string -> M2l.extension_core mt
 
   type 'focus ext =
     | Mod: M2l.m2l ext
-    | Val: M2l.annotation ext
+    | Val: M2l.minor list ext
 
   type ('elt,'from) elt =
     | M2l: {left:m2l;
@@ -215,10 +201,13 @@ module type s = sig
             right:M2l.m2l}
         -> (M2l.expression, M2l.m2l) elt
     | Expr: 'elt expr -> ('elt,M2l.expression) elt
-    | Annot: 'elt annot -> ('elt, M2l.annotation) elt
+    | Minor: 'elt minor -> ('elt, M2l.minor) elt
+    | Minors:
+        { left: minors; right: M2l.minor list } ->
+        (M2l.minor,M2l.minor list) elt
     | Me: 'elt me -> ('elt, M2l.module_expr) elt
     | Mt: 'elt mt -> ('elt, M2l.module_type) elt
-    | Access: acc -> (path_in_context, waccess) elt
+    | Access: acc -> (Paths.Expr.t, waccess) elt
     | Ext: 'elt ext ->  ('elt, M2l.extension_core) elt
     | Path_expr: 'elt path_expr -> ('elt, Paths.Expr.t) elt
 

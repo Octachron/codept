@@ -40,28 +40,15 @@ module H = struct
   let extract_loc (loc: _ Location.loc) =
     from_loc loc.Location.loc
 
-  let rec remove_last = function
-    | [] | [_] -> []
-    | a :: q -> a :: remove_last q
-
   let access lid =
-    let open Paths.Expr in
     let x = from_lid @@ txt lid in
     let loc =  extract_loc lid in
-    match multiples x with
-    | ([_]|[]):: _ | []  -> Annot.empty
-    | p :: more ->
-      let f annot data = Annot.(merge annot @@ access {data; loc }) in
-      List.fold_left f Annot.empty (remove_last p :: more)
+    Annot.access {loc; data=x}
 
   let me_access lid =
-    let open Paths.Expr in
     let x = from_lid @@ txt lid in
     let loc =  extract_loc lid in
-    List.fold_left (fun annot data -> Annot.(merge annot @@ access {data; loc }))
-      Annot.empty (multiples x)
-
-
+    Annot.access { loc; data = x }
 
   let do_open loc me =
     [{ Loc.data = M2l.Open me; loc = from_loc loc } ]
@@ -103,9 +90,7 @@ module Pattern = struct
            }
 
   let empty = { annot = Annot.empty; binds = [] }
-
   let access p = { empty with annot = access p }
-  let value s = { empty with annot = Annot.value s }
 
   let of_annot annot = { empty with annot }
 
@@ -120,40 +105,22 @@ module Pattern = struct
 
   let opt f x = Option.( x >>| f >< empty )
 
-
   let bind loc name sign =
     { empty with binds = [Loc.create loc {M2l.name = bound_name name; expr = sign }] }
-# 4.04, oo
-  let open_ m { annot={ data = {values; packed; access}; loc } ; binds} =
-    let values =
-      ( if Paths.S.Map.cardinal access > 0 then
-          M2l.[{ Loc.data = Minor {Annot.empty.data with access}; loc }]
-        else
-          []
-      )
-      :: values in
-    let op x = M2l.Open (Ident x) in
-    let values = List.map( List.cons (Loc.fmap op m) ) values in
-    let packed = List.map (Loc.fmap @@ B.open_me [m.data]) packed in
-    let binds = List.map
-        (fun {Loc.data={name;expr};loc} ->
-           Loc.create (Loc.merge m.loc loc) {name; expr = B.open_me [m.data] expr } )
-        binds in
-    let access = Annot.Access.empty in
+
+  let open_ m { annot={ data; loc } ; binds} =
+    let data = [M2l.Local_open (Ident m.Loc.data, data)] in
     let loc = Loc.merge m.loc loc in
-    { annot={ data = {values;access;packed}; loc } ; binds }
-#end
+    { annot = { data; loc}; binds }
 
   let bind_fmod p inner =
-    let minor x = Minor x in
-    let binded =
-      List.fold_left ( fun inner b -> Loc.fmap (fun x -> Bind x) b :: inner )
-        [Loc.fmap minor inner] p.binds
-      in
-      if List.length binded > 1 then
-        Annot.( p.annot ++ value [binded] )
-      else
-        Annot.( p.annot ++ inner )
+    let binded x =
+      List.fold_left ( fun inner b -> [Local_bind (b.Loc.data,inner)] )
+        x p.binds
+    in
+    Annot.(p.annot ++ Loc.fmap binded inner)
+
+  let extension ext = of_annot (Annot.ext ext)
 
 end
 
@@ -356,9 +323,7 @@ and expr exp =
   | Pexp_override labels (* {< x1 = E1; ...; Xn = En >} *) ->
     Annot.union_map (expr % snd) labels
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
-    Annot.value [[ with_loc loc @@ Bind( module_binding (m,me) );
-                   with_loc e.pexp_loc @@ Minor( data @@ expr e )
-                 ]]
+    with_loc e.pexp_loc [Local_bind(module_binding (m,me), data @@ expr e) ]
 # 4.04, oo
   | Pexp_letexception (_c, e) (* let exception C in E *) ->
     expr e
@@ -375,20 +340,18 @@ and expr exp =
   | Pexp_pack me (* (module ME) *)
     ->  (*Warning.first_class_module (); *)
     (* todo: are all cases caught by the Module.approximation mechanism?  *)
-    Annot.pack @@ with_loc loc [with_loc loc @@ module_expr me]
+    Annot.pack @@ with_loc loc @@ module_expr me
 # oo, 4.08
   | Pexp_open (_override_flag,me,e)
 # 4.08, oo
   | Pexp_open (me,e)
 # end
     (* M.(E), let open M in E, let! open M in E *)
-    -> Annot.value [ local_open me @ [with_loc loc @@ Minor (data @@ expr e) ] ]
-  | Pexp_extension (name, PStr payload) when txt name = "extension_constructor" ->
-    Annot.value [structure payload]
+    -> Annot.local_open (local_open_arg me) @@ expr e
   | Pexp_constant _ | Pexp_unreachable (* . *)
     -> Annot.empty
   | Pexp_extension ext (* [%ext] *) ->
-      Annot.value [[with_loc loc @@ extension ext]]
+      Annot.ext @@ with_loc loc @@ extension_core ext
 # 4.08,oo
   | Pexp_letop b ->
      val_bindings (fun bop -> bop.pbop_pat, bop.pbop_exp)
@@ -405,7 +368,7 @@ and pattern pat =
   | Ppat_var _ (* x *) -> Pattern.empty
 
   | Ppat_extension ext ->
-    Pattern.value [[ with_loc loc @@  extension ext]]
+    Pattern.extension @@ with_loc loc @@  extension_core ext
 
   | Ppat_exception pat (* exception P *)
   | Ppat_lazy pat (* lazy P *)
@@ -480,7 +443,7 @@ and core_type ct : M2l.Annot.t =
   let loc = ct.ptyp_loc in
   match ct.ptyp_desc with
   | Ptyp_extension ext (* [%id] *) ->
-    Annot.value [[with_loc loc @@  extension ext ]]
+    Annot.ext @@ with_loc loc @@  extension_core ext
   | Ptyp_any  (*  _ *)
   | Ptyp_var _ (* 'a *) -> Annot.empty
   | Ptyp_arrow (_, t1, t2) (* [~? ]T1->T2 *) ->
@@ -525,17 +488,14 @@ and class_type ct = match ct.pcty_desc with
   | Pcty_arrow (_arg_label, ct, clt) (* ^T -> CT *) ->
     Annot.( class_type clt ++ core_type ct)
   | Pcty_extension ext (* [%ext] *) ->
-    Annot.value [[ with_loc ct.pcty_loc @@ extension ext ]]
+    Annot.ext @@ with_loc ct.pcty_loc @@ extension_core ext
 # 4.06, 4.08
   | Pcty_open (_,module',cty) ->
 # 4.08, oo
   | Pcty_open (module',cty) ->
 #end
 # 4.06, oo
-    Annot.value [
-        class_open module'
-      @ [with_loc ct.pcty_loc @@ Minor (data @@ class_type cty)]
-    ]
+    Annot.local_open (Ident (npath module'.popen_expr)) (class_type cty)
 #end
 and class_signature cs = Annot.union_map class_type_field cs.pcsig_fields
 and class_type_field ctf = match ctf.pctf_desc with
@@ -547,7 +507,7 @@ and class_type_field ctf = match ctf.pctf_desc with
     Annot.( core_type t2 ++ core_type t1 )
   | Pctf_attribute _ -> Annot.empty
   | Pctf_extension ext ->
-    Annot.value [[ with_loc ctf.pctf_loc @@ extension ext ]]
+    Annot.ext @@ with_loc ctf.pctf_loc @@ extension_core ext
 and class_structure ct =
   Annot.union_map class_field ct.pcstr_fields
 and class_field  field = match field.pcf_desc with
@@ -560,7 +520,8 @@ and class_field  field = match field.pcf_desc with
     core_type ct
   | Pcf_initializer e (* initializer E *) -> expr e
   | Pcf_attribute _ -> Annot.empty
-  | Pcf_extension ext -> Annot.value [[with_loc field.pcf_loc @@ extension ext]]
+  | Pcf_extension ext ->
+    Annot.ext @@ with_loc field.pcf_loc @@ extension_core ext
 and class_expr ce =
   let loc = ce.pcl_loc in
   match ce.pcl_desc with
@@ -589,17 +550,14 @@ and class_expr ce =
   | Pcl_constraint (ce, ct) ->
     class_type ct ++ class_expr ce
   | Pcl_extension ext ->
-    Annot.value [[ with_loc loc @@ extension ext ]]
+    Annot.ext @@ with_loc loc @@ extension_core ext
 # 4.06, 4.08
   | Pcl_open(_,module',cl) ->
 # 4.08, oo
   | Pcl_open(module',cl) ->
 #end
 # 4.06, oo
-      Annot.value [
-        class_open module'
-       @ [with_loc cl.pcl_loc @@ Minor (data @@ class_expr cl)]
-    ]
+      Annot.local_open (Ident (npath module'.popen_expr)) @@ class_expr cl
 #end
 and class_field_kind = function
   | Cfk_virtual ct -> core_type ct
@@ -644,12 +602,9 @@ and val_binding (patt,expr): Pattern.t =
 and val_bindings: 'a. ('a -> pattern * Parsetree.expression) -> 'a list -> _  =
   fun proj vbs expr ->
   let p = Pattern.union_map (val_binding % proj) vbs in
-  if List.length p.Pattern.binds > 0 then
-    let v = List.fold_left ( fun inner b -> Loc.fmap (fun x -> Bind x) b :: inner )
-        (minor' expr) p.binds in
-    Pattern.to_annot p ++ Annot.value [v]
-  else
-    Pattern.to_annot p ++ expr
+  let v = List.fold_left ( fun inner b -> [Local_bind (b.Loc.data , inner)] )
+      expr.Loc.data p.binds in
+  Pattern.to_annot p ++ Loc.create expr.Loc.loc v
 and vb_pair x = x.pvb_pat, x.pvb_expr
 and value_bindings x = val_bindings vb_pair x
 
@@ -673,9 +628,9 @@ and module_type (mt:Parsetree.module_type) =
     Fun { arg; body = module_type res }
 #end
   | Pmty_with (mt, wlist) (* MT with ... *) ->
-    let deletions, access =
-      List.fold_left with_more (Paths.S.Set.empty,Annot.Access.empty) wlist in
-    With { body = module_type mt; deletions; access }
+    let deletions, {Loc.data=minors; _ } =
+      List.fold_left with_more (Paths.S.Set.empty,Annot.empty) wlist in
+    With { body = module_type mt; deletions; minors }
   | Pmty_typeof me (* module type of ME *) ->
     Of (module_expr me)
   | Pmty_extension ext (* [%id] *) ->
@@ -733,7 +688,6 @@ and recmodules mbs =
     List.map (fun mb -> from_loc mb.pmb_loc) mbs in
   [ Loc.create loc @@ Bind_rec (List.map module_binding_raw mbs)]
 and with_more (dels,access) =
-  let merge x y = Annot.Access.merge x y.Loc.data.access in
   function
 # oo, 4.06
   | Pwith_typesubst td (* with type X.t := ... *)
@@ -741,11 +695,12 @@ and with_more (dels,access) =
   | Pwith_typesubst (_,td) (* with type X.t := ... *)
 #end
   | Pwith_type (_,td)(* with type X.t = ... *) ->
-    dels, merge access (type_declaration td)
+    dels, Annot.merge access (type_declaration td)
   | Pwith_module (_,l) (* with module X.Y = Z *) ->
-    dels, merge access (H.me_access l)
+    dels, Annot.merge access (H.me_access l)
   | Pwith_modsubst (l, me) ->
-      Paths.S.Set.add (subst_path l) dels, merge access (H.me_access me)
+    Paths.S.Set.add (subst_path l) dels,
+    Annot.merge access (H.me_access me)
 and extension n =
   Extension_node (extension_core n)
 and extension_core (name,payload) =
@@ -805,16 +760,11 @@ and matched_patt_expr x y =
       ) m (Pattern.empty, Annot.opt expr eo)
   | _, _ -> pattern x, expr y
 # oo, 4.08
+and local_open_arg o = Ident (npath o)
 and ident_open o = do_open o.popen_loc (Ident (npath o.popen_lid))
 and simple_open o = ident_open o
-and local_open o = do_open o.loc (Ident (npath o))
 # 4.08, oo
+and local_open_arg o = module_expr o.popen_expr
 and ident_open o = do_open o.popen_loc (Ident (npath o.popen_expr))
 and simple_open o = do_open o.popen_loc (module_expr o.popen_expr)
-and local_open o = simple_open o
-#end
-# 4.06, 4.08
-and class_open o = do_open o.loc (Ident (npath o))
-# 4.08, oo
-and class_open o = ident_open o
 #end

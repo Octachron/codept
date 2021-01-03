@@ -49,7 +49,7 @@ and expression =
   | Bind_sig of module_type bind   (** [struct module type A = sig … end] *)
   | Bind_rec of module_expr bind list
   (** [module rec A = … and B = … and …] *)
-  | Minor of annotation
+  | Minor of minor list
   (** value level expression.
       Invariant: for any pure outliner [f], [ f (Minor m :: q ) ≡ f q ],
       i.e, this expression constructor is only meaningful for dependencies
@@ -58,21 +58,25 @@ and expression =
   | Extension_node of extension
   (** [[%ext …]] *)
 
-(** An annotation represents a short value of type or value level
+(** A minor element represents a short description of type or value level
     constructions, that contains only the information relevant for
     dependency tracking.
 *)
-and annotation =
-  { access: access
+and minor =
+
+  | Access of access (** see  {!access} below *)
+  | Pack of module_expr Loc.ext (** (module struct ... end) *)
+  | Extension_node of extension (** [%ext ... ] *)
+
+  | Local_open of module_expr * minor list
+  (** let open struct ... end in ... *)
+  | Local_bind of  module_expr bind * minor list
+                                   (** let module M = ... in ... *)
+and access = (Loc.t * Deps.Edge.t) Paths.E.map
   (** [M.N.L.x] ⇒ access \{M.N.L = Normal \}
       type t = A.t ⇒ access \{ A = ε \}
   *)
-  ; values: m2l list (** − [let open A in …] ⇒ [[ Open A; …  ]]
-                         − [let module M = … ] ⇒ [[ Include A; … ]]
-                     *)
-  ; packed: module_expr Loc.ext list (** [(module M)] *)
-  }
-and access = (Loc.t * Deps.Edge.t) Paths.S.map
+
 
 (** Module level expression representation *)
 and module_expr =
@@ -81,7 +85,7 @@ and module_expr =
   | Fun of module_expr fn (** [functor (X:S) -> M] *)
   | Constraint of module_expr * module_type (** [M:S] *)
   | Str of m2l (** [struct … end] *)
-  | Val of annotation (** [val … ] *)
+  | Val of minor list (** [val … ] *)
   | Extension_node of extension (** [[%ext …]] *)
   | Abstract
   (** empty module expression, used as a placeholder.
@@ -107,7 +111,7 @@ and module_type =
   | With of {
       body: module_type;
       deletions: Paths.S.set;
-      access:access
+      minors: minor list
       (** equalities: type t= A.M.x N.y -> {A.M; N} *)
     }
   (** [S with module N := …]
@@ -127,7 +131,7 @@ and extension = {name:string; extension:extension_core}
 (** A type for extension payload *)
 and extension_core =
   | Module of m2l
-  | Val of annotation
+  | Val of minor list
 
 
 type t = m2l
@@ -138,11 +142,11 @@ module Sch: sig
   val expr: expression Schematic.t
   val module_expr: module_expr Schematic.t
   val module_type: module_type Schematic.t
-  val annotation: annotation Schematic.t
+  val minors: minor list Schematic.t
 end
 
 module Annot : sig
-  type t = annotation Loc.ext
+  type t = minor list Loc.ext
 
   module Access: sig
     type t = access
@@ -161,10 +165,15 @@ module Annot : sig
   val union: t list -> t
   val union_map: ('a -> t) -> 'a list -> t
 
-  val access: Paths.S.t Loc.ext -> t
-  val abbrev:  Paths.S.t Loc.ext -> t
-  val value: m2l list -> t
-  val pack: module_expr Loc.ext list Loc.ext -> t
+  val pack: module_expr Loc.ext -> t
+  val ext: extension Loc.ext -> t
+
+  val access: Paths.E.t Loc.ext -> t
+  val abbrev:  Paths.E.t Loc.ext -> t
+
+  val local_open: module_expr -> t -> t
+  val local_bind: module_expr bind -> t -> t
+
   val opt: ('a -> t) -> 'a option -> t
   val epsilon_promote: t -> t
 end
@@ -174,8 +183,6 @@ module Build: sig
   val access: Paths.Expr.t Loc.ext -> expression Loc.ext
   val open_path: Paths.Simple.t Loc.ext -> expression Loc.ext
   val open_: module_expr Loc.ext -> expression Loc.ext
-  val value: m2l list -> expression Loc.ext
-  val pack: module_expr Loc.ext list Loc.ext -> expression Loc.ext
 
   val open_me: Paths.Simple.t list -> module_expr -> module_expr
 
@@ -200,7 +207,7 @@ end
 
 val pp: Format.formatter -> m2l -> unit
 val pp_expression: Format.formatter -> expression -> unit
-val pp_annot: Format.formatter -> annotation -> unit
+val pp_annot: Format.formatter -> minor list -> unit
 val pp_me: Format.formatter -> module_expr -> unit
 val pp_mt: Format.formatter -> module_type -> unit
 val pp_access: access Pp.t

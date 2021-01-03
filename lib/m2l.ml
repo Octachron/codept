@@ -20,7 +20,7 @@ type expression =
   | Bind_sig of module_type bind   (** [struct module type A = sig … end] *)
   | Bind_rec of module_expr bind list
   (** [module rec A = … and B = … and …] *)
-  | Minor of annotation
+  | Minor of minor list
   (** value level expression.
       Invariant: for any pure interpreter [f], [ f (Minor m :: q ) ≡ f q ],
       i.e, this expression constructor is only meaningful for dependencies
@@ -28,24 +28,32 @@ type expression =
  *)
   | Extension_node of extension
   (** [[%ext …]] *)
-and access = (Loc.t * Deps.Edge.t) Paths.S.map
-and annotation =
-  { access: access
-  (** [M.N.L.x] ⇒ access \{M = Normal \}
-      type t = A.t ⇒ access \{ M = ε \}
+
+
+(** An annotation represents a short description of type or value level
+    constructions, that contains only the information relevant for
+    dependency tracking.
+*)
+and minor =
+  | Access of access (** see {!access} below *)
+  | Pack of module_expr Loc.ext (** (module struct ... end) *)
+  | Extension_node of extension (** [%ext ... ] *)
+
+  | Local_open of module_expr * minor list
+  (** let open struct ... end in ... *)
+  | Local_bind of  module_expr bind * minor list
+and access = (Loc.t * Deps.Edge.t) Paths.E.map
+  (** [M.N.L.x] ⇒ access \{M.N.L = Normal \}
+      type t = A.t ⇒ access \{ A = ε \}
   *)
-  ; values: m2l list (** − [let open A in …] ⇒ [[ Open A; …  ]]
-                         − [let module M = … ] ⇒ [[ Include A; … ]]
-                     *)
-  ; packed: module_expr Loc.ext list (** [(module M)] *)
-  }
+
 and module_expr =
   | Ident of Paths.Simple.t (** [A.B…] **)
   | Apply of {f: module_expr; x:module_expr} (** [F(X)] *)
   | Fun of module_expr fn (** [functor (X:S) -> M] *)
   | Constraint of module_expr * module_type (** [M:S] *)
   | Str of m2l (** [struct … end] *)
-  | Val of annotation (** [val … ] *)
+  | Val of minor list (** [val … ] *)
   | Extension_node of extension (** [[%ext …]] *)
   | Abstract
   (** empty module expression, used as a placeholder.
@@ -69,7 +77,7 @@ and module_type =
   | With of {
       body: module_type;
       deletions: Paths.S.set;
-      access: access
+      minors: minor list
     }
   (** [S with module N := …]
       we are only tracking module level modification
@@ -80,14 +88,13 @@ and module_type =
 and extension = {name:string; extension:extension_core}
 and extension_core =
   | Module of m2l
-  | Val of annotation
+  | Val of minor list
 and m2l = expression Loc.ext list
 and 'a fn = { arg: module_type Arg.t option; body:'a }
 
 type t = m2l
 
-let annot_empty = { access= Paths.S.Map.empty; values = []; packed = [] }
-
+let annot_empty = []
 
 
 
@@ -96,34 +103,41 @@ module Sch = struct
   module S = Paths.S.Set
   open Schematic
 
-  let l x = if x = L.[] then None else Some x
-  let (><) = Option.(><)
-  module Access = Label(struct let l = "access" end)
-  module Values = Label(struct let l = "values" end)
-  module Packed = Label(struct let l = "packed" end)
-
-
-
   module Mu = struct
-    let m2l, expr, module_expr, module_type, expr_loc, annotation, extension, arg =
-      Schematic_indices.eight
+    let m2l, expr, module_expr, module_type, minor, extension, arg =
+      Schematic_indices.seven
   end
 
-   let access =
-     let sch = Array [Paths.S.sch; Loc.Sch.t; Deps.Edge.sch] in
-     let fwd x =
-       Paths.S.Map.fold (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x L.[] in
-     let rev a = let open Tuple in
-       List.fold_left (fun m [k;x;y] ->Paths.S.Map.add k (x,y) m)
-         Paths.S.Map.empty a in
-     Custom {sch;fwd;rev}
+  let access =
+    let sch = Array [Paths.E.sch; Loc.Sch.t; Deps.Edge.sch] in
+    let fwd x =
+      Paths.E.Map.fold (fun k (x,y) l -> L.(Tuple.[k;x;y] :: l)) x L.[] in
+    let rev a = let open Tuple in
+      List.fold_left (fun m [k;x;y] ->Paths.E.Map.add k (x,y) m)
+        Paths.E.Map.empty a in
+    Custom {sch;fwd;rev}
 
+  let loc sch = Custom { sch = [ sch; reopen Loc.Sch.t];
+                          fwd = (fun x -> Tuple.[x.Loc.data;x.loc]);
+                          rev = Tuple.(fun [data;loc] -> {data;loc});
+                       }
+  let module_expr_loc = loc Mu.module_expr
+  let minor_sch =
+    Sum [
+      "Access", reopen access;
+      "Pack", module_expr_loc;
+      "Extension_node", Mu.extension;
+      "Open", [Mu.module_expr; Array Mu.minor];
+      "Bind", [option String; Mu.module_expr; Array Mu.minor];
+    ]
+
+  let annot = Array Mu.minor
   let me_raw =
     Sum [ "Ident", reopen Paths.S.sch;
           "Apply", [Mu.module_expr; Mu.module_expr];
           "Fun",[Mu.arg; Mu.module_expr];
           "Constraint",[Mu.module_expr; Mu.module_type];
-          "Str",Mu.m2l; "Val", Mu.annotation;
+          "Str",Mu.m2l; "Val", annot;
           "Extension_node", Mu.extension;
           "Abstract",Void;
           "Unpacked", Void;
@@ -135,7 +149,7 @@ module Sch = struct
           "Ident", reopen Paths.E.sch;
           "Sig", Mu.m2l;
           "Fun",[ Mu.arg; Mu.module_type ];
-          "With",[ Mu.module_type; Array (Array String); reopen access ];
+          "With",[ Mu.module_type; Array (Array String); annot ];
           "Of", Mu.module_expr;
           "Extension_node", Mu.extension;
           "Abstract", Void
@@ -147,7 +161,7 @@ module Sch = struct
             "SigInclude", Mu.module_type; "Bind", [option String; Mu.module_expr];
             "Bind_sig", [option String; Mu.module_type];
             "Bind_rec", Array [option String; Mu.module_expr];
-            "Minor", Mu.annotation; "Extension_node", Mu.extension ] in
+            "Minor", annot; "Extension_node", Mu.extension ] in
     let fwd: _ -> 'a sum = let open Tuple in function
         | Open p -> C (Z p)
         | Include me -> C (S(Z me))
@@ -211,7 +225,7 @@ module Sch = struct
       | Ident x -> C (S (Z x))
       | Sig x -> C(S (S (Z x)))
       | Fun x -> C(S (S (S (Z [x.arg; x.body]))))
-      | With x -> C(S (S (S (S (Z [x.body; S.elements x.deletions; x.access])))))
+      | With x -> C(S (S (S (S (Z [x.body; S.elements x.deletions; x.minors])))))
       | Of x ->  C(S (S (S (S (S (Z x))))))
       | Extension_node x ->  C(S (S (S (S (S (S (Z x)))))))
       | Abstract ->  C(S (S (S (S (S (S (S E)))))))
@@ -220,37 +234,31 @@ module Sch = struct
       | C S Z x -> Ident x
       | C S S Z x -> Sig x
       | C S S S Z [arg;body] -> Fun {arg;body}
-      | C S S S S Z [body;deletions;access] ->
-        With {body;deletions = S.of_list deletions; access}
+      | C S S S S Z [body;deletions;minors] ->
+        With {body;deletions = S.of_list deletions; minors}
       | C S S S S S Z x -> Of x
       | C S S S S S S Z x -> Extension_node x
       | C S S S S S S S E -> Abstract
       | _ -> .
 
+  let expr_loc = loc Mu.expr
+  let m2l = Array expr_loc
 
-  let m2l = Array Mu.expr_loc
-
-  let expr_loc = Custom { sch = [ Mu.expr; reopen Loc.Sch.t];
-                          fwd = (fun x -> Tuple.[x.Loc.data;x.loc]);
-                          rev = Tuple.(fun [data;loc] -> {data;loc});
-                        }
-
-  let rec annotation =
-    Custom{ fwd=ann_f; rev = ann_r; sch = ann_s}
-  and ann_s = Obj [
-      Opt, Access.l, reopen access;
-      Opt, Values.l, Array Mu.m2l; Opt, Packed.l, Array [ Mu.module_expr; reopen Loc.Sch.t]
-    ]
-  and ann_f x = Record.[
-    Access.l $=? (default Paths.S.Map.empty x.access);
-    Values.l $=? l x.values;
-    Packed.l $=? l (List.map (fun x -> Tuple.[x.Loc.data; x.loc]) x.packed)
-  ]
-  and ann_r = Record.(fun [_,a;_,v;_,p] ->
-      { access= a >< Paths.S.Map.empty
-      ; values = v >< [];
-        packed =List.map Tuple.(fun [data;loc] -> {Loc.data;loc}) (p><[])
-      })
+  let rec minor = Custom { sch = minor_sch; fwd; rev }
+  and fwd = let open Tuple in function
+      | Access x -> C (Z x)
+      | Pack m -> C (S (Z m))
+      | Extension_node e -> C (S (S (Z e)))
+      | Local_open (x,y) -> C (S (S ( S (Z [x;y]))))
+      | Local_bind(b,x) -> C (S (S (S ( S (Z [b.name; b.expr; x])))))
+  and rev = let open Tuple in function
+      | C Z x -> Access x
+      | C S Z m -> Pack m
+      | C S S Z e -> Extension_node e
+      | C S S S Z [x;y] -> Local_open (x,y)
+      | C S S S S Z [name;expr;z] -> Local_bind ({name;expr},z)
+      | C E -> assert false
+      | _ -> .
 
   let rec extension =
     Custom {sch = [ String; ext ];
@@ -258,7 +266,7 @@ module Sch = struct
             rev = Tuple.(fun [name;extension] -> {name;extension} );
            }
   and ext =
-    Custom {sch = Sum["Module", Mu.m2l;"Val", Mu.annotation];
+    Custom {sch = Sum["Module", Mu.m2l;"Val", annot];
             fwd = ext_fwd; rev = ext_rev }
   and ext_fwd = function Module x -> C (Z x) | Val x-> C (S (Z x))
   and ext_rev =function C Z x -> Module x | C S Z x -> Val x | _ -> .
@@ -282,10 +290,9 @@ module Sch = struct
       "expr", expr;
       "module_expr", module_expr;
       "module_type", module_type;
-      "expr_loc", expr_loc;
-      "annotation", annotation;
+      "minor", minor;
       "extension", extension;
-      "arg",arg
+      "arg",arg;
     ]
 
   let id = L.["m2l"]
@@ -294,21 +301,21 @@ module Sch = struct
   let expr = Rec { id; defs; proj = Sn Zn }
   let module_expr = Rec { id; defs; proj = Sn(Sn Zn) }
   let module_type = Rec { id; defs; proj = Sn(Sn(Sn Zn)) }
-  let annotation = Rec { id; defs;  proj = Sn(Sn(Sn(Sn(Sn Zn)))) }
-
+  let minor = Rec { id; defs;  proj = Sn(Sn(Sn(Sn Zn))) }
+  let minors = Array minor
 
 end let sch = Sch.m2l
 
 
 module Annot = struct
   open Loc
-  type t = annotation Loc.ext
+  type t = minor list Loc.ext
   let empty = { data = annot_empty; loc = Nowhere }
   let is_empty x  = x.data = annot_empty
 
   module Access = struct
     type t = access
-    let merge = Paths.S.Map.merge (fun _k x y -> match x, y with
+    let merge = Paths.E.Map.merge (fun _k x y -> match x, y with
         | Some (l,x), Some (l',y) ->
           if x = Deps.Edge.Normal && y = Deps.Edge.Epsilon then
             Some(l',y)
@@ -318,17 +325,12 @@ module Annot = struct
         | None, None -> None
       )
 
-    let empty = Paths.S.Map.empty
+    let empty = Paths.E.Map.empty
   end
 
   let merge x y =
     let a1 = x.data and a2 = y.data in
-    let data =
-    { access= Access.merge a1.access a2.access;
-      values = a1.values @ a2.values;
-      packed = a1.packed @ a2.packed
-    } in
-    {Loc.data; loc = Loc.merge x.loc y.loc}
+    {Loc.data = a1 @ a2; loc = Loc.merge x.loc y.loc}
 
 
   let (++) = merge
@@ -340,28 +342,30 @@ module Annot = struct
 
   let access {loc;data} =
     Loc.create loc
-      { annot_empty with
-        access = Paths.S.Map.singleton data (loc, Deps.Edge.Normal) }
+    [Access (Paths.E.Map.singleton data (loc, Deps.Edge.Normal))]
 
   let abbrev {loc;data} =
     Loc.create loc
-      { annot_empty with
-        access = Paths.S.Map.singleton data (loc, Deps.Edge.Epsilon) }
+      [Access (Paths.E.Map.singleton data (loc, Deps.Edge.Epsilon))]
 
 
-  let value v =
-    let loc =
-      let ext acc x = Loc.merge acc x.loc in
-      List.fold_left (List.fold_left ext) Nowhere v in
-    Loc.create loc { annot_empty with values = v }
+  let pack x = { x with data = [Pack x] }
+  let ext {loc;data} = Loc.create loc [(Extension_node data: minor)]
 
-  let pack x = Loc.create x.loc { annot_empty with packed = x.data  }
-
+  let local_bind mb {loc;data} = { loc; data = [Local_bind(mb,data)] }
+  let local_open me {loc;data} = { loc; data = [Local_open (me,data)] }
+ 
   let opt f x = Option.( x >>| f >< empty )
 
-  let epsilon_promote = Loc.fmap @@ fun annot ->
-    { annot with
-      access = Paths.S.Map.map (fun (l,_) -> l, Deps.Edge.Epsilon) annot.access }
+  let rec epsilon_promote_raw = function
+    | Access x ->
+      let m = Paths.E.Map.map (fun (l,_) -> l, Deps.Edge.Epsilon) x in
+      Access m
+    | Pack _ | Extension_node _ as p -> p
+    | Local_open (me,x) -> Local_open(me, List.map epsilon_promote_raw x)
+    | Local_bind (b,x) -> Local_bind (b, List.map epsilon_promote_raw x)
+
+  let epsilon_promote = Loc.fmap @@ List.map epsilon_promote_raw
 
 end
 
@@ -371,13 +375,10 @@ module Build = struct
 
   let minor x = Minor x
   let access path =
-    Loc.fmap minor @@ Annot.access @@ Loc.fmap Paths.Expr.concrete path
+    Loc.fmap (fun x -> minor x) @@ Annot.access path
 
   let open_ path = Loc.fmap (fun x -> Open x) path
   let open_path x = open_ (Loc.fmap (fun x -> Ident x) x)
-
-  let value v = Loc.fmap minor @@ Annot.value v
-  let pack o = Loc.fmap minor @@ Annot.pack o
 
   let open_me ml expr = match expr with
     | Open_me o -> Open_me { o with opens = ml @ o.opens }
@@ -408,18 +409,24 @@ and pp_packed ppf packed =
 and pp_values ppf values =
   Pp.(opt_list ~sep:(s ";@ ") ~pre:(s "@[<2>values: ") ~post:(s "@]")
         pp_simple) ppf values
-and pp_annot ppf {access; values; packed} =
-  Pp.fp ppf "%a%a%a"
-    pp_access access
-    pp_packed packed
-    pp_values values
-and pp_access ppf s =  if Paths.S.Map.cardinal s = 0 then () else
-    Pp.fp ppf "@[<2>access: {%a}@]@," (Pp.list pp_access_elt) (Paths.S.Map.bindings s)
+and pp_minor ppf = function
+  | Access a -> pp_access ppf a
+  | Pack x -> Pp.fp ppf "@[(module %a)@]" pp_me x.Loc.data
+  | Extension_node e -> pp_extension ppf e
+  | Local_open (me,x) ->
+    Pp.fp ppf "@[<2>open %a in@ %a@]" pp_me me pp_annot x
+  | Local_bind (b,x) ->
+    let name = Option.( b.name >< "_" ) in
+    Pp.fp ppf "@[<2>%s=%a in@ %a@]" name pp_me b.expr pp_annot x
+and pp_annot ppf l =
+  Pp.(list ~pre:(s "@[<v>") ~post:(s "@]") ~sep:(s "@ ") pp_minor) ppf l
+and pp_access ppf s =  if Paths.E.Map.cardinal s = 0 then () else
+    Pp.fp ppf "@[<2>access: {%a}@]@," (Pp.list pp_access_elt) (Paths.E.Map.bindings s)
 and pp_access_elt ppf (name, (loc,edge)) =
   Pp.fp ppf "%s%a(%a)" (if edge = Deps.Edge.Normal then "" else "ε∙")
-    Paths.S.pp name
+    Paths.E.pp name
     Loc.pp loc
-and pp_opaque ppf me = Pp.fp ppf "⟨%a(%a)⟩" pp_me me.data Loc.pp me.loc
+and pp_opaque ppf me = Pp.fp ppf "⟨%a(%a)⟩" pp_me me.Loc.data Loc.pp me.loc
 and pp_bind ppf {name;expr} =
   match expr with
   | Constraint(Abstract, Alias np) ->
@@ -466,8 +473,8 @@ and pp_mt ppf = function
   | Ident np -> Paths.Expr.pp ppf np
   | Sig m2l -> Pp.fp ppf "@,sig@, %a end" pp m2l
   | Fun { arg; body } ->  Pp.fp ppf "%a@,→%a" (Arg.pp pp_mt) arg pp_mt body
-  | With {body; deletions;access} ->
-    Pp.fp ppf "%a@,/%a (%a)" pp_mt body Paths.S.Set.pp deletions pp_access access
+  | With {body; deletions;minors} ->
+    Pp.fp ppf "%a@,/%a (%a)" pp_mt body Paths.S.Set.pp deletions pp_annot minors
   | Of me -> Pp.fp ppf "module type of@, %a" pp_me me
   | Extension_node ext -> Pp.fp ppf "%a" pp_extension ext
   | Abstract -> Pp.fp ppf "⟨abstract⟩"

@@ -11,8 +11,8 @@ module type Result_printer = sig
   val pp_me: T.module_expr dprinter
   val pp_mt: T.module_type dprinter
   val pp_m2l: T.m2l dprinter
-  val pp_packed: T.packed dprinter
-  val pp_values: T.values dprinter
+  val pp_minor: T.minor dprinter
+  val pp_minors: T.minors dprinter
   val pp_access: T.access dprinter
   val pp_path: T.path dprinter
   val pp_path_expr: T.path_expr dprinter
@@ -36,16 +36,13 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
   let path p ppf = Paths.S.pp ppf p
   let leaf p ppf = Format.fprintf ppf "%t?" (path p.Zipper_skeleton.path)
   let dlist elt l ppf = Pp.list (fun ppf x -> elt x ppf) ppf l
-  let a (x,_) = path x
+  let a ppf (x,_) = Paths.E.pp ppf x
   let rec zipper (z: Sk.path_in_context zipper)  =
     let f = z.focus in
     let x = leaf f in
     match z.path with
     | Me Ident :: rest -> me (rest:M2l.module_expr t) x
     | Mt Alias :: rest -> mt (rest:M2l.module_type t) x
-    | Access acc :: rest ->
-      access (rest: waccess t)
-        (fun ppf -> Pp.fp ppf "access {%t;...%t}" x (dlist a acc.right))
     | Path_expr Simple :: rest -> path_expr rest x
     | Me (Open_me_left {left;right;expr; diff=_}) :: rest ->
       me (rest: M2l.module_expr t) (R.pp_opens left (fun ppf ->
@@ -74,22 +71,49 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
           ) m.right in
       expr (rest:M2l.expression t) pp
     | Expr Open :: rest -> expr (rest:M2l.expression t) (fp1 "open %t" sub)
-    | Annot Packed p :: rest ->
-      annot (rest:M2l.annotation t)
-        (fun ppf -> Pp.fp ppf
-            "@[Annot@ packed:%t%t ... {%a%a%a}@]"
-            (R.pp_packed p.left)
-            sub M2l.pp_packed p.right
-            M2l.pp_access p.access
-            M2l.pp_values p.values
-        )
     | Mt Of :: rest -> mt rest (fp1 "module type of %t" sub)
+    | Minor Pack :: rest ->
+      minor rest (fp1 "(module %t)" sub)
+    | Minor Local_bind_left (name,right) :: rest ->
+      minor rest (fun ppf -> Pp.fp ppf "%a=%t in %a"
+                     Name.pp_opt name
+                     sub
+                     M2l.pp_annot right
+                 )
+    | Minor Local_open_left minors :: rest ->
+        minor rest (fun ppf -> Pp.fp ppf "open %t in %a"
+                       sub
+                       M2l.pp_annot minors
+                   )
     | _ -> .
-  and annot: M2l.annotation t -> _ = fun rest sub -> match rest with
-    | Expr Minor :: rest -> expr rest sub
+  and minor: M2l.minor t -> _ = fun rest sub -> match rest with
+    | Minors {left; right} :: rest ->
+      minors rest (fun ppf ->
+          Pp.fp ppf "%t%t%a" (R.pp_minors left)
+            sub
+            M2l.pp_annot right
+        )
+  and minors: M2l.minor list t -> _ = fun rest sub -> match rest with
+    | Expr Minors :: rest ->
+      expr rest sub
+    | Minor (Local_open_right e) :: rest ->
+      minor rest (fun ppf ->
+          Pp.fp ppf "open %t in %t" (R.pp_me e.user) sub
+        )
+    | Minor (Local_bind_right (name,expr)) :: rest ->
+      minor rest (fun ppf ->
+          Pp.fp ppf "%a=%t in %t" optname name (R.pp_me expr.user) sub
+        )
     | Me Val :: rest -> me rest (fp1 "(val %t)" sub)
     | Ext Val :: rest -> ext (rest:M2l.extension_core t) sub
+    | Mt With_access m :: rest ->
+      mt rest (fun ppf -> Pp.fp ppf "%a access %t without {%a}"
+                  M2l.pp_mt m.body sub
+                  (Pp.list Paths.S.pp) (Paths.S.Set.elements m.deletions)
+              )
+
     | _ -> .
+
   and mt: M2l.module_type t -> _ = fun rest sub -> match rest with
     | Expr Bind_sig name :: rest ->
       expr rest (fun ppf -> Pp.fp ppf "module type %a=%t" optname name sub)
@@ -127,18 +151,8 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
       )
    | _ -> .
   and access: waccess t -> _ = fun rest sub -> match rest with
-    | Annot Access a :: rest ->
-      annot rest (fun ppf -> Pp.fp ppf
-                     "@[Annot@ access:{%t;%t ... %a}@]"
-                     (R.pp_packed a.packed)
-                     sub
-                     M2l.pp_values a.values
-                 )
-    | Mt With_access m :: rest ->
-      mt rest (fun ppf -> Pp.fp ppf "%a access %t without {%a}"
-                  M2l.pp_mt m.body sub
-                  (Pp.list Paths.S.pp) (Paths.S.Set.elements m.deletions)
-              )
+    | Minor Access :: rest ->
+      minor rest (fp1 "access %t" sub)
     | _ -> .
   and path_expr: Paths.Expr.t t -> _ = fun rest sub -> match rest with
     | Mt Ident :: rest -> mt rest sub
@@ -152,6 +166,13 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
         (fun ppf -> Pp.fp ppf "@[%t(%t)%t@]"
             (R.pp_path_expr f.user) sub (option "." Paths.S.pp proj)
         )
+   | Access acc :: rest ->
+     access (rest: waccess t)
+       (fun ppf -> Pp.fp ppf "access %t...%t...%a"
+          (R.pp_access acc.left)
+          sub
+          (Pp.list a) acc.right
+       )
    | _ -> .
   and ext: M2l.extension_core t -> _ = fun rest sub -> match rest with
     | Expr Extension_node name :: rest ->
@@ -160,17 +181,10 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
       me rest (fun ppf -> Pp.fp ppf "[%%%s %t]" name sub)
     | Mt Extension_node name :: rest ->
       mt rest (fun ppf -> Pp.fp ppf "[%%%s %t]" name sub)
+    | Minor Extension_node name :: rest ->
+      minor rest (fun ppf -> Pp.fp ppf "[%%%s %t]" name sub)
     | _ -> .
   and m2l: M2l.t t -> _ = fun rest sub -> match rest with
-    | Annot Values a :: rest ->
-      annot rest
-        (fun ppf -> Pp.fp ppf "annot {%t;%t;%t,%t,%a}"
-            (R.pp_packed a.packed)
-            (R.pp_access a.access)
-            (R.pp_values a.left)
-            sub
-            M2l.pp_values a.right
-        )
     | Me Str :: rest -> me rest (fp1 "struct %t end" sub)
     | Mt Sig :: rest -> mt rest (fp1 "sig %t end" sub)
     | Ext Mod :: rest -> ext rest sub
@@ -185,11 +199,11 @@ module Opaque(X:Zipper_def.s) : Result_printer with module T := X.T = struct
   let pp_m2l = const "..."
   let pp_me = const "..."
   let pp_mt = const "..."
-  let pp_values = const "..."
-  let pp_packed = const "..."
   let pp_access = const "..."
   let pp_path = const "..."
   let pp_opens _ sub = sub
   let pp_path_expr = const "..."
   let pp_bindrec = const "..."
+  let pp_minors = const "..."
+  let pp_minor = const "..."
 end

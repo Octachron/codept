@@ -37,6 +37,9 @@ let token lexbuf =
   | [] -> Lexer.token lexbuf
   | a :: q -> stack := q; a
 
+
+let path = Paths.E.pure
+
 let rewind a = stack := a :: !stack
 let locate lexbuf =
   let open Lexing in
@@ -107,7 +110,7 @@ and inf_uident name lexbuf =
   | Parser.DOT ->
     let loc = locate lexbuf in
     let _ = !inf_path lexbuf in
-    Some { data = [name]; loc }
+    Some { data = path [name]; loc }
   | x -> rewind x; None
   | exception Lexer.Error _ -> None
 and inf_path lexbuf =
@@ -135,7 +138,7 @@ let to_upper_bound m2l =
     Loc.{data = M2l.Annot.Access.merge x.data y.data; loc = merge x.loc y.loc } in
   let add x s  =
     Loc.{ data =
-            Paths.S.Map.add x.data (x.loc, Deps.Edge.Normal) s.data;
+            Paths.E.Map.add x.data (x.loc, Deps.Edge.Normal) s.data;
           loc = merge x.loc s.loc } in
   let open M2l in
   let open Loc in
@@ -143,13 +146,13 @@ let to_upper_bound m2l =
     List.fold_left (fun s elt ->
         let locate x = Loc.create elt.loc x in
         match elt.data with
-        | Minor { access; _ } -> union (locate access) s
-        | Open (Ident path) -> add (locate path) s
+        | Minor [Access access] -> union (locate access) s
+        | Open (Ident path) -> add (locate @@ Paths.E.pure path) s
         | Bind {expr = Ident path; _}
-        | Include (Ident path) -> add (locate path) s
+        | Include (Ident path) -> add (locate @@ Paths.E.pure  path) s
         | _ -> s
       ) (Loc.nowhere M2l.Annot.Access.empty) m2l in
-  [Loc.fmap (fun access -> Minor { Annot.empty.data with access }) access]
+  [Loc.fmap (fun access -> Minor [ Access access ]) access]
 
 let lower_bound filename =
   let chan = open_in filename in
