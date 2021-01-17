@@ -40,14 +40,31 @@ module H = struct
   let extract_loc (loc: _ Location.loc) =
     from_loc loc.Location.loc
 
+  let rec remove_simple_last = function
+    | [] -> []
+    | [_] -> []
+    | a :: q -> a :: remove_simple_last q
+
+  let remove_simple_last = function
+    | [] | [_] -> None
+    | q -> Some (remove_simple_last q)
+
+  let remove_last = function
+    | Paths.E.Simple p -> Option.fmap Paths.E.pure (remove_simple_last p)
+    | Apply {f;x;proj=Some p} ->
+      Some (Paths.E.app f x (remove_simple_last p))
+    | Apply {proj=None; _ } as y -> Some y
+
   let access lid =
-    let x = from_lid @@ txt lid in
+    let x = remove_last @@ from_lid @@ txt lid in
     let loc =  extract_loc lid in
-    Annot.access {loc; data=x}
+    match x with
+    | None -> Annot.empty
+    | Some data -> Annot.access {loc; data}
 
   let me_access lid =
     let x = from_lid @@ txt lid in
-    let loc =  extract_loc lid in
+    let loc = extract_loc lid in
     Annot.access { loc; data = x }
 
   let do_open loc me =
@@ -109,14 +126,17 @@ module Pattern = struct
     { empty with binds = [Loc.create loc {M2l.name = bound_name name; expr = sign }] }
 
   let open_ m { annot={ data; loc } ; binds} =
-    let data = [M2l.Local_open (Ident m.Loc.data, data)] in
-    let loc = Loc.merge m.loc loc in
-    { annot = { data; loc}; binds }
+    let me_open {name;expr} =
+      {name; expr=M2l.Open_me {opens=[m.Loc.data]; expr} } in
+    let data = match data with
+      | [] -> []
+      | data -> [M2l.Local_open (m.loc, Ident m.Loc.data, data)] in
+    { annot = { data; loc}; binds=List.map (Loc.fmap me_open) binds }
 
   let bind_fmod p inner =
     let binded x =
-      List.fold_left ( fun inner b -> [Local_bind (b.Loc.data,inner)] )
-        x p.binds
+      let binder inner b = [Local_bind (b.Loc.loc, b.Loc.data,inner)] in
+      List.fold_left binder x p.binds
     in
     Annot.(p.annot ++ Loc.fmap binded inner)
 
@@ -323,7 +343,8 @@ and expr exp =
   | Pexp_override labels (* {< x1 = E1; ...; Xn = En >} *) ->
     Annot.union_map (expr % snd) labels
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
-    with_loc e.pexp_loc [Local_bind(module_binding (m,me), data @@ expr e) ]
+    with_loc e.pexp_loc
+      [Local_bind(from_loc loc,module_binding (m,me), data @@ expr e) ]
 # 4.04, oo
   | Pexp_letexception (_c, e) (* let exception C in E *) ->
     expr e
@@ -347,7 +368,7 @@ and expr exp =
   | Pexp_open (me,e)
 # end
     (* M.(E), let open M in E, let! open M in E *)
-    -> Annot.local_open (local_open_arg me) @@ expr e
+    -> Annot.local_open (from_loc loc) (local_open_arg me) @@ expr e
   | Pexp_constant _ | Pexp_unreachable (* . *)
     -> Annot.empty
   | Pexp_extension ext (* [%ext] *) ->
@@ -413,7 +434,7 @@ and pattern pat =
   *)
 # 4.04,oo
 | Ppat_open (m,p) (* M.(P) *) ->
-    Pattern.open_ (with_loc loc @@ H.npath m) @@ pattern p
+    Pattern.open_ (with_loc m.loc @@ H.npath m) @@ pattern p
 #end
 
 and type_declaration td: M2l.Annot.t  =
@@ -481,7 +502,8 @@ and extension_constructor extc: M2l.Annot.t = match extc.pext_kind with
     constructor_args args
     ++ Annot.opt core_type cto
   | Pext_rebind name -> access name
-and class_type ct = match ct.pcty_desc with
+and class_type ct =
+  match ct.pcty_desc with
   | Pcty_constr (name, cts ) (* c ['a1, ..., 'an] c *) ->
     Annot.merge (access name) (Annot.union_map core_type cts)
   | Pcty_signature cs (* object ... end *) -> class_signature cs
@@ -495,7 +517,8 @@ and class_type ct = match ct.pcty_desc with
   | Pcty_open (module',cty) ->
 #end
 # 4.06, oo
-    Annot.local_open (Ident (npath module'.popen_expr)) (class_type cty)
+  Annot.local_open (from_loc module'.popen_loc)
+  (Ident (npath module'.popen_expr)) (class_type cty)
 #end
 and class_signature cs = Annot.union_map class_type_field cs.pcsig_fields
 and class_type_field ctf = match ctf.pctf_desc with
@@ -557,7 +580,8 @@ and class_expr ce =
   | Pcl_open(module',cl) ->
 #end
 # 4.06, oo
-      Annot.local_open (Ident (npath module'.popen_expr)) @@ class_expr cl
+  Annot.local_open (from_loc module'.popen_loc)
+  (Ident (npath module'.popen_expr)) @@ class_expr cl
 #end
 and class_field_kind = function
   | Cfk_virtual ct -> core_type ct
@@ -602,8 +626,10 @@ and val_binding (patt,expr): Pattern.t =
 and val_bindings: 'a. ('a -> pattern * Parsetree.expression) -> 'a list -> _  =
   fun proj vbs expr ->
   let p = Pattern.union_map (val_binding % proj) vbs in
-  let v = List.fold_left ( fun inner b -> [Local_bind (b.Loc.data , inner)] )
-      expr.Loc.data p.binds in
+  let v =
+    let binder inner b = [Local_bind (b.Loc.loc, b.Loc.data, inner)] in
+    List.fold_left binder expr.Loc.data p.binds
+  in
   Pattern.to_annot p ++ Loc.create expr.Loc.loc v
 and vb_pair x = x.pvb_pat, x.pvb_expr
 and value_bindings x = val_bindings vb_pair x

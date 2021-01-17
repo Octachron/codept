@@ -14,7 +14,7 @@ type path_in_context = {
 }
 
 val pp: path_in_context Pp.t
-
+val pp_ml: module_like Pp.t
 
 val path: query -> path
 

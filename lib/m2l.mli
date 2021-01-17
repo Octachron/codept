@@ -66,11 +66,11 @@ and minor =
 
   | Access of access (** see  {!access} below *)
   | Pack of module_expr Loc.ext (** (module struct ... end) *)
-  | Extension_node of extension (** [%ext ... ] *)
+  | Extension_node of extension Loc.ext (** [%ext ... ] *)
 
-  | Local_open of module_expr * minor list
+  | Local_open of Loc.t * module_expr * minor list
   (** let open struct ... end in ... *)
-  | Local_bind of  module_expr bind * minor list
+  | Local_bind of Loc.t * module_expr bind * minor list
                                    (** let module M = ... in ... *)
 and access = (Loc.t * Deps.Edge.t) Paths.E.map
   (** [M.N.L.x] ⇒ access \{M.N.L = Normal \}
@@ -171,8 +171,8 @@ module Annot : sig
   val access: Paths.E.t Loc.ext -> t
   val abbrev:  Paths.E.t Loc.ext -> t
 
-  val local_open: module_expr -> t -> t
-  val local_bind: module_expr bind -> t -> t
+  val local_open: Loc.t -> module_expr -> t -> t
+  val local_bind: Loc.t -> module_expr bind -> t -> t
 
   val opt: ('a -> t) -> 'a option -> t
   val epsilon_promote: t -> t
@@ -211,5 +211,3 @@ val pp_annot: Format.formatter -> minor list -> unit
 val pp_me: Format.formatter -> module_expr -> unit
 val pp_mt: Format.formatter -> module_type -> unit
 val pp_access: access Pp.t
-val pp_packed: module_expr Loc.ext list Pp.t
-val pp_values: m2l list Pp.t

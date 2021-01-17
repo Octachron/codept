@@ -258,38 +258,43 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       D.path_expr_app f x proj
   and path_expr ~level ctx ~loc ~param ~state x = path_expr_gen ~level ctx ~loc ~param ~state ~post_proj:[] x
   and gen_minors path ~pkg ~param ~state left = function
-    | L.[] -> Ok left
+    | L.[] -> (*Format.eprintf "minors end@.";*) Ok left
     | a :: right ->
       minor (Minors {left;right} :: path) ~pkg ~param ~state a
       >>= fun a ->
       gen_minors path ~pkg ~param ~state (F.add_minor a left) right
   and minors path ~pkg ~param ~state x =
+    (*Format.eprintf "minors: %a@." Summary.pp State.(peek @@ diff state);*)
     gen_minors path ~pkg ~param ~state F.empty_minors x
-  and minor path ~pkg ~param ~state = function
+  and minor path ~pkg ~param ~state =
+    function
     | Access x ->
       access (Minor Access :: path) ~pkg ~param ~state x
     | Pack m ->
       me (Minor Pack :: path) ~param ~loc:(pkg, m.Loc.loc) ~state m.Loc.data
         >>| fun {user; _ } -> F.pack user
-    | Extension_node {name; extension} ->
-      ext (Minor (Extension_node name) :: path)
-        ~param ~pkg ~state extension
-      (* FIXME: Nowhere should be the ext location *)
-        >>| fun x -> F.minor_ext ~loc:(pkg,Loc.Nowhere) name x
-    | Local_open (e,m) ->
+    | Extension_node {data;loc} ->
+      ext (Minor (Extension_node data.name) :: path)
+        ~param ~pkg ~state data.extension
+        >>| fun x -> F.minor_ext ~loc:(pkg,loc) data.name x
+    | Local_open (loc,e,m) ->
+      (*Format.eprintf "Local open: %a@." M2l.pp_me e;*)
       me (Minor (Local_open_left m) :: path)
-        ~param ~loc:(pkg, Loc.Nowhere) ~state e >>= fun e ->
-      let diff = Sk.opened param ~loc:(pkg,Loc.Nowhere) e.backbone in
+        ~param ~loc:(pkg, loc) ~state e >>= fun e ->
+      let diff = Sk.opened param ~loc:(pkg,loc) e.backbone in
       let state = State.merge state diff in
+      (*Format.eprintf "@[opened %a@ | state:%a@]@."
+        Sk.pp_ml e.backbone
+        Summary.pp State.(peek @@ diff state);*)
       minors (Minor (Local_open_right e) :: path)
         ~pkg ~param ~state m
       >>| fun m -> F.local_open e.user m
-    | Local_bind ({name;expr},m) ->
+    | Local_bind (loc,{name;expr},m) ->
       me (Minor (Local_bind_left (name,m)) :: path)
-        ~param ~loc:(pkg, Loc.Nowhere) ~state expr >>= fun e ->
-      let diff = Sk.bind name  e.backbone in
+        ~param ~loc:(pkg, loc) ~state expr >>= fun e ->
+      let diff = Sk.bind name e.backbone in
       let state = State.merge state diff in
-      minors (Minor (Local_open_right e) :: path)
+      minors (Minor (Local_bind_right (name,e)) :: path)
         ~pkg ~param ~state m
       >>| fun m -> F.local_open e.user m
     | _ -> .

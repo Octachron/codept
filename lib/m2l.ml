@@ -37,11 +37,11 @@ type expression =
 and minor =
   | Access of access (** see {!access} below *)
   | Pack of module_expr Loc.ext (** (module struct ... end) *)
-  | Extension_node of extension (** [%ext ... ] *)
+  | Extension_node of extension Loc.ext (** [%ext ... ] *)
 
-  | Local_open of module_expr * minor list
+  | Local_open of Loc.t * module_expr * minor list
   (** let open struct ... end in ... *)
-  | Local_bind of  module_expr bind * minor list
+  | Local_bind of Loc.t * module_expr bind * minor list
 and access = (Loc.t * Deps.Edge.t) Paths.E.map
   (** [M.N.L.x] ⇒ access \{M.N.L = Normal \}
       type t = A.t ⇒ access \{ A = ε \}
@@ -126,9 +126,10 @@ module Sch = struct
     Sum [
       "Access", reopen access;
       "Pack", module_expr_loc;
-      "Extension_node", Mu.extension;
-      "Open", [Mu.module_expr; Array Mu.minor];
-      "Bind", [option String; Mu.module_expr; Array Mu.minor];
+      "Extension_node", loc Mu.extension;
+      "Open", [reopen Loc.Sch.t; Mu.module_expr; Array Mu.minor];
+      "Bind",
+      [reopen Loc.Sch.t; option String; Mu.module_expr; Array Mu.minor];
     ]
 
   let annot = Array Mu.minor
@@ -249,14 +250,14 @@ module Sch = struct
       | Access x -> C (Z x)
       | Pack m -> C (S (Z m))
       | Extension_node e -> C (S (S (Z e)))
-      | Local_open (x,y) -> C (S (S ( S (Z [x;y]))))
-      | Local_bind(b,x) -> C (S (S (S ( S (Z [b.name; b.expr; x])))))
+      | Local_open (loc,x,y) -> C (S (S ( S (Z [loc;x;y]))))
+      | Local_bind(loc,b,x) -> C (S (S (S ( S (Z [loc;b.name; b.expr; x])))))
   and rev = let open Tuple in function
       | C Z x -> Access x
       | C S Z m -> Pack m
       | C S S Z e -> Extension_node e
-      | C S S S Z [x;y] -> Local_open (x,y)
-      | C S S S S Z [name;expr;z] -> Local_bind ({name;expr},z)
+      | C S S S Z [x;y;z] -> Local_open (x,y,z)
+      | C S S S S Z [loc;name;expr;z] -> Local_bind (loc,{name;expr},z)
       | C E -> assert false
       | _ -> .
 
@@ -330,8 +331,16 @@ module Annot = struct
 
   let merge x y =
     let a1 = x.data and a2 = y.data in
-    {Loc.data = a1 @ a2; loc = Loc.merge x.loc y.loc}
-
+    match a1, a2 with
+    | Access x1 :: r1, Access x2 :: r2 ->
+      let data = Access (Access.merge x1 x2) :: r1 @ r2 in
+      {Loc.data; loc = Loc.merge x.loc y.loc}
+    | r1, (Access _ as a) :: r2 ->
+      let data = a :: r1 @ r2 in
+      {Loc.data; loc = Loc.merge x.loc y.loc}
+    | r1, r2 ->
+      let data = r1 @ r2 in
+      {Loc.data; loc = Loc.merge x.loc y.loc}
 
   let (++) = merge
 
@@ -350,11 +359,13 @@ module Annot = struct
 
 
   let pack x = { x with data = [Pack x] }
-  let ext {loc;data} = Loc.create loc [(Extension_node data: minor)]
+  let ext x = { x with data = [(Extension_node x: minor)] }
 
-  let local_bind mb {loc;data} = { loc; data = [Local_bind(mb,data)] }
-  let local_open me {loc;data} = { loc; data = [Local_open (me,data)] }
- 
+  let local_bind loc mb {data;_} =
+    { loc; data = [Local_bind(loc,mb,data)] }
+  let local_open loc me {data; _ } =
+    { loc; data = [Local_open (loc,me,data)] }
+
   let opt f x = Option.( x >>| f >< empty )
 
   let rec epsilon_promote_raw = function
@@ -362,8 +373,10 @@ module Annot = struct
       let m = Paths.E.Map.map (fun (l,_) -> l, Deps.Edge.Epsilon) x in
       Access m
     | Pack _ | Extension_node _ as p -> p
-    | Local_open (me,x) -> Local_open(me, List.map epsilon_promote_raw x)
-    | Local_bind (b,x) -> Local_bind (b, List.map epsilon_promote_raw x)
+    | Local_open (loc,me,x) ->
+      Local_open(loc,me, List.map epsilon_promote_raw x)
+    | Local_bind (loc,b,x) ->
+      Local_bind (loc, b, List.map epsilon_promote_raw x)
 
   let epsilon_promote = Loc.fmap @@ List.map epsilon_promote_raw
 
@@ -390,7 +403,7 @@ module Build = struct
 end
 
 let rec pp_expression ppf = function
-  | Minor annot -> pp_annot ppf annot
+  | Minor annot -> Pp.fp ppf "@[<hv 2>(@,%a@;<0 -2>)@;<0 -2>@]" pp_annot annot
   | Open me -> Pp.fp ppf "@[open [%a]@]" pp_me me
   | Include me -> Pp.fp ppf "@[include [%a]@]" pp_me me
   | SigInclude mt -> Pp.fp ppf "@[include type [%a]@]" pp_mt mt
@@ -402,31 +415,24 @@ let rec pp_expression ppf = function
     Pp.fp ppf "rec@[[ %a ]@]"
       (Pp.(list ~sep:(s "@, and @,")) @@ pp_bind ) bs
 
-and pp_packed ppf packed =
-  let sep = Pp.s ";@ " in
-  let post = Pp.s "@]" in
-  Pp.(opt_list ~sep ~pre:(s "@,@[<2>packed: ") ~post pp_opaque) ppf packed
-and pp_values ppf values =
-  Pp.(opt_list ~sep:(s ";@ ") ~pre:(s "@[<2>values: ") ~post:(s "@]")
-        pp_simple) ppf values
 and pp_minor ppf = function
   | Access a -> pp_access ppf a
   | Pack x -> Pp.fp ppf "@[(module %a)@]" pp_me x.Loc.data
-  | Extension_node e -> pp_extension ppf e
-  | Local_open (me,x) ->
-    Pp.fp ppf "@[<2>open %a in@ %a@]" pp_me me pp_annot x
-  | Local_bind (b,x) ->
+  | Extension_node e -> Pp.fp ppf "@[%a@]" pp_extension e.data
+  | Local_open (loc,me,x) ->
+    Pp.fp ppf "@[<2>(%a)open %a in@ (%a)@]" Loc.pp loc pp_me me pp_annot x
+  | Local_bind (loc,b,x) ->
     let name = Option.( b.name >< "_" ) in
-    Pp.fp ppf "@[<2>%s=%a in@ %a@]" name pp_me b.expr pp_annot x
+    Pp.fp ppf "@[<2>(%a)%s=%a in@ (%a)@]" Loc.pp loc name
+      pp_me b.expr pp_annot x
 and pp_annot ppf l =
-  Pp.(list ~pre:(s "@[<v>") ~post:(s "@]") ~sep:(s "@ ") pp_minor) ppf l
+  Pp.(list  ~sep:(s "@ ") pp_minor) ppf l
 and pp_access ppf s =  if Paths.E.Map.cardinal s = 0 then () else
     Pp.fp ppf "@[<2>access: {%a}@]@," (Pp.list pp_access_elt) (Paths.E.Map.bindings s)
 and pp_access_elt ppf (name, (loc,edge)) =
   Pp.fp ppf "%s%a(%a)" (if edge = Deps.Edge.Normal then "" else "ε∙")
     Paths.E.pp name
     Loc.pp loc
-and pp_opaque ppf me = Pp.fp ppf "⟨%a(%a)⟩" pp_me me.Loc.data Loc.pp me.loc
 and pp_bind ppf {name;expr} =
   match expr with
   | Constraint(Abstract, Alias np) ->

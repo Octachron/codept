@@ -33,6 +33,7 @@ let pp ppf x =
     Fault.locc x.loc (Pp.opt Deps.Edge.pp) x.edge
     Module.pp_level x.level Summary.pp x.ctx
 
+let pp_ml = P.pp
 
 let path x = x.T.main
 
