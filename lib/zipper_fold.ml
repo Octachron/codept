@@ -280,22 +280,24 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         >>| fun x -> F.minor_ext ~loc:(pkg,loc) data.name x
     | Local_open (loc,e,m) ->
       (*Format.eprintf "Local open: %a@." M2l.pp_me e;*)
-      me (Minor (Local_open_left m) :: path)
+      let diff0 = State.diff state in
+      me (Minor (Local_open_left (diff0,m)) :: path)
         ~param ~loc:(pkg, loc) ~state e >>= fun e ->
       let diff = Sk.opened param ~loc:(pkg,loc) e.backbone in
       let state = State.merge state diff in
       (*Format.eprintf "@[opened %a@ | state:%a@]@."
         Sk.pp_ml e.backbone
         Summary.pp State.(peek @@ diff state);*)
-      minors (Minor (Local_open_right e) :: path)
+      minors (Minor (Local_open_right (diff0,e)) :: path)
         ~pkg ~param ~state m
       >>| fun m -> F.local_open e.user m
     | Local_bind (loc,{name;expr},m) ->
-      me (Minor (Local_bind_left (name,m)) :: path)
+      let diff0 = State.diff state in
+      me (Minor (Local_bind_left (diff0,name,m)) :: path)
         ~param ~loc:(pkg, loc) ~state expr >>= fun e ->
       let diff = Sk.bind name e.backbone in
       let state = State.merge state diff in
-      minors (Minor (Local_bind_right (name,e)) :: path)
+      minors (Minor (Local_bind_right (diff0,name,e)) :: path)
         ~pkg ~param ~state m
       >>| fun m -> F.local_open e.user m
     | _ -> .
@@ -367,17 +369,22 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       let left = D.bind_rec_add name x mt left in
       bind_rec path left ~loc ~param ~state right >>=
       restart_expr ~state ~param (path: expression path)
-    | Minor Local_bind_left (no,body) :: path ->
+    | Minor Local_bind_left (diff0,no,body) :: path ->
+      let diff = Sk.bind no x.backbone in
+      let state' = State.merge state diff in
       minors
-        (Minor (Local_bind_right (no,x))::path)
-        ~param ~state ~pkg:(apkg loc)
+        (Minor (Local_bind_right (diff0,no,x))::path)
+        ~param ~state:state' ~pkg:(apkg loc)
         body
       >>= fun body ->
+      let state = State.restart state diff in
       restart_minor (path: minor path) ~param ~loc ~state ~pkg:(apkg loc)
         (D.local_bind no x body)
-    | Minor Local_open_left m :: path ->
-      minors (Minor (Local_open_right x) :: path)
-        ~param ~state ~pkg:(apkg loc) m >>= fun minors ->
+    | Minor Local_open_left (diff0,m) :: path ->
+      let diff = Sk.opened param ~loc x.backbone in
+      let state' = State.merge state diff in
+      minors (Minor (Local_open_right (diff0,x)) :: path)
+        ~param ~state:state' ~pkg:(apkg loc) m >>= fun minors ->
       restart_minor (path: M2l.minor path)
         ~pkg:(apkg loc) ~param ~state ~loc
         (D.local_open x minors)
@@ -448,7 +455,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       ~param ~pkg ~loc  ~state x = match path with
     | Expr Minors :: path ->
       restart_expr path ~param ~state (D.minor x)
-    | Minor Local_open_right expr :: path ->
+    | Minor Local_open_right (diff0,expr) :: path ->
+      let state = State.restart state diff0 in
       restart_minor path ~loc ~state ~param ~pkg (D.local_open expr x)
     | Me Val :: path ->
       restart_me path ~state ~loc ~param (D.me_val x)
@@ -460,7 +468,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Ext Val :: path ->
       restart_ext (path: extension_core path) ~param ~loc ~state
         (F.ext_val x)
-    | Minor Local_bind_right (no,expr) :: path ->
+    | Minor Local_bind_right (diff0,no,expr) :: path ->
+      let state = State.restart state diff0 in
       restart_minor (path:minor path) ~pkg ~param ~loc ~state
         (D.local_bind no expr x)
     | _ -> .

@@ -75,13 +75,13 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Mt Of :: rest -> mt rest (fp1 "module type of %t" sub)
     | Minor Pack :: rest ->
       minor rest (fp1 "(module %t)" sub)
-    | Minor Local_bind_left (name,right) :: rest ->
+    | Minor Local_bind_left (_diff, name,right) :: rest ->
       minor rest (fun ppf -> Pp.fp ppf "%a=%t in %a"
                      Name.pp_opt name
                      sub
                      M2l.pp_annot right
                  )
-    | Minor Local_open_left minors :: rest ->
+    | Minor Local_open_left (_diff,minors) :: rest ->
         minor rest (fun ppf -> Pp.fp ppf "open %t in %a"
                        sub
                        M2l.pp_annot minors
@@ -97,11 +97,11 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
   and minors: M2l.minor list t -> _ = fun rest sub -> match rest with
     | Expr Minors :: rest ->
       expr rest sub
-    | Minor (Local_open_right e) :: rest ->
+    | Minor (Local_open_right (_diff,e)) :: rest ->
       minor rest (fun ppf ->
           Pp.fp ppf "open %t in %t" (R.pp_me e.user) sub
         )
-    | Minor (Local_bind_right (name,expr)) :: rest ->
+    | Minor (Local_bind_right (_diff,name,expr)) :: rest ->
       minor rest (fun ppf ->
           Pp.fp ppf "%a=%t in %t" optname name (R.pp_me expr.user) sub
         )

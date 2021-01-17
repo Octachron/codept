@@ -21,6 +21,7 @@ module type tree = sig
   type opens
 end
 
+type state_diff = Zipper_skeleton.state_diff
 
 module type fold = sig
   include tree
@@ -99,7 +100,7 @@ module type s = sig
     type minors = T.minors
     type module_type = (Zipper_skeleton.module_like, T.module_type) pair
     type m2l = (Zipper_skeleton.m2l, T.m2l) pair
-    type bind_rec = (Zipper_skeleton.state_diff, T.bind_rec) pair
+    type bind_rec = (state_diff, T.bind_rec) pair
     type path_expr_t = (Zipper_skeleton.path, T.path_expr) pair
     type opens = T.opens
     type path_in_context = Zipper_skeleton.path_in_context
@@ -117,7 +118,7 @@ module type s = sig
     | Bind_sig: Name.t option -> M2l.module_type expr
     | Bind_rec_sig:
         {
-          diff: Zipper_skeleton.state_diff;
+          diff: state_diff;
           left: (Name.t option * T.module_type * M2l.module_expr) list;
           name: Name.t option;
           expr: M2l.module_expr;
@@ -138,11 +139,11 @@ module type s = sig
     | Pack : M2l.module_expr minor
     | Extension_node : Name.t -> M2l.extension_core minor
 
-    | Local_open_left : M2l.minor list -> M2l.module_expr minor
-    | Local_open_right: module_expr -> M2l.minor list minor
+    | Local_open_left : state_diff * M2l.minor list -> M2l.module_expr minor
+    | Local_open_right: state_diff * module_expr -> M2l.minor list minor
 
-    | Local_bind_left: Name.t option * M2l.minor list -> M2l.module_expr minor
-    | Local_bind_right: Name.t option * module_expr -> M2l.minor list minor
+    | Local_bind_left: state_diff * Name.t option * M2l.minor list -> M2l.module_expr minor
+    | Local_bind_right: state_diff * Name.t option * module_expr -> M2l.minor list minor
 
   type acc =
     {left: access;
@@ -160,7 +161,7 @@ module type s = sig
     | Apply_right: module_expr -> M2l.module_expr me
     | Fun_left: {name:Name.t option; body:M2l.module_expr} -> M2l.module_type me
     | Fun_right:
-        (module_type Arg.t * Zipper_skeleton.state_diff ) option
+        (module_type Arg.t * state_diff ) option
         -> M2l.module_expr me
     | Constraint_left: M2l.module_type -> M2l.module_expr me
     | Constraint_right: module_expr -> M2l.module_type me
@@ -170,18 +171,18 @@ module type s = sig
     | Open_me_left:
         { left: opens;
           right:Paths.S.t Loc.ext list;
-          diff:Zipper_skeleton.state_diff;
+          diff:state_diff;
           expr:M2l.module_expr
         } -> path_in_context me
     | Open_me_right:
-        {opens:opens; state:Zipper_skeleton.state_diff} -> M2l.module_expr me
+        {opens:opens; state:state_diff} -> M2l.module_expr me
 
   type 'focus mt =
     | Alias: path_in_context mt
     | Ident: Paths.Expr.t mt
     | Sig: M2l.m2l mt
     | Fun_left: {name:Name.t option; body:M2l.module_type} -> M2l.module_type mt
-    | Fun_right: (module_type Arg.t * Zipper_skeleton.state_diff) option
+    | Fun_right: (module_type Arg.t * state_diff) option
         -> M2l.module_type mt
     | With_access:
         {body:M2l.module_type; deletions: Paths.S.set} -> M2l.minor list mt
@@ -197,7 +198,7 @@ module type s = sig
   type ('elt,'from) elt =
     | M2l: {left:m2l;
             loc:Fault.loc;
-            state:Zipper_skeleton.state_diff;
+            state:state_diff;
             right:M2l.m2l}
         -> (M2l.expression, M2l.m2l) elt
     | Expr: 'elt expr -> ('elt,M2l.expression) elt
