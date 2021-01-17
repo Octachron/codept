@@ -368,7 +368,7 @@ and expr exp =
   | Pexp_open (me,e)
 # end
     (* M.(E), let open M in E, let! open M in E *)
-    -> Annot.local_open (from_loc loc) (local_open_arg me) @@ expr e
+    -> Annot.local_open (from_loc me.popen_loc) (local_open_arg me) @@ expr e
   | Pexp_constant _ | Pexp_unreachable (* . *)
     -> Annot.empty
   | Pexp_extension ext (* [%ext] *) ->
