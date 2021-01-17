@@ -34,6 +34,15 @@ type 'a ext = { loc:t; data:'a }
     | Some(start,_), Some(_,stop) ->
       Multiline {start;stop}
 
+  let keep_one x y = match x, y with
+    | Nowhere, x | x, Nowhere -> x
+    | Simple _ as x, Multiline _
+    | Multiline _, (Simple _ as x) -> x
+    | Simple x as f, (Simple y as s) ->
+      if x.start < y.start then f else s
+    | Multiline x as f, (Multiline y as s) ->
+      if x.start <= y.start then f else s
+
   let list l =
     List.fold_left (fun loc x -> merge loc x.loc) Nowhere l
 

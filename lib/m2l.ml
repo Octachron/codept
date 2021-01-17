@@ -334,13 +334,13 @@ module Annot = struct
     match a1, a2 with
     | Access x1 :: r1, Access x2 :: r2 ->
       let data = Access (Access.merge x1 x2) :: r1 @ r2 in
-      {Loc.data; loc = Loc.merge x.loc y.loc}
+      {Loc.data; loc = Loc.keep_one x.loc y.loc}
     | r1, (Access _ as a) :: r2 ->
       let data = a :: r1 @ r2 in
-      {Loc.data; loc = Loc.merge x.loc y.loc}
+      {Loc.data; loc = Loc.keep_one x.loc y.loc}
     | r1, r2 ->
       let data = r1 @ r2 in
-      {Loc.data; loc = Loc.merge x.loc y.loc}
+      {Loc.data; loc = Loc.keep_one x.loc y.loc}
 
   let (++) = merge
 

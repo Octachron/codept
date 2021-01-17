@@ -15,6 +15,7 @@ val create: t -> 'a -> 'a ext
 val expand: t -> ((int*int) * (int*int)) option
 val compress: t -> t
 val merge: t -> t -> t
+val keep_one: t -> t -> t
 val fmap: ('a -> 'b) -> 'a ext -> 'b ext
 val list: 'a ext list -> t
 

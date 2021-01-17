@@ -128,8 +128,9 @@ module Pattern = struct
   let open_ m { annot={ data; loc } ; binds} =
     let me_open {name;expr} =
       {name; expr=M2l.Open_me {opens=[m.Loc.data]; expr} } in
+    let md: module_expr = Ident m.Loc.data in
     let data = match data with
-      | [] -> []
+      | [] -> [M2l.Pack {data=md;loc=m.loc}] (* [M.(...nothing)] becomes (module M) *)
       | data -> [M2l.Local_open (m.loc, Ident m.Loc.data, data)] in
     { annot = { data; loc}; binds=List.map (Loc.fmap me_open) binds }
 
