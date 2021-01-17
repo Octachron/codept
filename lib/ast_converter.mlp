@@ -126,8 +126,7 @@ module Pattern = struct
     { empty with binds = [Loc.create loc {M2l.name = bound_name name; expr = sign }] }
 
   let open_ m { annot={ data; loc } ; binds} =
-    let me_open {name;expr} =
-      {name; expr=M2l.Open_me {opens=[m.Loc.data]; expr} } in
+    let me_open {name;expr} = {name; expr=M2l.Open_me {opens=[m]; expr} } in
     let md: module_expr = Ident m.Loc.data in
     let data = match data with
       | [] -> [M2l.Pack {data=md;loc=m.loc}] (* [M.(...nothing)] becomes (module M) *)
@@ -711,7 +710,7 @@ and signature_item item =
 #end
 and class_description x =  class_type_declaration x
 and recmodules mbs =
-  let loc = List.fold_left Loc.merge Nowhere @@
+  let loc = List.fold_left Loc.keep_one Nowhere @@
     List.map (fun mb -> from_loc mb.pmb_loc) mbs in
   [ Loc.create loc @@ Bind_rec (List.map module_binding_raw mbs)]
 and with_more (dels,access) =

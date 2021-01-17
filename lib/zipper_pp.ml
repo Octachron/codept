@@ -33,6 +33,7 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
   let r_arg x ppf = match x with
     | None -> ()
     | Some (l,_) -> Pp.fp ppf "%a:%t" Name.pp_opt l.Module.Arg.name (R.pp_mt l.signature.Zipper_def.user)
+  let path_loc p ppf = Paths.S.pp ppf p.Loc.data
   let path p ppf = Paths.S.pp ppf p
   let leaf p ppf = Format.fprintf ppf "%t?" (path p.Zipper_skeleton.path)
   let dlist elt l ppf = Pp.list (fun ppf x -> elt x ppf) ppf l
@@ -46,7 +47,7 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Path_expr Simple :: rest -> path_expr rest x
     | Me (Open_me_left {left;right;expr; diff=_}) :: rest ->
       me (rest: M2l.module_expr t) (R.pp_opens left (fun ppf ->
-          Pp.fp ppf "%t.(%t.(%a))" x (dlist path right) M2l.pp_me expr
+          Pp.fp ppf "%t.(%t.(%a))" x (dlist path_loc right) M2l.pp_me expr
         )
         )
     | _ -> .

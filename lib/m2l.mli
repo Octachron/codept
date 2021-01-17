@@ -92,7 +92,7 @@ and module_expr =
       In particular, it is useful for constraining first class module unpacking
       as [Constraint(Abstract, signature)]. *)
   | Unpacked (** [(module M)] *)
-  | Open_me of { opens:Paths.Simple.t list; expr:module_expr}
+  | Open_me of { opens:Paths.Simple.t Loc.ext list; expr:module_expr}
   (** [M.(…N.( module_expr)…)]
       Note: This construction does not exist (yet?) in OCaml proper.
       It is used here to simplify the interaction between
@@ -184,7 +184,7 @@ module Build: sig
   val open_path: Paths.Simple.t Loc.ext -> expression Loc.ext
   val open_: module_expr Loc.ext -> expression Loc.ext
 
-  val open_me: Paths.Simple.t list -> module_expr -> module_expr
+  val open_me: Paths.Simple.t Loc.ext list -> module_expr -> module_expr
 
   val fn_sig: module_type fn -> module_type
   val fn: module_expr fn -> module_expr

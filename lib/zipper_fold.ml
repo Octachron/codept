@@ -193,9 +193,10 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       ~param ~loc ~state expr >>| D.open_me opens
   and open_all_rec path expr left ~loc ~param ~diff ~state : _ L.t -> _ = function
     | [] -> open_right path expr ~param ~loc ~state left
-    | a :: right ->
+    | {Loc.data=a;loc=subloc} :: right ->
       let path' = Me (Open_me_left {left; right; diff; expr}) :: path in
-      resolve path' ~param ~state ~loc ~level:Module a >>= fun a ->
+      resolve path' ~param ~state ~loc:(apkg loc,subloc)
+        ~level:Module a >>= fun a ->
       let state = State.open_path ~param ~loc state a.backbone in
       open_all_rec path expr (F.open_add a.user left) ~param ~loc ~diff
         ~state right

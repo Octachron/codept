@@ -169,7 +169,7 @@ module type s = sig
     | Extension_node: string -> M2l.extension_core me
     | Open_me_left:
         { left: opens;
-          right:Paths.S.t list;
+          right:Paths.S.t Loc.ext list;
           diff:Zipper_skeleton.state_diff;
           expr:M2l.module_expr
         } -> path_in_context me

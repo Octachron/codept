@@ -60,7 +60,10 @@ and module_expr =
       In particular, it is useful for constraining first class module unpacking
       as [Constraint(Abstract, signature)]. *)
   | Unpacked (** [(module M)] *)
-  | Open_me of { opens:Paths.Simple.t list; expr:module_expr}
+  | Open_me of {
+      opens:Paths.Simple.t Loc.ext list;
+      expr:module_expr
+    }
   (** M.(…N.( module_expr)…)
       Note: This construction does not exist (yet?) in OCaml proper.
       It is used here to simplify the interaction between
@@ -122,6 +125,7 @@ module Sch = struct
                           rev = Tuple.(fun [data;loc] -> {data;loc});
                        }
   let module_expr_loc = loc Mu.module_expr
+  let path_loc = loc Paths.S.sch
   let minor_sch =
     Sum [
       "Access", reopen access;
@@ -142,7 +146,7 @@ module Sch = struct
           "Extension_node", Mu.extension;
           "Abstract",Void;
           "Unpacked", Void;
-          "Open_me",[Array (reopen Paths.S.sch); Mu.module_expr]
+          "Open_me",[Array (reopen path_loc); Mu.module_expr]
         ]
 
   let mt_sch =
@@ -444,7 +448,7 @@ and pp_bind ppf {name;expr} =
   | Unpacked ->
     Pp.fp ppf "(module %a)" Name.pp_opt name
   | Open_me {opens = a :: q ; expr} ->
-    Pp.fp ppf "%a.(%a)" Paths.Simple.pp a pp_bind
+    Pp.fp ppf "%a.(%a)" Paths.Simple.pp a.Loc.data pp_bind
       {name; expr = Open_me{opens=q;expr} }
   | Open_me {opens=[]; expr} ->
     Pp.fp ppf "%a"
@@ -470,7 +474,7 @@ and pp_me ppf = function
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
   | Unpacked -> Pp.fp ppf "⟨unpacked⟩"
   | Open_me {opens = a :: q ; expr} ->
-    Pp.fp ppf "%a.(%a)" Paths.Simple.pp a pp_me (Open_me{opens=q;expr})
+    Pp.fp ppf "%a.(%a)" Paths.Simple.pp a.Loc.data pp_me (Open_me{opens=q;expr})
   | Open_me {opens=[]; expr} ->
     Pp.fp ppf "%a" pp_me expr
 
