@@ -90,20 +90,28 @@ type attr =
   | Broken
   | Self_cycle
 
+
+type variant = {
+  name: string;
+  cmd: string -> string * string array;
+  filter: attr -> bool
+}
+
 let full_variant =
-  (fun x -> codept, [| "codept"; "-nested"; "-expand-deps"; "-no-alias-deps"; "-deps"; "-k"; x |]),
-  (fun _ -> true)
+  let cmd x = codept, [| "codept"; "-nested"; "-expand-deps"; "-no-alias-deps"; "-deps"; "-k"; x |] in
+   { name = "full_variant"; cmd; filter = (fun _ -> true) }
 
 let zip_variant =
-  (fun x -> zip_test, [|"zip_test"; x|]),
-  (function Broken | Self_cycle -> false | _ -> true)
+  let cmd x = zip_test, [|"zip_test"; x|] in
+  let filter = function Broken | Self_cycle -> false | _ -> true in
+  { name="zip"; cmd; filter }
 
-let run ((variant,_filter),(case,_attrs)) =
+let run (v,  (case,_attrs)) =
     let out, inp = Unix.pipe () in
     let pid =
-      let main, args = variant case in
+      let main, args = v.cmd case in
       Unix.create_process main args Unix.stdin inp inp in
-    case, pid, out
+    v.name, case, pid, out
 
 let read_all =
   let len = 1024 in
@@ -149,7 +157,7 @@ let red ppf s = Format.fprintf ppf "\x1b[31m%s\x1b[0m" s
 
 let dir x =
   let variant = full_variant in
-  let _, pid, out = run (variant, (x,[])) in
+  let _, _, pid, out = run (variant, (x,[])) in
   match snd (Unix.waitpid [] pid) with
   | WEXITED (0|2) ->
     let s = read_all out in
@@ -216,18 +224,19 @@ let cases =
     @@ List.filter is_source
     @@ Array.to_list @@ Sys.readdir "cases" in
   let all =
-    List.filter (fun ((_,filter), (_,attrs)) -> List.for_all filter attrs)
+    List.filter (fun (v, (_,attrs)) -> List.for_all v.filter attrs)
       @@ prod variants all in
-  let post (name, _, x) =
+  let post (vname, name, _, x) =
     let s = read_all x in
     let ref = reference (refname name) in
     if s %=% ref then
-      Format.printf "[%s]: %a@." name green "ok"
-    else
-      Format.printf "[%s]: %a @ @[<v>%a@]@." name red "fail"
+      Format.printf "[%s]: %a(%s)@." name green "ok" vname
+    else begin
+      Format.printf "[%s]: %a(%s) @ @[<v>%a@]@." name red "fail" vname
         diff (s,ref)
+    end
   in
-  let peek l (case, pid, _ as x) =
+  let peek l (_, case, pid, _ as x) =
     match Unix.waitpid [Unix.WNOHANG] pid with
     | 0, _ -> x :: l
     | _, WEXITED (0|2)  -> post x; l

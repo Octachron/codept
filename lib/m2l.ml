@@ -448,7 +448,7 @@ and pp_bind ppf {name;expr} =
   | Unpacked ->
     Pp.fp ppf "(module %a)" Name.pp_opt name
   | Open_me {opens = a :: q ; expr} ->
-    Pp.fp ppf "%a.(%a)" Paths.Simple.pp a.Loc.data pp_bind
+    Pp.fp ppf "open %a in %a" Paths.Simple.pp a.Loc.data pp_bind
       {name; expr = Open_me{opens=q;expr} }
   | Open_me {opens=[]; expr} ->
     Pp.fp ppf "%a"
@@ -474,7 +474,7 @@ and pp_me ppf = function
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
   | Unpacked -> Pp.fp ppf "⟨unpacked⟩"
   | Open_me {opens = a :: q ; expr} ->
-    Pp.fp ppf "%a.(%a)" Paths.Simple.pp a.Loc.data pp_me (Open_me{opens=q;expr})
+    Pp.fp ppf "@[<2>open@ %a@ in@ %a@]" Paths.Simple.pp a.Loc.data pp_me (Open_me{opens=q;expr})
   | Open_me {opens=[]; expr} ->
     Pp.fp ppf "%a" pp_me expr
 

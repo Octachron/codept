@@ -613,7 +613,7 @@ let result =
           "option.mli", ([],["Lazy"],[]);
           "option.ml", ([],["List";"Lazy"],[]);
           "pparse_compat.mli", ([], ["Parsetree"], []);
-          "paths.mli", (["Name"; "Schematic"], ["Map";"Set";"Format"],[]);
+          "paths.mli", (["Name"; "Pp"; "Schematic"], ["Map";"Set";"Format"],[]);
           "paths.ml", (["Name"; "Pp"; "Schematic"; "Schematic_indices"; "Support" ],
                        ["Filename";"List";"Map";"Set";"Format";
                         "String"],[]);
@@ -687,7 +687,7 @@ let result =
              "Zipper_pp"]
           ,["List"],[]);
           "zipper_pp.ml", (
-            ["M2l"; "Module"; "Name"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
+            ["Loc"; "M2l"; "Module"; "Name"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
           ,["Format"],[]);
           "zipper_fold.mli", (["Stage";"Zipper_def"], [], []);
           "zipper.ml", ([],[],[]);

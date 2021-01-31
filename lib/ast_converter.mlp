@@ -16,6 +16,11 @@ let txt x= x.Location.txt
 #end
 
 
+let dummy_loc loc =
+  let open Location in
+  loc.loc_ghost && (loc.loc_start.pos_cnum = -1 || loc.loc_end.pos_cnum = -1)
+
+
 
 let from_loc l =
   let open Location in
@@ -24,7 +29,7 @@ let from_loc l =
     lex.pos_lnum, lex.pos_cnum - lex.pos_bol in
   let l1, c1 as s = extr l.loc_start in
   let l2, c2 as e = extr l.loc_end in
-  if l.loc_ghost then
+  if dummy_loc l then
     Loc.Nowhere
   else if l1=l2 then
     Loc.Simple {line=l1; start = c1; stop = c2 }
@@ -128,9 +133,9 @@ module Pattern = struct
   let open_ m { annot={ data; loc } ; binds} =
     let me_open {name;expr} = {name; expr=M2l.Open_me {opens=[m]; expr} } in
     let md: module_expr = Ident m.Loc.data in
-    let data = match data with
-      | [] -> [M2l.Pack {data=md;loc=m.loc}] (* [M.(...nothing)] becomes (module M) *)
-      | data -> [M2l.Local_open (m.loc, Ident m.Loc.data, data)] in
+    let data = match data, binds with
+      | [], [] -> [M2l.Pack {data=md;loc=m.loc}] (* [M.(...nothing)] becomes (module M) *)
+      | data, _ -> [M2l.Local_open (m.loc, Ident m.Loc.data, data)] in
     { annot = { data; loc}; binds=List.map (Loc.fmap me_open) binds }
 
   let bind_fmod p inner =
@@ -411,7 +416,7 @@ and pattern pat =
     (* { l1=P1; ...; ln=Pn }     (flag = Closed)
        { l1=P1; ...; ln=Pn; _}   (flag = Open)
     *) ->
-    Pattern.union_map (fun (lbl,p) -> Pattern.(access lbl ++ pattern p) ) fields
+    Pattern.union_map Pattern.(fun (lbl,p) -> pattern p ++ access lbl) fields
   | Ppat_or (p1,p2) (* P1 | P2 *) ->
     Pattern.( pattern p1 ++ pattern p2 )
   | Ppat_constraint(

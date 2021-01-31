@@ -139,7 +139,7 @@ module type s = sig
     | Pack : M2l.module_expr minor
     | Extension_node : Name.t -> M2l.extension_core minor
 
-    | Local_open_left : state_diff * M2l.minor list -> M2l.module_expr minor
+    | Local_open_left : state_diff * Loc.t * M2l.minor list -> M2l.module_expr minor
     | Local_open_right: state_diff * module_expr -> M2l.minor list minor
 
     | Local_bind_left: state_diff * Name.t option * M2l.minor list -> M2l.module_expr minor
@@ -172,6 +172,7 @@ module type s = sig
         { left: opens;
           right:Paths.S.t Loc.ext list;
           diff:state_diff;
+          loc: Loc.t;
           expr:M2l.module_expr
         } -> path_in_context me
     | Open_me_right:

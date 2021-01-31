@@ -45,7 +45,7 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Me Ident :: rest -> me (rest:M2l.module_expr t) x
     | Mt Alias :: rest -> mt (rest:M2l.module_type t) x
     | Path_expr Simple :: rest -> path_expr rest x
-    | Me (Open_me_left {left;right;expr; diff=_}) :: rest ->
+    | Me (Open_me_left {left;right;expr; loc=_; diff=_}) :: rest ->
       me (rest: M2l.module_expr t) (R.pp_opens left (fun ppf ->
           Pp.fp ppf "%t.(%t.(%a))" x (dlist path_loc right) M2l.pp_me expr
         )
@@ -81,7 +81,7 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
                      sub
                      M2l.pp_annot right
                  )
-    | Minor Local_open_left (_diff,minors) :: rest ->
+    | Minor Local_open_left (_diff,_,minors) :: rest ->
         minor rest (fun ppf -> Pp.fp ppf "open %t in %a"
                        sub
                        M2l.pp_annot minors

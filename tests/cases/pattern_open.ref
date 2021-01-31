@@ -1,18 +1,18 @@
-[[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l13.6−29[0m,
+[[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l13.7−9[0m,
 a non-resolvable module, [1mE1[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1mcases/pattern_open.ml:l13.6−27[0m, name resolution for [1mM'[0m was
+[[1m[35mWarning[0m]: [1mcases/pattern_open.ml:l13.11−27[0m, name resolution for [1mM'[0m was
 ambiguous, due to the opening of the external module [1mE1[0m, at
-location [1ml13.6−27[0m. Spurious dependencies might be inferred due to this
+location [1ml13.7−9[0m. Spurious dependencies might be inferred due to this
 ambiguity.
-[[1m[35mWarning[0m]: [1mcases/pattern_open.ml:l15.11−13[0m, name resolution for [1mA'[0m was
+[[1m[35mWarning[0m]: [1mcases/pattern_open.ml:l15.6−13[0m, name resolution for [1mA'[0m was
 ambiguous, due to the opening of the external module [1mE1[0m, at
-location [1ml13.6−27[0m. Spurious dependencies might be inferred due to this
+location [1ml13.7−9[0m. Spurious dependencies might be inferred due to this
 ambiguity.
 [[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l16.11−13[0m,
 a non-resolvable module, [1mE4[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l21.4−10[0m,
+[[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l21.4−6[0m,
 a non-resolvable module, [1mE2[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l22.8−14[0m,
+[[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l22.8−10[0m,
 a non-resolvable module, [1mE3[0m, has been replaced by an approximation
 {
 "version" : [0, 10, 3],
