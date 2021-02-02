@@ -575,7 +575,7 @@ let result =
             ["Format"],
             [] );
           "summary.ml", (
-            ["Module"; "Pp"; "Mresult"; "Name"; "Schematic"],
+            ["Module"; "Pp"; "Mresult"; "Schematic"],
             ["List"], []);
           "envt.mli", (
             ["Fault"; "Module";"Name"; "Namespaced"; "Stage"; "Paths";

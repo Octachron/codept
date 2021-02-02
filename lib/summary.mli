@@ -39,9 +39,6 @@ val defined : summary -> Module.signature
 
 val extend: Module.signature -> summary -> Module.signature
 
-(** transform top level weak aliases to normal aliases *)
-val strenghen: summary -> summary
-
 val only_visible : summary -> view
 (** List modules that are visibles and not defined *)
 

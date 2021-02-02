@@ -21,21 +21,6 @@ module View = struct
   let merge s1 s2 =
     Module.Sig.merge s1 s2
 
-  let strong_alias = function
-    | M.Alias ({weak=true; _} as a) -> M.Alias { a with weak = false}
-    | x -> x
-
-  let rec strenghen = function
-    | M.Blank -> M.Blank
-    | Divergence ({before; after; _ } as d) ->
-      Divergence { d with
-                   after = str_def after;
-                   before = strenghen before
-                 }
-    | Exact def -> Exact (str_def def)
-  and str_def def =
-    {def with modules = Name.Map.map strong_alias def.modules }
-
   let e = {visible = empty; defined = empty }
   let see visible = { e with visible }
   let define defined = { defined; visible=defined }
@@ -45,10 +30,6 @@ module View = struct
 end
 
 let empty = View.e
-let strenghen v =
-  { defined = View.strenghen v.defined;
-    visible = View.strenghen v.visible;
-  }
 
 let defined s = s.defined
 let extend s y =
