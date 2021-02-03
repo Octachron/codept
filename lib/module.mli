@@ -74,7 +74,6 @@ type origin = Origin.t
 
 (** Main module type *)
 type m = {
-  name : string;
   origin : Origin.t;
   args : m option list;
   signature : signature;
@@ -85,8 +84,10 @@ and t =
   | M of m (** Classic module *)
   | Alias of
       {
-        name:Name.t; (** module Name = … *)
-        path: Namespaced.t; (** … = Path.To.Target *)
+        path: Namespaced.t;
+        (** Path.To.Target:
+            projecting this path may create new dependencies
+        *)
         phantom: Divergence.t option;
         (** Track potential delayed dependencies
             after divergent accident:
@@ -103,16 +104,10 @@ and t =
             dependencies for the above code snipet is {A,Unknowable} .
         *)
       }
-  | Link of
-      {
-        name:Name.t; (** module Name = … *)
-        path: Namespaced.t; (** … = Path.To.Target *)
-      }
-  | Namespace of namespace_content
+  | Link of Namespaced.t (** Link to a compilation unit *)
+  | Namespace of dict
+  (** Namespace are open bundle of modules *)
 
-and  namespace_content = {name: Name.t; modules:dict}
-  (** Namespace support: Namespace are bundles of modules, used for
-      packs or as an higher-level views of the alias atlas idiom *)
 
 and definition = { modules : dict; module_types : dict }
 and signature =
@@ -156,7 +151,7 @@ val md: m -> t
 val empty : 'a Name.map
 val create :
   ?args:m option list ->
-  ?origin:origin -> Name.t -> signature -> m
+  ?origin:origin -> signature -> m
 
 val with_namespace: Paths.S.t -> Name.t -> t -> named
 val namespace: Namespaced.t -> named
@@ -246,12 +241,14 @@ module Sig :
 (** Anonymous module and other partial definitions *)
 module Partial :
   sig
-    type nonrec t = {
-      name : string option;
-      origin : origin;
-      args : m option list;
-      result : signature;
+
+    type t = {
+      name: string option;
+      origin: Origin.t;
+      args: m option list;
+      result: signature
     }
+
     val empty : t
     val is_exact: t -> bool
 
@@ -263,10 +260,10 @@ module Partial :
     val no_arg : signature -> t
     val drop_arg : t -> t option
 
-    val to_module : ?origin:origin -> string -> t -> m
-    val to_arg : string -> t -> m
-    val of_module : m -> t
-    val pseudo_module: namespace_content -> t
+    val to_module : ?origin:origin -> t -> m
+    val to_arg : t -> m
+    val of_module : Name.t -> m -> t
+    val pseudo_module: Name.t -> dict -> t
     val is_functor : t -> bool
     val to_sign : t -> (signature,signature) result
 

@@ -319,7 +319,7 @@ struct
           let md = let open Module in
             create
               ~origin:(Unit {source=input.src; path=Namespaced.flatten input.path})
-              input.path.name sg in
+              sg in
           Envt.add_unit ~namespace:input.path.namespace state.env
             input.path.name
             (Module.M md)
@@ -498,8 +498,7 @@ struct
         else
           let origin =
             Module.Origin.Unit {source=src; path=Namespaced.flatten path} in
-          let md = Module.md @@
-            Module.create ~origin path.name sg in
+          let md = Module.md @@ Module.create ~origin sg in
           let env =
             Envt.add_unit state.env ~namespace:path.namespace path.name md in
           { state with env;

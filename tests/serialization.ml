@@ -73,5 +73,5 @@ let round_trip' sch src trip =
 
 (* sig from solver.mli *)
 ;; round_trip' (Array (pair String Module.Schema.module'))
-  {|((Solver(M((name Solver)(origin(Unit((Local(lib solver.mli))(Solver))))(modules((Directed(M((name Directed)(args((Some((name Envt)))(Some((name Param)))(Some((name Eval))))))))(Failure(M((name Failure))))(Make(M((name Make)(args((Some((name Envt)))(Some((name Param)))(Some((name Eval))))))))))))))|}
+  {|((Solver(M((origin(Unit((Local(lib solver.mli))(Solver))))(modules((Directed(M((args((Some())(Some())(Some()))))))(Failure(M()))(Make(M((args((Some())(Some())(Some()))))))))))))|}
   [sexp;json;sexp;json;json;sexp;sexp;json;json;sexp]

@@ -7,8 +7,8 @@ module Y = Summary
 let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
 type answer = T.answer =
-  | M of Module.m
-  | Namespace of Module.namespace_content
+  | M of Name.t * Module.m
+  | Namespace of Name.t * Module.dict
 
 type context =
   | Signature of M.signature
@@ -85,11 +85,11 @@ module Core = struct
       path_record ~path:[name] ?aliases ~edge:Edge.Normal
         { P.source = Unknown; file = [name] }
 
-    let record loc edge ?aliases root (m:Module.m) =
+    let record loc edge ?aliases root name (m:Module.m) =
       match m.origin with
       | M.Origin.Unit p -> path_record ~path:p.path ?aliases ~edge p.source
       | Phantom (phantom_root, b) when root && not phantom_root ->
-        phantom_record ?aliases m.name <!> [ambiguity loc m.name b]
+        phantom_record ?aliases name <!> [ambiguity loc name b]
       | _ -> return ()
   end
 
@@ -187,9 +187,9 @@ module Core = struct
           <!> [nosubmodule option.loc current lvl a]
         | None -> request option.loc lvl a env
         | Some _ as x -> x in
-      r >>? find_elt option aliases ctx env (a::current) q
-  and find_elt option aliases ctx env current q = function
-    | Alias {path; phantom; name } ->
+      r >>? find_elt option aliases ctx env (a::current) a q
+  and find_elt option aliases ctx env current name q = function
+    | Alias {path; phantom } ->
       debug "alias to %a" Namespaced.pp path;
       let aliases = Paths.S.Set.add (List.rev current) aliases in
       let m = match phantom with
@@ -199,17 +199,17 @@ module Core = struct
       (* aliases link only to compilation units *)
       m >> find option aliases Any [] (top env) (Namespaced.flatten path @ q)
     | Link _ when ctx = Concrete -> None
-    | Link {path;  _ } ->
+    | Link path ->
       find option aliases Concrete [] (top env) (Namespaced.flatten path @ q)
     | M.M m ->
-      debug "found module %s" m.name;
-      D.record option.loc option.edge ~aliases (is_top ctx) m >>
-      if q = [] then return (M m)
+      debug "found module %s" name;
+      D.record option.loc option.edge ~aliases (is_top ctx) name m >>
+      if q = [] then return (M (name,m))
       else
         find option aliases Submodule current (restrict env @@ Signature m.signature) q
-    | Namespace {name;modules} ->
+    | Namespace modules ->
       (* let faults = record edge root env name in*)
-      if q = [] then return (Namespace {name;modules})
+      if q = [] then return (Namespace (name,modules))
       else find option aliases ctx current (restrict env @@ In_namespace modules) q
 
   let find loc sub ?edge level path envt =
@@ -241,7 +241,7 @@ module Core = struct
     debug "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
       env.current;
     if nms.namespace = [] then
-      add (nms.name, Link { name= nms.name; path=nms })
+      add (nms.name, Link nms)
     else
       add (Module.namespace nms)
 
@@ -250,11 +250,11 @@ module Core = struct
     | [] -> None
     | a :: q ->
       match Name.Map.find a def with
-      | M.Alias {path; _ } | M.Link {path; _ } ->
+      | M.Alias {path; _ } | M.Link path ->
         debug "resolved to %a" Namespaced.pp path;
         Some path
       | M m -> resolve_alias_sign q m.signature
-      | Namespace n -> resolve_alias_md q n.modules
+      | Namespace n -> resolve_alias_md q n
       | exception Not_found -> None
   and resolve_alias_sign path = function
     | Blank -> None
@@ -372,7 +372,7 @@ module Libraries = struct
         end
       | Ok (sg, _) ->
         let md = M.create
-            ~origin:(M.Origin.Unit {source=path;path=[name]}) name sg in
+            ~origin:(M.Origin.Unit {source=path;path=[name]}) sg in
         source.resolved <- Core.add_unit source.resolved name (M.M md);
         track source q
 
@@ -409,8 +409,8 @@ module Implicit_namespace = struct
   let provider (namespace,modules) =
     let open Query in
     let wrap = function
-      | M m -> M.M m
-      | Namespace {name;modules} -> M.Namespace {name; modules} in
+      | M (_,m) -> M.M m
+      | Namespace (_,modules) -> M.Namespace modules in
     let env = Core.start (M.Def.modules modules) in
     let implicit loc path =
       Some(Core.find_implicit loc M.Module path env >>| wrap) in

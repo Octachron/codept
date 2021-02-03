@@ -49,7 +49,7 @@ let fn arg f =
   match arg with
   | None -> { f with P.args = None :: f.P.args }
   | Some {Arg.signature; name } ->
-    { f with P.args = Option.fmap (fun name -> (P.to_arg name signature)) name :: f.args }
+    { f with P.args = Option.fmap (fun _name -> (P.to_arg signature)) name :: f.args }
 
 
 let str = P.no_arg
@@ -60,8 +60,8 @@ let ext param (loc:Fault.loc) (name:string) =
   else raisef param F.extension_traversed (loc,name)
 
 let ident = function
-  | T.M x -> P.of_module x
-  | T.Namespace n -> P.pseudo_module n
+  | T.M (name,x) -> P.of_module name x
+  | T.Namespace (name,n) -> P.pseudo_module name n
 
 let m2l_add expr defs = S.merge defs (Y.defined expr)
 let m2l_init = S.empty
@@ -101,7 +101,7 @@ module State(Env:Stage.envt) = struct
     match name with
     | None -> st
     | Some name ->
-      let m = M.M (P.to_module ~origin:Arg name signature) in
+      let m = M.M (P.to_module ~origin:Arg signature) in
       merge st (Y.define [name, m])
 
   let is_alias param state s =
@@ -118,7 +118,7 @@ module State(Env:Stage.envt) = struct
     | None -> Y.empty
     | Some name ->
       let path = Namespaced.of_path @@ Env.expand_path p state.current in
-      let m = Module.Alias { name = name; path; phantom = None } in
+      let m = Module.Alias { path; phantom = None } in
       Y.define [name, m]
 
   let diff s = s.diff
@@ -134,7 +134,7 @@ module State(Env:Stage.envt) = struct
         match name with
         | None -> state
         | Some ename ->
-          merge state (bind name @@ P.of_module @@ Module.mockup ename)
+          merge state (bind name @@ P.of_module ename @@ Module.mockup ename)
       ) state l
 
   let rec_patch y diff = Y.merge diff y

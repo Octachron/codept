@@ -8,8 +8,8 @@ type param = {
 
 
 type answer =
-  | M of Module.m
-  | Namespace of Module.namespace_content
+  | M of Name.t * Module.m
+  | Namespace of Name.t * Module.dict
 
 (* Remove deleted modules with `with A.B.C.D := …` *)
 let rec remove_path_from path = function
@@ -64,8 +64,8 @@ let open_diverge_module policy loc x =
   | _, Divergence _ | _, Exact _ -> Summary.View.see x.result
 
 let open_diverge pol loc = function
-  | M x -> open_diverge_module pol loc (Module.Partial.of_module x)
-  | Namespace {modules;_} -> (* FIXME: type error *)
+  | M (name,x) -> open_diverge_module pol loc (Module.Partial.of_module name x)
+  | Namespace (_,modules) -> (* FIXME: type error *)
     Summary.View.see @@ Module.Exact { Module.Def.empty with modules }
 
 let open_ pol loc x = open_diverge_module pol loc x
@@ -83,7 +83,7 @@ let gen_include policy loc x =
   of_partial policy loc x
 
 let bind_summary level name expr =
-  let m = Module.M (Module.Partial.to_module ~origin:Submodule name expr) in
+  let m = Module.M (Module.Partial.to_module ~origin:Submodule expr) in
   Summary.define ~level [name,m]
 
 let drop_arg policy loc (p:Module.Partial.t) = match p.args with
