@@ -189,7 +189,7 @@ module Core = struct
         | Some _ as x -> x in
       r >>? find_elt option aliases ctx env (a::current) q
   and find_elt option aliases ctx env current q = function
-    | Alias {path; phantom; name; weak = false } ->
+    | Alias {path; phantom; name } ->
       debug "alias to %a" Namespaced.pp path;
       let aliases = Paths.S.Set.add (List.rev current) aliases in
       let m = match phantom with
@@ -198,8 +198,8 @@ module Core = struct
         | None | Some _ -> return () in
       (* aliases link only to compilation units *)
       m >> find option aliases Any [] (top env) (Namespaced.flatten path @ q)
-    | Alias { weak = true; _ } when ctx = Concrete -> None
-    | Alias {path; weak = true; _ } ->
+    | Link _ when ctx = Concrete -> None
+    | Link {path;  _ } ->
       find option aliases Concrete [] (top env) (Namespaced.flatten path @ q)
     | M.M m ->
       debug "found module %s" m.name;
@@ -241,7 +241,7 @@ module Core = struct
     debug "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
       env.current;
     if nms.namespace = [] then
-      add (M.Alias { name= nms.name; path=nms; phantom = None; weak = true })
+      add (Link { name= nms.name; path=nms })
     else
       add (Module.namespace nms)
 
@@ -250,7 +250,7 @@ module Core = struct
     | [] -> None
     | a :: q ->
       match Name.Map.find a def with
-      | M.Alias {path; _ } ->
+      | M.Alias {path; _ } | M.Link {path; _ } ->
         debug "resolved to %a" Namespaced.pp path;
         Some path
       | M m -> resolve_alias_sign q m.signature
@@ -280,10 +280,11 @@ module Core = struct
       | None -> true
       | Some m ->
         match m.main with
-        | Namespace _ -> true
-        | M { origin = Unit _; _ } -> true
-        | M.Alias a -> a.weak
-        | _ -> false
+        | Namespace _
+        | M { origin = Unit _; _ }
+        | Link _  -> true
+        | M.Alias _ -> false
+        | M _ -> false
 
   let expand_path path envt =
     match path with

@@ -25,7 +25,7 @@ and remove_path_from_sig path defs = match path with
   | [a] -> { defs with modules = Name.Map.remove a defs.modules }
   | a :: rest ->
     let update = function
-      | Module.Alias _ | Namespace _ as x -> x
+      | Module.Alias _ | Namespace _  | Link _ as x -> x
       | M m ->
         Module.M { m with signature = remove_path_from rest m.signature }
     in

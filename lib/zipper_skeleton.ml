@@ -118,8 +118,7 @@ module State(Env:Stage.envt) = struct
     | None -> Y.empty
     | Some name ->
       let path = Namespaced.of_path @@ Env.expand_path p state.current in
-      let m = Module.Alias
-          { name = name; path; weak=false; phantom = None } in
+      let m = Module.Alias { name = name; path; phantom = None } in
       Y.define [m]
 
   let diff s = s.diff

@@ -102,7 +102,11 @@ and t =
             and therefore considers that [M] is [.M], and the inferred
             dependencies for the above code snipet is {A,Unknowable} .
         *)
-        weak:bool (** Weak alias are used as placehoder in namespace *)
+      }
+  | Link of
+      {
+        name:Name.t; (** module Name = … *)
+        path: Namespaced.t; (** … = Path.To.Target *)
       }
   | Namespace of namespace_content
 

@@ -180,7 +180,8 @@ and t =
       { name:Name.t;
         path:Namespaced.t;
         phantom: Divergence.t option;
-        weak:bool }
+        }
+  | Link of { name:Name.t; path:Namespaced.t }
   | Namespace of namespace_content
 and definition = { modules : dict; module_types : dict }
 and signature =
@@ -199,12 +200,13 @@ let of_arg ({name;signature}:arg) =
     ) name
 
 let is_functor = function
-  | Alias _ |  M { args = []; _ } -> false
+  | Alias _ | Link _ | M { args = []; _ } -> false
   |  M _ | Namespace _ -> true
 
 let name = function
-  | Alias {name; _ } -> name
-  | M {name; _ } -> name
+  | Alias {name; _ }
+  | Link  {name; _ }
+  | M {name; _ }
   | Namespace {name; _ } -> name
 
 module Dict = struct
@@ -214,7 +216,7 @@ module Dict = struct
 
   let union =
     let rec merge _k x y = match x, y with
-      | (M { origin = Unit {path = p;_}; _ } as x), Alias {weak=true; path; _ }
+      | (M { origin = Unit {path = p;_}; _ } as x), Link {path; _ }
         when Namespaced.flatten path = p -> Some x
       (*      | x, Alias {weak=true; _ } -> Some x *)
       | Namespace n, Namespace n' ->
@@ -244,12 +246,13 @@ module Dict = struct
     ) x y
 end
 
-(* TODO: Behavior with weak aliases *)
+(* TODO: Behavior with links *)
 let rec spirit_away breakpoint root = function
   | Alias a as al ->
     if not root then
       Alias { a with phantom = Some breakpoint }
     else al
+  | Link _ as l -> l
   | Namespace {name; modules } ->
     Namespace {name;
                modules = Name.Map.map (spirit_away breakpoint false) modules }
@@ -296,7 +299,7 @@ let rec flatten = function
 
 let is_exact m =
   match m with
-  | Namespace _ -> true
+  | Namespace _ | Link _ -> true
   | Alias {phantom ; _ } -> phantom = None
   | M m ->
     match m.signature with
@@ -307,7 +310,7 @@ let is_exact m =
 let md s = M s
 
 let rec aliases0 l = function
-  | Alias {path; _ } -> path :: l
+  | Alias {path; _ } | Link { path; _ } -> path :: l
   | Namespace {modules; _ } ->
       Name.Map.fold (fun _ x l -> aliases0 l x) modules l
   | M { signature; _ } ->
@@ -337,12 +340,15 @@ let rec reflect ppf = function
   | Namespace {name; modules} ->
     Pp.fp ppf "Namespace {name=%a; modules=%a}"
       Pp.estring name reflect_mdict modules
-  |  Alias {name;path;phantom;weak} ->
-    Pp.fp ppf "Alias {name=%a;path=%a;phantom=%a;weak=%b}"
+  |  Alias {name;path;phantom} ->
+    Pp.fp ppf "Alias {name=%a;path=%a;phantom=%a}"
       Pp.estring name
       reflect_namespaced path
       reflect_phantom phantom
-      weak
+  | Link {name;path} ->
+    Pp.fp ppf "Link {name=%a;path=%a}"
+      Pp.estring name
+      reflect_namespaced path
 and reflect_namespaced ppf nd =
   if nd.namespace = [] then
     Pp.fp ppf "Namespaced.make %a"
@@ -386,10 +392,10 @@ let reflect_modules ppf dict =
     (Name.Map.bindings dict)
 
 let rec pp ppf = function
-  | Alias {name;path;phantom;weak} ->
-    Pp.fp ppf "%s≡%s%s%a" name (if phantom=None then "" else "(👻)" )
-      (if weak then "(∗)" else "" )
+  | Alias {name;path;phantom} ->
+    Pp.fp ppf "%s≡%s%a" name (if phantom=None then "" else "(👻)" )
       Namespaced.pp path
+  | Link {name;path} -> Pp.fp ppf "%s≡⇒%a" name Namespaced.pp path
   | M m -> pp_m ppf m
   | Namespace n -> Pp.fp ppf "Namespace %s=@[[%a]@]" n.name
                      pp_mdict n.modules
@@ -512,19 +518,23 @@ module Schema = struct
 
   let rec module' =
     Custom { fwd = fwdm; rev=revm;
-             sch = Sum[ "M", m; "Alias", [String; reopen Paths.S.sch];
-                        "Namespace", [String; Array Mu.module']]
+             sch = Sum[ "M", m;
+                        "Alias", [String; reopen Paths.S.sch];
+                        "Link", [String; reopen Paths.S.sch];
+                        "Namespace", [String; Array Mu.module']
+                      ]
            }
   and fwdm = function
     | M m -> C (Z m)
     | Alias x -> C (S (Z (Tuple.[x.name; Namespaced.flatten x.path ])))
-    | Namespace n -> C (S (S (Z ( Tuple.[n.name; to_list n.modules] ))))
+    | Link x -> C (S (S (Z Tuple.[x.name; Namespaced.flatten x.path ])))
+    | Namespace n -> C (S (S (S (Z ( Tuple.[n.name; to_list n.modules] )))))
   and revm = let open Tuple in
     function
     | C Z m -> M m
-    | C S Z  [name;path] -> Alias {name; path=Namespaced.of_path path;
-                                   phantom=None; weak = false}
-    | C S S Z [name; modules] ->
+    | C S Z  [name;path] -> Alias {name; path=Namespaced.of_path path; phantom=None}
+    | C S S Z  [name;path] -> Link {name; path=Namespaced.of_path path}
+    | C S S S Z [name; modules] ->
       Namespace { name; modules = Dict.of_list modules }
     | _ -> .
 
@@ -554,7 +564,7 @@ module Def = struct
   let pp = pp_definition
 
   let sch = let open Schematic in let open Schema in
-    custom 
+    custom
       (Obj[Opt,Modules.l, Array module'; Opt, Module_types.l, Array module'])
       (fun x -> [ Modules.l $=? l(to_list x.modules);
                   Module_types.l $=? (l @@ to_list x.module_types)] )
