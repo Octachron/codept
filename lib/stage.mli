@@ -12,7 +12,7 @@ module type envt = sig
   val resolve_alias: Paths.Simple.t -> t -> Namespaced.t option
   val expand_path: Paths.Simple.t -> t -> Paths.Simple.t
 
-  val add_unit: t -> ?namespace:Paths.S.t -> Module.t -> t
+  val add_unit: t -> ?namespace:Paths.S.t -> Name.t -> Module.t -> t
   val add_namespace: t -> Namespaced.t -> t
 
   val pp: Format.formatter -> t -> unit

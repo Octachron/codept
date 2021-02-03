@@ -23,7 +23,7 @@ let sign = { Schematic.Ext.title = "codept/sig/0.10.3";
              description = "module level ocaml signature";
              version;
              label = Lbl.Sig.l;
-             inner = Array Module.Schema.module'
+             inner = Array (pair String Module.Schema.module')
            }
 
 module Module = Label(struct let l = "module" end)

@@ -571,7 +571,7 @@ let result =
 
           "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic"],["List"],[]);
           "summary.mli", (
-            ["Module";"Paths";"Schematic"; "Pp"],
+            ["Module";"Schematic"; "Pp"],
             ["Format"],
             [] );
           "summary.ml", (
@@ -675,7 +675,7 @@ let result =
              "Summary"]
           ,[],[]);
           "stage.mli", (
-            ["Deps"; "Fault"; "Loc"; "M2l";"Module"; "Namespaced"; "Paths";
+            ["Deps"; "Fault"; "Loc"; "M2l";"Module"; "Name"; "Namespaced"; "Paths";
              "Pp"; "Summary"; "Transforms"]
           ,["Format"],[]);
           "dep_zipper.ml", (

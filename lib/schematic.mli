@@ -124,6 +124,7 @@ val minify: Format.formatter -> ('a, Format.formatter, unit, unit) format4 -> 'a
 
 val default: 'a -> 'a -> 'a option
 val option: ('a,'f) s -> ('a option,'f) s
+val pair: ('a,'f) s -> ('b,'f) s -> ('a * 'b, 'f) s
 val (<?>): ('a,'f) s -> string -> ('a,'f) s
 
 module Ext: sig

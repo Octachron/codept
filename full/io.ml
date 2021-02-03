@@ -1,6 +1,6 @@
 
 type reader = {
-  sign: string -> (Module.t list, Schematic.Ext.error) result;
+  sign: string -> (Module.named list, Schematic.Ext.error) result;
   m2l: Fault.Policy.t -> Read.kind -> string
     -> Namespaced.t -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
@@ -8,7 +8,7 @@ type reader = {
 }
 
 type writer = {
-  sign: Schematic.format -> string -> Format.formatter -> Module.t list -> unit;
+  sign: Schematic.format -> string -> Format.formatter -> Module.named list -> unit;
   m2l: Schematic.format -> (Read.kind * string) -> Format.formatter -> M2l.t -> unit
 }
 
@@ -65,7 +65,7 @@ let direct = {
 
       );
     sign =
-      (fun format _ ppf (mds: Module.t list) ->
+      (fun format _ ppf (mds: Module.named list) ->
          match format with
          | Sexp ->  Schematic.minify ppf "%a@.\n"
                       (Schematic.Ext.sexp Schema.sign) mds

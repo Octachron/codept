@@ -84,7 +84,7 @@ let gen_include policy loc x =
 
 let bind_summary level name expr =
   let m = Module.M (Module.Partial.to_module ~origin:Submodule name expr) in
-  Summary.define ~level [m]
+  Summary.define ~level [name,m]
 
 let drop_arg policy loc (p:Module.Partial.t) = match p.args with
   | _ :: args -> { p with args }

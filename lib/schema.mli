@@ -6,7 +6,7 @@ module Lbl: sig
   type sig'
 end
 
-val sign: (Lbl.sig', Module.t list) Ext.t
+val sign: (Lbl.sig', Module.named list) Ext.t
 val m2l: (Lbl.m2l, M2l.t) Ext.t
 
 type p = Paths.S.t

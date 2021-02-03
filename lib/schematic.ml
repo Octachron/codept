@@ -636,6 +636,13 @@ let option (type a f) (sch: (a,f) s) =
     (function None -> C E | Some x -> C (S(Z x)))
     (function C E -> None | C S Z x -> Some x | C S E -> None |  _ -> . )
 
+
+let pair (type a b f) (x: (a,f) s) (y: (b,f) s) =
+  custom [x;y]
+    (fun (x,y) -> Tuple.[x;y])
+    Tuple.(fun [x;y] -> x, y )
+
+
 let (<?>) x y = Description(y,x)
 
 module Ext = struct

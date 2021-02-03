@@ -229,11 +229,11 @@ module Core = struct
   let extend env def =
     restrict env @@ Signature (Y.extend (to_sign env.current) def)
 
-  let add_unit env ?(namespace=[]) x =
-    let m: Module.t = M.with_namespace namespace x in
-    let t = Module.Dict.( union env.top (of_list [m]) ) in
+  let add_unit env ?(namespace=[]) name x =
+    let nm : Module.named = M.with_namespace namespace name x in
+    let t = Module.Dict.( union env.top (of_list [nm]) ) in
     debug "@[<hov 2>adding %s to@ @[[%a]@] yielding@ @[[%a]@]@]"
-      (M.name m) M.pp_mdict env.top M.pp_mdict t;
+      name M.pp_mdict env.top M.pp_mdict t;
     top { env with top = t }
 
   let add_namespace env (nms:Namespaced.t) =
@@ -241,7 +241,7 @@ module Core = struct
     debug "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
       env.current;
     if nms.namespace = [] then
-      add (Link { name= nms.name; path=nms })
+      add (nms.name, Link { name= nms.name; path=nms })
     else
       add (Module.namespace nms)
 
@@ -373,7 +373,7 @@ module Libraries = struct
       | Ok (sg, _) ->
         let md = M.create
             ~origin:(M.Origin.Unit {source=path;path=[name]}) name sg in
-        source.resolved <- Core.add_unit source.resolved (M.M md);
+        source.resolved <- Core.add_unit source.resolved name (M.M md);
         track source q
 
   let is_unknown = function

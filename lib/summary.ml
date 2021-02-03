@@ -15,7 +15,6 @@ module View = struct
   let empty = Module.Sig.empty
   let is_empty v = v = empty
 
-  let make_top ?(namespace=[]) x = S.create (M.with_namespace namespace x)
   let make sign = sign
 
   let merge s1 s2 =

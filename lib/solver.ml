@@ -183,7 +183,7 @@ module Failure = struct
 
   let approx_cycle recpatch set code =
     let mock (unit: Unit.s) =
-      Module.(md @@ mockup unit.path.name ~path:unit.src) in
+      unit.path.name, Module.(md @@ mockup unit.path.name ~path:unit.src) in
     let cycle_summary =
       UMap.fold
         (fun k _ acc -> Summary.see (mock k) acc) set Summary.empty in
@@ -297,7 +297,7 @@ struct
         | Approx ->
           let mock = Module.mockup u.path.name ~path:u.src in
           let env = Envt.add_unit state.env
-              ~namespace:u.path.namespace (Module.md mock) in
+              ~namespace:u.path.namespace u.path.name (Module.md mock) in
           { state with postponed = u:: state.postponed; env }
       )
       { postponed = [];
@@ -321,6 +321,7 @@ struct
               ~origin:(Unit {source=input.src; path=Namespaced.flatten input.path})
               input.path.name sg in
           Envt.add_unit ~namespace:input.path.namespace state.env
+            input.path.name
             (Module.M md)
         end
         else
@@ -457,7 +458,7 @@ struct
     | Approx ->
       let mockup = Module.(md @@ mockup ~path:u.src u.path.name) in
       let env =
-        Envt.add_unit state.env ~namespace:u.path.namespace mockup in
+        Envt.add_unit state.env ~namespace:u.path.namespace u.path.name mockup in
       { state with env; postponed = u :: state.postponed }
 
   let add_pair state pair =
@@ -500,7 +501,7 @@ struct
           let md = Module.md @@
             Module.create ~origin path.name sg in
           let env =
-            Envt.add_unit state.env ~namespace:path.namespace md in
+            Envt.add_unit state.env ~namespace:path.namespace path.name md in
           { state with env;
                        learned = Namespaced.Set.add path state.learned
           } in

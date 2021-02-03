@@ -106,7 +106,7 @@ let stdlib_pkg s l = match s with
   | _ -> l
 
 let base_sign io signatures =
-  let (++) dict m = Name.Map.add (Module.name m) m dict in
+  let (++) dict (name,m) = Name.Map.add name m dict in
   let m = List.fold_left (++) Name.Map.empty signatures in
   Name.Map.union' m io.Io.env
 
@@ -117,7 +117,7 @@ type envt = E: 'a envt_kind * 'a -> envt
 let start_env io param libs signatures fileset =
   let signs = Name.Set.fold stdlib_pkg param.precomputed_libs [] in
   let signs = List.flatten
-    @@ List.map( fun x -> List.map snd @@ Name.Map.bindings x) signs in
+    @@ List.map Name.Map.bindings signs in
   let base_sign = base_sign io signs in
   let implicits =
     if Name.Set.mem "stdlib" param.precomputed_libs then
@@ -132,7 +132,7 @@ let start_env io param libs signatures fileset =
       ~implicits
       base_sign
   in
-  let add u env = Envt.Core.add_unit u env in
+  let add env (name,u) = Envt.Core.add_unit env name u in
   let env = List.fold_left add env signatures in
     E ((module Envt.Core), env)
 

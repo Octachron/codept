@@ -129,6 +129,8 @@ and signature =
 
 and dict = t Name.map
 
+type named = Name.t * t
+
 type arg = definition Arg.t
 type level = Module | Module_type
 type modul_ = t
@@ -137,12 +139,11 @@ type modul_ = t
 val is_exact: t -> bool
 val of_arg : arg -> m option
 val is_functor : t -> bool
-val name: t -> Name.t
 
 module Dict: sig
   type t = dict
   val empty: t
-  val of_list: modul_ list -> t
+  val of_list: named list -> t
   val union: t -> t -> t
   val weak_union: t -> t -> t
 end
@@ -157,8 +158,8 @@ val create :
   ?args:m option list ->
   ?origin:origin -> Name.t -> signature -> m
 
-val with_namespace: Paths.S.t -> t -> t
-val namespace: Namespaced.t -> t
+val with_namespace: Paths.S.t -> Name.t -> t -> named
+val namespace: Namespaced.t -> named
 
 
 val aliases: t -> Namespaced.t list
@@ -194,9 +195,9 @@ module Def: sig
   val empty : definition
   val modules: dict -> definition
 
-  val add : definition -> t ->  definition
-  val add_type : definition -> t -> definition
-  val add_gen : level -> definition -> t -> definition
+  val add : definition -> string * t ->  definition
+  val add_type : definition -> string * t -> definition
+  val add_gen : level -> definition -> string * t -> definition
 
   val merge: definition -> definition -> definition
 
@@ -223,17 +224,17 @@ module Sig :
     val flatten: signature -> definition
     val is_exact: signature -> bool
 
-    val create : modul_ -> signature
-    val create_type : t -> signature
-    val gen_create : level -> t -> signature
+    val create : named -> signature
+    val create_type : named -> signature
+    val gen_create : level -> named -> signature
 
-    val of_lists: t list -> t list -> signature
-    val of_list : t list -> signature
-    val of_list_type : t list -> signature
+    val of_lists: named list -> named list -> signature
+    val of_list : named list -> signature
+    val of_list_type : named list -> signature
 
-    val add : signature -> t -> signature
-    val add_type : signature -> t -> signature
-    val add_gen : level -> signature -> t -> signature
+    val add : signature -> named -> signature
+    val add_type : signature -> named -> signature
+    val add_gen : level -> signature -> named -> signature
     val empty : signature
 
     val pp : Format.formatter -> signature -> unit

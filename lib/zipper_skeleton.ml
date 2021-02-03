@@ -102,7 +102,7 @@ module State(Env:Stage.envt) = struct
     | None -> st
     | Some name ->
       let m = M.M (P.to_module ~origin:Arg name signature) in
-      merge st (Y.define [m])
+      merge st (Y.define [name, m])
 
   let is_alias param state s =
     param.T.transparent_aliases && Env.is_exterior s state.current
@@ -119,7 +119,7 @@ module State(Env:Stage.envt) = struct
     | Some name ->
       let path = Namespaced.of_path @@ Env.expand_path p state.current in
       let m = Module.Alias { name = name; path; phantom = None } in
-      Y.define [m]
+      Y.define [name, m]
 
   let diff s = s.diff
 

@@ -193,6 +193,7 @@ and namespace_content = {name: Name.t; modules: dict}
 
 type arg = definition Arg.t
 type modul_ = t
+type named = Name.t * t
 
 let of_arg ({name;signature}:arg) =
   Option.fmap (fun name ->
@@ -203,16 +204,10 @@ let is_functor = function
   | Alias _ | Link _ | M { args = []; _ } -> false
   |  M _ | Namespace _ -> true
 
-let name = function
-  | Alias {name; _ }
-  | Link  {name; _ }
-  | M {name; _ }
-  | Namespace {name; _ } -> name
-
 module Dict = struct
   type t = dict
   let empty = Name.Map.empty
-  let of_list = List.fold_left (fun x m -> Name.Map.add (name m) m x) empty
+  let of_list = List.fold_left (fun x (name,m) -> Name.Map.add name m x) empty
 
   let union =
     let rec merge _k x y = match x, y with
@@ -449,30 +444,30 @@ let namespace (path:Namespaced.t) =
     match path with
     | [] -> raise (Invalid_argument "Module.namespace: empty namespace")
     | [name] ->
-      let placeholder =
-        Alias { name= global.name; path=global; phantom = None; weak = true } in
-      Namespace { name; modules = Dict.of_list[placeholder] }
+      let placeholder = Link { name= global.name; path=global } in
+      name, Namespace { name; modules = Dict.of_list[global.name, placeholder] }
     | name :: rest ->
-      Namespace {name; modules = Dict.of_list [namespace global rest] }
+      name, Namespace {name; modules = Dict.of_list [namespace global rest] }
   in
   namespace path path.namespace
 
-let rec with_namespace nms module'=
+let rec with_namespace nms name module'=
   match nms with
-  | [] -> module'
+  | [] -> name, module'
   | a :: q ->
-    let sub = with_namespace q module' in
-    Namespace { name = a; modules = Dict.of_list [sub] }
+    let sub = with_namespace q name module' in
+    a, Namespace { name = a; modules = Dict.of_list [sub] }
+
 
 let signature_of_lists ms mts =
   let e = Name.Map.empty in
-  let add map m= Name.Map.add (name m) m map in
+  let add map (name,m) = Name.Map.add name m map in
   { modules = List.fold_left add e ms;
     module_types = List.fold_left add e mts
   }
 
-let to_list m = List.map snd @@ Name.Map.bindings m
 
+  let to_list m = Name.Map.bindings m
 module Schema = struct
   open Schematic
   module Origin_f = Label(struct let l = "origin" end)
@@ -485,17 +480,19 @@ module Schema = struct
 
   let l = let open L in function | [] -> None | x -> Some x
 
+
   module Mu = struct
     let _m, module', args = Schematic_indices.three
   end
 
 
+  let named = Schematic.pair String Mu.module'
   let schr = Obj [
       Req, Name_f.l, (reopen String);
       Opt, Origin_f.l, (reopen Origin.sch);
       Opt, Args.l, Mu.args;
-      Opt, Modules.l, Array Mu.module';
-      Opt, Module_types.l, Array Mu.module'
+      Opt, Modules.l,  Array named;
+      Opt, Module_types.l, Array named
     ]
 
   let rec m = Custom { fwd; rev; sch = schr }
@@ -521,7 +518,7 @@ module Schema = struct
              sch = Sum[ "M", m;
                         "Alias", [String; reopen Paths.S.sch];
                         "Link", [String; reopen Paths.S.sch];
-                        "Namespace", [String; Array Mu.module']
+                        "Namespace", [String; Array named]
                       ]
            }
   and fwdm = function
@@ -548,7 +545,7 @@ end
 
 module Def = struct
   let empty = empty_sig
-  let (|+>) m x = Name.Map.add (name x) x m
+  let (|+>) m (name,x) = Name.Map.add name x m
 
   let modules dict = { empty with modules=dict }
   let merge = sig_merge
@@ -564,8 +561,9 @@ module Def = struct
   let pp = pp_definition
 
   let sch = let open Schematic in let open Schema in
+    let named = pair String module' in
     custom
-      (Obj[Opt,Modules.l, Array module'; Opt, Module_types.l, Array module'])
+      (Obj[Opt,Modules.l, Array named; Opt, Module_types.l, Array named])
       (fun x -> [ Modules.l $=? l(to_list x.modules);
                   Module_types.l $=? (l @@ to_list x.module_types)] )
       (let open Record in fun [_,m;_,mt] -> signature_of_lists (m><[]) (mt><[]))
@@ -585,7 +583,7 @@ module Sig = struct
       card p.before + card_def p.after
     | Exact s -> card_def s
 
-  let (|+>) m x = Name.Map.add (name x) x m
+  let (|+>) m (name,x) = Name.Map.add name x m
 
   let rec gen_merge def_merge s1 s2 = match s1, s2 with
     | Blank, s | s, Blank -> s
@@ -635,8 +633,9 @@ module Sig = struct
   type t = signature
 
   let sch = let open Schematic in let open Schema in
+    let named = pair String module' in
     custom
-      (Obj [Opt, Modules.l, Array module'; Opt, Module_types.l, Array module'])
+      (Obj [Opt, Modules.l, Array named; Opt, Module_types.l, Array named])
       (fun x -> let s = flatten x in let l x = l(to_list x) in
         Record.[ Modules.l $=? l s.modules; Module_types.l $=? l s.module_types ])
       (let open Record in fun [_,m;_,mt] -> of_lists (m><[]) (mt><[]) )

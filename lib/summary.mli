@@ -16,8 +16,6 @@ module View: sig
 
   val see : Module.signature -> summary
   val define : Module.signature -> summary
-  val make_top: ?namespace:Paths.S.t -> Module.t -> view
-
   val merge : view -> view -> view
 
   val pp: view Pp.t
@@ -46,7 +44,7 @@ val clear_visible : summary -> summary
 (** forget visible but not defined modules *)
 
 (** Basic creation function *)
-val define: ?level:Module.level -> Module.t list -> summary
+val define: ?level:Module.level -> Module.named list -> summary
 
 (** {2 Merging functions } *)
 
@@ -56,13 +54,13 @@ val ( +| ) : summary -> summary -> summary
 
 (** {2 Basic summary extension} *)
 
-val bind: ?level:Module.level -> Module.t -> summary -> summary
+val bind: ?level:Module.level -> Module.named -> summary -> summary
 (** [bind m def] binds the module [m] in [def] *)
 
-val see : Module.t -> summary -> summary
+val see : Module.named -> summary -> summary
 (** [see m def] makes the module [m] visible in [def] *)
 
-val binds : (Module.level * Module.t) list -> summary
+val binds : (Module.level * Module.named) list -> summary
 (** [binds [level,m;…] def] binds the modules [m] at [level]
     in [def] *)
 
