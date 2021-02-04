@@ -20,10 +20,11 @@ val path: query -> path
 
 (** Module like *)
 val abstract : module_like
-val apply : Transforms.param -> Fault.loc -> module_like  -> module_like
+val apply : Transforms.param -> Fault.loc -> f:module_like -> x:module_like  -> module_like
 val unpacked : module_like
-val fn : module_like Module.Arg.t option -> module_like -> module_like
+val fn : f:module_like -> x:module_like Module.Arg.t option -> module_like
 val ident : path -> module_like
+val proj: level:Module.level -> module_like -> Paths.S.t option -> module_like
 val str : m2l -> module_like
 val ext : Transforms.param -> Fault.loc -> string -> unit
 val m_with : Paths.Simple.set -> module_like -> module_like

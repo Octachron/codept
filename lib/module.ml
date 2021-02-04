@@ -14,6 +14,8 @@ module Arg = struct
     let rev [name;signature] = {name;signature} in
     Schematic.custom  Schematic.[option String; sign] fwd rev
 
+  let map f x = { x with signature = f x.signature }
+
   let reflect pp ppf = function
     | Some arg ->
       Pp.fp ppf {|Some {name="%a"; %a}|} Name.pp_opt arg.name pp arg.signature
@@ -170,7 +172,6 @@ type origin = Origin.t
 
 type m = {
       origin: Origin.t;
-      args: m option list;
       signature:signature;
     }
 and t =
@@ -180,6 +181,11 @@ and t =
         path:Namespaced.t;
         phantom: Divergence.t option;
       }
+  | Abstract
+  | Fun of t Arg.t option * t
+
+  | Frozen of Namespaced.t
+
   | Link of Namespaced.t
   | Namespace of dict
 and definition = { modules : dict; module_types : dict }
@@ -195,12 +201,12 @@ type named = Name.t * t
 
 let of_arg ({name;signature}:arg) =
   Option.fmap (fun _name ->
-      { origin = Arg ; args=[]; signature = Exact signature }
+      { origin = Arg ; signature = Exact signature }
     ) name
 
 let is_functor = function
-  | Alias _ | Link _ | M { args = []; _ } -> false
-  |  M _ | Namespace _ -> true
+  | Fun _ -> true
+  | _ -> false
 
 module Dict = struct
   type t = dict
@@ -237,6 +243,7 @@ let rec spirit_away breakpoint root = function
     if not root then
       Alias { a with phantom = Some breakpoint }
     else al
+  | Abstract | Frozen _ | Fun _ as f -> f
   | Link _ as l -> l
   | Namespace modules ->
     Namespace ( Name.Map.map (spirit_away breakpoint false) modules )
@@ -246,8 +253,7 @@ let rec spirit_away breakpoint root = function
       | Unit _  as u -> u
       | Phantom _ as ph -> ph
       | _ -> origin in
-    M { m with origin;
-               signature = spirit_away_sign breakpoint false m.signature }
+    M { origin; signature = spirit_away_sign breakpoint false m.signature }
 and spirit_away_sign breakpoint root = function
   | Blank -> Blank
   | Divergence d -> Divergence {
@@ -281,20 +287,22 @@ let rec flatten = function
   | Divergence d -> sig_merge (flatten d.before) d.after
   | Blank -> empty_sig
 
+let is_exact_sig = function
+  | Exact _ -> true
+  | Divergence _ -> false
+  | Blank -> false
+
 let is_exact m =
   match m with
-  | Namespace _ | Link _ -> true
+  | Namespace _ | Link _ | Abstract | Frozen _ | Fun _ -> true
   | Alias {phantom ; _ } -> phantom = None
-  | M m ->
-    match m.signature with
-    | Exact _ -> true
-    | Divergence _ -> false
-    | Blank -> false
+  | M m -> is_exact_sig m.signature
 
 let md s = M s
 
 let rec aliases0 l = function
   | Alias {path; _ } | Link path -> path :: l
+  | Abstract | Frozen _ | Fun _ -> l
   | Namespace modules ->
       Name.Map.fold (fun _ x l -> aliases0 l x) modules l
   | M { signature; _ } ->
@@ -319,8 +327,13 @@ let reflect_phantom ppf = function
   | None -> Pp.fp ppf "None"
   | Some x -> Pp.fp ppf "Some(%a)" Divergence.reflect x
 
+let reflect_opt reflect ppf = function
+  | None -> Pp.string ppf "None"
+  | Some x -> Pp.fp ppf "Some %a" reflect x
+
 let rec reflect ppf = function
   | M m ->  Pp.fp ppf "M %a" reflect_m m
+  | Fun (arg,x) ->  Pp.fp ppf "Fun (%a;%a)" (reflect_opt reflect_arg) arg reflect x
   | Namespace modules ->
     Pp.fp ppf "Namespace (%a)"
       reflect_mdict modules
@@ -331,6 +344,11 @@ let rec reflect ppf = function
   | Link path ->
     Pp.fp ppf "Link (%a)"
       reflect_namespaced path
+  | Frozen path ->
+    Pp.fp ppf "Frozen (%a)"
+      reflect_namespaced path
+  | Abstract -> Pp.fp ppf "Abstract"
+
 and reflect_namespaced ppf nd =
   if nd.namespace = [] then
     Pp.fp ppf "Namespaced.make %a"
@@ -339,10 +357,9 @@ and reflect_namespaced ppf nd =
     Pp.fp ppf "Namespaced.make ~nms:[%a] %a"
       Pp.(list ~sep:(s";@ ") @@ estring) nd.namespace
       Pp.estring nd.name
-and reflect_m ppf {args;origin;signature} =
-  Pp.fp ppf {|@[<hov>{origin=%a; args=%a; signature=%a}@]|}
+and reflect_m ppf {origin;signature} =
+  Pp.fp ppf {|@[<hov>{origin=%a; signature=%a}@]|}
     Origin.reflect origin
-    reflect_args args
     reflect_signature signature
 and reflect_signature ppf m = reflect_definition ppf (flatten m)
 and reflect_definition ppf {modules; module_types} =
@@ -360,12 +377,8 @@ and reflect_definition ppf {modules; module_types} =
 and reflect_mdict ppf dict =
       Pp.(list ~sep:(s ";@ ") @@ reflect_pair) ppf (Name.Map.bindings dict)
 and reflect_pair ppf (_,md) = reflect ppf md
-and reflect_opt reflect ppf = function
-  | None -> Pp.string ppf "None"
-  | Some x -> Pp.fp ppf "Some %a" reflect x
-and reflect_arg ppf arg = Pp.fp ppf "%a" (reflect_opt reflect_m) arg
-and reflect_args ppf args =
-  Pp.fp ppf "[%a]" (Pp.(list ~sep:(s ";@ ") ) @@ reflect_arg ) args
+and reflect_arg ppf arg = Pp.fp ppf "{name=%a;signature=%a}"
+    (reflect_opt Pp.estring) arg.name reflect arg.signature
 
 let reflect_modules ppf dict =
   Pp.fp ppf "Dict.of_list @[<v 2>[%a]@]"
@@ -378,11 +391,17 @@ let rec pp ppf = function
       Namespaced.pp path
   | Link path -> Pp.fp ppf "⇒%a" Namespaced.pp path
   | M m -> pp_m ppf m
+  | Fun (arg,x) ->
+    Pp.fp ppf "%a->%a" Pp.(opt pp_arg) arg pp x
   | Namespace n -> Pp.fp ppf "Namespace @[[%a]@]"
                      pp_mdict n
-and pp_m ppf {args;origin;signature;_} =
-  Pp.fp ppf "%a:%a@[<hv>[@,%a@,]@]"
-    Origin.pp origin pp_args args pp_signature signature
+  | Frozen path -> Pp.fp ppf "❄%a" Namespaced.pp path
+  | Abstract -> Pp.fp ppf "■"
+
+
+and pp_m ppf {origin;signature;_} =
+  Pp.fp ppf "%a:%a"
+    Origin.pp origin pp_signature signature
 and pp_signature ppf = function
   | Blank -> Pp.fp ppf "ø"
   | Exact s -> pp_definition ppf s
@@ -400,11 +419,7 @@ and pp_definition ppf {modules; module_types} =
 and pp_mdict ppf dict =
   Pp.fp ppf "%a" (Pp.(list ~sep:(s " @,")) pp_pair) (Name.Map.bindings dict)
 and pp_pair ppf (_,md) = pp ppf md
-and pp_arg ppf arg = Pp.fp ppf "(%a)" (Pp.opt pp_m) arg
-and pp_args ppf args = Pp.fp ppf "%a" (Pp.(list ~sep:(s "@,→") ) @@ pp_arg )
-    args;
-    if List.length args > 0 then Pp.fp ppf "→"
-
+and pp_arg ppf arg = Pp.fp ppf "(%a:%a)" (Pp.opt Pp.string) arg.name pp arg.signature
 
 
 
@@ -415,14 +430,12 @@ let mockup ?origin ?path name =
     | _ -> Submodule in
   {
     origin;
-    args = [];
     signature = Blank
   }
 
 let create
-    ?(args=[])
     ?(origin=Origin.Submodule) signature =
-  { origin; args; signature}
+  { origin; signature}
 
 let namespace (path:Namespaced.t) =
   let rec namespace (global:Namespaced.t) path =
@@ -456,7 +469,6 @@ let to_list m = Name.Map.bindings m
 module Schema = struct
   open Schematic
   module Origin_f = Label(struct let l = "origin" end)
-  module Args = Label(struct let l = "args" end)
   module Modules = Label(struct let l = "modules" end)
   module Module_types = Label(struct let l = "module_types" end)
   module Name_f = Label(struct let l = "name" end)
@@ -467,16 +479,14 @@ module Schema = struct
 
 
   module Mu = struct
-    let _m, module', args = Schematic_indices.three
+    let _m, module', arg = Schematic_indices.three
   end
 
-
-  let named = Schematic.pair String Mu.module'
+  let named () = Schematic.pair String Mu.module'
   let schr = Obj [
       Opt, Origin_f.l, (reopen Origin.sch);
-      Opt, Args.l, Mu.args;
-      Opt, Modules.l,  Array named;
-      Opt, Module_types.l, Array named
+      Opt, Modules.l,  Array (named ());
+      Opt, Module_types.l, Array (named ())
     ]
 
   let rec m = Custom { fwd; rev; sch = schr }
@@ -484,44 +494,51 @@ module Schema = struct
     let s = flatten x.signature in
     Record.[
       Origin_f.l $=? (default Origin.Submodule x.origin);
-      Args.l $=? (l x.args);
       Modules.l $=? (l @@ to_list s.modules);
       Module_types.l $=? (l @@ to_list s.module_types)
     ]
   and rev = let open Record in
-    fun [ _, o; _, a; _, m; _, mt] ->
-      create ~args:(a><[]) ~origin:(o >< Origin.Submodule)
+    fun [ _, o; _, m; _, mt] ->
+      create ~origin:(o >< Origin.Submodule)
         (Exact (signature_of_lists (m >< []) (mt >< [])) )
 
-  let opt_m = option  m
-  let args = Array opt_m
-
+  let opt_arg = option Mu.arg
   let rec module' =
     Custom { fwd = fwdm; rev=revm;
              sch = Sum[ "M", m;
                         "Alias", reopen Paths.S.sch;
+                        "Fun", [opt_arg; Mu.module'];
+                        "Abstract", Void;
+                        "Frozen", reopen Namespaced.sch;
                         "Link", reopen Paths.S.sch;
-                        "Namespace", Array named
+                        "Namespace", Array (named ())
                       ]
            }
   and fwdm = function
     | M m -> C (Z m)
     | Alias x -> C (S (Z (Namespaced.flatten x.path)))
-    | Link x -> C (S (S (Z (Namespaced.flatten x))))
-    | Namespace n -> C (S (S (S (Z (to_list n)))))
+    | Fun (arg,x) -> C (S (S (Z [arg;x])))
+    | Abstract -> C (S (S (S E)))
+    | Frozen p -> C (S (S (S (S (Z p)))))
+    | Link x -> C (S (S (S (S (S (Z (Namespaced.flatten x)))))))
+    | Namespace n -> C (S (S (S (S (S (S (Z (to_list n))))))))
   and revm =
     function
     | C Z m -> M m
     | C S Z  path -> Alias {path=Namespaced.of_path path; phantom=None}
-    | C S S Z  path -> Link (Namespaced.of_path path)
-    | C S S S Z modules ->
+    | C S S Z [arg;body] -> Fun(arg,body)
+    | C S S S E -> Abstract
+    | C S S S S Z p -> Frozen p
+    | C S S S S S Z  path -> Link (Namespaced.of_path path)
+    | C S S S S S S Z modules ->
       Namespace (Dict.of_list modules)
     | _ -> .
 
-  let defs : _ rec_defs = ["m", m; "module'", module'; "args", args]
+  let arg = Arg.sch module'
+
+  let defs : _ rec_defs = ["m", m; "module'", module'; "arg", arg]
   let m = Rec { id = ["Module"; "m"]; defs; proj = Zn }
   let module' = Rec { id = ["Module"; "module'"]; defs; proj = Sn Zn }
-  let args = Rec { id = ["Module"; "args"]; defs; proj = Sn (Sn Zn) }
 
 end
 
@@ -584,9 +601,7 @@ module Sig = struct
   let create m = Exact { modules = empty |+> m; module_types = empty }
   let create_type m = Exact { module_types = empty |+> m; modules = empty }
 
-  let is_exact = function
-    | Exact _ -> true
-    | Divergence _ | Blank -> false
+  let is_exact = is_exact_sig
 
   let gen_create level md = match level with
     | Module -> create md
@@ -626,82 +641,107 @@ end
 
 
 module Partial = struct
-  type t = {
-      name: string option;
-      origin: Origin.t;
-      args: m option list;
-      result: signature
-    }
-  let empty = { name=None; origin = Submodule; args = []; result= Sig.empty }
-  let simple defs = { empty with result = defs }
-  let is_exact x = Sig.is_exact x.result
+
+  type kind = Abstract | Sig of m | Fun of kind Arg.t option * kind
+  type t = { name: string option; mty: kind }
+
+  let empty_sig = { origin = Submodule; signature= Sig.empty}
+  let empty = { name=None; mty = Sig empty_sig }
+  let simple defs = { empty with mty = Sig { empty_sig with signature = defs} }
+  let rec is_exact x = match x.mty with
+      | Abstract -> true
+      | Fun (_,x) -> is_exact {name=None; mty=x}
+      | Sig s -> Sig.is_exact s.signature
 
   let pp ppf (x:t) =
-    if x.args = [] then
-      Pp.fp ppf "%a(%a)" pp_signature x.result Origin.pp x.origin
-    else Pp.fp ppf "%a@,→%a(%a)"
-        pp_args x.args
-        pp_signature x.result
-        Origin.pp x.origin
+    let pp_name ppf = function
+    | None -> ()
+    | Some n -> Pp.fp ppf "(%s)" n in
+    let rec pp_kind ppf = function
+    | Abstract -> Pp.fp ppf "<abstract>"
+    | Fun (a,x) -> Pp.fp ppf "%a->%a" (Arg.pp pp_kind) a pp_kind x
+    | Sig m -> pp_m ppf m in
+    Pp.fp ppf "%a%a" pp_name x.name pp_kind x.mty
 
-  let no_arg x = { origin = Submodule; name = None; args = []; result = x }
+  let apply_arg _y (p:t) = match  p.mty with
+    | Fun (_,mty) ->
+      Some { p with mty }
+    | _ -> None
 
-  let drop_arg (p:t) = match  p.args with
-    | _ :: args -> Some { p with args }
-    | [] -> None
+  let rec to_module ?origin (p:t) =
+    to_module_kind ?origin p.mty
+  and to_module_kind ?origin = function
+    | Abstract -> (Abstract:modul_)
+    | Fun(a,x) ->
+      let map a = Arg.map (to_module_kind ?origin) a in
+      (Fun(Option.fmap map a, to_module_kind ?origin x) : modul_)
+    | Sig s ->
+      let origin = match origin with
+        | Some o -> Origin.at_most s.origin o
+        | None -> s.origin
+      in
+      M {origin; signature = s.signature }
 
-  let to_module ?origin (p:t) =
-    let origin = match origin with
-      | Some o -> Origin.at_most p.origin o
-      | None -> p.origin
-    in
-    {origin; args = p.args; signature = p.result }
 
-  let to_arg (p:t) =
-    {
-      origin = p.origin;
-      args = p.args;
-      signature = p.result
-    }
+  let to_arg (p:t) = to_module p
 
-  let of_module name {args;signature;origin} =
-    {name=Some name;origin;result=signature;args}
+  let rec of_extended_mty: modul_ -> kind = function
+    | Abstract -> Abstract
+    | M x -> Sig x
+    | Fun (a,x) -> Fun(Option.fmap (Arg.map of_extended_mty) a, of_extended_mty x)
+    | Link _ | Frozen _ | Namespace _ | Alias _ -> Abstract
+
+  let of_extended ?name kind = { name; mty = of_extended_mty kind }
+
+  let of_module name m =
+    {name=Some name; mty = Sig m }
 
   let pseudo_module name x =
    let origin = Origin.Namespace in
    let signature =
      Exact {modules = x; module_types = Dict.empty } in
-   of_module name { args = []; signature; origin }
+   of_module name { signature; origin }
 
-   let is_functor x = x.args <> []
+   let is_functor x = match x.mty with
+     | Fun _ -> true
+     | _ -> false
 
-   let to_sign fdefs =
-     if fdefs.args <> [] then
-      Error fdefs.result
-     else
-             Ok fdefs.result
+   let to_sign fdefs = match fdefs.mty with
+     | Abstract | Fun _ -> Error Sig.empty
+     | Sig s ->
+         Ok s.signature
 
    module Sch = struct
      open Schematic
      module S = Schema
      module Result = Label(struct let l = "signature" end)
-     let raw =
-       Obj [ Opt, S.Origin_f.l, Origin.sch;
-             Opt, S.Args.l, S.args;
-             Opt, Result.l, Def.sch;
-           ]
 
-     let (><) = Option.(><)
-     let partial = custom raw
-         (fun {args;origin;result;_} ->
-            Record.[ S.Origin_f.l $=? default Origin.Submodule origin;
-                     S.Args.l $=? (S.l args);
-                     Result.l $=? default Def.empty (flatten result);
-                   ])
-         (let open Record in fun [_,origin; _, args;_,result] ->
-             { name= None; args = args >< []; origin = origin >< Submodule;
-               result = Exact(result>< Def.empty) }
+     let mu = Schematic_indices.one
+
+     let mty =
+       custom
+         (Sum ["Abstract", Void;
+               "Sig", Schema.m;
+               "Fun", [option @@ Arg.sch mu; mu ]
+              ])
+         (function
+           | Abstract -> C E
+           | Sig s -> C (S (Z s))
+           | Fun (a,x) -> C (S (S (Z [a;x])))
          )
+         (function
+           | C E -> Abstract
+           | C S Z x -> Sig x
+           | C S S Z [a;x] -> Fun (a,x)
+           | _ -> .
+         )
+
+     let mty = Rec { id = ["Partial"; "mty"]; defs=["mty", mty]; proj = Zn }
+
+
+     let partial = custom [option String; mty]
+         (fun {name; mty} -> [name;mty])
+         (fun [name;mty] -> {name;mty})
    end
    let sch = Sch.partial
  end

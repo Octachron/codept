@@ -5,6 +5,8 @@ module Arg :
     type 'a t = { name : Name.t option; signature : 'a; }
     type 'a arg = 'a t
 
+    val map: ('a->'b) -> 'a arg -> 'b arg
+
     val pp :
       (Format.formatter -> 'a -> unit) ->
       Format.formatter -> 'a arg option -> unit
@@ -75,7 +77,6 @@ type origin = Origin.t
 (** Main module type *)
 type m = {
   origin : Origin.t;
-  args : m option list;
   signature : signature;
 }
 
@@ -104,6 +105,11 @@ and t =
             dependencies for the above code snipet is {A,Unknowable} .
         *)
       }
+  | Abstract
+  | Fun of t Arg.t option * t
+
+  | Frozen of Namespaced.t (** Dependent module type in a functor body *)
+
   | Link of Namespaced.t (** Link to a compilation unit *)
   | Namespace of dict
   (** Namespace are open bundle of modules *)
@@ -150,7 +156,6 @@ val md: m -> t
 
 val empty : 'a Name.map
 val create :
-  ?args:m option list ->
   ?origin:origin -> signature -> m
 
 val with_namespace: Paths.S.t -> Name.t -> t -> named
@@ -176,8 +181,7 @@ val pp_alias : Format.formatter -> Paths.Expr.t option -> unit
 val pp_level : Format.formatter -> level -> unit
 val pp_mdict : Format.formatter -> dict -> unit
 val pp_pair : Format.formatter -> string * t -> unit
-val pp_arg : Format.formatter -> m option -> unit
-val pp_args : Format.formatter -> m option list -> unit
+val pp_arg : Format.formatter -> t Arg.t -> unit
 
 (** {2 Schematic } *)
 module Schema: sig
@@ -242,12 +246,9 @@ module Sig :
 module Partial :
   sig
 
-    type t = {
-      name: string option;
-      origin: Origin.t;
-      args: m option list;
-      result: signature
-    }
+
+    type kind = Abstract | Sig of m | Fun of kind Arg.t option * kind
+    type t = { name: string option; mty: kind }
 
     val empty : t
     val is_exact: t -> bool
@@ -257,11 +258,14 @@ module Partial :
     val pp : Format.formatter -> t -> unit
     val sch: t Schematic.t
 
-    val no_arg : signature -> t
-    val drop_arg : t -> t option
+    val apply_arg : kind -> t -> t option
 
-    val to_module : ?origin:origin -> t -> m
-    val to_arg : t -> m
+    val to_module : ?origin:origin -> t -> modul_
+    val to_arg : t -> modul_
+
+    val of_extended_mty : modul_ -> kind
+    val of_extended: ?name:Name.t -> modul_ -> t
+
     val of_module : Name.t -> m -> t
     val pseudo_module: Name.t -> dict -> t
     val is_functor : t -> bool

@@ -101,7 +101,7 @@ module type s = sig
     type module_type = (Zipper_skeleton.module_like, T.module_type) pair
     type m2l = (Zipper_skeleton.m2l, T.m2l) pair
     type bind_rec = (state_diff, T.bind_rec) pair
-    type path_expr_t = (Zipper_skeleton.path, T.path_expr) pair
+    type path_expr_t = (Zipper_skeleton.module_like, T.path_expr) pair
     type opens = T.opens
     type path_in_context = Zipper_skeleton.path_in_context
   end

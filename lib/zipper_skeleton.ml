@@ -39,40 +39,63 @@ let path x = x.T.main
 
 let empty = P.empty
 
-let abstract = empty
-let apply param loc f = T.drop_arg param.T.policy loc f
+let rec proj ~level m path = match path with
+  | [] -> m
+  | a :: q ->
+    match m.P.mty with
+    | Abstract | Fun _ -> m (* ERROR *)
+    | Sig { signature = s; _ } ->
+      let s = Module.Sig.flatten s in
+      let dir =
+        if q = [] && level = Module.Module_type then s.module_types else s.modules in
+      match Name.Map.find a dir with
+      | exception Not_found -> m
+      | r -> proj ~level (P.of_extended r) q
+
+let proj ~level m = function
+  | None -> m
+  | Some p -> proj ~level m p
+
+let abstract = P.{name=None; mty=Abstract}
+let apply param loc ~f ~x = T.apply_arg param.T.policy loc x f
 let unpacked =
-  { empty with result = Blank; origin = First_class }
+  let mty = P.Sig { signature=Blank; origin=First_class} in
+  { empty with mty }
 
 
-let fn arg f =
+let fn ~f ~x =
+  let arg = Option.fmap (Arg.map (fun x -> x.P.mty)) x in
+  { P.name=f.P.name; mty=P.Fun (arg, f.P.mty) }
+(*
   match arg with
-  | None -> { f with P.args = None :: f.P.args }
+  | None -> { f with Module.args = None :: f.Module.args }
   | Some {Arg.signature; name } ->
-    { f with P.args = Option.fmap (fun _name -> (P.to_arg signature)) name :: f.args }
-
-
-let str = P.no_arg
+    { f with Module.args = Option.fmap (fun _name -> (P.to_arg signature)) name :: f.args }
+*)
 
 let ext param (loc:Fault.loc) (name:string) =
   if not param.T.transparent_extension_nodes then
     raisef param F.extension_ignored (loc,name)
   else raisef param F.extension_traversed (loc,name)
 
-let ident = function
-  | T.M (name,x) -> P.of_module name x
-  | T.Namespace (name,n) -> P.pseudo_module name n
+let ident x = match x.T.kind with
+  | T.Mty Sig m -> P.of_module x.name m
+  | T.Namespace n -> P.pseudo_module x.name n
+  | Mty r -> {P.name=Some x.name; mty=r}
 
 let m2l_add expr defs = S.merge defs (Y.defined expr)
 let m2l_init = S.empty
 
+let str = P.simple
 
 let included param loc e = T.gen_include param.T.policy loc e
 
 
-let m_with dels mt =
-  let result = T.with_deletions dels mt.P.result in
-  { mt with result }
+let m_with dels mt = match mt.P.mty with
+  | P.Abstract | Fun _ -> mt
+  | Sig s ->
+    let signature = T.with_deletions dels s.signature in
+    { mt with mty = Sig { s with signature } }
 
 let bind name me = match name with
     | None -> Y.empty
@@ -101,7 +124,7 @@ module State(Env:Stage.envt) = struct
     match name with
     | None -> st
     | Some name ->
-      let m = M.M (P.to_module ~origin:Arg signature) in
+      let m = P.to_module ~origin:Arg signature in
       merge st (Y.define [name, m])
 
   let is_alias param state s =

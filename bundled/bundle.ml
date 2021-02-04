@@ -9,19 +9,19 @@ let top f x = Dict.of_list @@ List.map f x
 let root ?(nms="stdlib") ?(mds=[]) ?(mts=[]) name =
   let origin =
     Origin.Unit {source={source=Special nms; file=[name]}; path=[name]} in
-  name, M { origin; args=[]; signature=of_lists mds mts}
+  name, M { origin; signature=of_lists mds mts}
 
 
 let simple ?nms name =
   root ?nms name
 
 let submodule ?nms:_ ?(mds=[]) ?(mts=[]) name =
-  name, M { origin=Submodule; args=[]; signature=of_lists mds mts}
+  name, M { origin=Submodule; signature=of_lists mds mts}
 
 let mkfunctor ?(sg=empty) f xs =
-  let arg _name = Some { origin=Arg; args=[]; signature=empty} in
-  let args = List.map arg xs in
-  f, M { origin=Submodule; args; signature=sg}
+  let arg name = Some {Arg.name=Some name; signature=M { origin=Arg; signature=empty}} in
+  let fn = List.fold_right (fun a x -> Fun(arg a,x)) xs (M {origin=Submodule; signature=sg}) in
+  f, fn
 
 let weak =
   root "Weak"

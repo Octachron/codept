@@ -7,9 +7,11 @@ type param = {
 }
 
 
-type answer =
-  | M of Name.t * Module.m
-  | Namespace of Name.t * Module.dict
+type answer_type =
+  | Namespace of Module.dict
+  | Mty of Module.Partial.kind
+type answer = { name: Name.t; kind: answer_type }
+
 
 (* Remove deleted modules with `with A.B.C.D := …` *)
 let rec remove_path_from path = function
@@ -25,7 +27,8 @@ and remove_path_from_sig path defs = match path with
   | [a] -> { defs with modules = Name.Map.remove a defs.modules }
   | a :: rest ->
     let update = function
-      | Module.Alias _ | Namespace _  | Link _ as x -> x
+      | Module.Alias _ | Namespace _  | Link _ | Abstract
+      | Frozen _ | Fun _ as x -> x
       | M m ->
         Module.M { m with signature = remove_path_from rest m.signature }
     in
@@ -44,10 +47,11 @@ module F = Standard_faults
 
 let open_diverge_module policy loc x =
   let open Module.Partial in
-  match x.origin, x.result with
-  | _, Blank | Phantom _, _ ->
+  match x.mty with
+  | Abstract | Fun _ -> Summary.empty
+  | Sig ({ signature=Blank; _ } |{ origin = Phantom _; _ } as r) ->
     let kind =
-      match x.origin with
+      match r.origin with
       | First_class ->
         Fault.raise policy F.opened_first_class (loc,x.name);
         Module.Divergence.First_class_module
@@ -60,13 +64,16 @@ let open_diverge_module policy loc x =
       (Divergence
          { before = Module.Sig.empty; point; after = Module.Def.empty}
       )
-      x.result
-  | _, Divergence _ | _, Exact _ -> Summary.View.see x.result
+      r.signature
+  | Sig { signature=(Divergence _ | Exact _ as s); _}  -> Summary.View.see s
 
-let open_diverge pol loc = function
-  | M (name,x) -> open_diverge_module pol loc (Module.Partial.of_module name x)
-  | Namespace (_,modules) -> (* FIXME: type error *)
+let open_diverge pol loc x = match x.kind with
+  | Mty Sig m -> open_diverge_module pol loc (Module.Partial.of_module x.name m)
+
+  (* FIXME: type error *)
+  | Namespace modules ->
     Summary.View.see @@ Module.Exact { Module.Def.empty with modules }
+  | Mty (Abstract | Fun _) -> Summary.empty
 
 let open_ pol loc x = open_diverge_module pol loc x
 
@@ -76,19 +83,20 @@ let of_partial policy loc p =
   | Ok def -> def
 
 let gen_include policy loc x =
-  if Module.Partial.(
-      x.result = Blank && x.origin = First_class
-    ) then
-    Fault.raise policy F.included_first_class loc;
-  of_partial policy loc x
+  match x.Module.Partial.mty with
+  | Abstract | Fun _ ->  (* TODO ERROR *) Summary.empty
+  | Sig s ->
+    if s.signature = Blank && s.origin = First_class
+    then Fault.raise policy F.included_first_class loc;
+    of_partial policy loc x
 
 let bind_summary level name expr =
-  let m = Module.M (Module.Partial.to_module ~origin:Submodule expr) in
+  let m = Module.Partial.to_module ~origin:Submodule expr in
   Summary.define ~level [name,m]
 
-let drop_arg policy loc (p:Module.Partial.t) = match p.args with
-  | _ :: args -> { p with args }
-  | [] ->
+let apply_arg policy loc _arg (p:Module.Partial.t) = match p.mty with
+  | Fun (_arg, r) -> { Module.Partial.name=p.name;  mty = r }
+  | Sig _ | Abstract ->
     if Module.Partial.is_exact p then
       (* we guessed the arg wrong *)
       Fault.raise policy F.applied_structure (loc,p);

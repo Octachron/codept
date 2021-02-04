@@ -107,7 +107,7 @@ val skip: 'a label -> ('a label * 'b option)
 val ($=?): 'a label -> 'b option -> ('a label * 'b option)
 
 val obj: 'a Record.t -> 'a Record.t
-val custom: 'b t -> ('a -> 'b) -> ('b -> 'a) -> 'a t
+val custom: ('b,'f) s -> ('a -> 'b) -> ('b -> 'a) -> ('a,'f) s
 
 module Untyped: sig
   type t =

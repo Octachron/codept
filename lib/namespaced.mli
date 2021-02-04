@@ -10,6 +10,7 @@ val flatten: t -> p
 val of_path: p -> t
 val head: t -> Name.t
 
+val sch: t Schematic.t
 val of_filename: ?nms:p -> string -> t
 
 module Map: sig

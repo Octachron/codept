@@ -604,9 +604,9 @@ let result =
                          ["List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map";"List"], [] );
-          "namespaced.mli", ( ["Name";"Paths"; "Pp"],
+          "namespaced.mli", ( ["Name";"Paths"; "Pp"; "Schematic"],
                               ["Set";"Map"], [] );
-          "namespaced.ml", ( ["Name"; "Paths"; "Pp"],
+          "namespaced.ml", ( ["Name"; "Paths"; "Pp"; "Schematic"],
                              ["Format";"List";"Set";"Map"], [] );
           "loc.mli", ( ["Schematic"], ["Format"], []);
           "loc.ml", ( ["Pp";"Schematic"], ["List"], []);

@@ -29,6 +29,13 @@ let head = function
   | {namespace=a :: _ ; _ } -> a
   | {namespace=[]; name } -> name
 
+let sch =
+  let open Schematic in
+  custom [String; Array String]
+    (fun {name;namespace} -> [name;namespace])
+    (fun [name;namespace] -> {name;namespace})
+
+
 module Ordered = struct
   type nonrec t = t
   let compare: t -> t -> int = compare

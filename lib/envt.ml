@@ -6,9 +6,10 @@ module Y = Summary
 
 let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
-type answer = T.answer =
-  | M of Name.t * Module.m
-  | Namespace of Name.t * Module.dict
+type answer_type = T.answer_type =
+  | Namespace of Module.dict
+  | Mty of Module.Partial.kind
+type answer = T.answer = { name: Name.t; kind: answer_type }
 
 type context =
   | Signature of M.signature
@@ -204,12 +205,22 @@ module Core = struct
     | M.M m ->
       debug "found module %s" name;
       D.record option.loc option.edge ~aliases (is_top ctx) name m >>
-      if q = [] then return (M (name,m))
+      if q = [] then return {name; kind = Mty (Sig m)}
       else
         find option aliases Submodule current (restrict env @@ Signature m.signature) q
+    | Abstract | Fun _ as kind ->
+      begin match q with
+        | [] -> return {name; kind= Mty (Module.Partial.of_extended_mty kind)}
+        | _ :: _  ->
+          let name = last q in
+          let mock = M.mockup name in
+          let lvl = adjust_level option.level q in
+          return {name; kind=Mty (Sig mock) } <!> [nosubmodule option.loc current lvl name]
+      end
+    | Frozen _ -> assert false
     | Namespace modules ->
       (* let faults = record edge root env name in*)
-      if q = [] then return (Namespace (name,modules))
+      if q = [] then return {name; kind = Namespace modules}
       else find option aliases ctx current (restrict env @@ In_namespace modules) q
 
   let find loc sub ?edge level path envt =
@@ -255,6 +266,7 @@ module Core = struct
         Some path
       | M m -> resolve_alias_sign q m.signature
       | Namespace n -> resolve_alias_md q n
+      | Frozen _ | Abstract | Fun _ -> None
       | exception Not_found -> None
   and resolve_alias_sign path = function
     | Blank -> None
@@ -284,7 +296,7 @@ module Core = struct
         | M { origin = Unit _; _ }
         | Link _  -> true
         | M.Alias _ -> false
-        | M _ -> false
+        | M _ | Frozen _ | Abstract | Fun _ -> false
 
   let expand_path path envt =
     match path with
@@ -408,9 +420,12 @@ module Implicit_namespace = struct
 
   let provider (namespace,modules) =
     let open Query in
-    let wrap = function
-      | M (_,m) -> M.M m
-      | Namespace (_,modules) -> M.Namespace modules in
+    let wrap x = match x.kind with
+      | Mty Sig m -> M.M m
+      | Namespace modules -> M.Namespace modules
+      | Mty Abstract -> M.Abstract
+      | Mty Fun _ -> (* FIXME ?*) assert false
+    in
     let env = Core.start (M.Def.modules modules) in
     let implicit loc path =
       Some(Core.find_implicit loc M.Module path env >>| wrap) in

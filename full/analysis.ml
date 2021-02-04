@@ -192,12 +192,15 @@ module Collisions = struct
     List.fold_left (fun m (u:Unit.s) ->
         match Envt.Core.find Fault.loc_none M.Module (Nms.flatten u.path) env with
         | exception Not_found -> m
-        | { main = M (_, { M.origin = Unit p; _ }); msgs= []; _ } ->
+        | ans ->
+          match ans.main.kind, ans.msgs with
+        | Mty Sig { M.origin = Unit p; _ }, [] ->
           (add u.path p.source @@ add u.path u.src m)
-        | { msgs = _ :: _ ; _ }
-        | { main = Namespace _
-                 | M (_,{ M.origin =
-                            (Phantom _ |Arg|Submodule|First_class|Namespace); _ }); _ }
+        | _ , _ :: _
+        | (Mty Abstract | Mty Fun _
+          | Namespace _
+          | Mty Sig { M.origin =(Phantom _ |Arg|Submodule|First_class|Namespace); _ }
+          ), _
           -> m
 
       ) m units
