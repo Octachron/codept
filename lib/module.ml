@@ -1,5 +1,7 @@
 module Pkg = Paths.Pkg
 
+let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
+
 module Arg = struct
   type 'a t = { name:Name.t option; signature:'a }
   type 'a arg = 'a t
@@ -170,39 +172,103 @@ module Origin = struct
 end
 type origin = Origin.t
 
-type m = {
-      origin: Origin.t;
-      signature:signature;
-    }
-and t =
-  | M of m
-  | Alias of
+
+
+module Ident = struct
+  module Path_like = Paths.Pkg
+  type path_like = Path_like.t
+  module Store = Map.Make(struct type t = path_like let compare = Stdlib.compare end)
+  module Core = struct
+    type t = path_like * int
+    let compare (x:t) (y:t) = compare x y
+  end
+  include Core
+  let sch = Schematic.pair Path_like.sch Int
+  let pp ppf (pkg,id) = Pp.fp ppf "%a$%d" Path_like.pp pkg id
+
+  let store =ref Store.empty
+  let create nms =
+    let current =
+      match Store.find nms !store with
+      | exception Not_found -> 0
+      | x -> x in
+    store := Store.add nms (current + 1) !store;
+    nms, current
+
+end
+
+
+(** Type-level tags *)
+
+type extended = private Extended
+type simple = private Simple
+
+(** Signature with tracked origin *)
+type tracked_signature = {
+  origin : Origin.t;
+  signature : signature;
+}
+
+
+(** Core module or alias *)
+and _ ty =
+  | Sig: tracked_signature -> 'any ty (** Classic module *)
+  | Alias:
       {
-        path:Namespaced.t;
+        path: Namespaced.t;
+        (** Path.To.Target:
+            projecting this path may create new dependencies
+        *)
         phantom: Divergence.t option;
-      }
-  | Abstract
-  | Fun of t Arg.t option * t
+        (** Track potential delayed dependencies
+            after divergent accident:
+            [
+              module M = A  (* Alias { name = M; path = [A] } *)
+              open Unknownable (* <- divergence *)
+              open M (* Alias{ phantom = Some divergence } *)
+            ]
+            In the example above, [M] could be the local module
+            [.M], triggering the delayed alias dependency [A]. Or it could
+            be a submodule [Unknownable.M] . Without sufficient information,
+            codept defaults to computing an upper bound of dependencies,
+            and therefore considers that [M] is [.M], and the inferred
+            dependencies for the above code snipet is {A,Unknowable} .
+        *)
+      } -> extended ty
 
-  | Frozen of Namespaced.t
+  | Abstract: Ident.t -> 'any ty
+  (** Abstract module type may be refined during functor application,
+      keeping track of their identity is thus important
+  *)
 
-  | Link of Namespaced.t
-  | Namespace of dict
+  | Fun: 'a ty Arg.t option * 'a ty -> 'a ty
+
+  | Link: Namespaced.t -> extended ty (** Link to a compilation unit *)
+  | Namespace: dict -> extended ty
+  (** Namespace are open bundle of modules *)
+
+and t = extended ty
+
 and definition = { modules : dict; module_types : dict }
 and signature =
-  | Blank
+  | Blank (** Unknown signature, used as for extern module, placeholder, … *)
   | Exact of definition
   | Divergence of { point: Divergence.t; before:signature; after:definition}
-and dict = t Name.Map.t
+  (** A divergent signature happens when a signature inference is disturbed
+      by opening or including an unknowable module:
+      [ module A = …
+         include Extern (* <- divergence *)
+        module B = A (* <- which A is this: .A or Extern.A ?*)
+      ]
+  *)
 
-type arg = definition Arg.t
+and dict = t Name.map
+
+type sty = simple ty
+type level = Module | Module_type
 type modul_ = t
 type named = Name.t * t
 
-let of_arg ({name;signature}:arg) =
-  Option.fmap (fun _name ->
-      { origin = Arg ; signature = Exact signature }
-    ) name
 
 let is_functor = function
   | Fun _ -> true
@@ -215,7 +281,7 @@ module Dict = struct
 
   let union =
     let rec merge _name x y = match x, y with
-      | (M { origin = Unit {path = p;_}; _ } as x), Link path
+      | (Sig { origin = Unit {path = p;_}; _ } as x), Link path
         when Namespaced.flatten path = p -> Some x
       (*      | x, Alias {weak=true; _ } -> Some x *)
       | Namespace n, Namespace n' ->
@@ -243,17 +309,17 @@ let rec spirit_away breakpoint root = function
     if not root then
       Alias { a with phantom = Some breakpoint }
     else al
-  | Abstract | Frozen _ | Fun _ as f -> f
+  | Abstract _ | Fun _ as f -> f
   | Link _ as l -> l
   | Namespace modules ->
     Namespace ( Name.Map.map (spirit_away breakpoint false) modules )
-  | M m ->
+  | Sig m ->
     let origin = Origin.Phantom (root,breakpoint) in
     let origin = match m.origin with
       | Unit _  as u -> u
       | Phantom _ as ph -> ph
       | _ -> origin in
-    M { origin; signature = spirit_away_sign breakpoint false m.signature }
+    Sig { origin; signature = spirit_away_sign breakpoint false m.signature }
 and spirit_away_sign breakpoint root = function
   | Blank -> Blank
   | Divergence d -> Divergence {
@@ -269,7 +335,7 @@ and spirit_away_def breakpoint root def =
 
 let spirit_away b =  spirit_away b true
 
-let sig_merge (s1:definition) (s2:definition) =
+let sig_merge (s1: definition) (s2:definition) =
   { module_types = Name.Map.union' s1.module_types s2.module_types;
     modules = Dict.union s1.modules s2.modules }
 
@@ -294,18 +360,18 @@ let is_exact_sig = function
 
 let is_exact m =
   match m with
-  | Namespace _ | Link _ | Abstract | Frozen _ | Fun _ -> true
+  | Namespace _ | Link _ | Abstract _  | Fun _ -> true
   | Alias {phantom ; _ } -> phantom = None
-  | M m -> is_exact_sig m.signature
+  | Sig m -> is_exact_sig m.signature
 
-let md s = M s
+let md s = Sig s
 
 let rec aliases0 l = function
   | Alias {path; _ } | Link path -> path :: l
-  | Abstract | Frozen _ | Fun _ -> l
+  | Abstract _ | Fun _ -> l
   | Namespace modules ->
       Name.Map.fold (fun _ x l -> aliases0 l x) modules l
-  | M { signature; _ } ->
+  | Sig { signature; _ } ->
     let signature = flatten signature in
     let add _k x l = aliases0 l x in
     Name.Map.fold add signature.modules
@@ -314,7 +380,6 @@ let rec aliases0 l = function
 
 let aliases = aliases0 []
 
-type level = Module | Module_type
 
 let pp_alias = Pp.opt Paths.Expr.pp
 
@@ -332,7 +397,7 @@ let reflect_opt reflect ppf = function
   | Some x -> Pp.fp ppf "Some %a" reflect x
 
 let rec reflect ppf = function
-  | M m ->  Pp.fp ppf "M %a" reflect_m m
+  | Sig m ->  Pp.fp ppf "M %a" reflect_m m
   | Fun (arg,x) ->  Pp.fp ppf "Fun (%a;%a)" (reflect_opt reflect_arg) arg reflect x
   | Namespace modules ->
     Pp.fp ppf "Namespace (%a)"
@@ -344,10 +409,7 @@ let rec reflect ppf = function
   | Link path ->
     Pp.fp ppf "Link (%a)"
       reflect_namespaced path
-  | Frozen path ->
-    Pp.fp ppf "Frozen (%a)"
-      reflect_namespaced path
-  | Abstract -> Pp.fp ppf "Abstract"
+  | Abstract n -> Pp.fp ppf "Abstract %a" Ident.pp n
 
 and reflect_namespaced ppf nd =
   if nd.namespace = [] then
@@ -390,13 +452,12 @@ let rec pp ppf = function
     Pp.fp ppf "≡%s%a" (if phantom=None then "" else "(👻)" )
       Namespaced.pp path
   | Link path -> Pp.fp ppf "⇒%a" Namespaced.pp path
-  | M m -> pp_m ppf m
+  | Sig m -> pp_m ppf m
   | Fun (arg,x) ->
     Pp.fp ppf "%a->%a" Pp.(opt pp_arg) arg pp x
   | Namespace n -> Pp.fp ppf "Namespace @[[%a]@]"
                      pp_mdict n
-  | Frozen path -> Pp.fp ppf "❄%a" Namespaced.pp path
-  | Abstract -> Pp.fp ppf "■"
+  | Abstract n -> Pp.fp ppf "■(%a)" Ident.pp n
 
 
 and pp_m ppf {origin;signature;_} =
@@ -411,14 +472,14 @@ and pp_signature ppf = function
       Divergence.pp point
       pp_definition after
 and pp_definition ppf {modules; module_types} =
-  Pp.fp ppf "@[<hv>%a" pp_mdict modules;
+  Pp.fp ppf "@[<hv>(%a" pp_mdict modules;
   if Name.Map.cardinal module_types >0 then
-    Pp.fp ppf "@, types:@, %a@]"
+    Pp.fp ppf "@, types:@, %a)@]"
       pp_mdict module_types
-  else Pp.fp ppf "@]"
+  else Pp.fp ppf ")@]"
 and pp_mdict ppf dict =
   Pp.fp ppf "%a" (Pp.(list ~sep:(s " @,")) pp_pair) (Name.Map.bindings dict)
-and pp_pair ppf (_,md) = pp ppf md
+and pp_pair ppf (name,md) = Pp.fp ppf "%s:%a" name pp md
 and pp_arg ppf arg = Pp.fp ppf "(%a:%a)" (Pp.opt Pp.string) arg.name pp arg.signature
 
 
@@ -508,29 +569,26 @@ module Schema = struct
              sch = Sum[ "M", m;
                         "Alias", reopen Paths.S.sch;
                         "Fun", [opt_arg; Mu.module'];
-                        "Abstract", Void;
-                        "Frozen", reopen Namespaced.sch;
+                        "Abstract", reopen Ident.sch;
                         "Link", reopen Paths.S.sch;
                         "Namespace", Array (named ())
                       ]
            }
   and fwdm = function
-    | M m -> C (Z m)
+    | Sig m -> C (Z m)
     | Alias x -> C (S (Z (Namespaced.flatten x.path)))
     | Fun (arg,x) -> C (S (S (Z [arg;x])))
-    | Abstract -> C (S (S (S E)))
-    | Frozen p -> C (S (S (S (S (Z p)))))
-    | Link x -> C (S (S (S (S (S (Z (Namespaced.flatten x)))))))
-    | Namespace n -> C (S (S (S (S (S (S (Z (to_list n))))))))
+    | Abstract x -> C (S (S (S (Z x))))
+    | Link x -> C (S (S (S (S (Z (Namespaced.flatten x))))))
+    | Namespace n -> C (S (S (S (S (S (Z (to_list n)))))))
   and revm =
     function
-    | C Z m -> M m
+    | C Z m -> Sig m
     | C S Z  path -> Alias {path=Namespaced.of_path path; phantom=None}
     | C S S Z [arg;body] -> Fun(arg,body)
-    | C S S S E -> Abstract
-    | C S S S S Z p -> Frozen p
-    | C S S S S S Z  path -> Link (Namespaced.of_path path)
-    | C S S S S S S Z modules ->
+    | C S S S Z n -> Abstract n
+    | C S S S S Z  path -> Link (Namespaced.of_path path)
+    | C S S S S S Z modules ->
       Namespace (Dict.of_list modules)
     | _ -> .
 
@@ -548,6 +606,9 @@ module Def = struct
 
   let modules dict = { empty with modules=dict }
   let merge = sig_merge
+
+  let map f x = { modules = Name.Map.map f x.modules; module_types = Name.Map.map f x.module_types }
+
   let weak_merge (s1:definition) (s2:definition) =
     { module_types = Dict.weak_union s1.module_types s2.module_types;
       modules = Dict.weak_union s1.modules s2.modules }
@@ -639,39 +700,95 @@ module Sig = struct
 
 end
 
+let rec extend: type any. any ty -> extended ty = function
+  | Abstract n -> Abstract n
+  | Fun(a,x) ->
+    let map a = Arg.map extend a in
+    (Fun(Option.fmap map a, extend x) : modul_)
+  | Sig s ->  Sig s
+  | Alias _ as x -> x
+  | Link _ as x -> x
+  | Namespace _ as x -> x
+
+
+
+
+module Subst = struct
+
+  module Tbl = Map.Make(Ident)
+  type 'x t = 'x ty Tbl.t
+  type 'x subst = 'x t
+
+  let identity = Tbl.empty
+  let add id mty subst = Tbl.add id mty subst
+
+  let rec apply: type any. (Ident.t -> any ty option) -> any ty -> any ty = fun subst -> function
+    | Abstract id as old -> Option.( subst id >< old)
+    | Fun (x,y) -> Fun(Option.fmap (Arg.map (apply subst)) x, apply subst y)
+    | Sig {origin;signature} ->
+      Sig {origin;signature = apply_sig (fun id -> Option.fmap extend (subst id)) signature }
+    | Alias _ as x -> x
+    | Link _ as x -> x
+    | Namespace _ as x -> x
+  and apply_sig: (Ident.t -> extended ty option) -> signature -> signature = fun subst -> function
+    | Blank -> Blank
+    | Exact s -> Exact (Def.map (apply subst) s)
+    | Divergence d -> Divergence { point = d.point;
+                        before = apply_sig subst d.before;
+                        after = Def.map (apply subst) d.after
+                      }
+
+  let apply subst x = if subst = identity then x else
+      apply (fun k -> Tbl.find_opt k subst) x
+
+  let rec compute_constraints lvl (type any) (arg:any ty) (param:any ty) (subst: extended subst): extended subst =
+    match arg, param with
+    | x, Abstract id -> add id (extend x) subst
+    | Fun _, Fun _  -> subst
+    | Alias _, Alias _ | Link _, Link _ | Namespace _, Namespace _ -> subst
+    | Sig arg, Sig param ->
+      if lvl = Module then
+        sig_constraints (Sig.flatten arg.signature) (Sig.flatten param.signature) subst
+      else
+        subst
+    | _ -> (* type error *) subst
+  and sig_constraints arg param subst =
+    subst
+    |> dict_constraints Module arg.modules param.modules
+    |> dict_constraints Module_type arg.module_types param.module_types
+  and dict_constraints lvl arg param subst =
+    Name.Map.fold (fun k arg subst ->
+        match Name.Map.find k param with
+        | exception Not_found -> subst
+        | param -> compute_constraints lvl arg param subst
+      ) arg subst
+
+  let compute_constraints ~arg ~param = compute_constraints Module arg param identity
+
+  let pp ppf s =
+    let pp_elt ppf (k,x) = Pp.fp ppf "%a->%a" Ident.pp k pp x in
+    Pp.list pp_elt ppf (Tbl.bindings s)
+
+end
+
+
 
 module Partial = struct
 
-  type kind = Abstract | Sig of m | Fun of kind Arg.t option * kind
-  type t = { name: string option; mty: kind }
+  type t = { name: string option; mty: sty }
 
   let empty_sig = { origin = Submodule; signature= Sig.empty}
   let empty = { name=None; mty = Sig empty_sig }
   let simple defs = { empty with mty = Sig { empty_sig with signature = defs} }
   let rec is_exact x = match x.mty with
-      | Abstract -> true
+      | Abstract _  -> true
       | Fun (_,x) -> is_exact {name=None; mty=x}
       | Sig s -> Sig.is_exact s.signature
 
-  let pp ppf (x:t) =
-    let pp_name ppf = function
-    | None -> ()
-    | Some n -> Pp.fp ppf "(%s)" n in
-    let rec pp_kind ppf = function
-    | Abstract -> Pp.fp ppf "<abstract>"
-    | Fun (a,x) -> Pp.fp ppf "%a->%a" (Arg.pp pp_kind) a pp_kind x
-    | Sig m -> pp_m ppf m in
-    Pp.fp ppf "%a%a" pp_name x.name pp_kind x.mty
-
-  let apply_arg _y (p:t) = match  p.mty with
-    | Fun (_,mty) ->
-      Some { p with mty }
-    | _ -> None
-
   let rec to_module ?origin (p:t) =
     to_module_kind ?origin p.mty
-  and to_module_kind ?origin = function
-    | Abstract -> (Abstract:modul_)
+  and to_module_kind ?origin : sty -> modul_ = function
+    | Abstract n -> (Abstract n:modul_)
     | Fun(a,x) ->
       let map a = Arg.map (to_module_kind ?origin) a in
       (Fun(Option.fmap map a, to_module_kind ?origin x) : modul_)
@@ -680,16 +797,37 @@ module Partial = struct
         | Some o -> Origin.at_most s.origin o
         | None -> s.origin
       in
-      M {origin; signature = s.signature }
+      Sig {origin; signature = s.signature }
+
+
+  let extend = extend
+  let apply ~arg ~param ~body =
+    let subst = Subst.compute_constraints ~arg ~param in
+    debug "Constraint from typing:%a@." Subst.pp subst;
+    let res = Subst.apply subst body in
+    debug "Result:@ %a ⇒@ %a@." pp body pp res;
+    res
+
+ let rec pp_sty ppf: sty -> _ = function
+    | Abstract n -> Pp.fp ppf "<abstract:%a>" Ident.pp n
+    | Fun (a,x) -> Pp.fp ppf "%a->%a" (Arg.pp pp_sty) a pp_sty x
+    | Sig m -> pp_m ppf m
+
+  let pp ppf (x:t) =
+    let pp_name ppf = function
+    | None -> ()
+    | Some n -> Pp.fp ppf "(%s)" n in
+    Pp.fp ppf "%a%a" pp_name x.name pp_sty x.mty
+
 
 
   let to_arg (p:t) = to_module p
 
-  let rec of_extended_mty: modul_ -> kind = function
-    | Abstract -> Abstract
-    | M x -> Sig x
+  let rec of_extended_mty: modul_ -> sty = function
+    | Abstract n -> Abstract n
+    | Sig x -> Sig x
     | Fun (a,x) -> Fun(Option.fmap (Arg.map of_extended_mty) a, of_extended_mty x)
-    | Link _ | Frozen _ | Namespace _ | Alias _ -> Abstract
+    | Link _ | Namespace _ | Alias _ -> assert false
 
   let of_extended ?name kind = { name; mty = of_extended_mty kind }
 
@@ -707,9 +845,45 @@ module Partial = struct
      | _ -> false
 
    let to_sign fdefs = match fdefs.mty with
-     | Abstract | Fun _ -> Error Sig.empty
+     | Abstract _ | Fun _ -> Error Sig.empty
      | Sig s ->
          Ok s.signature
+
+(* ERASE ME
+   let rec proj lvl path mt =
+     match path with
+     | [] -> Some mt
+     | a :: q ->
+       match (mt: modul_) with
+       | Sig { signature=s; _ } ->
+         proj_sig lvl a q s
+       | Fun _ | Abstract _
+       | Alias _ | Namespace _ | Link _ -> None
+   and proj_sig lvl a q = function
+     | Blank -> None
+     | Exact def -> proj_def lvl a q def
+     | Divergence d ->
+       match proj_def lvl a q d.after with
+       | None -> proj_sig lvl a q d.before
+       | Some _ as r -> r
+   and proj_def lvl a q def =
+     let dir = if lvl=Module_type && q=[] then
+         def.module_types
+       else def.modules in
+     match Name.Map.find a dir with
+     | exception Not_found -> None
+     | x -> proj lvl q x
+
+
+   let rec to_kind = function
+         | Alias _ | Namespace _ | Link _ -> assert false
+         | Abstract x -> Abstract x
+         | Fun(x,y) -> Fun(Option.fmap (Arg.map to_kind) x, to_kind y)
+         | Sig m -> Sig m
+
+   let proj lvl path  mt =
+     Option.fmap to_kind (proj lvl path (to_module mt))
+*)
 
    module Sch = struct
      open Schematic
@@ -720,17 +894,18 @@ module Partial = struct
 
      let mty =
        custom
-         (Sum ["Abstract", Void;
+         (Sum ["Abstract", reopen Ident.sch;
                "Sig", Schema.m;
-               "Fun", [option @@ Arg.sch mu; mu ]
+               "Fun", [option @@ Arg.sch mu; mu];
               ])
-         (function
-           | Abstract -> C E
-           | Sig s -> C (S (Z s))
-           | Fun (a,x) -> C (S (S (Z [a;x])))
+         (fun (x:sty) -> match x with
+            | Abstract x -> C (Z x)
+            | Sig s -> C (S (Z s))
+            | Fun (a,x) -> C (S (S (Z [a;x])))
+            | _ -> .
          )
          (function
-           | C E -> Abstract
+           | C Z x -> Abstract x
            | C S Z x -> Sig x
            | C S S Z [a;x] -> Fun (a,x)
            | _ -> .

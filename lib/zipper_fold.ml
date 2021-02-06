@@ -1,5 +1,7 @@
 [@@@warning "-37"]
 
+let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
+
 module L = struct
   type 'a t = 'a list = [] | (::) of 'a * 'a t
 end
@@ -63,7 +65,7 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
   let str = both Sk.str F.str
   let me_val x = const Sk.unpacked (F.me_val x)
   let me_ext loc name = user_me (F.me_ext ~loc name)
-  let abstract = const Sk.abstract F.abstract
+  let abstract pkg = const (Sk.abstract pkg) F.abstract
   let unpacked = const Sk.unpacked F.unpacked
   let open_me opens = user (F.open_me opens)
   let alias = both Sk.ident F.alias
@@ -73,7 +75,7 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
     both (Sk.m_with deletions) (F.mt_with access deletions)
   let mt_of = user F.mt_of
   let mt_ext loc name = user_me (F.mt_ext ~loc name)
-  let sig_abstract = const Sk.abstract F.sig_abstract
+  let sig_abstract x  = const (Sk.abstract x) F.sig_abstract
   let init_rec diff = const diff F.bind_rec_init
   let bind_rec = user F.bind_rec
   let bind_rec_add name me mt =
@@ -165,11 +167,12 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       resolve (Me Ident :: path) ~param ~loc ~state ~level:Module s
       >>| D.me_ident
     | Apply {f; x} ->
-      me (Me (Apply_left x)::path) ~param ~loc ~state f >>= fun f ->
-      me (Me (Apply_right f)::path)  ~param ~loc ~state x >>|
+      debug "syntactic apply: %a(%a)@." M2l.pp_me f M2l.pp_me x;
+      me (Me (Apply_left x)::path)  ~param ~loc ~state f >>= fun f ->
+      me (Me (Apply_right f)::path) ~param ~loc ~state x >>|
       D.apply param loc f
     | Fun {arg = None; body } ->
-      me (Me (Fun_right None) :: path)  ~param ~loc ~state body
+      me (Me (Fun_right None) :: path) ~param ~loc ~state body
       >>| D.me_fun_none
     | Fun {arg = Some {name;signature} ; body } ->
       let pth = Me (Fun_left {name; body})  :: path in
@@ -187,7 +190,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Extension_node {name;extension=e} ->
       ext ~param ~pkg:(apkg loc) ~state (Me (Extension_node name) :: path) e >>|
       D.me_ext loc name
-    | Abstract -> Ok D.abstract
+    | Abstract -> Ok (D.abstract @@ fst loc)
     | Unpacked -> Ok D.unpacked
     | Open_me {opens; expr; _ } ->
       open_all path expr F.open_init ~loc ~param ~state opens
@@ -232,7 +235,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Extension_node {name;extension=e} -> Sk.ext param loc name;
       ext ~pkg:(apkg loc) ~param ~state (Mt (Extension_node name)::path)  e
       >>| D.mt_ext loc name
-    | Abstract -> Ok D.sig_abstract
+    | Abstract -> Ok (D.sig_abstract @@ fst loc)
   and bind_rec_sig path diff left ~param ~loc ~state : _ L.t -> _ = function
     | [] ->
       let state = State.merge state diff in
@@ -262,13 +265,14 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
   and path_expr ?edge ~level ctx ~loc ~param ~state x = path_expr_gen
       ?edge ~level ctx ~loc ~param ~state x
   and gen_minors path ~pkg ~param ~state left = function
-    | L.[] -> (*Format.eprintf "minors end@.";*) Ok left
+    | L.[] ->
+      debug "minors end@."; Ok left
     | a :: right ->
       minor (Minors {left;right} :: path) ~pkg ~param ~state a
       >>= fun a ->
       gen_minors path ~pkg ~param ~state (F.add_minor a left) right
   and minors path ~pkg ~param ~state x =
-    (*Format.eprintf "minors: %a@." Summary.pp State.(peek @@ diff state);*)
+    debug "minors: %a@." Summary.pp State.(peek @@ diff state);
     gen_minors path ~pkg ~param ~state F.empty_minors x
   and minor path ~pkg ~param ~state =
     function
@@ -282,7 +286,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         ~param ~pkg ~state data.extension
         >>| fun x -> F.minor_ext ~loc:(pkg,loc) data.name x
     | Local_open (loc,e,m) ->
-      (*Format.eprintf "Local open: %a@." M2l.pp_me e;*)
+      debug "Local open: %a@." M2l.pp_me e;
       let diff0 = State.diff state in
       me (Minor (Local_open_left (diff0,loc,m)) :: path)
         ~param ~loc:(pkg, loc) ~state e >>= fun e ->

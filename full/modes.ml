@@ -93,7 +93,7 @@ let export name _ _ ppf _param {Unit.mli; _} =
     ; signature = sign unit
     }
     in
-    uname, Module.M m in
+    uname, Module.Sig m in
   let s =
     List.fold_left (fun sg u -> Name.Map.union' sg @@ Module.Dict.of_list[md u])
       Module.Dict.empty mli
@@ -108,7 +108,7 @@ let signature filename writer ppf param {Unit.mli; _} =
   let md (u:Unit.r) =
     let origin =
       Module.Origin.Unit {source=u.src;path=Namespaced.flatten u.path} in
-    u.path.name, Module.M ( Module.create ~origin (Unit.signature u ))
+    u.path.name, Module.Sig ( Module.create ~origin (Unit.signature u ))
   in
   let mds = List.map md mli in
   writer.Io.sign param.internal_format filename ppf mds

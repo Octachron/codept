@@ -43,7 +43,7 @@ let rec proj ~level m path = match path with
   | [] -> m
   | a :: q ->
     match m.P.mty with
-    | Abstract | Fun _ -> m (* ERROR *)
+    | Abstract _ | Fun _ -> m (* ERROR *)
     | Sig { signature = s; _ } ->
       let s = Module.Sig.flatten s in
       let dir =
@@ -56,22 +56,16 @@ let proj ~level m = function
   | None -> m
   | Some p -> proj ~level m p
 
-let abstract = P.{name=None; mty=Abstract}
-let apply param loc ~f ~x = T.apply_arg param.T.policy loc x f
+let abstract pkg = P.{name=None; mty=Abstract (Module.Ident.create pkg)}
+let apply param loc ~f ~x = T.apply_arg param.T.policy loc ~arg:x ~f
 let unpacked =
-  let mty = P.Sig { signature=Blank; origin=First_class} in
+  let mty = Module.Sig { signature=Blank; origin=First_class} in
   { empty with mty }
 
 
 let fn ~f ~x =
   let arg = Option.fmap (Arg.map (fun x -> x.P.mty)) x in
-  { P.name=f.P.name; mty=P.Fun (arg, f.P.mty) }
-(*
-  match arg with
-  | None -> { f with Module.args = None :: f.Module.args }
-  | Some {Arg.signature; name } ->
-    { f with Module.args = Option.fmap (fun _name -> (P.to_arg signature)) name :: f.args }
-*)
+  { P.name=f.P.name; mty=Module.Fun (arg, f.P.mty) }
 
 let ext param (loc:Fault.loc) (name:string) =
   if not param.T.transparent_extension_nodes then
@@ -92,7 +86,7 @@ let included param loc e = T.gen_include param.T.policy loc e
 
 
 let m_with dels mt = match mt.P.mty with
-  | P.Abstract | Fun _ -> mt
+  | Module.Abstract _ | Fun _ -> mt
   | Sig s ->
     let signature = T.with_deletions dels s.signature in
     { mt with mty = Sig { s with signature } }
@@ -120,12 +114,12 @@ module State(Env:Stage.envt) = struct
     { state with current = Env.extend state.current diff;
                  diff = Y.merge state.diff diff }
 
-  let bind_arg st {Arg.name;signature} =
-    match name with
-    | None -> st
-    | Some name ->
-      let m = P.to_module ~origin:Arg signature in
-      merge st (Y.define [name, m])
+  let bind_arg st arg =
+    match arg with
+    | { Arg.name= Some name; signature } ->
+      let mt = P.extend signature.P.mty in
+      merge st (Y.define [name, mt])
+    | _ -> st
 
   let is_alias param state s =
     param.T.transparent_aliases && Env.is_exterior s state.current

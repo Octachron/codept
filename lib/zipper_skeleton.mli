@@ -19,7 +19,7 @@ val pp_ml: module_like Pp.t
 val path: query -> path
 
 (** Module like *)
-val abstract : module_like
+val abstract : Paths.Pkg.t -> module_like
 val apply : Transforms.param -> Fault.loc -> f:module_like -> x:module_like  -> module_like
 val unpacked : module_like
 val fn : f:module_like -> x:module_like Module.Arg.t option -> module_like

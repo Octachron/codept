@@ -322,7 +322,7 @@ struct
               sg in
           Envt.add_unit ~namespace:input.path.namespace state.env
             input.path.name
-            (Module.M md)
+            (Module.Sig md)
         end
         else
           state.env

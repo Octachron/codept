@@ -8,7 +8,7 @@ let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
 type answer_type = T.answer_type =
   | Namespace of Module.dict
-  | Mty of Module.Partial.kind
+  | Mty of Module.sty
 type answer = T.answer = { name: Name.t; kind: answer_type }
 
 type context =
@@ -86,7 +86,7 @@ module Core = struct
       path_record ~path:[name] ?aliases ~edge:Edge.Normal
         { P.source = Unknown; file = [name] }
 
-    let record loc edge ?aliases root name (m:Module.m) =
+    let record loc edge ?aliases root name (m:Module.tracked_signature) =
       match m.origin with
       | M.Origin.Unit p -> path_record ~path:p.path ?aliases ~edge p.source
       | Phantom (phantom_root, b) when root && not phantom_root ->
@@ -202,13 +202,13 @@ module Core = struct
     | Link _ when ctx = Concrete -> None
     | Link path ->
       find option aliases Concrete [] (top env) (Namespaced.flatten path @ q)
-    | M.M m ->
+    | M.Sig m ->
       debug "found module %s" name;
       D.record option.loc option.edge ~aliases (is_top ctx) name m >>
       if q = [] then return {name; kind = Mty (Sig m)}
       else
         find option aliases Submodule current (restrict env @@ Signature m.signature) q
-    | Abstract | Fun _ as kind ->
+    | Abstract _ | Fun _ as kind ->
       begin match q with
         | [] -> return {name; kind= Mty (Module.Partial.of_extended_mty kind)}
         | _ :: _  ->
@@ -217,7 +217,6 @@ module Core = struct
           let lvl = adjust_level option.level q in
           return {name; kind=Mty (Sig mock) } <!> [nosubmodule option.loc current lvl name]
       end
-    | Frozen _ -> assert false
     | Namespace modules ->
       (* let faults = record edge root env name in*)
       if q = [] then return {name; kind = Namespace modules}
@@ -264,9 +263,9 @@ module Core = struct
       | M.Alias {path; _ } | M.Link path ->
         debug "resolved to %a" Namespaced.pp path;
         Some path
-      | M m -> resolve_alias_sign q m.signature
+      | Sig m -> resolve_alias_sign q m.signature
       | Namespace n -> resolve_alias_md q n
-      | Frozen _ | Abstract | Fun _ -> None
+      | Abstract _ | Fun _ -> None
       | exception Not_found -> None
   and resolve_alias_sign path = function
     | Blank -> None
@@ -293,10 +292,10 @@ module Core = struct
       | Some m ->
         match m.main with
         | Namespace _
-        | M { origin = Unit _; _ }
+        | Sig { origin = Unit _; _ }
         | Link _  -> true
         | M.Alias _ -> false
-        | M _ | Frozen _ | Abstract | Fun _ -> false
+        | Sig _ | Abstract _ | Fun _ -> false
 
   let expand_path path envt =
     match path with
@@ -307,7 +306,7 @@ module Core = struct
       | Some m ->
         match m.main with
         | Namespace _ -> path
-        | M { origin = Unit {path=p; _ } ; _ } -> p @ q
+        | Sig { origin = Unit {path=p; _ } ; _ } -> p @ q
         | M.Alias {path;_} -> Namespaced.flatten path @ q
         | _ -> path
 
@@ -385,11 +384,11 @@ module Libraries = struct
       | Ok (sg, _) ->
         let md = M.create
             ~origin:(M.Origin.Unit {source=path;path=[name]}) sg in
-        source.resolved <- Core.add_unit source.resolved name (M.M md);
+        source.resolved <- Core.add_unit source.resolved name (M.Sig md);
         track source q
 
   let is_unknown = function
-    | M.M { origin = Unit {source={ source = Unknown; _ };_};_} -> true
+    | M.Sig { origin = Unit {source={ source = Unknown; _ };_};_} -> true
     | _ -> false
 
   let rec pkg_find name source =
@@ -421,10 +420,10 @@ module Implicit_namespace = struct
   let provider (namespace,modules) =
     let open Query in
     let wrap x = match x.kind with
-      | Mty Sig m -> M.M m
+      | Mty Sig m -> M.Sig m
       | Namespace modules -> M.Namespace modules
-      | Mty Abstract -> M.Abstract
-      | Mty Fun _ -> (* FIXME ?*) assert false
+      | Mty Abstract id -> M.Abstract id
+      | Mty _ -> (* FIXME ?*) assert false
     in
     let env = Core.start (M.Def.modules modules) in
     let implicit loc path =

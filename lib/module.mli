@@ -74,16 +74,31 @@ module Origin: sig
 end
 type origin = Origin.t
 
-(** Main module type *)
-type m = {
+
+(** Idents for abstract module types *)
+module Ident: sig
+  type t
+  val pp: t Pp.t
+  val sch: t Schematic.t
+  val create: Paths.Pkg.t -> t
+end
+
+(** Type-level tags *)
+
+type extended = private Extended
+type simple = private Simple
+
+(** Signature with tracked origin *)
+type tracked_signature = {
   origin : Origin.t;
   signature : signature;
 }
 
+
 (** Core module or alias *)
-and t =
-  | M of m (** Classic module *)
-  | Alias of
+and _ ty =
+  | Sig: tracked_signature -> 'any ty (** Classic module *)
+  | Alias:
       {
         path: Namespaced.t;
         (** Path.To.Target:
@@ -104,16 +119,20 @@ and t =
             and therefore considers that [M] is [.M], and the inferred
             dependencies for the above code snipet is {A,Unknowable} .
         *)
-      }
-  | Abstract
-  | Fun of t Arg.t option * t
+      } -> extended ty
 
-  | Frozen of Namespaced.t (** Dependent module type in a functor body *)
+  | Abstract: Ident.t -> 'any ty
+  (** Abstract module type may be refined during functor application,
+      keeping track of their identity is thus important
+  *)
 
-  | Link of Namespaced.t (** Link to a compilation unit *)
-  | Namespace of dict
+  | Fun: 'a ty Arg.t option * 'a ty -> 'a ty
+
+  | Link: Namespaced.t -> extended ty (** Link to a compilation unit *)
+  | Namespace: dict -> extended ty
   (** Namespace are open bundle of modules *)
 
+and t = extended ty
 
 and definition = { modules : dict; module_types : dict }
 and signature =
@@ -130,15 +149,14 @@ and signature =
 
 and dict = t Name.map
 
+type sty = simple ty
 type named = Name.t * t
 
-type arg = definition Arg.t
 type level = Module | Module_type
 type modul_ = t
 
 (** {2 Helper function} *)
 val is_exact: t -> bool
-val of_arg : arg -> m option
 val is_functor : t -> bool
 
 module Dict: sig
@@ -152,11 +170,11 @@ end
 val spirit_away: Divergence.t -> t -> t
 (** transform to a ghost module *)
 
-val md: m -> t
+val md: tracked_signature -> t
 
 val empty : 'a Name.map
 val create :
-  ?origin:origin -> signature -> m
+  ?origin:origin -> signature -> tracked_signature
 
 val with_namespace: Paths.S.t -> Name.t -> t -> named
 val namespace: Namespaced.t -> named
@@ -165,7 +183,7 @@ val namespace: Namespaced.t -> named
 val aliases: t -> Namespaced.t list
 
 (** Create a mockup module with empty signature *)
-val mockup: ?origin:Origin.t -> ?path:Paths.P.t -> Name.t -> m
+val mockup: ?origin:Origin.t -> ?path:Paths.P.t -> Name.t -> tracked_signature
 
 (** {2 Printers} *)
 
@@ -186,7 +204,7 @@ val pp_arg : Format.formatter -> t Arg.t -> unit
 (** {2 Schematic } *)
 module Schema: sig
   val module': modul_ Schematic.t
-  val m: m Schematic.t
+  val m: tracked_signature Schematic.t
 end
 
 (** Helper functions for definitions *)
@@ -242,33 +260,37 @@ module Sig :
     type t = signature
   end
 
+
 (** Anonymous module and other partial definitions *)
 module Partial :
   sig
 
 
-    type kind = Abstract | Sig of m | Fun of kind Arg.t option * kind
-    type t = { name: string option; mty: kind }
+  type t = { name: string option; mty: sty }
 
     val empty : t
     val is_exact: t -> bool
 
+    val extend: sty -> modul_
     val simple : signature -> t
 
     val pp : Format.formatter -> t -> unit
+    val pp_sty : Format.formatter -> sty -> unit
     val sch: t Schematic.t
 
-    val apply_arg : kind -> t -> t option
+    val apply :  arg:modul_ -> param:modul_ -> body:modul_ -> modul_
 
     val to_module : ?origin:origin -> t -> modul_
     val to_arg : t -> modul_
 
-    val of_extended_mty : modul_ -> kind
+    val of_extended_mty : modul_ -> sty
     val of_extended: ?name:Name.t -> modul_ -> t
 
-    val of_module : Name.t -> m -> t
+    val of_module : Name.t -> tracked_signature -> t
     val pseudo_module: Name.t -> dict -> t
     val is_functor : t -> bool
     val to_sign : t -> (signature,signature) result
+
+
 
   end

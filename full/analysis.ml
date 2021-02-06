@@ -197,7 +197,7 @@ module Collisions = struct
         | Mty Sig { M.origin = Unit p; _ }, [] ->
           (add u.path p.source @@ add u.path u.src m)
         | _ , _ :: _
-        | (Mty Abstract | Mty Fun _
+        | (Mty Abstract _  | Mty Fun _
           | Namespace _
           | Mty Sig { M.origin =(Phantom _ |Arg|Submodule|First_class|Namespace); _ }
           ), _
