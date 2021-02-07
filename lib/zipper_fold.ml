@@ -44,9 +44,9 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
 
   let expr_open param loc = both  (Sk.opened param ~loc) (F.expr_open ~loc)
 
-  let gen_include var param loc = both (Sk.included param loc) (var ~loc)
-  let expr_include = gen_include F.expr_include
-  let sig_include = gen_include F.sig_include
+  let gen_include lvl var param loc = both (Sk.included param loc lvl) (var ~loc)
+  let expr_include = gen_include Module F.expr_include
+  let sig_include = gen_include Module_type F.sig_include
   let bind_alias state = fork2 (State.bind_alias state) F.bind_alias
   let bind name = both (Sk.bind name) (F.bind name)
   let local_bind name me x = user_me (F.local_bind name me.user) x
@@ -175,7 +175,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       me (Me (Fun_right None) :: path) ~param ~loc ~state body
       >>| D.me_fun_none
     | Fun {arg = Some {name;signature} ; body } ->
-      let pth = Me (Fun_left {name; body})  :: path in
+      let diff = State.diff state in
+      let pth = Me (Fun_left {name; diff; body})  :: path in
       mt pth ~param ~loc ~state signature >>=
       fn_me me ~path ~param ~loc ~state name body
     | Constraint (mex,mty) ->
@@ -223,7 +224,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       mt (Mt (Fun_right None)::path) ~loc ~state ~param body
       >>| D.mt_fun_none
     | Fun {arg = Some {Arg.name;signature}; body } ->
-      let arg_path = Mt(Fun_left {name; body} )::path in
+      let diff = State.diff state in
+      let arg_path = Mt(Fun_left {name; diff; body} )::path in
       mt arg_path ~loc ~param ~state signature >>=
       fn_mt mt ~path ~param ~state ~loc name body
     | With {body;deletions;minors=a} ->
@@ -251,7 +253,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
   and bind_rec path left ~param ~loc ~state : _ L.t -> _ = function
     | [] -> Ok (D.bind_rec left)
     | (name,mt,mex) :: right ->
-      me (Expr(Bind_rec{left;name;mt;right}) :: path) ~loc ~param ~state mex
+      me (Expr(Bind_rec{left;name;mt; right}) :: path) ~loc ~param ~state mex
       >>= fun me ->
       let left = D.bind_rec_add name me mt left in
       bind_rec path left ~loc ~state ~param right
@@ -292,9 +294,9 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         ~param ~loc:(pkg, loc) ~state e >>= fun e ->
       let diff = Sk.opened param ~loc:(pkg,loc) e.backbone in
       let state = State.merge state diff in
-      (*Format.eprintf "@[opened %a@ | state:%a@]@."
+      debug "@[opened %a@ | state:%a@]@."
         Sk.pp_ml e.backbone
-        Summary.pp State.(peek @@ diff state);*)
+        Summary.pp State.(peek @@ diff state);
       minors (Minor (Local_open_right (diff0,e)) :: path)
         ~pkg ~param ~state m
       >>| fun m -> F.local_open e.user m
@@ -400,18 +402,21 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     fun path ~state ~param x ->
     match path with
     | M2l {left;loc;right; state=restart } :: path ->
+      let state = State.restart state restart in
       let state, left = D.m2l_add state loc x left in
       m2l path left ~pkg:(apkg loc) ~param ~state right >>=
-      restart_m2l ~param ~loc ~state:(State.restart state restart) (path: m2l path)
+      restart_m2l ~param ~loc ~state (path: m2l path)
     | _ -> .
   and restart_mt: module_type path -> _ = fun path ~state ~param ~loc x ->
     match path with
     | Expr (Bind_sig name) :: path ->
       restart_expr ~state ~param path (D.bind_sig name x)
-    | Me Fun_left {name;body} :: path ->
+    | Me Fun_left {name;diff;body} :: path ->
+      let state = State.restart state diff in
       fn_me me ~path ~param ~loc ~state name body x
       >>= restart_me path ~loc ~param ~state
-    | Mt Fun_left {name;body} :: path ->
+    | Mt Fun_left {name;diff;body} :: path ->
+      let state = State.restart state diff in
       fn_mt mt ~path ~loc ~state ~param name body x
       >>= restart_mt ~loc ~param ~state path
     | Mt Fun_right (Some (arg,diff)) :: path ->
@@ -426,6 +431,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Expr SigInclude :: path ->
       restart_expr ~state ~param path (D.sig_include param loc x)
     | Expr Bind_rec_sig {diff; left; name; expr; right} :: path ->
+      let state = State.restart state diff in
       bind_rec_sig path (Sk.bind_rec_add name x.backbone diff)
         ((name, x.user, expr) :: left) ~param ~loc ~state right >>=
       restart_expr ~state ~param path

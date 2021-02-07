@@ -738,6 +738,17 @@ module Subst = struct
                         after = Def.map (apply subst) d.after
                       }
 
+  let refresh pkg x =
+    let tbl = ref Tbl.empty in
+    apply (fun k ->
+        match Tbl.find_opt k !tbl with
+        | Some _ as y -> y
+        | None ->
+          let fresh = Abstract (Ident.create pkg) in
+          tbl := Tbl.add k fresh !tbl;
+          Some fresh
+      ) x
+
   let apply subst x = if subst = identity then x else
       apply (fun k -> Tbl.find_opt k subst) x
 
@@ -801,6 +812,7 @@ module Partial = struct
 
 
   let extend = extend
+  let refresh = Subst.refresh
   let apply ~arg ~param ~body =
     let subst = Subst.compute_constraints ~arg ~param in
     debug "Constraint from typing:%a@." Subst.pp subst;

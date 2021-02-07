@@ -14,6 +14,12 @@ type answer_type =
   | Mty of Module.sty
 type answer = { name: Name.t; kind: answer_type }
 
+let pp_answer ppf a =
+  let pp_core ppf = function
+    | Namespace dict -> Pp.fp ppf "Namespace (%a)" Module.pp_mdict dict
+    | Mty x -> Module.pp ppf (Module.Partial.extend x)
+  in
+  Pp.fp ppf "(%s:%a)" a.name pp_core a.kind
 
 (* Remove deleted modules with `with A.B.C.D := …` *)
 let rec remove_path_from path = function
@@ -84,13 +90,17 @@ let of_partial policy loc p =
   | Error def -> Fault.raise policy F.structure_expected (loc,p); def
   | Ok def -> def
 
-let gen_include policy loc x =
-  match x.Module.Partial.mty with
+let gen_include policy loc lvl x =
+  let mty = match lvl with
+    | Module -> x.Module.Partial.mty
+    | Module_type -> Module.Partial.refresh (fst loc) x.Module.Partial.mty
+  in
+  match mty with
   | Abstract _ | Fun _ ->  (* TODO ERROR *) Summary.empty
   | Sig s ->
     if s.signature = Blank && s.origin = First_class
     then Fault.raise policy F.included_first_class loc;
-    of_partial policy loc x
+    of_partial policy loc { x with mty }
 
 let bind_summary level name expr =
   let m = Module.Partial.to_module ~origin:Submodule expr in
@@ -99,7 +109,7 @@ let bind_summary level name expr =
 let apply_arg policy loc ~f:(p:Module.Partial.t) ~arg =
   match p.mty with
   | Fun (Some {Module.Arg.name=Some _arg_name; signature=param } , body) ->
-    debug "Applying %a to %a @." Module.Partial.pp p Module.Partial.pp arg;
+    debug "@[<hv 2>Applying@ @[%a@]@ to@ @[%a@]@]@." Module.Partial.pp p Module.Partial.pp arg;
     let mty = let open Module.Partial in
       of_extended_mty @@ apply ~arg:(extend arg.mty) ~param:(extend param) ~body:(extend body)
     in

@@ -118,10 +118,10 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
   and mt: M2l.module_type t -> _ = fun rest sub -> match rest with
     | Expr Bind_sig name :: rest ->
       expr rest (fun ppf -> Pp.fp ppf "module type %a=%t" optname name sub)
-    | Me Fun_left {name;body} :: rest ->
+    | Me Fun_left {name;diff=_;body} :: rest ->
       me rest
         (fun ppf -> Pp.fp ppf "fun(%a:%t)->%a" Name.pp_opt name sub M2l.pp_me body)
-    | Mt Fun_left {name;body} :: rest ->
+    | Mt Fun_left {name;diff=_;body} :: rest ->
       mt rest
         (fun ppf -> Pp.fp ppf "fun(%a:%t)->%a" Name.pp_opt name sub M2l.pp_mt body)
     | Mt Fun_right left :: rest ->

@@ -11,6 +11,9 @@ module T = Transforms
 let fault param x = Fault.handle param.T.policy x
 let raisef param f t = fault param (Fault.emit f t)
 
+let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
+
+
 type path = T.answer
 type query = path T.query_result
 
@@ -82,7 +85,7 @@ let m2l_init = S.empty
 
 let str = P.simple
 
-let included param loc e = T.gen_include param.T.policy loc e
+let included param loc lvl e = T.gen_include param.T.policy loc lvl e
 
 
 let m_with dels mt = match mt.P.mty with
@@ -166,6 +169,8 @@ module State(Env:Stage.envt) = struct
     | exception Not_found -> Error ()
     | x ->
       List.iter (fault param) x.msgs;
+      debug "@[<hv>State: %a@ @[<hv 2>Resolving@ %a@ to@ %a@]@]@."
+        Env.pp state.current Paths.S.pp path T.pp_answer x.main;
       Ok x
 end
 

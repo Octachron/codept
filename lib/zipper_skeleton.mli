@@ -40,7 +40,7 @@ val bind_rec_add : Name.t option -> module_like -> state_diff -> state_diff
 val bind_rec_init : state_diff
 
 (** Expr *)
-val included : Transforms.param -> Fault.loc -> module_like -> state_diff
+val included : Transforms.param -> Fault.loc -> Module.level -> module_like -> state_diff
 val bind : Name.t option -> module_like -> state_diff
 val bind_sig : Name.t option -> module_like -> state_diff
 val opened : Transforms.param -> loc:Fault.loc -> module_like -> state_diff

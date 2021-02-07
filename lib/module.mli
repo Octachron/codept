@@ -278,6 +278,7 @@ module Partial :
     val pp_sty : Format.formatter -> sty -> unit
     val sch: t Schematic.t
 
+    val refresh: Paths.Pkg.t -> 'any ty -> 'any ty
     val apply :  arg:modul_ -> param:modul_ -> body:modul_ -> modul_
 
     val to_module : ?origin:origin -> t -> modul_

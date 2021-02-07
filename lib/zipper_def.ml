@@ -159,7 +159,7 @@ module type s = sig
     | Ident: path_in_context me
     | Apply_left: M2l.module_expr -> M2l.module_expr me
     | Apply_right: module_expr -> M2l.module_expr me
-    | Fun_left: {name:Name.t option; body:M2l.module_expr} -> M2l.module_type me
+    | Fun_left: {name:Name.t option; diff:state_diff; body:M2l.module_expr} -> M2l.module_type me
     | Fun_right:
         (module_type Arg.t * state_diff ) option
         -> M2l.module_expr me
@@ -182,7 +182,7 @@ module type s = sig
     | Alias: path_in_context mt
     | Ident: Paths.Expr.t mt
     | Sig: M2l.m2l mt
-    | Fun_left: {name:Name.t option; body:M2l.module_type} -> M2l.module_type mt
+    | Fun_left: {name:Name.t option; diff:state_diff; body:M2l.module_type} -> M2l.module_type mt
     | Fun_right: (module_type Arg.t * state_diff) option
         -> M2l.module_type mt
     | With_access:
