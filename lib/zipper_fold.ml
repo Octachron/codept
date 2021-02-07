@@ -376,6 +376,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       restart_expr (path: expression path) ~state ~param (D.bind name x)
     | Expr (Bind_rec {left;name;mt;right}) :: path  ->
       let left = D.bind_rec_add name x mt left in
+      let state = State.restart state left.backbone in
       bind_rec path left ~loc ~param ~state right >>=
       restart_expr ~state ~param (path: expression path)
     | Minor Local_bind_left (diff0,no,body) :: path ->
@@ -431,7 +432,6 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Expr SigInclude :: path ->
       restart_expr ~state ~param path (D.sig_include param loc x)
     | Expr Bind_rec_sig {diff; left; name; expr; right} :: path ->
-      let state = State.restart state diff in
       bind_rec_sig path (Sk.bind_rec_add name x.backbone diff)
         ((name, x.user, expr) :: left) ~param ~loc ~state right >>=
       restart_expr ~state ~param path
