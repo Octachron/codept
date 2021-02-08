@@ -81,9 +81,16 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
   let bind_rec_add name me mt =
     user (F.bind_rec_add name (F.me_constraint me.user mt))
   let path_expr_pure = both Sk.ident F.path_expr_pure
-  let path_expr_app param loc ~level  ~f ~x opt =
-      { backbone = Sk.proj ~level (Sk.apply param loc ~f:f.backbone ~x:x.backbone) opt ;
-        user = F.path_expr_app f.user x.user opt }
+  let path_expr_app param loc  ~f ~x =
+      { backbone = Sk.apply param loc ~f:f.backbone ~x:x.backbone ;
+        user = F.path_expr_app f.user x.user }
+
+  let path_expr_proj app_res proj proj_res =
+    {
+      backbone = Sk.ident proj_res.backbone;
+      user = F.path_expr_proj app_res.user proj proj_res.user
+    }
+
 end
 
 let ((>>=), (>>|)) = Ok.((>>=), (>>|))
@@ -261,9 +268,20 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Paths.Expr.Simple x ->
       resolve ~level ~loc ~state ?edge ~param (Path_expr Simple :: ctx) x >>| D.path_expr_pure
     | Apply {f;x;proj} ->
-      path_expr_gen ?edge ~level:Module (Path_expr(App_f (x,None))::ctx) ~loc ~param ~state f >>= fun f ->
-      path_expr ?edge ~level:Module (Path_expr(App_x (f,None))::ctx) ~loc ~param ~state x >>| fun x ->
-      D.path_expr_app param loc ~level ~f ~x proj
+      let proj = pack_proj level edge proj in
+      path_expr_gen ?edge ~level:Module (Path_expr(App_f (x,proj))::ctx) ~loc ~param ~state f >>= fun f ->
+      path_expr ?edge ~level:Module (Path_expr(App_x (f,proj))::ctx) ~loc ~param ~state x >>=
+      path_expr_proj ~state ctx param loc proj f
+  and pack_proj level edge proj = Option.fmap (fun p ->(level, Option.(edge><Deps.Edge.Normal), p)) proj
+  and path_expr_proj ~state ctx param loc proj f x =
+      let res = D.path_expr_app param loc ~f ~x in
+      match proj with
+      | None -> Ok res
+      | Some (level,edge,proj) ->
+        let path = Path_expr (Proj(res,proj)) :: ctx in
+        resolve path ?within:(Sk.signature res.backbone) ~state ~level
+          ~loc ~edge ~param proj
+        >>| D.path_expr_proj res proj
   and path_expr ?edge ~level ctx ~loc ~param ~state x = path_expr_gen
       ?edge ~level ctx ~loc ~param ~state x
   and gen_minors path ~pkg ~param ~state left = function
@@ -324,8 +342,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Module m -> m2l_start ~param ~pkg ~state (Ext Mod :: path) m
       >>| fun m -> F.ext_module m.user
     | Val v -> minors ~state ~pkg ~param (Ext Val :: path) v >>| F.ext_val
-  and resolve path ~param ~loc ~level ~state ?edge s =
-    let px = { Sk.edge; level; loc; ctx=State.diff state; path = s } in
+  and resolve path ~param ~loc ~level ~state ?edge ?within s =
+    let px = { Sk.edge; level; loc; ctx=State.diff state; path = s; within } in
     resolve0 ~param ~state ~path px
 
   open M2l
@@ -345,7 +363,9 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         restart_mt ~param ~loc ~state (path: module_type path) (D.alias x)
       | Path_expr Simple :: path ->
         restart_path_expr ~param ~loc ~state path (D.path_expr_pure x)
-      | _ -> .
+     | Path_expr (Proj (app_res,proj)) :: path ->
+        restart_path_expr ~param ~loc ~state path (D.path_expr_proj app_res proj x)
+     | _ -> .
   and restart_me: module_expr Path.t -> _ = fun path ~state ~loc ~param x -> match path with
     | Expr Include :: rest ->
       restart_expr ~state ~param (rest: expression path) (D.expr_include param loc x)
@@ -444,11 +464,9 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       arg  |>
       path_expr ~level:Module ~loc ~param ~state (Path_expr(App_x (x,proj))::path) >>=
       restart_path_expr ~loc ~param ~state path
-    | Path_expr App_x (f,None) :: path ->
-      restart_path_expr ~loc ~param ~state path (D.path_expr_app ~level:Module param loc ~f ~x None)
-    | Path_expr App_x (f,Some _proj) :: path ->
-      (* FIXME: compute path application and projection dependencies *)
-      restart_path_expr ~loc ~param ~state  path (D.path_expr_app param loc ~level:Module ~f ~x None)
+    | Path_expr App_x (f,proj) :: path ->
+      path_expr_proj ~state path param loc proj f x >>=
+      restart_path_expr ~loc ~param ~state path
     | Access a :: (Minor Access :: rest as all) ->
       let edge = Deps.Edge.Normal (* default_edge v.edge *) in
       let r = F.access_add x.user loc edge a.left in

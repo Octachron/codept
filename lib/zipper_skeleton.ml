@@ -23,11 +23,17 @@ type  path_in_context =
     edge:Deps.Edge.t option;
     level: Module.level;
     ctx: state_diff;
-    path: Paths.S.t
+    path: Paths.S.t;
+    within: Module.signature option
   }
 
 type module_like = P.t
 type m2l = S.t
+
+
+let signature x = match x.P.mty with
+  | Sig s -> Some s.signature
+  | _ -> (* FIXME: error message ? *) None
 
 let pp ppf x =
   Format.fprintf ppf
@@ -42,29 +48,11 @@ let path x = x.T.main
 
 let empty = P.empty
 
-let rec proj ~level m path = match path with
-  | [] -> m
-  | a :: q ->
-    match m.P.mty with
-    | Abstract _ | Fun _ -> m (* ERROR *)
-    | Sig { signature = s; _ } ->
-      let s = Module.Sig.flatten s in
-      let dir =
-        if q = [] && level = Module.Module_type then s.module_types else s.modules in
-      match Name.Map.find a dir with
-      | exception Not_found -> m
-      | r -> proj ~level (P.of_extended r) q
-
-let proj ~level m = function
-  | None -> m
-  | Some p -> proj ~level m p
-
 let abstract pkg = P.{name=None; mty=Abstract (Module.Ident.create pkg)}
 let apply param loc ~f ~x = T.apply_arg param.T.policy loc ~arg:x ~f
 let unpacked =
   let mty = Module.Sig { signature=Blank; origin=First_class} in
   { empty with mty }
-
 
 let fn ~f ~x =
   let arg = Option.fmap (Arg.map (fun x -> x.P.mty)) x in
@@ -161,17 +149,23 @@ module State(Env:Stage.envt) = struct
 
   let peek x = x
   let resolve param state
-      ({edge; loc; level; path; _ }: path_in_context) =
+      ({edge; loc; level; path; within; _ }: path_in_context) =
     let edge =
       if not param.T.epsilon_dependencies then Some Deps.Edge.Normal
       else edge in
-    match Env.find ?edge loc level path state.current with
+    let find = match within with
+      | None -> Env.find
+      | Some within -> Env.find_within within
+    in
+    match find ?edge loc level path state.current with
     | exception Not_found -> Error ()
     | x ->
       List.iter (fault param) x.msgs;
       debug "@[<hv>State: %a@ @[<hv 2>Resolving@ %a@ to@ %a@]@]@."
         Env.pp state.current Paths.S.pp path T.pp_answer x.main;
       Ok x
+
+
 end
 
 module type state = sig

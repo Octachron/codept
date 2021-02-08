@@ -6,6 +6,12 @@ module type envt = sig
     Fault.loc -> ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t
     -> t -> Transforms.answer Transforms.query_result
 
+  val find_within:
+    Module.signature ->
+    Fault.loc -> ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t
+    -> t -> Transforms.answer Transforms.query_result
+
+
   val extend : t -> Summary.t -> t
 
   val is_exterior: Paths.Simple.t -> t -> bool

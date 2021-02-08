@@ -50,6 +50,8 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
           Pp.fp ppf "%t.(%t.(%a))" x (dlist path_loc right) M2l.pp_me expr
         )
         )
+    | Path_expr Proj (_app,_proj) :: rest ->
+      path_expr rest x
     | _ -> .
   and me: M2l.module_expr t -> _ = fun rest sub ->
     match rest with
@@ -160,12 +162,12 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Path_expr App_f (a,proj) :: rest -> (* TODO *)
       path_expr rest
         (fun ppf -> Pp.fp ppf "@[%t(%a)%t@]"
-            sub Paths.E.pp a (option "." Paths.S.pp proj)
+            sub Paths.E.pp a (option "." Paths.S.pp (Option.fmap (fun (_,_,x) -> x) proj))
         )
    | Path_expr App_x (f,proj) :: rest -> (* TODO *)
       path_expr rest
         (fun ppf -> Pp.fp ppf "@[%t(%t)%t@]"
-            (R.pp_path_expr f.user) sub (option "." Paths.S.pp proj)
+            (R.pp_path_expr f.user) sub (option "." Paths.S.pp (Option.fmap (fun (_,_,x) -> x) proj))
         )
    | Access acc :: rest ->
      access (rest: waccess t)

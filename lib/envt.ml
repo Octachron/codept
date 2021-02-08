@@ -232,6 +232,9 @@ module Core = struct
   let find_implicit loc = find loc false
   let find loc = find loc true
 
+  let find_within m loc ?edge level path envt =
+    find loc ?edge level path @@ restrict envt (Signature m)
+
   let to_sign = function
     | Signature s -> s
     | In_namespace modules -> M.Exact { M.Def.empty with modules }

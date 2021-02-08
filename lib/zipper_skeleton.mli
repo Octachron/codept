@@ -11,6 +11,7 @@ type path_in_context = {
   level : Module.level;
   ctx : state_diff;
   path : Paths.Simple.t;
+  within: Module.signature option;
 }
 
 val pp: path_in_context Pp.t
@@ -24,11 +25,12 @@ val apply : Transforms.param -> Fault.loc -> f:module_like -> x:module_like  -> 
 val unpacked : module_like
 val fn : f:module_like -> x:module_like Module.Arg.t option -> module_like
 val ident : path -> module_like
-val proj: level:Module.level -> module_like -> Paths.S.t option -> module_like
 val str : m2l -> module_like
 val ext : Transforms.param -> Fault.loc -> string -> unit
 val m_with : Paths.Simple.set -> module_like -> module_like
 val empty: module_like
+
+val signature: module_like -> Module.signature option
 
 (** M2l *)
 val m2l_add : state_diff -> m2l -> m2l

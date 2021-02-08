@@ -82,7 +82,9 @@ module type fold = sig
   val open_me : opens -> module_expr -> module_expr
 
   val path_expr_pure : path -> path_expr
-  val path_expr_app : path_expr -> path_expr -> Paths.S.t option -> path_expr
+  val path_expr_app : path_expr -> path_expr -> path_expr
+  val path_expr_proj: path_expr -> Paths.S.t -> path -> path_expr
+
   val sig_abstract : module_type
   val sig_include : loc:Fault.loc -> module_type -> expr
   val str : m2l -> module_expr
@@ -152,8 +154,9 @@ module type s = sig
 
   type  'f path_expr =
     | Simple: path_in_context path_expr
-    | App_f: Paths.Expr.t * Paths.S.t option -> Paths.Expr.t path_expr
-    | App_x: path_expr_t * Paths.S.t option -> Paths.Expr.t path_expr
+    | App_f: Paths.Expr.t * (Module.level * Deps.Edge.t * Paths.S.t) option -> Paths.Expr.t path_expr
+    | App_x: path_expr_t * (Module.level * Deps.Edge.t * Paths.S.t) option -> Paths.Expr.t path_expr
+    | Proj: path_expr_t * Paths.S.t -> path_in_context path_expr
 
   type 'focus me =
     | Ident: path_in_context me

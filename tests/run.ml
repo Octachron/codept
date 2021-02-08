@@ -687,7 +687,7 @@ let result =
              "Zipper_pp"]
           ,["List"; "Format"],[]);
           "zipper_pp.ml", (
-            ["Loc"; "M2l"; "Module"; "Name"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
+            ["Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
           ,["Format"],[]);
           "zipper_fold.mli", (["Stage";"Zipper_def"], [], []);
           "zipper.ml", ([],[],[]);
