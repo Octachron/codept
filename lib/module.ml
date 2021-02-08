@@ -861,42 +861,6 @@ module Partial = struct
      | Sig s ->
          Ok s.signature
 
-(* ERASE ME
-   let rec proj lvl path mt =
-     match path with
-     | [] -> Some mt
-     | a :: q ->
-       match (mt: modul_) with
-       | Sig { signature=s; _ } ->
-         proj_sig lvl a q s
-       | Fun _ | Abstract _
-       | Alias _ | Namespace _ | Link _ -> None
-   and proj_sig lvl a q = function
-     | Blank -> None
-     | Exact def -> proj_def lvl a q def
-     | Divergence d ->
-       match proj_def lvl a q d.after with
-       | None -> proj_sig lvl a q d.before
-       | Some _ as r -> r
-   and proj_def lvl a q def =
-     let dir = if lvl=Module_type && q=[] then
-         def.module_types
-       else def.modules in
-     match Name.Map.find a dir with
-     | exception Not_found -> None
-     | x -> proj lvl q x
-
-
-   let rec to_kind = function
-         | Alias _ | Namespace _ | Link _ -> assert false
-         | Abstract x -> Abstract x
-         | Fun(x,y) -> Fun(Option.fmap (Arg.map to_kind) x, to_kind y)
-         | Sig m -> Sig m
-
-   let proj lvl path  mt =
-     Option.fmap to_kind (proj lvl path (to_module mt))
-*)
-
    module Sch = struct
      open Schematic
      module S = Schema
