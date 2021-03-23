@@ -65,8 +65,4 @@ val binds : (Module.level * Module.named) list -> summary
     in [def] *)
 
 val of_signature :  Module.signature -> summary
-(** Create a summary from a partial module *)
-
-
-val of_partial :  Module.Partial.t -> (summary,summary) result
-(** Create a summary from a partial module *)
+(** Create a summary from a signature *)
