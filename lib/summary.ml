@@ -101,3 +101,6 @@ let of_partial fsummary =
   let bind x = View.define @@ View.make x in
   Mresult.fmap bind bind
   @@ M.Partial.to_sign fsummary
+
+let of_signature s =
+  View.define @@ View.make s

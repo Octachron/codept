@@ -11,7 +11,7 @@ val included_first_class : Fault.loc Fault.info
 
 (** {2 Typing faults} *)
 val applied_structure : ( Fault.loc * Module.Partial.t ) Fault.info
-val structure_expected : ( Fault.loc * Module.Partial.t ) Fault.info
+val included : ( Fault.loc * Module.sty * [ `Abstract | `Functor ] ) Fault.info
 val applied_unknown : ( Fault.loc * Module.Partial.t ) Fault.info
 val unknown_approximated : ( Fault.loc * Module.level * Name.t ) Fault.info
 val nonexisting_submodule:

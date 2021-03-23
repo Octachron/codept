@@ -85,22 +85,22 @@ let open_diverge pol loc x = match x.kind with
 
 let open_ pol loc x = open_diverge_module pol loc x
 
-let of_partial policy loc p =
-  match Summary.of_partial p with
-  | Error def -> Fault.raise policy F.structure_expected (loc,p); def
-  | Ok def -> def
-
 let gen_include policy loc lvl x =
   let mty = match lvl with
     | Module -> x.Module.Partial.mty
     | Module_type -> Module.Partial.refresh (fst loc) x.Module.Partial.mty
   in
   match mty with
-  | Abstract _ | Fun _ ->  (* TODO ERROR *) Summary.empty
+  | Abstract _  ->
+    Fault.raise policy F.included (loc,mty,`Abstract);
+    Summary.empty
+  | Fun _ ->
+    Fault.raise policy F.included  (loc,mty,`Functor);
+    Summary.empty
   | Sig s ->
     if s.signature = Blank && s.origin = First_class
     then Fault.raise policy F.included_first_class loc;
-    of_partial policy loc { x with mty }
+    Summary.of_signature s.signature
 
 let bind_summary level name expr =
   let m = Module.Partial.to_module ~origin:Submodule expr in

@@ -30,7 +30,7 @@ let default =
   |> err parsing_error
   |> set ["typing"] ~expl:"Typing faults" ~lvl:warning
   |> warn applied_structure
-  |> warn structure_expected
+  |> warn included
   |> warn nonexisting_submodule
   |> notif applied_unknown
   |> notif unknown_approximated
@@ -43,7 +43,7 @@ let strict =
   Policy.set_exit Level.notification default
   |> set ["typing"]  ~expl:"Typing faults" ~lvl:error
   |> err applied_structure
-  |> err structure_expected
+  |> err included
 
 
 let parsing_approx =

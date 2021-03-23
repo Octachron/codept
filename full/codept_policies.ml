@@ -46,4 +46,4 @@ let strict =
   Policy.set_exit Level.notification policy
   |> Policy.set ["typing"]  ~expl:"Typing faults" ~lvl:Level.error
   |> register ~lvl:Level.error applied_structure
-  |> register ~lvl:Level.error structure_expected
+  |> register ~lvl:Level.error included

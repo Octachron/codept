@@ -55,10 +55,14 @@ let applied_structure =
      was applied like a functor."
     (l2 "only functor can be applied, got:%a" Module.Partial.pp)
 
-let structure_expected =
+let pp_kind ppf : [ `Abstract | `Functor ] -> _ = function
+  | `Abstract -> Pp.string ppf "a abstract module type"
+  | `Functor -> Pp.string ppf "a functor"
+
+let included  =
   info ["typing"; "structure_expected"]
-    "Signature fault: a functor was not expected in this situation."
-    (l2 "a structure, i.e. not a functor was expected; got:%a" Module.Partial.pp)
+    "Signature fault: a signature was expected in this situation."
+    (l3 "only a signature can be included@ %a@ is a %a"  Module.Partial.pp_sty pp_kind)
 
 let nonexisting_submodule =
   let mtype ppf lvl = Pp.string ppf
