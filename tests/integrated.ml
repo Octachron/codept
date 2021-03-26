@@ -57,10 +57,14 @@ let diff ppf (x,y) =
         String.index_from y (ypos + 1) '\n'
       with Not_found ->
         true, String.length x - 1, String.length y - 1 in
-    let xs = String.sub x (xpos+1) (xnew - xpos) in
-    let ys = String.sub y (ypos+1) (ynew - ypos) in
+    let maybe_sub s start stop =
+      if start > stop then ""
+      else String.sub s start stop
+    in
+    let xs = maybe_sub x (xpos+1) (xnew - xpos -1) in
+    let ys = maybe_sub y (ypos+1) (ynew - ypos -1) in
     if (xs <> ys ) then
-      Format.printf ">%s<%s@," xs ys;
+      Format.printf ">%s@,<%s@," xs ys;
     if stop then () else diff ppf x xnew y ynew in
   diff ppf x (-1) y (-1)
 
@@ -93,23 +97,27 @@ type attr =
 
 type variant = {
   name: string;
-  cmd: string -> string * string array;
+  cmd: string array option -> string -> string * string array;
   filter: attr -> bool
 }
 
 let full_variant =
-  let cmd x = codept, [| "codept"; "-nested"; "-expand-deps"; "-no-alias-deps"; "-deps"; "-k"; x |] in
+  let cmd arg x =
+    let cmd = match arg with
+      | None -> [| "codept"; "-nested"; "-expand-deps"; "-no-alias-deps"; "-deps"; "-k"; x |]
+      | Some a -> Array.concat [ [| "codept"|] ; a; [|x|] ] in
+    codept, cmd  in
    { name = "full_variant"; cmd; filter = (fun _ -> true) }
 
 let zip_variant =
-  let cmd x = zip_test, [|"zip_test"; x|] in
+  let cmd _ x = zip_test, [|"zip_test"; x|] in
   let filter = function Broken | Self_cycle -> false | _ -> true in
   { name="zip"; cmd; filter }
 
-let run (v,  (case,_attrs)) =
+let run arg (v,  (case,_attrs)) =
     let out, inp = Unix.pipe () in
     let pid =
-      let main, args = v.cmd case in
+      let main, args = v.cmd arg case in
       Unix.create_process main args Unix.stdin inp inp in
     v.name, case, pid, out
 
@@ -152,12 +160,25 @@ let guard f x =
   else
     f x
 
+let arg x =
+  let arg_file = x ^ "/args" in
+  if Sys.file_exists arg_file then
+    Some (Arg.read_arg arg_file)
+  else
+    None
+
 let green ppf s = Format.fprintf ppf "\x1b[32m%s\x1b[0m" s
 let red ppf s = Format.fprintf ppf "\x1b[31m%s\x1b[0m" s
 
+let print_arg ppf = function
+  | None -> Format.fprintf ppf "None"
+  | Some x -> Array.iter (Format.fprintf ppf "%s@ ") x
+
+
 let dir x =
   let variant = full_variant in
-  let _, _, pid, out = run (variant, (x,[])) in
+  let arg = arg x in
+  let _, _, pid, out = run arg (variant, (x,[])) in
   match snd (Unix.waitpid [] pid) with
   | WEXITED (0|2) ->
     let s = read_all out in
@@ -165,7 +186,8 @@ let dir x =
     if s %=% ref then
       Format.printf "[%s]: %a@." x green "ok"
     else
-      Format.printf "[%s]:@ %a@[<v>%a@]@." x red "failure" diff (s,ref)
+      Format.printf "[%s]:@ %a,@ args:%a@ %s@,diff:@,@[<v>%a@]@." x red "failure"
+        print_arg arg s diff (s,ref)
   | e -> error e x
 
 let extract_attribute x =
@@ -232,8 +254,8 @@ let cases =
     if s %=% ref then
       Format.printf "[%s]: %a(%s)@." name green "ok" vname
     else begin
-      Format.printf "[%s]: %a(%s) @ @[<v>%a@]@." name red "fail" vname
-        diff (s,ref)
+      Format.printf "[%s]: %a(%s)@,%s@,diff:@,@[<v>%a@]@." name red "fail" vname
+        s diff (s,ref)
     end
   in
   let peek l (_, case, pid, _ as x) =
@@ -245,7 +267,7 @@ let cases =
     | [] -> ()
     | pending ->
       loop (List.fold_left peek [] pending) in
-  loop (List.map run all)
+  loop (List.map (run None) all)
 
 let () =
   Sys.chdir "complex";
