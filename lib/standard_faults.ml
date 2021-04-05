@@ -64,6 +64,13 @@ let included  =
     "Signature fault: a signature was expected in this situation."
     (l3 "only a signature can be included@ %a@ is a %a"  Module.Partial.pp_sty pp_kind)
 
+let opened  =
+  info ["typing"; "structure_expected"]
+    "Signature fault: a signature was expected in this situation."
+    (l3 "only a signature can be opened@ %a@ is a %a"  Module.Partial.pp_sty pp_kind)
+
+
+
 let nonexisting_submodule =
   let mtype ppf lvl = Pp.string ppf
       (if lvl = Module.Module_type then "module type" else "submodule") in

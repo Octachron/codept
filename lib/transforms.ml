@@ -1,6 +1,11 @@
 
 let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
+
+type level = Module.level = Module | Module_type
+module F = Standard_faults
+
+
 type param = {
   policy: Fault.Policy.t;
   epsilon_dependencies: bool;
@@ -45,14 +50,6 @@ and remove_path_from_sig path defs = match path with
 let with_deletions dels d =
   Paths.S.Set.fold remove_path_from dels d
 
-
-let filename loc = fst loc
-
-type level = Module.level = Module | Module_type
-
-
-module F = Standard_faults
-
 let open_diverge_module policy loc x =
   let open Module.Partial in
   match x.mty with
@@ -75,13 +72,20 @@ let open_diverge_module policy loc x =
       r.signature
   | Sig { signature=(Divergence _ | Exact _ as s); _}  -> Summary.View.see s
 
-let open_diverge pol loc x = match x.kind with
-  | Mty Sig m -> open_diverge_module pol loc (Module.Partial.of_module x.name m)
+let open_diverge policy loc x = match x.kind with
+  | Mty Sig m ->
+    open_diverge_module policy loc (Module.Partial.of_module x.name m)
+  | Mty (Abstract _ as mty) ->
+    Fault.raise policy F.opened (loc,mty,`Abstract);
+    Summary.empty
+  | Mty (Fun _ as mty) ->
+    Fault.raise policy F.opened (loc,mty,`Functor);
+    Summary.empty
+
 
   (* FIXME: type error *)
   | Namespace modules ->
     Summary.View.see @@ Module.Exact { Module.Def.empty with modules }
-  | Mty (Abstract _ | Fun _ ) -> Summary.empty
 
 let open_ pol loc x = open_diverge_module pol loc x
 
