@@ -159,12 +159,12 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | _ -> .
   and path_expr: Paths.Expr.t t -> _ = fun rest sub -> match rest with
     | Mt Ident :: rest -> mt rest sub
-    | Path_expr App_f (a,proj) :: rest -> (* TODO *)
+    | Path_expr App_f (a,proj) :: rest ->
       path_expr rest
         (fun ppf -> Pp.fp ppf "@[%t(%a)%t@]"
             sub Paths.E.pp a (option "." Paths.S.pp (Option.fmap (fun (_,_,x) -> x) proj))
         )
-   | Path_expr App_x (f,proj) :: rest -> (* TODO *)
+   | Path_expr App_x (f,proj) :: rest ->
       path_expr rest
         (fun ppf -> Pp.fp ppf "@[%t(%t)%t@]"
             (R.pp_path_expr f.user) sub (option "." Paths.S.pp (Option.fmap (fun (_,_,x) -> x) proj))
