@@ -597,9 +597,13 @@ let result =
           "fault.mli", (["Loc"; "Paths"], ["Format"],[]);
           "format_tags.mli", ([],["Format"],[]);
           "format_compat.mli", ([],["Format"],[]);
-          "module.mli", ( ["Loc";"Paths";"Pp"; "Name";"Namespaced"; "Schematic"],
+          "id.mli", ( ["Paths";"Pp"; "Schematic"],
+                          [], [] );
+          "id.ml", ( ["Paths";"Pp"; "Schematic"],
+                          [], [] );
+          "module.mli", ( ["Id"; "Loc";"Paths"; "Name";"Namespaced"; "Schematic"],
                           ["Format"], [] );
-          "module.ml", ( ["Loc";"Paths";"Name"; "Namespaced"; "Option"; "Pp"
+          "module.ml", ( ["Id"; "Loc";"Paths";"Name"; "Namespaced"; "Option"; "Pp"
                          ; "Schematic"; "Schematic_indices" ],
                          ["List"; "Format"; "Map"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
@@ -682,7 +686,7 @@ let result =
             ["Deps"; "Module"; "Stage"; "Transforms"; "Zipper"; "Zipper_fold"]
           ,[],[]);
           "zipper_fold.ml", (
-            ["Deps"; "Loc"; "M2l"; "Module"; "Mresult"; "Option";
+            ["Deps"; "Id"; "Loc"; "M2l"; "Module"; "Mresult"; "Option";
              "Paths"; "Pp"; "Stage"; "Summary"; "Zipper_skeleton"; "Zipper_def";
              "Zipper_pp"]
           ,["List"; "Format"],[]);
@@ -696,11 +700,11 @@ let result =
              "Zipper_skeleton"]
           ,[],[]);
           "zipper_skeleton.ml", (
-            ["Deps"; "Fault"; "M2l"; "Module"; "Name"; "Namespaced"; "Option"; "Paths"; "Pp";
+            ["Deps"; "Fault"; "Id"; "M2l"; "Module"; "Name"; "Namespaced"; "Option"; "Paths"; "Pp";
              "Stage"; "Standard_faults"; "Summary"; "Transforms"]
           ,["Format"; "List"],[]);
           "zipper_skeleton.mli", (
-            ["Deps"; "Fault"; "M2l"; "Module"; "Name"; "Paths"; "Pp"; "Stage";
+            ["Deps"; "Fault"; "Id"; "M2l"; "Module"; "Name"; "Paths"; "Pp"; "Stage";
              "Summary"; "Transforms"]
           ,[],[]);
         ])

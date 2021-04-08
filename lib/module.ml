@@ -173,31 +173,6 @@ end
 type origin = Origin.t
 
 
-
-module Ident = struct
-  module Path_like = Paths.Pkg
-  type path_like = Path_like.t
-  module Store = Map.Make(struct type t = path_like let compare = Stdlib.compare end)
-  module Core = struct
-    type t = path_like * int
-    let compare (x:t) (y:t) = compare x y
-  end
-  include Core
-  let sch = Schematic.pair Path_like.sch Int
-  let pp ppf (pkg,id) = Pp.fp ppf "%a$%d" Path_like.pp pkg id
-
-  let store =ref Store.empty
-  let create nms =
-    let current =
-      match Store.find nms !store with
-      | exception Not_found -> 0
-      | x -> x in
-    store := Store.add nms (current + 1) !store;
-    nms, current
-
-end
-
-
 (** Type-level tags *)
 
 type extended = private Extended
@@ -236,7 +211,7 @@ and _ ty =
         *)
       } -> extended ty
 
-  | Abstract: Ident.t -> 'any ty
+  | Abstract: Id.t -> 'any ty
   (** Abstract module type may be refined during functor application,
       keeping track of their identity is thus important
   *)
@@ -409,7 +384,7 @@ let rec reflect ppf = function
   | Link path ->
     Pp.fp ppf "Link (%a)"
       reflect_namespaced path
-  | Abstract n -> Pp.fp ppf "Abstract %a" Ident.pp n
+  | Abstract n -> Pp.fp ppf "Abstract %a" Id.pp n
 
 and reflect_namespaced ppf nd =
   if nd.namespace = [] then
@@ -457,7 +432,7 @@ let rec pp ppf = function
     Pp.fp ppf "%a->%a" Pp.(opt pp_arg) arg pp x
   | Namespace n -> Pp.fp ppf "Namespace @[[%a]@]"
                      pp_mdict n
-  | Abstract n -> Pp.fp ppf "■(%a)" Ident.pp n
+  | Abstract n -> Pp.fp ppf "■(%a)" Id.pp n
 
 
 and pp_m ppf {origin;signature;_} =
@@ -569,7 +544,7 @@ module Schema = struct
              sch = Sum[ "M", m;
                         "Alias", reopen Paths.S.sch;
                         "Fun", [opt_arg; Mu.module'];
-                        "Abstract", reopen Ident.sch;
+                        "Abstract", reopen Id.sch;
                         "Link", reopen Paths.S.sch;
                         "Namespace", Array (named ())
                       ]
@@ -715,14 +690,14 @@ let rec extend: type any. any ty -> extended ty = function
 
 module Subst = struct
 
-  module Tbl = Map.Make(Ident)
+  module Tbl = Map.Make(Id)
   type 'x t = 'x ty Tbl.t
   type 'x subst = 'x t
 
   let identity = Tbl.empty
   let add id mty subst = Tbl.add id mty subst
 
-  let rec apply: type any. (Ident.t -> any ty option) -> any ty -> any ty = fun subst -> function
+  let rec apply: type any. (Id.t -> any ty option) -> any ty -> any ty = fun subst -> function
     | Abstract id as old -> Option.( subst id >< old)
     | Fun (x,y) -> Fun(Option.fmap (Arg.map (apply subst)) x, apply subst y)
     | Sig {origin;signature} ->
@@ -730,7 +705,7 @@ module Subst = struct
     | Alias _ as x -> x
     | Link _ as x -> x
     | Namespace _ as x -> x
-  and apply_sig: (Ident.t -> extended ty option) -> signature -> signature = fun subst -> function
+  and apply_sig: (Id.t -> extended ty option) -> signature -> signature = fun subst -> function
     | Blank -> Blank
     | Exact s -> Exact (Def.map (apply subst) s)
     | Divergence d -> Divergence { point = d.point;
@@ -738,13 +713,13 @@ module Subst = struct
                         after = Def.map (apply subst) d.after
                       }
 
-  let refresh pkg x =
+  let refresh seed x =
     let tbl = ref Tbl.empty in
     apply (fun k ->
         match Tbl.find_opt k !tbl with
         | Some _ as y -> y
         | None ->
-          let fresh = Abstract (Ident.create pkg) in
+          let fresh = Abstract (Id.create seed) in
           tbl := Tbl.add k fresh !tbl;
           Some fresh
       ) x
@@ -777,7 +752,7 @@ module Subst = struct
   let compute_constraints ~arg ~param = compute_constraints Module arg param identity
 
   let pp ppf s =
-    let pp_elt ppf (k,x) = Pp.fp ppf "%a->%a" Ident.pp k pp x in
+    let pp_elt ppf (k,x) = Pp.fp ppf "%a->%a" Id.pp k pp x in
     Pp.list pp_elt ppf (Tbl.bindings s)
 
 end
@@ -821,7 +796,7 @@ module Partial = struct
     res
 
  let rec pp_sty ppf: sty -> _ = function
-    | Abstract n -> Pp.fp ppf "<abstract:%a>" Ident.pp n
+    | Abstract n -> Pp.fp ppf "<abstract:%a>" Id.pp n
     | Fun (a,x) -> Pp.fp ppf "%a->%a" (Arg.pp pp_sty) a pp_sty x
     | Sig m -> pp_m ppf m
 
@@ -870,7 +845,7 @@ module Partial = struct
 
      let mty =
        custom
-         (Sum ["Abstract", reopen Ident.sch;
+         (Sum ["Abstract", reopen Id.sch;
                "Sig", Schema.m;
                "Fun", [option @@ Arg.sch mu; mu];
               ])

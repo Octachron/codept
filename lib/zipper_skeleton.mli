@@ -9,6 +9,7 @@ type path_in_context = {
   loc : Fault.loc;
   edge : Deps.Edge.t option;
   level : Module.level;
+  seed: Id.seed;
   ctx : state_diff;
   path : Paths.Simple.t;
   within: Module.signature option;
@@ -20,7 +21,7 @@ val pp_ml: module_like Pp.t
 val path: query -> path
 
 (** Module like *)
-val abstract : Paths.Pkg.t -> module_like
+val abstract : Id.seed -> module_like
 val apply : Transforms.param -> Fault.loc -> f:module_like -> x:module_like  -> module_like
 val unpacked : module_like
 val fn : f:module_like -> x:module_like Module.Arg.t option -> module_like
@@ -42,7 +43,8 @@ val bind_rec_add : Name.t option -> module_like -> state_diff -> state_diff
 val bind_rec_init : state_diff
 
 (** Expr *)
-val included : Transforms.param -> Fault.loc -> Module.level -> module_like -> state_diff
+val included : Transforms.param -> Fault.loc
+  -> Id.seed -> Module.level -> module_like -> state_diff
 val bind : Name.t option -> module_like -> state_diff
 val bind_sig : Name.t option -> module_like -> state_diff
 val opened : Transforms.param -> loc:Fault.loc -> module_like -> state_diff

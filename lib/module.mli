@@ -75,14 +75,6 @@ end
 type origin = Origin.t
 
 
-(** Idents for abstract module types *)
-module Ident: sig
-  type t
-  val pp: t Pp.t
-  val sch: t Schematic.t
-  val create: Paths.Pkg.t -> t
-end
-
 (** Type-level tags *)
 
 type extended = private Extended
@@ -121,7 +113,7 @@ and _ ty =
         *)
       } -> extended ty
 
-  | Abstract: Ident.t -> 'any ty
+  | Abstract: Id.t -> 'any ty
   (** Abstract module type may be refined during functor application,
       keeping track of their identity is thus important
   *)
@@ -278,7 +270,7 @@ module Partial :
     val pp_sty : Format.formatter -> sty -> unit
     val sch: t Schematic.t
 
-    val refresh: Paths.Pkg.t -> 'any ty -> 'any ty
+    val refresh: Id.seed -> 'any ty -> 'any ty
     val apply :  arg:modul_ -> param:modul_ -> body:modul_ -> modul_
 
     val to_module : ?origin:origin -> t -> modul_

@@ -18,7 +18,7 @@ type 'a query_result =
   { main:'a; deps: Deps.t; msgs: Fault.t list }
 
 val gen_include: Fault.Policy.t -> Fault.loc ->
-  Module.level -> Module.Partial.t -> Summary.t
+  Id.seed -> Module.level -> Module.Partial.t -> Summary.t
 
 val open_: Fault.Policy.t -> Fault.loc ->
   Module.Partial.t -> Summary.t

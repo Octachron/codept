@@ -89,10 +89,10 @@ let open_diverge policy loc x = match x.kind with
 
 let open_ pol loc x = open_diverge_module pol loc x
 
-let gen_include policy loc lvl x =
+let gen_include policy loc seed lvl x =
   let mty = match lvl with
     | Module -> x.Module.Partial.mty
-    | Module_type -> Module.Partial.refresh (fst loc) x.Module.Partial.mty
+    | Module_type -> Module.Partial.refresh seed x.Module.Partial.mty
   in
   match mty with
   | Abstract _  ->

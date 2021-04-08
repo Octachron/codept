@@ -18,10 +18,11 @@ type path = T.answer
 type query = path T.query_result
 
 type state_diff = Y.t
-type  path_in_context =
+type path_in_context =
   { loc: Fault.loc;
     edge:Deps.Edge.t option;
     level: Module.level;
+    seed: Id.seed;
     ctx: state_diff;
     path: Paths.S.t;
     within: Module.signature option
@@ -48,7 +49,7 @@ let path x = x.T.main
 
 let empty = P.empty
 
-let abstract pkg = P.{name=None; mty=Abstract (Module.Ident.create pkg)}
+let abstract seed = P.{name=None; mty=Abstract (Id.create seed)}
 let apply param loc ~f ~x = T.apply_arg param.T.policy loc ~arg:x ~f
 let unpacked =
   let mty = Module.Sig { signature=Blank; origin=First_class} in
