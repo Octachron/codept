@@ -33,7 +33,7 @@ module Divergence= struct
   type origin =
     | First_class_module
     | External
-  type t =  { root: Name.t option; origin:origin; loc: Paths.Pkg.t * Loc.t }
+  type t =  { root: Name.t option; origin:origin; loc: Uloc.t }
 
   let pp_origin ppf s =
     Pp.fp ppf "%s" @@
@@ -61,8 +61,8 @@ module Divergence= struct
       Pp.fp ppf "Multiline{start=%a; stop =%a}"
         pair start pair stop
 
-  let floc =
-    Pp.decorate "(" ")" @@ Pp.pair Paths.P.reflect rloc
+  let floc ppf {Uloc.pkg; loc} =
+    Pp.fp ppf "(%a:%a)" Paths.P.reflect pkg rloc loc
 
   let divergence ppf {root;loc;origin} =
     Pp.fp ppf "{root=%a;loc=%a;origin=%a}" Pp.estring Option.(root><"")
@@ -71,7 +71,7 @@ module Divergence= struct
   end
   let reflect = Reflect.divergence
 
-  let pp ppf {root; origin; loc= (path,loc) } =
+  let pp ppf {root; origin; loc= {pkg=path;loc} } =
     Pp.fp ppf "open %s at %a:%a (%a)"
       Option.(root><"")
       Paths.Pkg.pp path Loc.pp loc
@@ -92,8 +92,8 @@ module Divergence= struct
   let sch = let open Schematic in let open Tuple in
     custom
       Schematic.[option String; sch_origin; [Paths.P.sch; Loc.Sch.t ]]
-      (fun r -> [r.root;r.origin; [fst r.loc; snd r.loc] ])
-      (fun [root;origin;[s;l]] -> {root;origin;loc=(s,l)} )
+      (fun r -> [r.root;r.origin; [r.loc.pkg; r.loc.loc] ])
+      (fun [root;origin;[pkg;loc]] -> {root;origin;loc={pkg;loc}} )
 
 end
 

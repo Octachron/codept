@@ -3,12 +3,12 @@ module type envt = sig
   type t
   val eq: t -> t -> bool
   val find:
-    Fault.loc -> ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t
+    Uloc.t -> ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t
     -> t -> Transforms.answer Transforms.query_result
 
   val find_within:
     Module.signature ->
-    Fault.loc -> ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t
+    Uloc.t -> ?edge:Deps.Edge.t -> Module.level -> Paths.Simple.t
     -> t -> Transforms.answer Transforms.query_result
 
 

@@ -578,13 +578,13 @@ let result =
             ["Module"; "Pp"; "Schematic"],
             ["List"], []);
           "envt.mli", (
-            ["Fault"; "Module";"Name"; "Namespaced"; "Stage"; "Paths";
-             "Transforms"],
+            ["Module";"Name"; "Namespaced"; "Stage"; "Paths";
+             "Transforms"; "Uloc"],
             [], []);
           "envt.ml", (
             ["Cmi"; "Deps"; "Summary"; "Transforms";
              "Fault"; "Dep_zipper"; "Module"; "Name"; "Namespaced"; "Paths";
-             "Standard_faults";"Standard_policies";"Option";"Pp"],
+             "Standard_faults";"Standard_policies";"Option";"Pp"; "Uloc"],
             ["Array"; "Filename";"List";"Sys"; "Format"],
             []);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Paths"; "Pp"; "Schematic" ],
@@ -592,19 +592,19 @@ let result =
           "m2l.ml", (["Loc"; "Deps"; "Module"; "Name";
                       "Option";"Paths"; "Pp"; "Schematic"; "Schematic_indices" ],
                      ["List"],[]);
-          "fault.ml", (["Format_tags"; "Loc"; "Option"; "Name";"Paths"; "Pp"],
+          "fault.ml", (["Format_tags"; "Option"; "Name";"Paths"; "Pp"],
                           ["Array"; "Format"; "Map"],[]);
-          "fault.mli", (["Loc"; "Paths"], ["Format"],[]);
+          "fault.mli", (["Paths"], ["Format"],[]);
           "format_tags.mli", ([],["Format"],[]);
           "format_compat.mli", ([],["Format"],[]);
           "id.mli", ( ["Paths";"Pp"; "Schematic"],
                           [], [] );
           "id.ml", ( ["Paths";"Pp"; "Schematic"],
                           [], [] );
-          "module.mli", ( ["Id"; "Loc";"Paths"; "Name";"Namespaced"; "Schematic"],
+          "module.mli", ( ["Id"; "Paths"; "Name";"Namespaced"; "Schematic"; "Uloc"],
                           ["Format"], [] );
           "module.ml", ( ["Id"; "Loc";"Paths";"Name"; "Namespaced"; "Option"; "Pp"
-                         ; "Schematic"; "Schematic_indices" ],
+                         ; "Schematic"; "Schematic_indices"; "Uloc" ],
                          ["List"; "Format"; "Map"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map";"List"], [] );
@@ -614,6 +614,8 @@ let result =
                              ["Format";"List";"Set";"Map"], [] );
           "loc.mli", ( ["Schematic"], ["Format"], []);
           "loc.ml", ( ["Pp";"Schematic"], ["List"], []);
+          "uloc.mli", ( ["Loc"; "Paths"; "Pp"], [], []);
+          "uloc.ml", ( ["Format_tags"; "Loc"; "Paths"; "Pp"], [], []);
           "option.mli", ([],["Lazy"],[]);
           "option.ml", ([],["List";"Lazy"],[]);
           "pparse_compat.mli", ([], ["Parsetree"], []);
@@ -650,14 +652,14 @@ let result =
             ["Approx_parser"; "Deps"; "Summary"; "Stage"; "Loc";
              "M2l"; "Module"; "Mresult"; "Namespaced";
              "Option"; "Pp"; "Paths"; "Read"; "Unit"; "Fault";
-             "Standard_faults"],
+             "Standard_faults"; "Uloc"],
             ["List"; "Map";"Format"],[]);
           "standard_faults.ml", (
             ["Fault"; "Format_tags"; "Module"; "Namespaced"; "Paths"; "Pp"
-            ; "Loc"; "Schematic" ],
+            ; "Loc"; "Schematic"; "Uloc" ],
             ["Format"; "Location"; "Syntaxerr"],[]);
           "standard_faults.mli", (
-            ["Fault"; "Name"; "Namespaced"; "Module"; "Paths"; "Schematic" ],
+            ["Fault"; "Name"; "Namespaced"; "Module"; "Paths"; "Schematic"; "Uloc" ],
             ["Lexer";"Syntaxerr"],[]);
           "standard_policies.ml", (["Fault"; "Standard_faults"; "Solver"],[],[]);
           "standard_policies.mli", (["Fault"],[],[]);
@@ -680,7 +682,7 @@ let result =
           ,["Format"],[]);
           "stage.mli", (
             ["Deps"; "Fault"; "Loc"; "M2l";"Module"; "Name"; "Namespaced"; "Paths";
-             "Pp"; "Summary"; "Transforms"]
+             "Pp"; "Summary"; "Transforms"; "Uloc"]
           ,["Format"],[]);
           "dep_zipper.ml", (
             ["Deps"; "Module"; "Stage"; "Transforms"; "Zipper"; "Zipper_fold"]
@@ -688,7 +690,7 @@ let result =
           "zipper_fold.ml", (
             ["Deps"; "Id"; "Loc"; "M2l"; "Module"; "Mresult"; "Option";
              "Paths"; "Pp"; "Stage"; "Summary"; "Zipper_skeleton"; "Zipper_def";
-             "Zipper_pp"]
+             "Zipper_pp"; "Uloc"]
           ,["List"; "Format"],[]);
           "zipper_pp.ml", (
             ["Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
@@ -696,16 +698,16 @@ let result =
           "zipper_fold.mli", (["Stage";"Zipper_def"], [], []);
           "zipper.ml", ([],[],[]);
           "zipper_def.ml", (
-            ["Deps"; "Loc"; "M2l";"Fault"; "Module"; "Name";"Paths";
+            ["Deps"; "Loc"; "M2l"; "Uloc"; "Module"; "Name";"Paths";
              "Zipper_skeleton"]
           ,[],[]);
           "zipper_skeleton.ml", (
             ["Deps"; "Fault"; "Id"; "M2l"; "Module"; "Name"; "Namespaced"; "Option"; "Paths"; "Pp";
-             "Stage"; "Standard_faults"; "Summary"; "Transforms"]
+             "Stage"; "Standard_faults"; "Summary"; "Transforms"; "Uloc"]
           ,["Format"; "List"],[]);
           "zipper_skeleton.mli", (
-            ["Deps"; "Fault"; "Id"; "M2l"; "Module"; "Name"; "Paths"; "Pp"; "Stage";
-             "Summary"; "Transforms"]
+            ["Deps"; "Id"; "M2l"; "Module"; "Name"; "Paths"; "Pp"; "Stage";
+             "Summary"; "Transforms"; "Uloc"]
           ,[],[]);
         ])
       )

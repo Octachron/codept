@@ -39,7 +39,7 @@ module Divergence: sig
 
   type t = { root: Name.t option;
              origin:origin;
-             loc: Paths.Pkg.t * Loc.t
+             loc: Uloc.t
            }
 
   val pp: Format.formatter -> t -> unit

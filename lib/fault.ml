@@ -102,17 +102,6 @@ let check (type a) ((module X): a tag) (Info info) =
   | X.E -> Some (info:a info)
   | _ -> None
 
-type loc = Paths.Pkg.t * Loc.t
-let loc_none = Paths.Pkg.{ source= Unknown; file=[] }, Loc.Nowhere
-
-let loc ppf l =
-  let sub ppf (path,x) = Pp.fp ppf "%a:%a" Paths.Pkg.pp path Loc.pp x in
-  Format_tags.(with_tag Loc) sub ppf l
-
-let locc ppf l =
-  if l == loc_none then ()
-  else Format.fprintf ppf "%a,@ " loc l
-
 module Policy = struct
 
   type map =

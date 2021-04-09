@@ -6,7 +6,7 @@ type m2l
 type state_diff
 
 type path_in_context = {
-  loc : Fault.loc;
+  loc : Uloc.t;
   edge : Deps.Edge.t option;
   level : Module.level;
   seed: Id.seed;
@@ -22,12 +22,12 @@ val path: query -> path
 
 (** Module like *)
 val abstract : Id.seed -> module_like
-val apply : Transforms.param -> Fault.loc -> f:module_like -> x:module_like  -> module_like
+val apply : Transforms.param -> Uloc.t -> f:module_like -> x:module_like  -> module_like
 val unpacked : module_like
 val fn : f:module_like -> x:module_like Module.Arg.t option -> module_like
 val ident : path -> module_like
 val str : m2l -> module_like
-val ext : Transforms.param -> Fault.loc -> string -> unit
+val ext : Transforms.param -> Uloc.t -> string -> unit
 val m_with : Paths.Simple.set -> module_like -> module_like
 val empty: module_like
 
@@ -43,11 +43,11 @@ val bind_rec_add : Name.t option -> module_like -> state_diff -> state_diff
 val bind_rec_init : state_diff
 
 (** Expr *)
-val included : Transforms.param -> Fault.loc
+val included : Transforms.param -> Uloc.t
   -> Id.seed -> Module.level -> module_like -> state_diff
 val bind : Name.t option -> module_like -> state_diff
 val bind_sig : Name.t option -> module_like -> state_diff
-val opened : Transforms.param -> loc:Fault.loc -> module_like -> state_diff
+val opened : Transforms.param -> loc:Uloc.t -> module_like -> state_diff
 val empty_diff: state_diff
 
 module type state = sig
@@ -62,7 +62,7 @@ module type state = sig
   val bind_alias : state -> Name.t option -> Paths.Simple.t -> state_diff
   val diff : state -> state_diff
   val open_path :
-    param:Transforms.param -> loc:Fault.loc -> state -> path -> state
+    param:Transforms.param -> loc:Uloc.t -> state -> path -> state
   val from_env: ?diff:state_diff -> env -> state
   val rec_approximate: state -> _ M2l.bind list -> state
 

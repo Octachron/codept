@@ -3,7 +3,7 @@ let fp = Format.fprintf
 
 let em = Format_tags.(tagged Em)
 
-let locc ppf fmt = fp ppf ("%a"^^fmt) locc
+let locc ppf fmt = fp ppf ("%a"^^fmt) Uloc.Pp.opt
 let e1 fmt p ppf x = fp ppf fmt p x
 let le fmt ppf l = locc ppf fmt l
 let l2 fmt printer ppf (x,y) = locc ppf fmt x printer y
@@ -105,10 +105,10 @@ let pp_divergence l ppf (d:Module.Divergence.t) =
          )
       )
       d.root Format_tags.(with_tag Loc x) in
-  if fst d.loc = fst l then
-    f Loc.pp (snd d.loc)
+  if d.loc.Uloc.pkg = l.Uloc.pkg then
+    f Loc.pp d.loc.Uloc.loc
   else
-    f loc d.loc
+    f Uloc.Pp.tagged d.loc
 
 let ambiguous =
   info [ "typing"; "ambiguous"]

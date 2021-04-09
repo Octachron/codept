@@ -190,7 +190,7 @@ module Collisions = struct
         Module.Dict.empty in
     let m = Nms.Map.empty in
     List.fold_left (fun m (u:Unit.s) ->
-        match Envt.Core.find Fault.loc_none M.Module (Nms.flatten u.path) env with
+        match Envt.Core.find Uloc.none M.Module (Nms.flatten u.path) env with
         | exception Not_found -> m
         | ans ->
           match ans.main.kind, ans.msgs with

@@ -19,7 +19,7 @@ type query = path T.query_result
 
 type state_diff = Y.t
 type path_in_context =
-  { loc: Fault.loc;
+  { loc: Uloc.t;
     edge:Deps.Edge.t option;
     level: Module.level;
     seed: Id.seed;
@@ -40,7 +40,7 @@ let pp ppf x =
   Format.fprintf ppf
     "@[<2>{@ path=%a;@ loc=%a;@ edge=%a;@ level=%a;@ ctx=@ (@[%a@]);@ }@]"
     Paths.S.pp x.path
-    Fault.locc x.loc (Pp.opt Deps.Edge.pp) x.edge
+    Uloc.Pp.opt x.loc (Pp.opt Deps.Edge.pp) x.edge
     Module.pp_level x.level Summary.pp x.ctx
 
 let pp_ml = P.pp
@@ -59,7 +59,7 @@ let fn ~f ~x =
   let arg = Option.fmap (Arg.map (fun x -> x.P.mty)) x in
   { P.name=f.P.name; mty=Module.Fun (arg, f.P.mty) }
 
-let ext param (loc:Fault.loc) (name:string) =
+let ext param (loc:Uloc.t) (name:string) =
   if not param.T.transparent_extension_nodes then
     raisef param F.extension_ignored (loc,name)
   else raisef param F.extension_traversed (loc,name)
@@ -181,7 +181,7 @@ module type state = sig
   val bind_alias : state -> Name.t option -> Paths.Simple.t -> state_diff
   val diff : state -> state_diff
   val open_path :
-    param:Transforms.param -> loc:Fault.loc -> state -> path -> state
+    param:Transforms.param -> loc:Uloc.t -> state -> path -> state
   val from_env: ?diff:state_diff -> env -> state
   val rec_approximate: state -> _ M2l.bind list -> state
 

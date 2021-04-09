@@ -2,23 +2,23 @@
 
 
 (** {2 Extension node fault} *)
-val extension_ignored : ( Fault.loc * string ) Fault.info
-val extension_traversed : ( Fault.loc * string ) Fault.info
+val extension_ignored : ( Uloc.t * string ) Fault.info
+val extension_traversed : ( Uloc.t * string ) Fault.info
 
 (** {2 First-class module faults} *)
-val opened_first_class : ( Fault.loc * string option ) Fault.info
-val included_first_class : Fault.loc Fault.info
+val opened_first_class : ( Uloc.t * string option ) Fault.info
+val included_first_class : Uloc.t Fault.info
 
 (** {2 Typing faults} *)
-val applied_structure : ( Fault.loc * Module.Partial.t ) Fault.info
-val included : ( Fault.loc * Module.sty * [ `Abstract | `Functor ] ) Fault.info
-val opened : ( Fault.loc * Module.sty * [ `Abstract | `Functor ] ) Fault.info
-val applied_unknown : ( Fault.loc * Module.Partial.t ) Fault.info
-val unknown_approximated : ( Fault.loc * Module.level * Name.t ) Fault.info
+val applied_structure : ( Uloc.t * Module.Partial.t ) Fault.info
+val included : ( Uloc.t * Module.sty * [ `Abstract | `Functor ] ) Fault.info
+val opened : ( Uloc.t * Module.sty * [ `Abstract | `Functor ] ) Fault.info
+val applied_unknown : ( Uloc.t * Module.Partial.t ) Fault.info
+val unknown_approximated : ( Uloc.t * Module.level * Name.t ) Fault.info
 val nonexisting_submodule:
-  (Fault.loc * Paths.S.t * Module.level * Name.t ) Fault.info
+  (Uloc.t * Paths.S.t * Module.level * Name.t ) Fault.info
 
-val ambiguous : (Fault.loc * Name.t * Module.Divergence.t ) Fault.info
+val ambiguous : (Uloc.t * Name.t * Module.Divergence.t ) Fault.info
 
 (** {2 Input faults} *)
 

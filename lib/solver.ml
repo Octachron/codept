@@ -142,7 +142,7 @@ module Failure = struct
       | Some { Loc.data = y,path ; loc }  ->
         let next = resolver y path in
         begin
-          Pp.fp ppf " −(%a)⟶@ " Fault.loc (u.input.src, loc);
+          Pp.fp ppf " −(%a)⟶@ " Uloc.Pp.tagged {pkg=u.input.src; loc};
           pp_circular block resolver map start false ppf next
         end
 

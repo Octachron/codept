@@ -41,13 +41,6 @@ type 'a printer = Format.formatter -> 'a -> unit
 
 val info: Paths.S.t  -> explanation  -> 'data printer -> 'data info
 
-(** Location type for error message *)
-type loc = Paths.Pkg.t * Loc.t
-val loc_none: loc
-val loc: Format.formatter -> loc -> unit
-val locc: Format.formatter -> loc -> unit
-
-
 type fault = Err: 'data tag * 'data -> fault
 type t = fault
 

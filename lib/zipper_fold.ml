@@ -14,7 +14,11 @@ type level = Module.level = Module | Module_type
 module Zdef = Zipper_def
 module Sk = Zipper_skeleton
 
-let apkg (f,_) = f
+type full_ctx = { uloc: Uloc.t; seed: Id.seed }
+type ctx = { seed:Id.seed; pkg:Paths.Pkg.t }
+let with_loc loc ({seed;pkg}:ctx) = {uloc={pkg;loc}; seed }
+let rm_loc { uloc; seed } = { pkg=uloc.pkg; seed }
+
 module Ok = Mresult.Ok
 
 
@@ -44,7 +48,7 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
 
   let expr_open param loc = both  (Sk.opened param ~loc) (F.expr_open ~loc)
 
-  let gen_include lvl var param loc seed = both (Sk.included param loc seed lvl) (var ~loc)
+  let gen_include lvl var param ctx = both (Sk.included param ctx.uloc ctx.seed lvl) (var ~loc:ctx.uloc)
   let expr_include = gen_include Module F.expr_include
   let sig_include = gen_include  Module_type F.sig_include
   let bind_alias state = fork2 (State.bind_alias state) F.bind_alias
@@ -124,413 +128,409 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
   let _default_edge = Option.default Deps.Edge.Normal
 
 
-  let fn_gen sel wrap k ~param  ~seed ~loc ~state ~path name body signature =
+  let fn_gen sel wrap k ~param ~(ctx:full_ctx) ~state ~path name body signature =
     let state =
       State.bind_arg state {name; signature=signature.Zdef.backbone } in
     let arg = Some ({ Arg.name; signature }, State.diff state) in
-    k (wrap arg :: path) ~param ~seed ~loc ~state body >>| D.mk_arg sel name signature
+    k (wrap arg :: path) ~param ~ctx ~state body >>| D.mk_arg sel name signature
   let fn_me = fn_gen F.me_fun (fun x -> Me (Fun_right x))
   let fn_mt = fn_gen F.mt_fun (fun x -> Mt (Fun_right x))
 
-  let rec m2l ~param ~seed path left ~pkg ~state : _ L.t -> _ = function
+  let rec m2l ~param ~(ctx:ctx) path left ~state : _ L.t -> _ = function
     | [] -> Ok (D.m2l left)
     | {Loc.loc; data=a} :: right ->
-      let loc = pkg, loc in
-      expr ~param ~loc ~state ~seed
-        (M2l {left;loc;state=State.diff state;right} :: path)  a
+      let lctx = with_loc loc ctx in
+      expr ~param ~ctx:lctx ~state
+        (M2l {left;loc=lctx.uloc;state=State.diff state;right} :: path)  a
       >>= fun r ->
-      let state, left = D.m2l_add state loc r left in
-      m2l ~param ~seed path left  ~pkg ~state right
-  and m2l_start ~param ~seed path ~pkg ~state =
-    m2l ~param ~seed path {backbone=Sk.m2l_init; user=F.m2l_init} ~pkg ~state
-  and expr ~param ~seed path ~loc ~state expr = match expr with
-    | Open m -> me ~param (Expr Open::path) ~seed ~loc ~state m
-      >>| D.expr_open param loc
+      let state, left = D.m2l_add state lctx.uloc r left in
+      m2l ~param ~ctx path left  ~state right
+  and m2l_start ~param ~ctx path ~state =
+    m2l ~param ~ctx path {backbone=Sk.m2l_init; user=F.m2l_init} ~state
+  and expr ~param ~ctx path ~state expr = match expr with
+    | Open m -> me ~param (Expr Open::path) ~ctx ~state m
+      >>| D.expr_open param ctx.uloc
     | Include m ->
-      me ~seed ~param (Expr Include :: path) ~loc ~state m
-      >>| D.expr_include param loc seed
+      me ~param (Expr Include :: path) ~ctx ~state m
+      >>| D.expr_include param ctx
     | SigInclude m ->
-      mt (Expr SigInclude :: path) ~param ~seed ~loc ~state m
-      >>| D.sig_include param loc seed
+      mt (Expr SigInclude :: path) ~param ~ctx ~state m
+      >>| D.sig_include param ctx
     | Bind {name; expr=(Ident s|Constraint(Abstract, Alias s))}
       when State.is_alias param state s -> Ok (D.bind_alias state name s)
     | Bind {name; expr} ->
-      me ~param (Expr (Bind name) :: path) ~seed ~loc ~state expr
+      me ~param (Expr (Bind name) :: path) ~ctx ~state expr
       >>| D.bind name
     | Bind_sig {name; expr} ->
-      mt (Expr (Bind_sig name) :: path) ~seed ~param ~loc ~state expr
+      mt (Expr (Bind_sig name) :: path) ~param ~ctx ~state expr
       >>| D.bind_sig name
     | Bind_rec l ->
       let state = State.rec_approximate state l in
-      bind_rec_sig path Sk.bind_rec_init L.[] ~param ~seed ~loc ~state l
+      bind_rec_sig path Sk.bind_rec_init L.[] ~param ~ctx ~state l
     | Minor x ->
-      minors (Expr Minors :: path) ~param ~seed ~pkg:(apkg loc) ~state x
+      minors (Expr Minors :: path) ~param ~ctx:(rm_loc ctx) ~state x
       >>| D.minor
     | Extension_node {name;extension} ->
-      ext ~pkg:(apkg loc) ~param ~seed ~state (Expr (Extension_node name) :: path)
+      ext ~param ~ctx:(rm_loc ctx) ~state (Expr (Extension_node name) :: path)
         extension >>| D.expr_ext name
-  and me path  ~param ~seed  ~loc ~state = function
+  and me path  ~param ~ctx ~state = function
     | Ident s ->
-      resolve (Me Ident :: path) ~seed ~param ~loc ~state ~level:Module s
+      resolve (Me Ident :: path) ~param ~ctx ~state ~level:Module s
       >>| D.me_ident
     | Apply {f; x} ->
       debug "syntactic apply: %a(%a)@." M2l.pp_me f M2l.pp_me x;
-      me (Me (Apply_left x)::path) ~seed ~param ~loc ~state f >>= fun f ->
-      me (Me (Apply_right f)::path) ~seed ~param ~loc ~state x >>|
-      D.apply param loc f
+      me (Me (Apply_left x)::path) ~param ~ctx ~state f >>= fun f ->
+      me (Me (Apply_right f)::path) ~param ~ctx ~state x >>|
+      D.apply param ctx.uloc f
     | Fun {arg = None; body } ->
-      me (Me (Fun_right None) :: path) ~seed ~param ~loc ~state body
+      me (Me (Fun_right None) :: path) ~param ~ctx ~state body
       >>| D.me_fun_none
     | Fun {arg = Some {name;signature} ; body } ->
       let diff = State.diff state in
       let pth = Me (Fun_left {name; diff; body})  :: path in
-      mt pth ~param ~seed ~loc ~state signature >>=
-      fn_me me ~path ~param ~seed ~loc ~state name body
+      mt pth ~param ~ctx ~state signature >>=
+      fn_me me ~path ~param ~ctx ~state name body
     | Constraint (mex,mty) ->
-      me (Me (Constraint_left mty)::path) ~loc ~seed ~state ~param  mex >>= fun me ->
-      mt (Me (Constraint_right me)::path) ~loc ~seed ~param ~state mty >>|
+      me (Me (Constraint_left mty)::path) ~ctx ~state ~param  mex >>= fun me ->
+      mt (Me (Constraint_right me)::path) ~ctx ~param ~state mty >>|
       D.me_constraint me
     | Str items ->
-      m2l_start (Me Str :: path) ~seed ~param ~pkg:(apkg loc) ~state items
+      m2l_start (Me Str :: path) ~ctx:(rm_loc ctx) ~param ~state items
       >>| D.str
-    | Val v -> minors (Me Val::path) ~seed ~param ~pkg:(apkg loc) ~state v
+    | Val v -> minors (Me Val::path) ~param ~ctx:(rm_loc ctx) ~state v
       >>| D.me_val
     | Extension_node {name;extension=e} ->
-      ext ~param ~seed ~pkg:(apkg loc) ~state (Me (Extension_node name) :: path) e >>|
-      D.me_ext loc name
-    | Abstract -> Ok (D.abstract seed)
+      ext ~param ~ctx:(rm_loc ctx) ~state (Me (Extension_node name) :: path) e >>|
+      D.me_ext ctx.uloc name
+    | Abstract -> Ok (D.abstract ctx.seed)
     | Unpacked -> Ok D.unpacked
     | Open_me {opens; expr; _ } ->
-      open_all path expr F.open_init ~loc ~param ~seed ~state opens
-  and open_right path expr ~param ~seed ~loc ~state opens =
+      open_all path expr F.open_init ~param ~ctx ~state opens
+  and open_right path expr ~param ~ctx ~state opens =
     me (Me (Open_me_right {state=State.diff state;opens}) :: path)
-      ~param ~loc ~seed ~state expr >>| D.open_me opens
-  and open_all_rec path expr left ~loc ~seed ~param ~diff ~state : _ L.t -> _ = function
-    | [] -> open_right path expr ~param ~seed ~loc ~state left
+      ~param ~ctx ~state expr >>| D.open_me opens
+  and open_all_rec path expr left ~ctx ~param ~diff ~state : _ L.t -> _ = function
+    | [] -> open_right path expr ~param ~ctx ~state left
     | {Loc.data=a;loc=subloc} :: right ->
-      let open_loc = (apkg loc,subloc) in
-      let path' = Me (Open_me_left {left; right; loc=(snd loc); diff; expr}) :: path in
-      resolve path' ~param ~state ~seed ~loc:open_loc
+      let open_ctx = { ctx with uloc = {Uloc.pkg=ctx.uloc.pkg; loc = subloc} } in
+      let path' = Me (Open_me_left {left; right; loc=ctx.uloc.loc; diff; expr}) :: path in
+      resolve path' ~param ~state ~ctx:open_ctx
         ~level:Module a >>= fun a ->
-      let state = State.open_path ~param ~loc:open_loc state a.backbone in
-      open_all_rec path expr (F.open_add a.user left) ~param ~seed ~loc ~diff
+      let state = State.open_path ~param ~loc:open_ctx.uloc state a.backbone in
+      open_all_rec path expr (F.open_add a.user left) ~param ~ctx ~diff
         ~state right
-  and open_all path expr left ~state ~seed ~loc ~param =
-    open_all_rec path expr left ~param ~loc ~seed ~diff:(State.diff state) ~state
-  and mt path ~param ~seed ~loc ~state = function
+  and open_all path expr left ~state ~ctx ~param =
+    open_all_rec path expr left ~param ~ctx ~diff:(State.diff state) ~state
+  and mt path ~param ~ctx ~state = function
     | Alias id ->
-      resolve (Mt Alias :: path) ~param ~seed ~loc ~state ~level:Module id
+      resolve (Mt Alias :: path) ~param ~ctx ~state ~level:Module id
       >>| D.alias
     | Ident ids ->
-      path_expr ~level:Module_type (Mt Ident :: path) ~seed ~param ~loc ~state ids
+      path_expr ~level:Module_type (Mt Ident :: path) ~param ~ctx ~state ids
       >>| D.mt_ident
     | Sig items ->
-      m2l_start (Mt Sig :: path) ~pkg:(apkg loc) ~state ~seed ~param items
+      m2l_start (Mt Sig :: path) ~ctx:(rm_loc ctx) ~state ~param items
       >>| D.mt_sig
     | Fun {arg = None; body } ->
-      mt (Mt (Fun_right None)::path) ~loc ~state ~seed ~param body
+      mt (Mt (Fun_right None)::path) ~param ~ctx ~state body
       >>| D.mt_fun_none
     | Fun {arg = Some {Arg.name;signature}; body } ->
       let diff = State.diff state in
       let arg_path = Mt(Fun_left {name; diff; body} )::path in
-      mt arg_path ~loc ~seed ~param ~state signature >>=
-      fn_mt mt ~path ~param ~seed ~state ~loc name body
+      mt arg_path ~param ~ctx ~state signature >>=
+      fn_mt mt ~path ~param ~ctx ~state name body
     | With {body;deletions;minors=a} ->
       let access_path = Mt (With_access {body;deletions})::path in
-      minors ~param ~pkg:(apkg loc) ~seed ~state access_path a >>= fun minors ->
-      mt (Mt (With_body {minors;deletions})::path) ~param ~seed ~loc ~state body
+      minors ~param ~ctx:(rm_loc ctx) ~state access_path a >>= fun minors ->
+      mt (Mt (With_body {minors;deletions})::path) ~param ~ctx ~state body
       >>| D.mt_with minors deletions
-    | Of m -> me (Mt Of :: path) ~param ~loc ~seed ~state m >>| D.mt_of
-    | Extension_node {name;extension=e} -> Sk.ext param loc name;
-      ext ~pkg:(apkg loc) ~seed ~param ~state (Mt (Extension_node name)::path)  e
-      >>| D.mt_ext loc name
-    | Abstract -> Ok (D.sig_abstract seed)
-  and bind_rec_sig path diff left ~param ~seed ~loc ~state : _ L.t -> _ = function
+    | Of m -> me (Mt Of :: path) ~param ~ctx ~state m >>| D.mt_of
+    | Extension_node {name;extension=e} -> Sk.ext param ctx.uloc name;
+      ext ~ctx:(rm_loc ctx) ~param ~state (Mt (Extension_node name)::path)  e
+      >>| D.mt_ext ctx.uloc name
+    | Abstract -> Ok (D.sig_abstract ctx.seed)
+  and bind_rec_sig path diff left ~param ~ctx ~state : _ L.t -> _ = function
     | [] ->
       let state = State.merge state diff in
-      bind_rec path (D.init_rec diff) ~param ~seed ~loc ~state (List.rev left)
+      bind_rec path (D.init_rec diff) ~param ~ctx ~state (List.rev left)
     | {M2l.name; expr=M2l.Constraint(me,ty)} :: right ->
-      mt (Expr(Bind_rec_sig{diff;left;name;expr=me; right}) :: path) ~loc ~param ~seed ~state ty
+      mt (Expr(Bind_rec_sig{diff;left;name;expr=me; right}) :: path) ~param ~ctx ~state ty
       >>= fun mt ->
       let diff = Sk.bind_rec_add name mt.backbone diff in
-      bind_rec_sig path diff L.((name, mt.user, me)::left) ~loc ~state ~seed ~param right
+      bind_rec_sig path diff L.((name, mt.user, me)::left) ~state ~param ~ctx right
     | {M2l.name; expr} :: right ->
-      bind_rec_sig path diff left ~param ~loc ~state ~seed
+      bind_rec_sig path diff left ~param ~ctx ~state
         ({M2l.name; expr=M2l.(Constraint(expr,Abstract))}::right)
-  and bind_rec path left ~param ~seed ~loc ~state : _ L.t -> _ = function
+  and bind_rec path left ~param ~ctx ~state : _ L.t -> _ = function
     | [] -> Ok (D.bind_rec left)
     | (name,mt,mex) :: right ->
-      me (Expr(Bind_rec{left;name;mt; right}) :: path) ~loc ~seed ~param ~state mex
+      me (Expr(Bind_rec{left;name;mt; right}) :: path) ~param ~ctx ~state mex
       >>= fun me ->
       let left = D.bind_rec_add name me mt left in
-      bind_rec path left ~loc ~seed ~state ~param right
-  and path_expr_gen ~level ctx ?edge ~loc ~seed ~param ~state = function
+      bind_rec path left ~state ~param ~ctx right
+  and path_expr_gen ~level path ?edge ~ctx ~param ~state = function
     | Paths.Expr.Simple x ->
-      resolve ~level ~seed ~loc ~state ?edge ~param (Path_expr Simple :: ctx) x >>| D.path_expr_pure
+      resolve ~level ~ctx ~state ?edge ~param (Path_expr Simple :: path) x >>| D.path_expr_pure
     | Apply {f;x;proj} ->
       let proj = pack_proj level edge proj in
-      path_expr_gen ?edge ~level:Module (Path_expr(App_f (x,proj))::ctx) ~loc ~seed ~param ~state f >>= fun f ->
-      path_expr ?edge ~level:Module (Path_expr(App_x (f,proj))::ctx) ~loc ~param ~seed ~state x >>=
-      path_expr_proj ~state ~seed ctx param loc proj f
+      path_expr_gen ?edge ~level:Module (Path_expr(App_f (x,proj))::path) ~ctx ~param ~state f >>= fun f ->
+      path_expr ?edge ~level:Module (Path_expr(App_x (f,proj))::path) ~param ~ctx ~state x >>=
+      path_expr_proj ~state ~ctx path param proj f
   and pack_proj level edge proj = Option.fmap (fun p ->(level, Option.(edge><Deps.Edge.Normal), p)) proj
-  and path_expr_proj ~state ~seed ctx param loc proj f x =
-      let res = D.path_expr_app param loc ~f ~x in
+  and path_expr_proj ~state path param ~ctx proj f x =
+      let res = D.path_expr_app param ctx.uloc ~f ~x in
       match proj with
       | None -> Ok res
       | Some (level,edge,proj) ->
-        let path = Path_expr (Proj(res,proj)) :: ctx in
-        resolve path ?within:(Sk.signature res.backbone) ~state ~level ~seed
-          ~loc ~edge ~param proj
+        let path = Path_expr (Proj(res,proj)) :: path in
+        resolve path ?within:(Sk.signature res.backbone) ~state ~level ~ctx
+          ~edge ~param proj
         >>| D.path_expr_proj res proj
-  and path_expr ?edge ~level ctx ~loc ~seed ~param ~state x = path_expr_gen
-      ?edge ~level ctx ~loc ~seed ~param ~state x
-  and gen_minors path ~pkg ~param ~state ~seed left = function
+  and path_expr ?edge ~level path ~ctx ~param ~state x = path_expr_gen
+      ?edge ~level path ~ctx ~param ~state x
+  and gen_minors path ~param ~ctx ~state left = function
     | L.[] ->
       debug "minors end@."; Ok left
     | a :: right ->
-      minor (Minors {left;right} :: path) ~pkg ~param ~seed ~state a
+      minor (Minors {left;right} :: path) ~param ~ctx ~state a
       >>= fun a ->
-      gen_minors path ~pkg ~param ~state ~seed (F.add_minor a left) right
-  and minors path ~pkg ~param ~state ~seed x =
+      gen_minors path ~param ~state ~ctx (F.add_minor a left) right
+  and minors path ~param ~ctx ~state x =
     debug "minors: %a@." Summary.pp State.(peek @@ diff state);
-    gen_minors path ~pkg ~param ~state ~seed F.empty_minors x
-  and minor path ~pkg ~param ~state ~seed =
+    gen_minors path ~param ~ctx ~state F.empty_minors x
+  and minor path ~param ~ctx ~state =
     function
     | Access x ->
-      access (Minor Access :: path) ~pkg ~param ~state ~seed x
+      access (Minor Access :: path) ~param ~ctx ~state x
     | Pack m ->
-      me (Minor Pack :: path) ~param ~loc:(pkg, m.Loc.loc) ~seed ~state m.Loc.data
+      me (Minor Pack :: path) ~param ~ctx:(with_loc m.Loc.loc ctx) ~state m.Loc.data
         >>| fun {user; _ } -> F.pack user
     | Extension_node {data;loc} ->
       ext (Minor (Extension_node data.name) :: path)
-        ~param ~pkg ~state ~seed data.extension
-        >>| fun x -> F.minor_ext ~loc:(pkg,loc) data.name x
+        ~param ~ctx ~state data.extension
+        >>| fun x -> F.minor_ext ~loc:{Uloc.pkg=ctx.pkg;loc} data.name x
     | Local_open (loc,e,m) ->
       debug "Local open: %a@." M2l.pp_me e;
       let diff0 = State.diff state in
+      let lctx = with_loc loc ctx in
       me (Minor (Local_open_left (diff0,loc,m)) :: path)
-        ~param ~loc:(pkg, loc) ~seed ~state e >>= fun e ->
-      let diff = Sk.opened param ~loc:(pkg,loc) e.backbone in
+        ~param ~ctx:lctx ~state e >>= fun e ->
+      let diff = Sk.opened param ~loc:lctx.uloc e.backbone in
       let state = State.merge state diff in
       debug "@[opened %a@ | state:%a@]@."
         Sk.pp_ml e.backbone
         Summary.pp State.(peek @@ diff state);
       minors (Minor (Local_open_right (diff0,e)) :: path)
-        ~pkg ~param ~state m ~seed
+        ~ctx ~param ~state m
       >>| fun m -> F.local_open e.user m
     | Local_bind (loc,{name;expr},m) ->
       let diff0 = State.diff state in
       me (Minor (Local_bind_left (diff0,name,m)) :: path)
-        ~param ~seed ~loc:(pkg, loc) ~state expr >>= fun e ->
+        ~param ~ctx:(with_loc loc ctx) ~state expr >>= fun e ->
       let diff = Sk.bind name e.backbone in
       let state = State.merge state diff in
       minors (Minor (Local_bind_right (diff0,name,e)) :: path)
-        ~pkg ~seed ~param ~state m
+        ~ctx ~param ~state m
       >>| fun m -> F.local_open e.user m
     | _ -> .
-  and access path ~pkg ~param ~state ~seed s =
-    access_step ~state ~pkg ~param ~seed path F.access_init (Paths.E.Map.bindings s)
-  and access_step path left ~param  ~seed ~pkg ~state :
+  and access path ~param ~ctx ~state s =
+    access_step ~state ~param ~ctx path F.access_init (Paths.E.Map.bindings s)
+  and access_step path left ~param ~ctx ~state :
     (Paths.Expr.t * _ ) L.t -> _ = function
     | [] -> Ok (F.access left)
     | (a, (loc,edge)) :: right ->
-      let loc = pkg, loc in
-      path_expr (Access {left;right} :: path) ~edge ~seed ~loc ~state ~param
+      let lctx = with_loc loc ctx in
+      path_expr (Access {left;right} :: path) ~edge ~ctx:lctx ~state ~param
         ~level:Module a >>= fun a ->
-      access_step path ~param ~pkg ~seed ~state (F.access_add a.user loc edge left) right
-  and ext path ~param ~pkg ~state ~seed = function
-    | Module m -> m2l_start ~seed ~param ~pkg ~state (Ext Mod :: path) m
+      access_step path ~param ~ctx ~state (F.access_add a.user lctx.uloc edge left) right
+  and ext path ~param ~ctx ~state = function
+    | Module m -> m2l_start ~param ~ctx ~state (Ext Mod :: path) m
       >>| fun m -> F.ext_module m.user
-    | Val v -> minors ~state ~seed ~pkg ~param (Ext Val :: path) v >>| F.ext_val
-  and resolve path ~param ~loc ~level ~state ~seed ?edge ?within s =
-    let px = { Sk.edge; level; loc; ctx=State.diff state; seed; path = s; within } in
+    | Val v -> minors ~state ~param ~ctx (Ext Val :: path) v >>| F.ext_val
+  and resolve path ~param ~ctx ~level ~state ?edge ?within s =
+    let px = { Sk.edge; level; loc=ctx.uloc; ctx=State.diff state; seed=ctx.seed; path = s; within } in
     resolve0 ~param ~state ~path px
 
   open M2l
   let rec restart ~param state z =
     let v = z.focus in
-    let loc = v.Sk.loc in
+    let uloc = v.Sk.loc in
     let seed = v.Sk.seed in
+    let ctx = { seed; uloc } in
     match resolve0 ~param ~state ~path:z.path v with
     | Error _ -> Error z
     | Ok x -> match z.path with
       | Me Ident :: rest ->
-        restart_me ~param ~state ~seed ~loc (rest: module_expr path) (D.me_ident x)
+        restart_me ~param ~state ~ctx (rest: module_expr path) (D.me_ident x)
       | Me Open_me_left {left;right;diff;loc=body_loc;expr} :: path ->
-        let state = State.open_path ~param ~loc state x.backbone in
-        open_all ~seed ~state ~param ~loc:(apkg loc, body_loc) path expr (F.open_add x.user left) right >>=
-        restart_me ~param ~state:(State.restart state diff) ~seed ~loc (path:module_expr path)
+        let state = State.open_path ~param ~loc:uloc state x.backbone in
+        open_all ~state ~param ~ctx:(with_loc body_loc @@ rm_loc ctx) path expr (F.open_add x.user left) right >>=
+        restart_me ~param ~state:(State.restart state diff) ~ctx (path:module_expr path)
       | Mt Alias :: path ->
-        restart_mt ~param ~seed ~loc ~state (path: module_type path) (D.alias x)
+        restart_mt ~param ~ctx ~state (path: module_type path) (D.alias x)
       | Path_expr Simple :: path ->
-        restart_path_expr ~param ~seed ~loc ~state path (D.path_expr_pure x)
+        restart_path_expr ~param ~ctx ~state path (D.path_expr_pure x)
      | Path_expr (Proj (app_res,proj)) :: path ->
-        restart_path_expr ~param ~seed ~loc ~state path (D.path_expr_proj app_res proj x)
+        restart_path_expr ~param ~ctx ~state path (D.path_expr_proj app_res proj x)
      | _ -> .
-  and restart_me: module_expr Path.t -> _ = fun path ~state ~seed ~loc ~param x -> match path with
+  and restart_me: module_expr Path.t -> _ = fun path ~state ~ctx ~param x -> match path with
     | Expr Include :: rest ->
-      restart_expr ~state ~seed ~param (rest: expression path) (D.expr_include param loc seed x)
+      restart_expr ~state  ~param ~ctx (rest: expression path) (D.expr_include param ctx x)
     | Expr Open :: rest ->
-      restart_expr ~param ~seed ~state (rest: expression path) (D.expr_open param loc x)
+      restart_expr ~param ~ctx ~state (rest: expression path) (D.expr_open param ctx.uloc x)
     | Minor Pack :: path ->
-      let pkg = apkg loc in
-      restart_minor (path: M2l.minor path) ~seed ~state ~loc ~param ~pkg (D.pack x)
+      restart_minor (path: M2l.minor path) ~state ~ctx ~param (D.pack x)
     | Me (Apply_left xx) :: path ->
-      me (Me (Apply_right x)::path) ~seed ~param ~state ~loc xx
-      >>| D.apply param loc x
-      >>= restart_me ~loc ~seed ~state ~param path
-    | Mt Of :: path -> restart_mt ~seed ~loc ~state ~param path (D.mt_of x)
+      me (Me (Apply_right x)::path) ~param ~state ~ctx xx
+      >>| D.apply param ctx.uloc x
+      >>= restart_me ~ctx ~state ~param path
+    | Mt Of :: path -> restart_mt ~ctx ~state ~param path (D.mt_of x)
     | Me(Apply_right fn) :: path ->
-      restart_me path ~seed ~loc ~param ~state (D.apply param loc fn x)
+      restart_me path ~ctx ~param ~state (D.apply param ctx.uloc fn x)
     | Me(Fun_right None) :: path ->
-      restart_me path ~seed ~state ~loc ~param (D.me_fun_none x)
+      restart_me path ~state ~ctx ~param (D.me_fun_none x)
     | Me(Fun_right Some (r,diff)) :: path ->
       let state = State.restart state diff in
-      restart_me path ~seed ~state ~loc ~param (D.mk_arg F.me_fun r.name r.signature x)
+      restart_me path ~state ~ctx ~param (D.mk_arg F.me_fun r.name r.signature x)
     | Me (Constraint_left mty) :: path ->
-      mt (Me (Constraint_right x)::path) ~seed ~loc ~param ~state mty >>= fun mt ->
-      restart_me path ~seed ~loc ~state ~param (D.me_constraint x mt)
+      mt (Me (Constraint_right x)::path) ~ctx ~param ~state mty >>= fun mt ->
+      restart_me path ~ctx ~state ~param (D.me_constraint x mt)
     | Me (Open_me_right {opens;state=diff}) :: path ->
       let state = State.restart state diff in
-      restart_me path ~seed ~loc ~state ~param (D.open_me opens x)
+      restart_me path ~ctx ~state ~param (D.open_me opens x)
     | Expr (Bind name) :: path ->
-      restart_expr (path: expression path) ~seed ~state ~param (D.bind name x)
+      restart_expr (path: expression path) ~state ~param ~ctx (D.bind name x)
     | Expr (Bind_rec {left;name;mt;right}) :: path  ->
       let left = D.bind_rec_add name x mt left in
       let state = State.restart state left.backbone in
-      bind_rec path left ~seed ~loc ~param ~state right >>=
-      restart_expr ~state ~seed ~param (path: expression path)
+      bind_rec path left ~ctx ~param ~state right >>=
+      restart_expr ~state ~ctx ~param (path: expression path)
     | Minor Local_bind_left (diff0,no,body) :: path ->
       let diff = Sk.bind no x.backbone in
       let state' = State.merge state diff in
       minors
         (Minor (Local_bind_right (diff0,no,x))::path)
-        ~param ~seed ~state:state' ~pkg:(apkg loc)
+        ~param ~ctx:(rm_loc ctx) ~state:state'
         body
       >>= fun body ->
       let state = State.restart state diff in
-      restart_minor (path: minor path) ~param ~seed ~loc ~state ~pkg:(apkg loc)
+      restart_minor (path: minor path) ~param ~ctx ~state
         (D.local_bind no x body)
     | Minor Local_open_left (diff0,loc_open,m) :: path ->
-      let diff = Sk.opened param ~loc:(apkg loc, loc_open) x.backbone in
+      let loc = { Uloc.pkg= ctx.uloc.pkg; loc=loc_open } in
+      let diff = Sk.opened param ~loc x.backbone in
       let state' = State.merge state diff in
       minors (Minor (Local_open_right (diff0,x)) :: path)
-        ~param ~seed ~state:state' ~pkg:(apkg loc) m >>= fun minors ->
+        ~param ~ctx:(rm_loc ctx) ~state:state' m >>= fun minors ->
       restart_minor (path: M2l.minor path)
-        ~pkg:(apkg loc) ~seed ~param ~state ~loc
+        ~ctx ~param ~state
         (D.local_open x minors)
     | _ -> .
   and restart_expr: expression path -> _ =
-    fun path ~state ~seed ~param x ->
+    fun path ~state ~(ctx:full_ctx) ~param x ->
     match path with
     | M2l {left;loc;right; state=restart } :: path ->
       let state = State.restart state restart in
       let state, left = D.m2l_add state loc x left in
-      m2l path left ~seed ~pkg:(apkg loc) ~param ~state right >>=
-      restart_m2l ~param ~seed ~loc ~state (path: m2l path)
+      m2l path left ~ctx:{ seed= ctx.seed; pkg = loc.pkg } ~param ~state right >>=
+      restart_m2l ~param ~ctx ~state (path: m2l path)
     | _ -> .
-  and restart_mt: module_type path -> _ = fun path ~state ~param ~seed ~loc x ->
+  and restart_mt: module_type path -> _ = fun path ~state ~param ~ctx x ->
     match path with
     | Expr (Bind_sig name) :: path ->
-      restart_expr ~state ~seed ~param path (D.bind_sig name x)
+      restart_expr ~state ~ctx ~param path (D.bind_sig name x)
     | Me Fun_left {name;diff;body} :: path ->
       let state = State.restart state diff in
-      fn_me me ~path ~param ~seed ~loc ~state name body x
-      >>= restart_me path ~seed ~loc ~param ~state
+      fn_me me ~path ~param ~ctx ~state name body x
+      >>= restart_me path ~ctx ~param ~state
     | Mt Fun_left {name;diff;body} :: path ->
       let state = State.restart state diff in
-      fn_mt mt ~path ~seed ~loc ~state ~param name body x
-      >>= restart_mt ~seed ~loc ~param ~state path
+      fn_mt mt ~path ~ctx ~state ~param name body x
+      >>= restart_mt ~ctx ~param ~state path
     | Mt Fun_right (Some (arg,diff)) :: path ->
       let state = State.restart state diff in
-      restart_mt ~loc ~state ~seed ~param path (D.mk_arg F.mt_fun arg.name arg.signature x)
+      restart_mt  ~state ~param ~ctx path (D.mk_arg F.mt_fun arg.name arg.signature x)
     | Mt Fun_right None :: path ->
-      restart_mt ~loc ~param ~seed ~state path (D.mt_fun_none x)
+      restart_mt ~param ~ctx ~state path (D.mt_fun_none x)
     | Mt With_body {minors;deletions} :: path ->
-      restart_mt ~loc ~param ~seed ~state path (D.mt_with minors deletions x)
+      restart_mt ~param ~ctx ~state path (D.mt_with minors deletions x)
     | Me Constraint_right body :: path ->
-      restart_me ~loc ~param ~seed ~state path (D.me_constraint body x)
+      restart_me ~param ~ctx ~state path (D.me_constraint body x)
     | Expr SigInclude :: path ->
-      restart_expr ~state ~seed ~param path (D.sig_include param loc seed x)
+      restart_expr ~state ~ctx ~param path (D.sig_include param ctx x)
     | Expr Bind_rec_sig {diff; left; name; expr; right} :: path ->
       bind_rec_sig path (Sk.bind_rec_add name x.backbone diff)
-        ((name, x.user, expr) :: left) ~param ~loc ~state ~seed right >>=
-      restart_expr ~seed ~state ~param path
+        ((name, x.user, expr) :: left) ~param ~ctx ~state  right >>=
+      restart_expr ~ctx ~state ~param path
     | _ -> .
   and restart_path_expr: Paths.Expr.t path -> _ =
-    fun path ~loc ~seed ~param ~state x -> match path with
+    fun path  ~param ~ctx ~state x -> match path with
     | Mt Ident :: path ->
-      restart_mt path ~param ~state ~seed ~loc (D.mt_ident x)
+      restart_mt path ~param ~state ~ctx (D.mt_ident x)
     | Path_expr App_f (arg,proj) :: path ->
       arg  |>
-      path_expr ~level:Module ~seed ~loc ~param ~state (Path_expr(App_x (x,proj))::path) >>=
-      restart_path_expr ~loc ~seed ~param ~state path
+      path_expr ~level:Module ~ctx ~param ~state (Path_expr(App_x (x,proj))::path) >>=
+      restart_path_expr ~ctx ~param ~state path
     | Path_expr App_x (f,proj) :: path ->
-      path_expr_proj ~seed ~state path param loc proj f x >>=
-      restart_path_expr ~seed ~loc ~param ~state path
+      path_expr_proj ~ctx ~state path param proj f x >>=
+      restart_path_expr ~ctx ~param ~state path
     | Access a :: (Minor Access :: rest as all) ->
       let edge = Deps.Edge.Normal (* default_edge v.edge *) in
-      let r = F.access_add x.user loc edge a.left in
-        access_step all ~pkg:(apkg loc) ~seed ~param ~state r a.right
+      let r = F.access_add x.user ctx.uloc edge a.left in
+        access_step all ~ctx:(rm_loc ctx) ~param ~state r a.right
         >>= fun m ->
-        restart_minor ~param ~state ~seed ~loc ~pkg:(apkg loc)
+        restart_minor ~param ~state ~ctx
           (rest: minor path) {user=m; backbone=Sk.empty}
    | _ -> .
-  and restart_minor path ~pkg ~param ~seed ~loc ~state x =
+  and restart_minor path ~param ~ctx ~state x =
     match path with
     | Minors {left; right} :: path ->
-      gen_minors path (F.add_minor x.user left) ~seed ~pkg ~param ~state right
+      gen_minors path (F.add_minor x.user left) ~ctx:(rm_loc ctx) ~param ~state right
       >>= restart_minors (path: M2l.minor list path)
-        ~param ~pkg ~seed ~loc ~state
+        ~param ~ctx ~state
     | _ -> .
   and restart_minors (path:M2l.minor list path)
-      ~param ~pkg ~loc ~seed ~state x = match path with
+      ~param ~ctx ~state x = match path with
     | Expr Minors :: path ->
-      restart_expr path ~param ~seed ~state (D.minor x)
+      restart_expr path ~param ~ctx ~state (D.minor x)
     | Minor Local_open_right (diff0,expr) :: path ->
       let state = State.restart state diff0 in
-      restart_minor path ~loc ~state ~param ~seed ~pkg (D.local_open expr x)
+      restart_minor path ~state ~param ~ctx (D.local_open expr x)
     | Me Val :: path ->
-      restart_me path ~state ~seed ~loc ~param (D.me_val x)
+      restart_me path ~state ~ctx ~param (D.me_val x)
     | Mt With_access {body;deletions} :: path ->
       mt (Mt(With_body {deletions;minors=x}) :: path)
-        ~loc ~state ~param ~seed body
+        ~ctx ~state ~param body
       >>| D.mt_with x deletions
-      >>= restart_mt ~seed ~loc ~state ~param path
+      >>= restart_mt ~ctx ~state ~param path
     | Ext Val :: path ->
-      restart_ext (path: extension_core path) ~seed ~param ~loc ~state
+      restart_ext (path: extension_core path) ~ctx ~param ~state
         (F.ext_val x)
     | Minor Local_bind_right (diff0,no,expr) :: path ->
       let state = State.restart state diff0 in
-      restart_minor (path:minor path) ~seed ~pkg ~param ~loc ~state
+      restart_minor (path:minor path) ~ctx ~param ~state
         (D.local_bind no expr x)
     | _ -> .
   and restart_ext: extension_core path -> _ =
-    fun path ~loc ~param ~seed ~state x -> match path with
+    fun path ~ctx ~param ~state x -> match path with
     | Expr (Extension_node name) :: path ->
-      restart_expr ~state ~seed ~param path (D.expr_ext name x)
+      restart_expr ~state ~ctx ~param path (D.expr_ext name x)
     | Me (Extension_node name) :: path ->
-      restart_me path ~loc ~seed ~param ~state (D.me_ext loc name x)
+      restart_me path ~ctx ~param ~state (D.me_ext ctx.uloc name x)
     | Mt (Extension_node name) :: path ->
-      restart_mt path ~loc ~seed ~param ~state (D.mt_ext loc name x)
+      restart_mt path ~ctx ~param ~state (D.mt_ext ctx.uloc name x)
     | Minor (Extension_node name) :: path ->
-      restart_minor path ~loc ~pkg:(apkg loc) ~seed ~param ~state
-        (D.minor_ext loc name x)
+      restart_minor path ~ctx ~param ~state
+        (D.minor_ext ctx.uloc name x)
     | _ -> .
-  and restart_m2l: m2l path -> _ = fun path ~seed ~loc ~param ~state x ->
+  and restart_m2l: m2l path -> _ = fun path ~ctx ~param ~state x ->
     match path with
     | [] -> Ok x
     | Me Str :: path ->
-      restart_me ~loc ~param ~seed ~state path (D.str x)
+      restart_me ~ctx ~param ~state path (D.str x)
     | Mt Sig :: path ->
-      restart_mt ~loc ~param ~seed ~state path (D.mt_sig x)
-(*    | Annot (Values {packed;access;left;right}) :: path ->
-      let left = F.value_add x.user left in
-      m2ls path packed access left ~pkg:(apkg loc) ~param ~state right
-      >>| F.annot packed access
-      >>= restart_annot ~loc ~state ~param path
-*)
-    | Ext Mod :: path -> restart_ext ~seed ~loc ~param ~state path (F.ext_module x.user)
+      restart_mt ~param ~ctx ~state path (D.mt_sig x)
+    | Ext Mod :: path -> restart_ext ~ctx ~param ~state path (F.ext_module x.user)
     | _ :: _ -> .
 
   let unpack x = Sk.final x.Zdef.backbone, x.Zdef.user
@@ -542,7 +542,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
 
   let start ~pkg param env x =
     let seed = Id.create_seed pkg in
-    m2l_start ~seed ~pkg ~state:(State.from_env env) ~param [] x >>|
+    let ctx = { seed; pkg } in
+    m2l_start ~ctx ~state:(State.from_env env) ~param [] x >>|
     unpack
 
   let restart param env z =
@@ -559,7 +560,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Initial _ -> None
     | On_going x ->
       let f = x.focus in
-      Some {Loc.loc = snd f.loc; data= State.peek f.ctx, f.path }
+      Some {Loc.loc = f.loc.loc; data= State.peek f.ctx, f.path }
 
 
   module Pp = Zipper_pp.Make(Path)(Zipper_pp.Opaque(Path))

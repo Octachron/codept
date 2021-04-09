@@ -34,7 +34,7 @@ module Query = struct
 end
 open Query
 
-type module_provider = Fault.loc -> Name.t -> Module.t Query.t
+type module_provider = Uloc.t -> Name.t -> Module.t Query.t
 let last l = List.hd @@ List.rev l
 
 let to_context s = Signature (Exact s)
@@ -48,7 +48,7 @@ let nosubmodule loc current level name =
 let unknown loc mlvl path =
   Fault.emit Standard_faults.unknown_approximated (loc,mlvl,path)
 
-let noloc = Fault.loc_none
+let noloc = Uloc.none
 
 module Core = struct
 
@@ -168,7 +168,7 @@ module Core = struct
   let is_top = function Any | Concrete -> true | Submodule -> false
 
   type option =
-    { loc: Fault.loc; level:M.level; edge:Edge.t; approx_submodule:bool }
+    { loc: Uloc.t; level:M.level; edge:Edge.t; approx_submodule:bool }
 
   (** Should we return a mockup module and a warning? *)
   let approx_submodule o ctx lvl =
