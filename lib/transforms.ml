@@ -83,7 +83,7 @@ let open_diverge policy loc x = match x.kind with
     Summary.empty
 
 
-  (* FIXME: type error *)
+  (* ???: type error? *)
   | Namespace modules ->
     Summary.View.see @@ Module.Exact { Module.Def.empty with modules }
 
