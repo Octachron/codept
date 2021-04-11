@@ -3,324 +3,393 @@
   "title" : "codept/m2l/0.10.3",
   "description" : "module level ocaml file skeleton",
   "definitions" :
-  {"Deps" : {
-   "edge" : { "oneOf" :[{"enum" : ["Normal"]},{"enum" : ["Epsilon"]}] } } ,
-  "Loc" : {
-  "t" : {
-  "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
-    "properties" : {
-      "Simple" : { "type" : "array",
-         "items" :[ { "type" : "number" },  { "type" : "number" },
-            { "type" : "number" } ] }
-      }, "required" : [ "Simple" ]},{"type" : "object",
-    "properties" : {
-      "Multiline" : { "type" : "array",
-         "items" :[
-           { "type" : "array",
-              "items" :[ { "type" : "number" },  { "type" : "number" } ] },
-            { "type" : "array",
-               "items" :[ { "type" : "number" },  { "type" : "number" } ] } ]
-        }
-      }, "required" : [ "Multiline" ]}]
-  } } ,
-  "M2l" : {
-  "access" : { "type" : "array",
+  {"Paths" : {
+   "Expr" : {
+   "t" : {
+   "0" : {
+   "oneOf" :[{"type" : "object",
+     "properties" : {
+       "S" : { "type" : "array", "items" : { "type" : "string" } }
+       }, "required" : [ "S" ]},{"type" : "object",
+     "properties" : {
+       "Apply" : { "type" : "array",
+          "items" :[ { "$ref":"#/definitions/Paths/Expr/t/0" },
+             { "$ref":"#/definitions/Paths/Expr/t/0" },
+             {
+               "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+                 "properties" : {
+                   "Some" : { "type" : "array",
+                     "items" : { "type" : "string" } }
+                   }, "required" : [ "Some" ]}] } ] }
+       }, "required" : [ "Apply" ]}]
+   } }  }  } ,
+  "m2l" : {
+  "0" : { "type" : "array",
   "items" : { "type" : "array",
-     "items" :[ { "type" : "array", "items" : { "type" : "string" } },
-        { "$ref" : "#/definitions/Loc/t" },
-        { "$ref" : "#/definitions/Deps/edge" } ] }
+     "items" :[ { "$ref":"#/definitions/m2l/1" },
+        {
+          "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
+            "properties" : {
+              "Simple" : { "type" : "array",
+                 "items" :[ { "type" : "number" },  { "type" : "number" },
+                    { "type" : "number" } ] }
+              }, "required" : [ "Simple" ]},{"type" : "object",
+            "properties" : {
+              "Multiline" : { "type" : "array",
+                 "items" :[
+                   { "type" : "array",
+                      "items" :[ { "type" : "number" },
+                         { "type" : "number" } ] },
+                    { "type" : "array",
+                       "items" :[ { "type" : "number" },
+                          { "type" : "number" } ] } ] }
+              }, "required" : [ "Multiline" ]}] } ] }
   },
-  "annotation" : { "type" : "object",
-  "properties" : {
-    "access" : { "$ref" : "#/definitions/M2l/access" },
-    "values" : { "type" : "array",
-      "items" : { "type" : "array",
-        "items" : { "$ref" : "#/definitions/M2l/with_loc/expr" } } },
-    "packed" : { "type" : "array",
-      "items" : { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/M2l/module_expr" },
-            { "$ref" : "#/definitions/Loc/t" } ] } }
-    },
-  "required" : [  ] },
-  "arg" : {
-  "oneOf" :[{"enum" : ["None"]},{"type" : "object",
-    "properties" : {
-      "Some" : { "type" : "array",
-         "items" :[ { "type" : "string" },
-            { "$ref" : "#/definitions/M2l/module_type" } ] }
-      }, "required" : [ "Some" ]}]
-  },
-  "expr" : {
+  "1" : {
   "oneOf" :[{"type" : "object",
     "properties" : {
-      "Defs" : { "$ref" : "#/definitions/Summary/t" }
-      }, "required" : [ "Defs" ]},{"type" : "object",
-    "properties" : {
-      "Open" : { "$ref" : "#/definitions/M2l/module_expr" }
+      "Open" : { "$ref":"#/definitions/m2l/2" }
       }, "required" : [ "Open" ]},{"type" : "object",
     "properties" : {
-      "Include_me" : { "$ref" : "#/definitions/M2l/module_expr" }
+      "Include_me" : { "$ref":"#/definitions/m2l/2" }
       }, "required" : [ "Include_me" ]},{"type" : "object",
     "properties" : {
-      "SigInclude" : { "$ref" : "#/definitions/M2l/module_type" }
+      "SigInclude" : { "$ref":"#/definitions/m2l/3" }
       }, "required" : [ "SigInclude" ]},{"type" : "object",
     "properties" : {
       "Bind" : { "type" : "array",
-         "items" :[ { "type" : "string" },
-            { "$ref" : "#/definitions/M2l/module_expr" } ] }
+         "items" :[
+           {
+             "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+               "properties" : {
+                 "Some" : { "type" : "string" }
+                 }, "required" : [ "Some" ]}] },
+            { "$ref":"#/definitions/m2l/2" } ] }
       }, "required" : [ "Bind" ]},{"type" : "object",
     "properties" : {
       "Bind_sig" : { "type" : "array",
-         "items" :[ { "type" : "string" },
-            { "$ref" : "#/definitions/M2l/module_type" } ] }
+         "items" :[
+           {
+             "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+               "properties" : {
+                 "Some" : { "type" : "string" }
+                 }, "required" : [ "Some" ]}] },
+            { "$ref":"#/definitions/m2l/3" } ] }
       }, "required" : [ "Bind_sig" ]},{"type" : "object",
     "properties" : {
       "Bind_rec" : { "type" : "array",
         "items" : { "type" : "array",
-           "items" :[ { "type" : "string" },
-              { "$ref" : "#/definitions/M2l/module_expr" } ] } }
+           "items" :[
+             {
+               "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+                 "properties" : {
+                   "Some" : { "type" : "string" }
+                   }, "required" : [ "Some" ]}] },
+              { "$ref":"#/definitions/m2l/2" } ] } }
       }, "required" : [ "Bind_rec" ]},{"type" : "object",
     "properties" : {
-      "Minor" : { "$ref" : "#/definitions/M2l/annotation" }
+      "Minor" : { "type" : "array",
+        "items" : { "$ref":"#/definitions/m2l/4" } }
       }, "required" : [ "Minor" ]},{"type" : "object",
     "properties" : {
-      "Extension_node" : { "$ref" : "#/definitions/M2l/extension" }
+      "Extension_node" : { "$ref":"#/definitions/m2l/5" }
       }, "required" : [ "Extension_node" ]}]
   },
-  "ext" : {
+  "2" : {
   "oneOf" :[{"type" : "object",
-    "properties" : {
-      "Module" : { "type" : "array",
-        "items" : { "$ref" : "#/definitions/M2l/with_loc/expr" } }
-      }, "required" : [ "Module" ]},{"type" : "object",
-    "properties" : {
-      "Val" : { "$ref" : "#/definitions/M2l/annotation" }
-      }, "required" : [ "Val" ]}]
-  },
-  "extension" : { "type" : "array",
-   "items" :[ { "type" : "string" },  { "$ref" : "#/definitions/M2l/ext" } ]
-  },
-  "module_expr" : {
-  "oneOf" :[{"type" : "object",
-    "properties" : {
-      "Resolved" : { "$ref" : "#/definitions/Module/partial" }
-      }, "required" : [ "Resolved" ]},{"type" : "object",
     "properties" : {
       "Ident" : { "type" : "array", "items" : { "type" : "string" } }
       }, "required" : [ "Ident" ]},{"type" : "object",
     "properties" : {
       "Apply" : { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/M2l/module_expr" },
-            { "$ref" : "#/definitions/M2l/module_expr" } ] }
+         "items" :[ { "$ref":"#/definitions/m2l/2" },
+            { "$ref":"#/definitions/m2l/2" } ] }
       }, "required" : [ "Apply" ]},{"type" : "object",
     "properties" : {
       "Fun" : { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/M2l/arg" },
-            { "$ref" : "#/definitions/M2l/module_expr" } ] }
+         "items" :[ { "$ref":"#/definitions/m2l/6" },
+            { "$ref":"#/definitions/m2l/2" } ] }
       }, "required" : [ "Fun" ]},{"type" : "object",
     "properties" : {
       "Constraint" : { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/M2l/module_expr" },
-            { "$ref" : "#/definitions/M2l/module_type" } ] }
+         "items" :[ { "$ref":"#/definitions/m2l/2" },
+            { "$ref":"#/definitions/m2l/3" } ] }
       }, "required" : [ "Constraint" ]},{"type" : "object",
     "properties" : {
-      "Str" : { "type" : "array",
-        "items" : { "$ref" : "#/definitions/M2l/with_loc/expr" } }
+      "Str" : { "$ref":"#/definitions/m2l/0" }
       }, "required" : [ "Str" ]},{"type" : "object",
     "properties" : {
-      "Val" : { "$ref" : "#/definitions/M2l/annotation" }
+      "Val" : { "type" : "array", "items" : { "$ref":"#/definitions/m2l/4" }
+        }
       }, "required" : [ "Val" ]},{"type" : "object",
     "properties" : {
-      "Extension_node" : { "$ref" : "#/definitions/M2l/extension" }
+      "Extension_node" : { "$ref":"#/definitions/m2l/5" }
       }, "required" : [ "Extension_node" ]},{"enum" : ["Abstract"]},
     {"enum" : ["Unpacked"]},{"type" : "object",
     "properties" : {
       "Open_me" : { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/Summary/t" },
-            { "type" : "array",
-              "items" : { "type" : "array", "items" : { "type" : "string" } }
-              },  { "$ref" : "#/definitions/M2l/module_expr" } ] }
+         "items" :[
+           { "type" : "array",
+             "items" : { "type" : "array",
+                "items" :[
+                  { "type" : "array", "items" : { "type" : "string" } },
+                   {
+                     "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
+                       "properties" : {
+                         "Simple" : { "type" : "array",
+                            "items" :[ { "type" : "number" },
+                               { "type" : "number" },  { "type" : "number" }
+                              ] }
+                         }, "required" : [ "Simple" ]},{"type" : "object",
+                       "properties" : {
+                         "Multiline" : { "type" : "array",
+                            "items" :[
+                              { "type" : "array",
+                                 "items" :[ { "type" : "number" },
+                                    { "type" : "number" } ] },
+                               { "type" : "array",
+                                  "items" :[ { "type" : "number" },
+                                     { "type" : "number" } ] } ] }
+                         }, "required" : [ "Multiline" ]}] } ] } },
+            { "$ref":"#/definitions/m2l/2" } ] }
       }, "required" : [ "Open_me" ]}]
   },
-  "module_type" : {
+  "3" : {
   "oneOf" :[{"type" : "object",
-    "properties" : {
-      "Resolved" : { "$ref" : "#/definitions/Module/partial" }
-      }, "required" : [ "Resolved" ]},{"type" : "object",
     "properties" : {
       "Alias" : { "type" : "array", "items" : { "type" : "string" } }
       }, "required" : [ "Alias" ]},{"type" : "object",
     "properties" : {
-      "Ident" : { "$ref" : "#/definitions/Paths/Expr/t" }
+      "Ident" : {
+        "oneOf" :[{"type" : "object",
+          "properties" : {
+            "S" : { "type" : "array", "items" : { "type" : "string" } }
+            }, "required" : [ "S" ]},{"type" : "object",
+          "properties" : {
+            "Apply" : { "type" : "array",
+               "items" :[ { "$ref":"#/definitions/Paths/Expr/t/0" },
+                  { "$ref":"#/definitions/Paths/Expr/t/0" },
+                  {
+                    "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+                      "properties" : {
+                        "Some" : { "type" : "array",
+                          "items" : { "type" : "string" } }
+                        }, "required" : [ "Some" ]}] } ] }
+            }, "required" : [ "Apply" ]}] }
       }, "required" : [ "Ident" ]},{"type" : "object",
     "properties" : {
-      "Sig" : { "type" : "array",
-        "items" : { "$ref" : "#/definitions/M2l/with_loc/expr" } }
+      "Sig" : { "$ref":"#/definitions/m2l/0" }
       }, "required" : [ "Sig" ]},{"type" : "object",
     "properties" : {
       "Fun" : { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/M2l/arg" },
-            { "$ref" : "#/definitions/M2l/module_type" } ] }
+         "items" :[ { "$ref":"#/definitions/m2l/6" },
+            { "$ref":"#/definitions/m2l/3" } ] }
       }, "required" : [ "Fun" ]},{"type" : "object",
     "properties" : {
       "With" : { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/M2l/module_type" },
+         "items" :[ { "$ref":"#/definitions/m2l/3" },
             { "type" : "array",
               "items" : { "type" : "array", "items" : { "type" : "string" } }
-              },  { "$ref" : "#/definitions/M2l/access" } ] }
+              },
+            { "type" : "array", "items" : { "$ref":"#/definitions/m2l/4" } }
+           ] }
       }, "required" : [ "With" ]},{"type" : "object",
     "properties" : {
-      "Of" : { "$ref" : "#/definitions/M2l/module_expr" }
+      "Of" : { "$ref":"#/definitions/m2l/2" }
       }, "required" : [ "Of" ]},{"type" : "object",
     "properties" : {
-      "Extension_node" : { "$ref" : "#/definitions/M2l/extension" }
+      "Extension_node" : { "$ref":"#/definitions/m2l/5" }
       }, "required" : [ "Extension_node" ]},{"enum" : ["Abstract"]}]
   },
-  "with_loc" : {
-  "expr" : { "type" : "array",
-   "items" :[ { "$ref" : "#/definitions/M2l/expr" },
-      { "$ref" : "#/definitions/Loc/t" } ]
-  } }  } ,
-  "Module" : {
-  "Def" : {
-  "t" : { "type" : "object",
-  "properties" : {
-    "modules" : { "type" : "array",
-      "items" : { "$ref" : "#/definitions/Module/module" } },
-    "module_types" : { "type" : "array",
-      "items" : { "$ref" : "#/definitions/Module/module" } }
-    },
-  "required" : [  ] } } ,
-  "Divergence" : {
-  "origin" : {
-  "oneOf" :[{"enum" : ["First_class_module"]},{"enum" : ["External"]}] },
-  "t" : { "type" : "array",
-   "items" :[ { "$ref" : "#/definitions/Option./name" },
-      { "$ref" : "#/definitions/Module/Divergence/origin" },
-      { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/Paths/Pkg/t" },
-            { "$ref" : "#/definitions/Loc/t" } ] } ]
-  } } ,
-  "Option" : {
-  "m" : {
-  "oneOf" :[{"enum" : ["None"]},{"type" : "object",
-    "properties" : {
-      "Some" : { "$ref" : "#/definitions/Module/m" }
-      }, "required" : [ "Some" ]}]
-  } } ,
-  "Origin" : {
-  "t" : {
+  "4" : {
   "oneOf" :[{"type" : "object",
     "properties" : {
-      "Unit" : { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/Paths/Pkg/t" },
-            { "type" : "array", "items" : { "type" : "string" } } ] }
-      }, "required" : [ "Unit" ]},{"enum" : ["Submodule"]},
-    {"enum" : ["First_class"]},{"enum" : ["Arg"]},{"type" : "object",
+      "Access" : { "type" : "array",
+        "items" : { "type" : "array",
+           "items" :[
+             {
+               "oneOf" :[{"type" : "object",
+                 "properties" : {
+                   "S" : { "type" : "array", "items" : { "type" : "string" }
+                     }
+                   }, "required" : [ "S" ]},{"type" : "object",
+                 "properties" : {
+                   "Apply" : { "type" : "array",
+                      "items" :[ { "$ref":"#/definitions/Paths/Expr/t/0" },
+                         { "$ref":"#/definitions/Paths/Expr/t/0" },
+                         {
+                           "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+                             "properties" : {
+                               "Some" : { "type" : "array",
+                                 "items" : { "type" : "string" } }
+                               }, "required" : [ "Some" ]}] } ] }
+                   }, "required" : [ "Apply" ]}] },
+              {
+                "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
+                  "properties" : {
+                    "Simple" : { "type" : "array",
+                       "items" :[ { "type" : "number" },
+                          { "type" : "number" },  { "type" : "number" } ] }
+                    }, "required" : [ "Simple" ]},{"type" : "object",
+                  "properties" : {
+                    "Multiline" : { "type" : "array",
+                       "items" :[
+                         { "type" : "array",
+                            "items" :[ { "type" : "number" },
+                               { "type" : "number" } ] },
+                          { "type" : "array",
+                             "items" :[ { "type" : "number" },
+                                { "type" : "number" } ] } ] }
+                    }, "required" : [ "Multiline" ]}] },
+              { "oneOf" :[{"enum" : ["Normal"]},{"enum" : ["Epsilon"]}] } ] }
+        }
+      }, "required" : [ "Access" ]},{"type" : "object",
     "properties" : {
-      "Phantom" : { "type" : "array",
-         "items" :[ { "type" : "string" },
-            { "$ref" : "#/definitions/Module/Divergence/t" } ] }
-      }, "required" : [ "Phantom" ]},{"enum" : ["Namespace"]}]
-  } } ,
-  "m" : { "type" : "object",
-  "properties" : {
-    "name" : { "type" : "string" },
-    "origin" : { "$ref" : "#/definitions/Module/Origin/t" },
-    "args" : { "type" : "array",
-      "items" : { "$ref" : "#/definitions/Module/Option/m" } },
-    "modules" : { "type" : "array",
-      "items" : { "$ref" : "#/definitions/Module/module" } },
-    "module_types" : { "type" : "array",
-      "items" : { "$ref" : "#/definitions/Module/module" } }
-    },
-  "required" : [ "name" ] },
-  "module" : {
-  "oneOf" :[{"type" : "object",
+      "Pack" : { "type" : "array",
+         "items" :[ { "$ref":"#/definitions/m2l/2" },
+            {
+              "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
+                "properties" : {
+                  "Simple" : { "type" : "array",
+                     "items" :[ { "type" : "number" },
+                        { "type" : "number" },  { "type" : "number" } ] }
+                  }, "required" : [ "Simple" ]},{"type" : "object",
+                "properties" : {
+                  "Multiline" : { "type" : "array",
+                     "items" :[
+                       { "type" : "array",
+                          "items" :[ { "type" : "number" },
+                             { "type" : "number" } ] },
+                        { "type" : "array",
+                           "items" :[ { "type" : "number" },
+                              { "type" : "number" } ] } ] }
+                  }, "required" : [ "Multiline" ]}] } ] }
+      }, "required" : [ "Pack" ]},{"type" : "object",
     "properties" : {
-      "M" : { "$ref" : "#/definitions/Module/m" }
-      }, "required" : [ "M" ]},{"type" : "object",
+      "Extension_node" : { "type" : "array",
+         "items" :[ { "$ref":"#/definitions/m2l/5" },
+            {
+              "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
+                "properties" : {
+                  "Simple" : { "type" : "array",
+                     "items" :[ { "type" : "number" },
+                        { "type" : "number" },  { "type" : "number" } ] }
+                  }, "required" : [ "Simple" ]},{"type" : "object",
+                "properties" : {
+                  "Multiline" : { "type" : "array",
+                     "items" :[
+                       { "type" : "array",
+                          "items" :[ { "type" : "number" },
+                             { "type" : "number" } ] },
+                        { "type" : "array",
+                           "items" :[ { "type" : "number" },
+                              { "type" : "number" } ] } ] }
+                  }, "required" : [ "Multiline" ]}] } ] }
+      }, "required" : [ "Extension_node" ]},{"type" : "object",
     "properties" : {
-      "Alias" : { "type" : "array",
-         "items" :[ { "type" : "string" },
-            { "type" : "array", "items" : { "type" : "string" } } ] }
-      }, "required" : [ "Alias" ]},{"type" : "object",
+      "Open" : { "type" : "array",
+         "items" :[
+           {
+             "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
+               "properties" : {
+                 "Simple" : { "type" : "array",
+                    "items" :[ { "type" : "number" },  { "type" : "number" },
+                       { "type" : "number" } ] }
+                 }, "required" : [ "Simple" ]},{"type" : "object",
+               "properties" : {
+                 "Multiline" : { "type" : "array",
+                    "items" :[
+                      { "type" : "array",
+                         "items" :[ { "type" : "number" },
+                            { "type" : "number" } ] },
+                       { "type" : "array",
+                          "items" :[ { "type" : "number" },
+                             { "type" : "number" } ] } ] }
+                 }, "required" : [ "Multiline" ]}] },
+            { "$ref":"#/definitions/m2l/2" },
+            { "type" : "array", "items" : { "$ref":"#/definitions/m2l/4" } }
+           ] }
+      }, "required" : [ "Open" ]},{"type" : "object",
     "properties" : {
-      "Namespace" : { "type" : "array",
-         "items" :[ { "type" : "string" },
-            { "type" : "array",
-              "items" : { "$ref" : "#/definitions/Module/module" } } ] }
-      }, "required" : [ "Namespace" ]}]
+      "Bind" : { "type" : "array",
+         "items" :[
+           {
+             "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
+               "properties" : {
+                 "Simple" : { "type" : "array",
+                    "items" :[ { "type" : "number" },  { "type" : "number" },
+                       { "type" : "number" } ] }
+                 }, "required" : [ "Simple" ]},{"type" : "object",
+               "properties" : {
+                 "Multiline" : { "type" : "array",
+                    "items" :[
+                      { "type" : "array",
+                         "items" :[ { "type" : "number" },
+                            { "type" : "number" } ] },
+                       { "type" : "array",
+                          "items" :[ { "type" : "number" },
+                             { "type" : "number" } ] } ] }
+                 }, "required" : [ "Multiline" ]}] },
+            {
+              "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+                "properties" : {
+                  "Some" : { "type" : "string" }
+                  }, "required" : [ "Some" ]}] },
+            { "$ref":"#/definitions/m2l/2" },
+            { "type" : "array", "items" : { "$ref":"#/definitions/m2l/4" } }
+           ] }
+      }, "required" : [ "Bind" ]}]
   },
-  "partial" : { "type" : "object",
-  "properties" : {
-    "origin" : { "$ref" : "#/definitions/Module/Origin/t" },
-    "args" : { "type" : "array",
-      "items" : { "$ref" : "#/definitions/Module/Option/m" } },
-    "signature" : { "$ref" : "#/definitions/Module/Def/t" }
-    },
-  "required" : [  ] },
-  "signature" : { "type" : "object",
-  "properties" : {
-    "modules" : { "type" : "array",
-      "items" : { "$ref" : "#/definitions/Module/module" } },
-    "module_types" : { "type" : "array",
-      "items" : { "$ref" : "#/definitions/Module/module" } }
-    },
-  "required" : [  ] } } ,
-  "Option." : {
-  "name" : {
+  "5" : { "type" : "array",
+   "items" :[ { "type" : "string" },
+      {
+        "oneOf" :[{"type" : "object",
+          "properties" : {
+            "Module" : { "$ref":"#/definitions/m2l/0" }
+            }, "required" : [ "Module" ]},{"type" : "object",
+          "properties" : {
+            "Val" : { "type" : "array",
+              "items" : { "$ref":"#/definitions/m2l/4" } }
+            }, "required" : [ "Val" ]}] } ]
+  },
+  "6" : {
   "oneOf" :[{"enum" : ["None"]},{"type" : "object",
     "properties" : {
-      "Some" : { "type" : "string" }
+      "Some" : { "type" : "array",
+         "items" :[
+           {
+             "oneOf" :[{"enum" : ["None"]},{"type" : "object",
+               "properties" : {
+                 "Some" : { "type" : "string" }
+                 }, "required" : [ "Some" ]}] },
+            { "$ref":"#/definitions/m2l/3" } ] }
       }, "required" : [ "Some" ]}]
-  } } ,
-  "Paths" : {
-  "Expr" : {
-  "t" : {
-  "oneOf" :[{"enum" : ["T"]},{"type" : "object",
-    "properties" : {
-      "A" : { "type" : "string" }
-      }, "required" : [ "A" ]},{"type" : "object",
-    "properties" : {
-      "S" : { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/Paths/Expr/t" },
-            { "type" : "string" } ] }
-      }, "required" : [ "S" ]},{"type" : "object",
-    "properties" : {
-      "F" : { "type" : "array",
-         "items" :[ { "$ref" : "#/definitions/Paths/Expr/t" },
-            { "$ref" : "#/definitions/Paths/Expr/t" } ] }
-      }, "required" : [ "F" ]}]
-  } } ,
-  "Pkg" : {
-  "source" : {
-  "oneOf" :[{"enum" : ["Local"]},{"enum" : ["Unknown"]},{"type" : "object",
-    "properties" : {
-      "Pkg" : { "type" : "array", "items" : { "type" : "string" } }
-      }, "required" : [ "Pkg" ]},{"type" : "object",
-    "properties" : {
-      "Special" : { "type" : "string" }
-      }, "required" : [ "Special" ]}]
-  },
-  "t" : { "type" : "array",
-   "items" :[ { "$ref" : "#/definitions/Paths/Pkg/source" },
-      { "type" : "array", "items" : { "type" : "string" } } ]
-  } }  } ,
-  "Summary" : {
-  "t" : { "type" : "array",
-   "items" :[ { "$ref" : "#/definitions/Module/signature" },
-      { "$ref" : "#/definitions/Module/signature" } ]
-  } } ,
-  "version" : { "type" : "array",
-   "items" :[ { "type" : "number" },  { "type" : "number" },
-      { "type" : "number" } ]
-  }},
+  } } },
   "type" : "object",
   "properties" : {
-    "version" : { "$ref" : "#/definitions/version" },
+    "version" : { "type" : "array",
+       "items" :[ { "type" : "number" },  { "type" : "number" },
+          { "type" : "number" } ] },
     "m2l" : { "type" : "array",
-      "items" : { "$ref" : "#/definitions/M2l/with_loc/expr" } }
+      "items" : { "type" : "array",
+         "items" :[ { "$ref":"#/definitions/m2l/1" },
+            {
+              "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
+                "properties" : {
+                  "Simple" : { "type" : "array",
+                     "items" :[ { "type" : "number" },
+                        { "type" : "number" },  { "type" : "number" } ] }
+                  }, "required" : [ "Simple" ]},{"type" : "object",
+                "properties" : {
+                  "Multiline" : { "type" : "array",
+                     "items" :[
+                       { "type" : "array",
+                          "items" :[ { "type" : "number" },
+                             { "type" : "number" } ] },
+                        { "type" : "array",
+                           "items" :[ { "type" : "number" },
+                              { "type" : "number" } ] } ] }
+                  }, "required" : [ "Multiline" ]}] } ] } }
     },
   "required" : [ "version", "m2l" ]
   }
