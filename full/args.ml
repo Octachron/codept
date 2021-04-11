@@ -153,11 +153,15 @@ let exit_level param s =
 let print_policy param ()=
   Fault.Policy.pp Pp.std param#!L.policy
 
+
+let large_output ppf =
+  Format.pp_set_margin ppf 160; Format.pp_set_max_indent ppf 120
+
 let print_json_schema  =
   function
-  | "sig" -> Schematic.Ext.json_schema Pp.std Schema.sign
-  | "m2l" -> Schematic.Ext.json_schema Pp.std Schema.m2l
-  | "deps" -> Schematic.Ext.json_schema Pp.std Schema.x
+  | "sig" -> large_output Pp.std; Schematic.Ext.json_schema Pp.std Schema.sign
+  | "m2l" -> large_output Pp.std; Schematic.Ext.json_schema Pp.std Schema.m2l
+  | "deps" -> large_output Pp.std; Schematic.Ext.json_schema Pp.std Schema.x
   | _ -> ()
 
 let set_p param lens value =
