@@ -1,3 +1,33 @@
+# Version 0.11.0
+
+## Features
+
+  * Support for abstract module types:
+	Codept is now aware that Y is X.M.Y and
+	not an external module in
+
+```ocaml
+  module F(X:sig module type t module M:t end) = X
+  module X = struct
+    module M = struct
+      module Y = struct end
+    end
+    module type t = module type of M
+  end
+  open F(X)
+  open M
+  open Y
+```
+
+  * Support for OCaml 4.09, 4.10, 4.11, 4.12
+
+## Internal
+
+* Switch to the zipper engine
+* Fully typed recursive definition for schema
+* Extended test suite
+* More precise term subast (no more encoding)
+
 # Version 0.10.3
 
 ## Features
