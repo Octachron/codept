@@ -109,24 +109,31 @@ let line read write active =
     | Some End -> true, []
   in
   if not macro && version <: active then write line;
-  active
+   macro, active
 
 let before s = s ^ "p"
 let preprocess file =
-  let input = open_in (before file) in
-  let output = open_out file in
+  let src = before file in
+  let input = open_in_bin src in
+  let output = open_out_bin file in
   let read () = input_line input in
   let write s =
     (*    Printf.eprintf "%s\n" s;*)
     output_string output s; output_string output "\n" in
-  let rec loop stack =
+  let sync n = write (Printf.sprintf {|#%d %S|} n src )in
+  sync 0;
+  let rec loop active_macro ln stack =
     match line read write stack with
     | exception End_of_file ->
       if stack <> [] then raise Missing_end;
       flush output;
       close_in input; close_out output
-    | stack -> loop stack in
-  loop []
+    | macro, stack ->
+      if not macro && active_macro then
+        sync ln;
+      loop macro (ln+1) stack
+  in
+  loop false 0 []
 
 let files = List.map (Format.sprintf "lib/%s.ml")
   ["ast_converter";"cmi"; "pparse_compat"; "format_compat"; "format_tags"]
