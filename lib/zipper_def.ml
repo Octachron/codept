@@ -30,17 +30,17 @@ module type fold = sig
   val alias : path -> module_type
 
   val access_add :
-    path_expr -> Fault.loc -> Deps.Edge.t -> access -> access
+    path_expr -> Uloc.t -> Deps.Edge.t -> access -> access
   val access_init : access
   val access : access -> minor
   val pack: module_expr -> minor
-  val minor_ext: loc:Fault.loc -> string -> ext -> minor
+  val minor_ext: loc:Uloc.t -> string -> ext -> minor
   val local_open: module_expr -> minors -> minor
   val local_bind: Name.t option -> module_expr -> minors -> minor
   val empty_minors: minors
   val add_minor: minor -> minors -> minors
 
-  val apply : Fault.loc -> module_expr -> module_expr -> module_expr
+  val apply : Uloc.t -> module_expr -> module_expr -> module_expr
 
   val bind : Name.t option -> module_expr -> expr
   val bind_alias: Name.t option -> Paths.S.t -> expr
@@ -51,24 +51,24 @@ module type fold = sig
   val bind_sig : Name.t option -> module_type -> expr
 
   val expr_ext : string -> ext -> expr
-  val expr_include : loc:Fault.loc -> module_expr -> expr
-  val expr_open : loc:Fault.loc -> module_expr -> expr
+  val expr_include : loc:Uloc.t -> module_expr -> expr
+  val expr_open : loc:Uloc.t -> module_expr -> expr
   val ext_module : m2l -> ext
   val ext_val : minors -> ext
 
-  val m2l_add : Fault.loc -> expr -> m2l -> m2l
+  val m2l_add : Uloc.t -> expr -> m2l -> m2l
   val m2l_init : m2l
   val m2l: m2l  -> m2l
 
   val me_constraint : module_expr -> module_type -> module_expr
-  val me_ext : loc:Fault.loc -> string -> ext -> module_expr
+  val me_ext : loc:Uloc.t -> string -> ext -> module_expr
   val me_fun :
     module_type Arg.t option -> module_expr -> module_expr
   val me_ident : path -> module_expr
   val me_val : minors -> module_expr
   val minor : minors -> expr
 
-  val mt_ext : loc:Fault.loc -> string -> ext -> module_type
+  val mt_ext : loc:Uloc.t -> string -> ext -> module_type
   val mt_fun :
     module_type Arg.t option -> module_type -> module_type
   val mt_ident : path_expr -> module_type
@@ -86,7 +86,7 @@ module type fold = sig
   val path_expr_proj: path_expr -> Paths.S.t -> path -> path_expr
 
   val sig_abstract : module_type
-  val sig_include : loc:Fault.loc -> module_type -> expr
+  val sig_include : loc:Uloc.t -> module_type -> expr
   val str : m2l -> module_expr
   val unpacked : module_expr
 
@@ -201,7 +201,7 @@ module type s = sig
 
   type ('elt,'from) elt =
     | M2l: {left:m2l;
-            loc:Fault.loc;
+            loc:Uloc.t;
             state:state_diff;
             right:M2l.m2l}
         -> (M2l.expression, M2l.m2l) elt

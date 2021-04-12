@@ -17,18 +17,18 @@ val pp_answer: answer Pp.t
 type 'a query_result =
   { main:'a; deps: Deps.t; msgs: Fault.t list }
 
-val gen_include: Fault.Policy.t -> Fault.loc ->
+val gen_include: Fault.Policy.t -> Uloc.t ->
   Id.seed -> Module.level -> Module.Partial.t -> Summary.t
 
-val open_: Fault.Policy.t -> Fault.loc ->
+val open_: Fault.Policy.t -> Uloc.t ->
   Module.Partial.t -> Summary.t
 
 
-val open_diverge: Fault.Policy.t -> Fault.loc ->
+val open_diverge: Fault.Policy.t -> Uloc.t ->
   answer -> Summary.t
 
 
-val apply_arg: Fault.Policy.t -> Fault.loc ->
+val apply_arg: Fault.Policy.t -> Uloc.t ->
   f:Module.Partial.t -> arg:Module.Partial.t
   -> Module.Partial.t
 
