@@ -33,7 +33,7 @@ type m2l = S.t
 
 
 let signature x = match x.P.mty with
-  | Sig s -> Some s.signature
+  | Module.Sig s -> Some s.signature
   | _ -> (* FIXME: error message ? *) None
 
 let pp ppf x =
@@ -65,7 +65,7 @@ let ext param (loc:Uloc.t) (name:string) =
   else raisef param F.extension_traversed (loc,name)
 
 let ident x = match x.T.kind with
-  | T.Mty Sig m -> P.of_module x.name m
+  | T.Mty Module.Sig m -> P.of_module x.name m
   | T.Namespace n -> P.pseudo_module x.name n
   | Mty r -> {P.name=Some x.name; mty=r}
 
@@ -78,8 +78,8 @@ let included param loc lvl e = T.gen_include param.T.policy loc lvl e
 
 
 let m_with dels mt = match mt.P.mty with
-  | Module.Abstract _ | Fun _ -> mt
-  | Sig s ->
+  | Module.Abstract _ | Module.Fun _ -> mt
+  | Module.Sig s ->
     let signature = T.with_deletions dels s.signature in
     { mt with mty = Sig { s with signature } }
 

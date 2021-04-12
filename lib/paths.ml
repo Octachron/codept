@@ -119,9 +119,11 @@ module Make_expr(S:simple_core): Expr with type s := S.t = struct
     and fwd  = function
       | Apply {f;x;proj} -> C(S(Z Tuple.[f;x;proj]))
       | Simple x -> C (Z (W x))
-    and rev = function
+    and rev =
+      let open Tuple in
+      function
       | C Z (W s) -> Simple s
-      | C S Z Tuple.[f;x;proj] -> Apply {f;x;proj}
+      | C S Z [f;x;proj] -> Apply {f;x;proj}
       | _ -> .
     let t = Rec { id = ["Paths"; "Expr"; "t"]; defs = ["c", c]; proj = Zn }
   end

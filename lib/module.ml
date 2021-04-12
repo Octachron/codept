@@ -557,6 +557,7 @@ module Schema = struct
     | Link x -> C (S (S (S (S (Z (Namespaced.flatten x))))))
     | Namespace n -> C (S (S (S (S (S (Z (to_list n)))))))
   and revm =
+    let open Tuple in
     function
     | C Z m -> Sig m
     | C S Z  path -> Alias {path=Namespaced.of_path path; phantom=None}
@@ -690,7 +691,13 @@ let rec extend: type any. any ty -> extended ty = function
 
 module Subst = struct
 
-  module Tbl = Map.Make(Id)
+  module Tbl = struct
+    include Map.Make(Id)
+    let find_opt k m =
+      match find k m with
+      | x -> Some x
+      | exception Not_found -> None
+  end
   type 'x t = 'x ty Tbl.t
   type 'x subst = 'x t
 
@@ -731,7 +738,9 @@ module Subst = struct
     match arg, param with
     | x, Abstract id -> add id (extend x) subst
     | Fun _, Fun _  -> subst
-    | Alias _, Alias _ | Link _, Link _ | Namespace _, Namespace _ -> subst
+    | Alias _, Alias _ -> subst
+    | Link _, Link _  -> subst
+    | Namespace _, Namespace _ -> subst
     | Sig arg, Sig param ->
       if lvl = Module then
         sig_constraints (Sig.flatten arg.signature) (Sig.flatten param.signature) subst
@@ -855,7 +864,8 @@ module Partial = struct
             | Fun (a,x) -> C (S (S (Z [a;x])))
             | _ -> .
          )
-         (function
+         (let open Tuple in
+          function
            | C Z x -> Abstract x
            | C S Z x -> Sig x
            | C S S Z [a;x] -> Fun (a,x)
@@ -867,7 +877,7 @@ module Partial = struct
 
      let partial = custom [option String; mty]
          (fun {name; mty} -> [name;mty])
-         (fun [name;mty] -> {name;mty})
+         (let open Tuple in fun [name;mty] -> {name;mty})
    end
    let sch = Sch.partial
  end

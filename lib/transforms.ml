@@ -40,9 +40,9 @@ and remove_path_from_sig path defs = match path with
   | [a] -> { defs with modules = Name.Map.remove a defs.modules }
   | a :: rest ->
     let update = function
-      | Module.Alias _ | Namespace _  | Link _ | Abstract _
-      | Fun _ as x -> x
-      | Sig m ->
+      | Module.Alias _ | Module.Namespace _  | Module.Link _ | Module.Abstract _
+      | Module.Fun _ as x -> x
+      | Module.Sig m ->
         Module.Sig { m with signature = remove_path_from rest m.signature }
     in
     { defs with modules= Name.Map.update a update defs.modules }
@@ -53,8 +53,8 @@ let with_deletions dels d =
 let open_diverge_module policy loc x =
   let open Module.Partial in
   match x.mty with
-  | Abstract _ | Fun _ -> Summary.empty
-  | Sig ({ signature=Blank; _ } |{ origin = Phantom _; _ } as r) ->
+  | Module.Abstract _ | Module.Fun _ -> Summary.empty
+  | Module.Sig ({ signature=Blank; _ } |{ origin = Phantom _; _ } as r) ->
     let kind =
       match r.origin with
       | First_class ->
@@ -70,15 +70,15 @@ let open_diverge_module policy loc x =
          { before = Module.Sig.empty; point; after = Module.Def.empty}
       )
       r.signature
-  | Sig { signature=(Divergence _ | Exact _ as s); _}  -> Summary.View.see s
+  | Module.Sig { signature=(Divergence _ | Exact _ as s); _}  -> Summary.View.see s
 
 let open_diverge policy loc x = match x.kind with
-  | Mty Sig m ->
+  | Mty Module.Sig m ->
     open_diverge_module policy loc (Module.Partial.of_module x.name m)
-  | Mty (Abstract _ as mty) ->
+  | Mty (Module.Abstract _ as mty) ->
     Fault.raise policy F.opened (loc,mty,`Abstract);
     Summary.empty
-  | Mty (Fun _ as mty) ->
+  | Mty (Module.Fun _ as mty) ->
     Fault.raise policy F.opened (loc,mty,`Functor);
     Summary.empty
 
@@ -95,13 +95,13 @@ let gen_include policy loc seed lvl x =
     | Module_type -> Module.Partial.refresh seed x.Module.Partial.mty
   in
   match mty with
-  | Abstract _  ->
+  | Module.Abstract _  ->
     Fault.raise policy F.included (loc,mty,`Abstract);
     Summary.empty
-  | Fun _ ->
+  | Module.Fun _ ->
     Fault.raise policy F.included  (loc,mty,`Functor);
     Summary.empty
-  | Sig s ->
+  | Module.Sig s ->
     if s.signature = Blank && s.origin = First_class
     then Fault.raise policy F.included_first_class loc;
     Summary.of_signature s.signature
@@ -112,14 +112,14 @@ let bind_summary level name expr =
 
 let apply_arg policy loc ~f:(p:Module.Partial.t) ~arg =
   match p.mty with
-  | Fun (Some {Module.Arg.name=Some _arg_name; signature=param } , body) ->
+  | Module.Fun (Some {Module.Arg.name=Some _arg_name; signature=param } , body) ->
     debug "@[<hv 2>Applying@ @[%a@]@ to@ @[%a@]@]@." Module.Partial.pp p Module.Partial.pp arg;
     let mty = let open Module.Partial in
       of_extended_mty @@ apply ~arg:(extend arg.mty) ~param:(extend param) ~body:(extend body)
     in
     { p with mty }
-  | Fun (_, r) -> { p with mty = r }
-  | Sig _ | Abstract _  ->
+  | Module.Fun (_, r) -> { p with mty = r }
+  | Module.Sig _ | Module.Abstract _  ->
     if Module.Partial.is_exact p then
       (* we guessed the arg wrong *)
       Fault.raise policy F.applied_structure (loc,p);

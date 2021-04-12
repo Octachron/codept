@@ -130,6 +130,7 @@ module Pattern = struct
   let bind loc name sign =
     { empty with binds = [Loc.create loc {M2l.name = bound_name name; expr = sign }] }
 
+# 4.04, oo
   let open_ m { annot={ data; loc } ; binds} =
     let me_open {name;expr} = {name; expr=M2l.Open_me {opens=[m]; expr} } in
     let md: module_expr = Ident m.Loc.data in
@@ -137,7 +138,7 @@ module Pattern = struct
       | [], [] -> [M2l.Pack {data=md;loc=m.loc}] (* [M.(...nothing)] becomes (module M) *)
       | data, _ -> [M2l.Local_open (m.loc, Ident m.Loc.data, data)] in
     { annot = { data; loc}; binds=List.map (Loc.fmap me_open) binds }
-
+#end
   let bind_fmod p inner =
     let binded x =
       let binder inner b = [Local_bind (b.Loc.loc, b.Loc.data,inner)] in
@@ -369,11 +370,12 @@ and expr exp =
     Annot.pack @@ with_loc loc @@ module_expr me
 # oo, 4.08
   | Pexp_open (_override_flag,me,e)
+    -> Annot.local_open (from_loc me.Location.loc) (local_open_arg me) @@ expr e
 # 4.08, oo
   | Pexp_open (me,e)
-# end
     (* M.(E), let open M in E, let! open M in E *)
     -> Annot.local_open (from_loc me.popen_loc) (local_open_arg me) @@ expr e
+# end
   | Pexp_constant _ | Pexp_unreachable (* . *)
     -> Annot.empty
   | Pexp_extension ext (* [%ext] *) ->

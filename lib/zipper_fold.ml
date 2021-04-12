@@ -288,11 +288,13 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         >>| D.path_expr_proj res proj
   and path_expr ?edge ~level path ~ctx ~param ~state x = path_expr_gen
       ?edge ~level path ~ctx ~param ~state x
-  and gen_minors path ~param ~ctx ~state left = function
-    | L.[] ->
+  and gen_minors path ~param ~ctx ~state left =
+    let open L in
+    function
+    | [] ->
       debug "minors end@."; Ok left
     | a :: right ->
-      minor (Minors {left;right} :: path) ~param ~ctx ~state a
+      minor Path.(Minors {left;right} :: path) ~param ~ctx ~state a
       >>= fun a ->
       gen_minors path ~param ~state ~ctx (F.add_minor a left) right
   and minors path ~param ~ctx ~state x =
@@ -369,9 +371,9 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       | Mt Alias :: path ->
         restart_mt ~param ~ctx ~state (path: module_type path) (D.alias x)
       | Path_expr Simple :: path ->
-        restart_path_expr ~param ~ctx ~state path (D.path_expr_pure x)
+        restart_path_expr ~param ~ctx ~state (path:Paths.Expr.t path) (D.path_expr_pure x)
      | Path_expr (Proj (app_res,proj)) :: path ->
-        restart_path_expr ~param ~ctx ~state path (D.path_expr_proj app_res proj x)
+        restart_path_expr ~param ~ctx ~state (path:Paths.Expr.t path) (D.path_expr_proj app_res proj x)
      | _ -> .
   and restart_me: module_expr Path.t -> _ = fun path ~state ~ctx ~param x -> match path with
     | Expr Include :: rest ->

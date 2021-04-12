@@ -44,14 +44,14 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     match z.path with
     | Me Ident :: rest -> me (rest:M2l.module_expr t) x
     | Mt Alias :: rest -> mt (rest:M2l.module_type t) x
-    | Path_expr Simple :: rest -> path_expr rest x
+    | Path_expr Simple :: rest -> path_expr (rest:Paths.Expr.t t) x
     | Me (Open_me_left {left;right;expr; loc=_; diff=_}) :: rest ->
       me (rest: M2l.module_expr t) (R.pp_opens left (fun ppf ->
           Pp.fp ppf "%t.(%t.(%a))" x (dlist path_loc right) M2l.pp_me expr
         )
         )
     | Path_expr Proj (_app,_proj) :: rest ->
-      path_expr rest x
+      path_expr (rest:Paths.Expr.t t) x
     | _ -> .
   and me: M2l.module_expr t -> _ = fun rest sub ->
     match rest with
@@ -76,22 +76,22 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Expr Open :: rest -> expr (rest:M2l.expression t) (fp1 "open %t" sub)
     | Mt Of :: rest -> mt rest (fp1 "module type of %t" sub)
     | Minor Pack :: rest ->
-      minor rest (fp1 "(module %t)" sub)
+      minor (rest:M2l.minor t) (fp1 "(module %t)" sub)
     | Minor Local_bind_left (_diff, name,right) :: rest ->
-      minor rest (fun ppf -> Pp.fp ppf "%a=%t in %a"
+      minor (rest:M2l.minor t) (fun ppf -> Pp.fp ppf "%a=%t in %a"
                      Name.pp_opt name
                      sub
                      M2l.pp_annot right
                  )
     | Minor Local_open_left (_diff,_,minors) :: rest ->
-        minor rest (fun ppf -> Pp.fp ppf "open %t in %a"
+        minor (rest:M2l.minor t) (fun ppf -> Pp.fp ppf "open %t in %a"
                        sub
                        M2l.pp_annot minors
                    )
     | _ -> .
   and minor: M2l.minor t -> _ = fun rest sub -> match rest with
     | Minors {left; right} :: rest ->
-      minors rest (fun ppf ->
+      minors (rest:M2l.minor list t) (fun ppf ->
           Pp.fp ppf "%t%t%a" (R.pp_minors left)
             sub
             M2l.pp_annot right

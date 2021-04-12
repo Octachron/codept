@@ -190,7 +190,7 @@ module Core = struct
         | Some _ as x -> x in
       r >>? find_elt option aliases ctx env (a::current) a q
   and find_elt option aliases ctx env current name q = function
-    | Alias {path; phantom } ->
+    | Module.Alias {path; phantom } ->
       debug "alias to %a" Namespaced.pp path;
       let aliases = Paths.S.Set.add (List.rev current) aliases in
       let m = match phantom with
@@ -199,8 +199,8 @@ module Core = struct
         | None | Some _ -> return () in
       (* aliases link only to compilation units *)
       m >> find option aliases Any [] (top env) (Namespaced.flatten path @ q)
-    | Link _ when ctx = Concrete -> None
-    | Link path ->
+    | Module.Link _ when ctx = Concrete -> None
+    | Module.Link path ->
       find option aliases Concrete [] (top env) (Namespaced.flatten path @ q)
     | M.Sig m ->
       debug "found module %s" name;
@@ -208,7 +208,7 @@ module Core = struct
       if q = [] then return {name; kind = Mty (Sig m)}
       else
         find option aliases Submodule current (restrict env @@ Signature m.signature) q
-    | Abstract _ | Fun _ as kind ->
+    | Module.Abstract _ | Module.Fun _ as kind ->
       begin match q with
         | [] -> return {name; kind= Mty (Module.Partial.of_extended_mty kind)}
         | _ :: _  ->
@@ -217,7 +217,7 @@ module Core = struct
           let lvl = adjust_level option.level q in
           return {name; kind=Mty (Sig mock) } <!> [nosubmodule option.loc current lvl name]
       end
-    | Namespace modules ->
+    | Module.Namespace modules ->
       (* let faults = record edge root env name in*)
       if q = [] then return {name; kind = Namespace modules}
       else find option aliases ctx current (restrict env @@ In_namespace modules) q
@@ -266,9 +266,9 @@ module Core = struct
       | M.Alias {path; _ } | M.Link path ->
         debug "resolved to %a" Namespaced.pp path;
         Some path
-      | Sig m -> resolve_alias_sign q m.signature
-      | Namespace n -> resolve_alias_md q n
-      | Abstract _ | Fun _ -> None
+      | M.Sig m -> resolve_alias_sign q m.signature
+      | M.Namespace n -> resolve_alias_md q n
+      | M.Abstract _ | M.Fun _ -> None
       | exception Not_found -> None
   and resolve_alias_sign path = function
     | Blank -> None
@@ -294,11 +294,11 @@ module Core = struct
       | None -> true
       | Some m ->
         match m.main with
-        | Namespace _
-        | Sig { origin = Unit _; _ }
-        | Link _  -> true
+        | M.Namespace _
+        | M.Sig { origin = Unit _; _ }
+        | M.Link _  -> true
         | M.Alias _ -> false
-        | Sig _ | Abstract _ | Fun _ -> false
+        | M.Sig _ | M.Abstract _ | M.Fun _ -> false
 
   let expand_path path envt =
     match path with
@@ -308,8 +308,8 @@ module Core = struct
       | None -> path
       | Some m ->
         match m.main with
-        | Namespace _ -> path
-        | Sig { origin = Unit {path=p; _ } ; _ } -> p @ q
+        | M.Namespace _ -> path
+        | M.Sig { origin = Unit {path=p; _ } ; _ } -> p @ q
         | M.Alias {path;_} -> Namespaced.flatten path @ q
         | _ -> path
 
@@ -423,9 +423,9 @@ module Implicit_namespace = struct
   let provider (namespace,modules) =
     let open Query in
     let wrap x = match x.kind with
-      | Mty Sig m -> M.Sig m
+      | Mty M.Sig m -> M.Sig m
       | Namespace modules -> M.Namespace modules
-      | Mty Abstract id -> M.Abstract id
+      | Mty M.Abstract id -> M.Abstract id
       | Mty _ -> (* FIXME ?*) assert false
     in
     let env = Core.start (M.Def.modules modules) in

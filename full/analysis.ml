@@ -194,12 +194,12 @@ module Collisions = struct
         | exception Not_found -> m
         | ans ->
           match ans.main.kind, ans.msgs with
-        | Mty Sig { M.origin = Unit p; _ }, [] ->
+        | Mty M.Sig { M.origin = Unit p; _ }, [] ->
           (add u.path p.source @@ add u.path u.src m)
         | _ , _ :: _
-        | (Mty Abstract _  | Mty Fun _
+        | (Mty M.Abstract _  | Mty M.Fun _
           | Namespace _
-          | Mty Sig { M.origin =(Phantom _ |Arg|Submodule|First_class|Namespace); _ }
+          | Mty M.Sig { M.origin =(Phantom _ |Arg|Submodule|First_class|Namespace); _ }
           ), _
           -> m
 

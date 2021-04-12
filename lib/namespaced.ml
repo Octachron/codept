@@ -31,6 +31,7 @@ let head = function
 
 let sch =
   let open Schematic in
+  let open Tuple in
   custom [String; Array String]
     (fun {name;namespace} -> [name;namespace])
     (fun [name;namespace] -> {name;namespace})
