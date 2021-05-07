@@ -1,4 +1,4 @@
-module Path_like = Paths.Pkg
+module Path_like = Pkg
 type path_like = Path_like.t
 type seed = path_like * int ref
 type core = path_like * int

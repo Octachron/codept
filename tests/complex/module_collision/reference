@@ -3,10 +3,6 @@
 [1mmodule_collision/a/a.mli[0m
 {
 "version" : [0, 10, 3],
-"dependencies" :
-  [{ "file" : "module_collision/A.mli" },
-  { "file" : "module_collision/a/a.mli" }],
-"local" :
-  [{ "module" : ["A"], "mli" : "module_collision/A.mli" },
-  { "module" : ["A"], "mli" : "module_collision/a/a.mli" }]
+"dependencies" : [{ "file" : "module_collision/A.mli" }],
+"local" : [{ "module" : ["A"], "mli" : "module_collision/A.mli" }]
 }

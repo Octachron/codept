@@ -4,7 +4,7 @@
     with the partial order induced by the dependency function [deps]
     if such an order exists (i.e. the dependency graph is acyclic. *)
 val full_topological_sort:
-  (Paths.Pkg.t -> Paths.Pkg.set) -> Paths.Pkg.t list -> Paths.Pkg.t list option
+  (Pkg.t -> Pkg.set) -> Pkg.t list -> Pkg.t list option
 
 (** [order units] inspects an topologically ordered list [units] and
     remember the position of each modules *)

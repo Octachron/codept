@@ -1,20 +1,20 @@
 {
 "version" : [0, 10, 3],
 "dependencies" :
-  [{
-   "file" : "siblings/L/L/a.ml",
-   "deps" : [["L", "R", "A"], ["L", "L", "B"]]
-   }, { "file" : "siblings/L/L/b.ml", "deps" : [["L", "R", "B"]] },
+  [{ "file" : "siblings/a.ml", "deps" : [["R", "R", "B"], ["L", "L", "A"]] },
+  { "file" : "siblings/L/a.ml", "deps" : [["L", "R", "A"], ["L", "L", "A"]] },
+  {
+  "file" : "siblings/L/L/a.ml",
+  "deps" : [["L", "R", "A"], ["L", "L", "B"]]
+  }, { "file" : "siblings/L/L/b.ml", "deps" : [["L", "R", "B"]] },
   { "file" : "siblings/L/R/a.ml", "deps" : [["L", "R", "B"]] },
   { "file" : "siblings/L/R/b.ml" },
-  { "file" : "siblings/L/a.ml", "deps" : [["L", "R", "A"], ["L", "L", "A"]] },
   { "file" : "siblings/R/L/a.ml", "deps" : [["R", "L", "B"]] },
   { "file" : "siblings/R/L/b.ml" },
   {
   "file" : "siblings/R/R/a.ml",
   "deps" : [["R", "R", "B"], ["R", "L", "A"]]
-  }, { "file" : "siblings/R/R/b.ml", "deps" : [["R", "L", "B"]] },
-  { "file" : "siblings/a.ml", "deps" : [["R", "R", "B"], ["L", "L", "A"]] }],
+  }, { "file" : "siblings/R/R/b.ml", "deps" : [["R", "L", "B"]] }],
 "local" :
   [{ "module" : ["A"], "ml" : "siblings/a.ml" },
   { "module" : ["L", "A"], "ml" : "siblings/L/a.ml" },

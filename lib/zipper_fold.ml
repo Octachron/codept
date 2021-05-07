@@ -15,7 +15,7 @@ module Zdef = Zipper_def
 module Sk = Zipper_skeleton
 
 type full_ctx = { uloc: Uloc.t; seed: Id.seed }
-type ctx = { seed:Id.seed; pkg:Paths.Pkg.t }
+type ctx = { seed:Id.seed; pkg:Pkg.t }
 let with_loc loc ({seed;pkg}:ctx) = {uloc={pkg;loc}; seed }
 let rm_loc { uloc; seed } = { pkg=uloc.pkg; seed }
 

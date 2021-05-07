@@ -30,8 +30,9 @@ module Module = Label(struct let l = "module" end)
 module Ml = Label(struct let l = "ml" end)
 module Mli = Label(struct let l = "mli" end)
 
-let path = Array String
-type p = Paths.S.t
+let path: _ s = Namespaced.sch
+type p = Namespaced.t
+
 type local_association =
   { path: p; ml: string option; mli: string option }
 
@@ -46,8 +47,11 @@ let raw_assoc =
 
 let local_association =
   custom raw_assoc
-    (fun r -> [Module.l $= r.path; Ml.l $=? r.ml; Mli.l $=? r.mli])
-    Record.(fun [_, path; _,ml; _, mli ] -> { path; ml; mli } )
+    (fun r -> [Module.l $= r.path
+              ; Ml.l $=? r.ml
+              ; Mli.l $=? r.mli])
+    Record.(fun [_,path; _,ml; _, mli ] ->
+        { path; ml; mli } )
 
 type library_module = { path:p; lib:p}
 module Lib = Label(struct let l = "lib" end)

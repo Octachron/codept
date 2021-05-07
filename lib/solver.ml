@@ -149,7 +149,7 @@ module Failure = struct
   let pp_cat block resolver map ppf (st, units) =
     let paths units =
       List.rev @@ UMap.fold (fun k _ l -> k.src :: l) units [] in
-    let path_pp = Paths.P.pp in
+    let path_pp = Pkg.pp in
     match st with
     | Internal_error ->
       Pp.fp ppf "@[<hov 2> −Codept internal error for compilation units: {%a}@] "
@@ -167,7 +167,7 @@ module Failure = struct
         "@[<hov 2> −Non-resolved internal dependency.@;\
          The following compilation units {%a}@ depend on the \
          compilation units \"%a\" that could not be resolved.@]"
-        Pp.(list ~sep:(s ",@ ") @@ Paths.P.pp ) (paths units)
+        Pp.(list ~sep:(s ",@ ") @@ Pkg.pp ) (paths units)
         path_pp u.input.src
     | Cycle name ->
       Pp.fp ppf "@[<hov 4> −Circular dependencies: @ @[%a@]@]"
@@ -236,16 +236,16 @@ let fault =
            problematic input *) in
     let elts m = Deps.paths m in
     let set m =
-      let add {Deps.path; _ } = Paths.S.Set.add path in
-      Deps.fold add m Paths.S.Set.empty in
+      let add {Deps.path; _ } = Namespaced.Set.add path in
+      Deps.fold add m Namespaced.Set.empty in
     begin
       if elts upper = elts lower then
         Fault.raise policy Standard_faults.concordant_approximation unit.src
       else
         let diff =
-          Paths.S.Set.elements @@ Paths.S.Set.diff (set upper) (set lower) in
+          Namespaced.Set.elements @@ Namespaced.Set.diff (set upper) (set lower) in
         Fault.raise policy Standard_faults.discordant_approximation
-          (unit.src, (Paths.S.Set.elements @@ set lower), diff)
+          (unit.src, (Sp.elements @@ set lower), diff)
     end;
     Unit.lift sign upper unit
 
@@ -259,7 +259,7 @@ let expand_epsilon resolved unit =
       deps in
   let expand_dep {Deps.path;edge;pkg;_} deps =
     let deps = Deps.update ~path ~edge pkg deps in
-    match Paths.P.Map.find_opt pkg resolved with
+    match Pkg.Map.find_opt pkg resolved with
     | None -> deps
     | Some ancestor ->
       Deps.fold (add_epsilon_dep edge) (Unit.deps ancestor) deps in
@@ -270,17 +270,17 @@ let expand_epsilon resolved unit =
 let expand_and_add expand  =
   if expand then
     fun resolved (unit:Unit.r) ->
-      Paths.P.Map.add unit.src (expand_epsilon resolved unit) resolved
+      Pkg.Map.add unit.src (expand_epsilon resolved unit) resolved
   else
     fun resolved (unit:Unit.r) ->
-      Paths.P.Map.add unit.src unit resolved
+      Pkg.Map.add unit.src unit resolved
 
 module Make(Envt:Stage.envt)(Param:Stage.param)
     (Eval: Stage.outliner with type envt := Envt.t) =
 struct
   open Unit
 
-  type state = { resolved: Unit.r Paths.P.map;
+  type state = { resolved: Unit.r Pkg.map;
                  env: Envt.t;
                  pending: Eval.on_going i list;
                  postponed: Unit.s list
@@ -303,7 +303,7 @@ struct
       { postponed = [];
         env;
         pending = [];
-        resolved = Paths.P.Map.empty } units
+        resolved = Pkg.Map.empty } units
 
   let compute_more env (u:_ i) =
     Eval.next ~pkg:u.input.src env u.code
@@ -318,7 +318,7 @@ struct
           let input = unit.input in
           let md = let open Module in
             create
-              ~origin:(Unit {source=input.src; path=Namespaced.flatten input.path})
+              ~origin:(Unit {source=input.src; path=input.path})
               sg in
           Envt.add_unit ~namespace:input.path.namespace state.env
             input.path.name
@@ -356,7 +356,7 @@ struct
     | Ok (env, res) ->
       let units' = List.map (eval_bounded env) state.postponed in
       let res = List.fold_left expand_and_add res units' in
-      let units = List.map snd @@ Paths.P.Map.bindings res in
+      let units = List.map snd @@ Pkg.Map.bindings res in
       Ok (env, units )
     | Error _ as e -> e
 
@@ -413,7 +413,7 @@ struct
 
   type state = {
     gen: gen;
-    resolved: Unit.r Paths.P.map;
+    resolved: Unit.r Pkg.map;
     learned: Namespaced.Set.t;
     not_ancestors: Namespaced.Set.t;
     pending: Eval.on_going i list Namespaced.Map.t;
@@ -497,7 +497,7 @@ struct
           state
         else
           let origin =
-            Module.Origin.Unit {source=src; path=Namespaced.flatten path} in
+            Module.Origin.Unit {source=src; path} in
           let md = Module.md @@ Module.create ~origin sg in
           let env =
             Envt.add_unit state.env ~namespace:path.namespace path.name md in
@@ -579,7 +579,7 @@ struct
     List.flatten @@ List.map snd @@ Mp.bindings state.pending
 
   let end_result state =
-    state.env, List.map snd @@ Paths.P.Map.bindings state.resolved
+    state.env, List.map snd @@ Pkg.Map.bindings state.resolved
 
 
   let generator load_file files =
@@ -597,7 +597,7 @@ struct
       | [a] -> Some a
       | a :: _  ->
         Fault.raise Param.policy Standard_faults.local_module_conflict
-          (k, List.map (fun (_k,x,_n) -> Paths.P.local x) l);
+          (k, List.map (fun (_k,x,_n) -> Pkg.local x) l);
         Some a in
     let convert_p (k, p) = k, Unit.unimap (convert k) p
     in
@@ -614,7 +614,7 @@ struct
     let gen = generator loader files in
     {
       gen;
-      resolved = Paths.P.Map.empty ;
+      resolved = Pkg.Map.empty ;
       learned = Namespaced.Set.empty;
       not_ancestors= Namespaced.Set.empty;
       pending= Mp.empty;

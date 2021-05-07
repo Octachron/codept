@@ -36,18 +36,18 @@ let build_atlas (lib,unknow) deps  =
   let build_atlas {Deps.path; pkg; _} (lib,unknw)  =
     let add_libs lib path = LibSet.add { Schema.lib; path } in
     match pkg.source with
-    | Paths.P.Local|Paths.P.Special _ -> lib, unknw
-    | Paths.P.Pkg pkg' -> add_libs pkg' path lib, unknw
-    | Paths.P.Unknown -> lib, Paths.S.Set.add path unknw in
+    | Pkg.Local|Pkg.Special _ -> lib, unknw
+    | Pkg.Pkg pkg' -> add_libs pkg' path lib, unknw
+    | Pkg.Unknown -> lib, Namespaced.Set.add path unknw in
   Deps.fold build_atlas deps (lib,unknow)
 
 let pp file name deps =
-  let lib, unknown = build_atlas (LibSet.empty, Paths.S.Set.empty) deps in
+  let lib, unknown = build_atlas (LibSet.empty, Namespaced.Set.empty) deps in
   let pp = Schematic.Ext.json Schema.x in
   let dependencies = [{ Schema.file; deps= Deps.paths deps }] in
-  let local = [{Schema.path=[name]; ml=Some file; mli=None}] in
+  let local = [{Schema.path=Namespaced.make name; ml=Some file; mli=None}] in
   let library = LibSet.elements lib in
-  let unknown = Paths.S.Set.elements unknown in
+  let unknown = Namespaced.Set.elements unknown in
   Format.printf "%a@." pp {dependencies;local; library; unknown}
 
 let () =
@@ -63,7 +63,7 @@ let () =
     ~namespace:[]
     ~implicits:[["Stdlib"], Bundle.stdlib ]
     Module.Dict.empty in
-  let pkg = (Paths.Pkg.local file) in
+  let pkg = (Pkg.local file) in
   let rec loop guard res = match O.next env res ~pkg with
     | Error zipper ->
       if guard = 0 then

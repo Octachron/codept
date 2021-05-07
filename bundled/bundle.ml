@@ -7,8 +7,9 @@ let version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun x y -> x, y)
 let top f x = Dict.of_list @@ List.map f x
 
 let root ?(nms="stdlib") ?(mds=[]) ?(mts=[]) name =
+  let path = Namespaced.make name in
   let origin =
-    Origin.Unit {source={source=Special nms; file=[name]}; path=[name]} in
+    Origin.Unit {source={source=Special nms; file=path}; path} in
   name, Sig { origin; signature=of_lists mds mts}
 
 

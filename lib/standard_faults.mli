@@ -24,17 +24,17 @@ val ambiguous : (Uloc.t * Name.t * Module.Divergence.t ) Fault.info
 
 (** Module name conflicts: same module path for different
     compilation units *)
-val module_conflict: ( Namespaced.t * Paths.P.t list ) Fault.info
+val module_conflict: ( Namespaced.t * Pkg.t list ) Fault.info
 
 (** Local module name conflicts: same module name for different
     compilation units *)
-val local_module_conflict: ( Namespaced.t * Paths.P.t list ) Fault.info
+val local_module_conflict: ( Namespaced.t * Pkg.t list ) Fault.info
 
 
 (** {2 Parsing approximation faults} *)
-val concordant_approximation : Paths.Pkg.t Fault.info
+val concordant_approximation : Pkg.t Fault.info
 val discordant_approximation :
-  ( Paths.Pkg.t * Paths.S.t list * Paths.S.t list ) Fault.info
+  ( Pkg.t * Namespaced.t list * Namespaced.t list ) Fault.info
 val syntaxerr : Syntaxerr.error Fault.info
 val lexerr : ( string * Lexer.error ) Fault.info
 

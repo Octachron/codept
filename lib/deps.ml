@@ -15,11 +15,11 @@ module Edge = struct
 
 end
 
-type dep = { path: Paths.S.t; edge:Edge.t; pkg:Paths.Pkg.t; aliases:Paths.S.set}
-type subdep = { edge:Edge.t; pkg:Paths.Pkg.t; aliases:Paths.S.set }
-module Map = Paths.S.Map
+module S = Namespaced.Set
+type dep = { path: Namespaced.t; edge:Edge.t; pkg:Pkg.t; aliases:S.t}
+type subdep = { edge:Edge.t; pkg:Pkg.t; aliases:S.t }
+module Map = Namespaced.Map
 type t = subdep Map.t
-module S = Paths.S.Set
 
 let sch: t Schematic.t =
   let module T = Schematic.Tuple in
@@ -30,11 +30,11 @@ let sch: t Schematic.t =
   let to_list m =
     Map.fold (fun k {edge;pkg;aliases} l -> T.[k;edge;pkg;aliases] :: l) m [] in
   let open Schematic in
-  custom (Array [Paths.S.sch; Edge.sch; Paths.P.sch; S.sch])
+  custom (Array [Namespaced.sch; Edge.sch; Pkg.sch; S.sch])
     to_list from_list
 
 module Pth = Paths.S
-module P = Paths.P
+module P = Pkg
 
 let empty = Map.empty
 
@@ -51,7 +51,7 @@ let make ~path ?aliases ~edge pkg = update ~path ?aliases ~edge pkg empty
 
 let merge =
   Map.union (fun _k x y ->
-      let aliases = Pth.Set.union x.aliases y.aliases in
+      let aliases = S.union x.aliases y.aliases in
       Some { y with edge = Edge.max x.edge y.edge; aliases })
 
 let (+) = merge
@@ -64,7 +64,7 @@ let fold f deps acc =
 
 let pp_elt ppf (path, {edge;pkg;aliases}) =
   Pp.fp ppf "%s%a(%a)%a" (if edge = Edge.Normal then "" else "ε∙")
-    Pth.pp path Paths.P.pp pkg S.pp aliases
+    Namespaced.pp path P.pp pkg S.pp aliases
 
 let pp ppf s =
     Pp.fp ppf "@[<hov>{%a}@]" (Pp.list pp_elt) (Map.bindings s)

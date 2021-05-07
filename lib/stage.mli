@@ -45,7 +45,7 @@ sig
   type 'a with_param
   val initial: M2l.t -> on_going
   val next:
-    pkg:Paths.P.t -> (envt -> on_going
+    pkg:Pkg.t -> (envt -> on_going
     -> (Module.Sig.t * final, on_going) result) with_param
 
   val block: on_going -> (Summary.t * Paths.S.t) Loc.ext option

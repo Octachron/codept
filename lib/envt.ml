@@ -1,6 +1,5 @@
 module M = Module
 module Edge = Deps.Edge
-module P = Paths.Pkg
 module T = Transforms
 module Y = Summary
 
@@ -83,8 +82,8 @@ module Core = struct
       deps (Deps.make ~path ?aliases ~edge pkg )
 
     let phantom_record ?aliases name =
-      path_record ~path:[name] ?aliases ~edge:Edge.Normal
-        { P.source = Unknown; file = [name] }
+      path_record ~path:(Namespaced.make name) ?aliases ~edge:Edge.Normal
+        { Pkg.source = Unknown; file = Namespaced.make name }
 
     let record loc edge ?aliases root name (m:Module.tracked_signature) =
       match m.origin with
@@ -192,7 +191,7 @@ module Core = struct
   and find_elt option aliases ctx env current name q = function
     | Module.Alias {path; phantom } ->
       debug "alias to %a" Namespaced.pp path;
-      let aliases = Paths.S.Set.add (List.rev current) aliases in
+      let aliases = Namespaced.Set.add (Namespaced.of_path @@ List.rev current) aliases in
       let m = match phantom with
         | Some b when is_top ctx ->
           D.phantom_record name <!> [ambiguity option.loc name b]
@@ -225,7 +224,7 @@ module Core = struct
   let find loc sub ?edge level path envt =
     let edge = Option.default Edge.Normal edge in
     let option = {loc; approx_submodule=sub; edge; level } in
-    match find option Paths.S.Set.empty Any [] envt path with
+    match find option Namespaced.Set.empty Any [] envt path with
     | None -> raise Not_found
     | Some x -> x
 
@@ -309,7 +308,7 @@ module Core = struct
       | Some m ->
         match m.main with
         | M.Namespace _ -> path
-        | M.Sig { origin = Unit {path=p; _ } ; _ } -> p @ q
+        | M.Sig { origin = Unit {path=p; _ } ; _ } -> p.namespace @ p.name :: q
         | M.Alias {path;_} -> Namespaced.flatten path @ q
         | _ -> path
 
@@ -319,7 +318,7 @@ end
 
 
 let approx name =
-  Module.mockup name ~path:{Paths.P.source=Unknown; file=[name]}
+  Module.mockup name ~path:{Pkg.source=Unknown; file=Namespaced.make name}
 
 let open_world () =
   let mem = ref Name.Set.empty in
@@ -337,23 +336,23 @@ module Libraries = struct
   type source = {
     origin: Paths.Simple.t;
     mutable resolved: Core.t;
-    cmis: P.t Name.map
+    cmis: Pkg.t Name.map
   }
 
 
   let read_dir dir =
     let files = Sys.readdir dir in
-    let origin = Paths.S.parse_filename dir in
+    let origin = Namespaced.filepath_of_filename dir in
     let cmis_map =
       Array.fold_left (fun m x ->
           if Filename.check_suffix x ".cmi" then
             let p =
-              {P.source = P.Pkg origin; file = Paths.S.parse_filename x} in
-            Name.Map.add (P.module_name p) p m
+              {Pkg.source = Pkg.Pkg origin; file = Namespaced.filepath_of_filename x} in
+            Name.Map.add (Pkg.module_name p) p m
           else m
         )
         Name.Map.empty files in
-    { origin; resolved= Core.start M.Def.empty; cmis= cmis_map }
+    { origin=Namespaced.flatten origin; resolved= Core.start M.Def.empty; cmis= cmis_map }
 
   let create includes =  List.map read_dir includes
 
@@ -379,14 +378,14 @@ module Libraries = struct
           | Some { data = _y, bl_path ; _ } ->
             let name' = List.hd bl_path in
             let path' = Name.Map.find name' source.cmis in
-            let code' = I.initial (Cmi.m2l @@ P.filename path') in
+            let code' = I.initial (Cmi.m2l @@ Pkg.filename path') in
             let stack =
               (name', path', code') :: (name, path, code) :: q  in
             track source stack
         end
       | Ok (sg, _) ->
         let md = M.create
-            ~origin:(M.Origin.Unit {source=path;path=[name]}) sg in
+            ~origin:(M.Origin.Unit {source=path;path=Namespaced.make name}) sg in
         source.resolved <- Core.add_unit source.resolved name (M.Sig md);
         track source q
 
@@ -398,7 +397,7 @@ module Libraries = struct
     match Core.find_name noloc M.Module name source.resolved.current with
     | None ->
       let path = Name.Map.find name source.cmis in
-      track source [name, path, I.initial (Cmi.m2l @@ P.filename path) ];
+      track source [name, path, I.initial (Cmi.m2l @@ Pkg.filename path) ];
       pkg_find name source
     | Some m -> let main = m.T.main in
       if is_unknown main then raise Not_found else main

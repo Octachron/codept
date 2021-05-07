@@ -1,7 +1,6 @@
 (** Functions for handling unit (aka .ml/.mli) files *)
 
 (** Module abbreviations *)
-module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 
 (** Precision of the inferred module-level signature *)
@@ -74,7 +73,7 @@ module Group: sig
   module Map :
   sig
     type 'ext t
-    val find: Pth.t -> 'ext t -> 'ext group
+    val find: Namespaced.t -> 'ext t -> 'ext group
     val add : 'ext base -> 'ext t -> 'ext t
     val of_list : 'ext base list -> 'ext t
     val fold: ('ext group -> 'acc -> 'acc) -> 'ext t -> 'acc -> 'acc
@@ -83,7 +82,7 @@ module Group: sig
 
   val group : 'ext t list pair -> 'ext Map.t
   val flatten: 'ext group -> 'ext t option pair * 'ext t list pair
-  val split : 'ext Map.t -> 'ext t list pair * (Paths.S.t * 'ext t list) list
+  val split : 'ext Map.t -> 'ext t list pair * (Namespaced.t * 'ext t list) list
 
 end
 

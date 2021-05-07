@@ -9,7 +9,7 @@ end
 val sign: (Lbl.sig', Module.named list) Ext.t
 val m2l: (Lbl.m2l, M2l.t) Ext.t
 
-type p = Paths.S.t
+type p = Namespaced.t
 type local_association = { path: p; ml: string option; mli: string option }
 type library_module = { path:p; lib:p}
 

@@ -17,7 +17,7 @@ lib/pparse_compat.ml
 full/extended_args.ml
 precomputed/std_num.ml
 precomputed/stdlib_data.ml
-#*#
+**/#*#
 Makefile.config
 codept
 codept-client

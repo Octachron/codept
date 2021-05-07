@@ -1,4 +1,3 @@
-module Pkg = Paths.Pkg
 
 let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
 
@@ -62,7 +61,7 @@ module Divergence= struct
         pair start pair stop
 
   let floc ppf {Uloc.pkg; loc} =
-    Pp.fp ppf "(%a:%a)" Paths.P.reflect pkg rloc loc
+    Pp.fp ppf "(%a:%a)" Pkg.reflect pkg rloc loc
 
   let divergence ppf {root;loc;origin} =
     Pp.fp ppf "{root=%a;loc=%a;origin=%a}" Pp.estring Option.(root><"")
@@ -74,7 +73,7 @@ module Divergence= struct
   let pp ppf {root; origin; loc= {pkg=path;loc} } =
     Pp.fp ppf "open %s at %a:%a (%a)"
       Option.(root><"")
-      Paths.Pkg.pp path Loc.pp loc
+      Pkg.pp path Loc.pp loc
       pp_origin origin
 
   let sch_origin =
@@ -91,7 +90,7 @@ module Divergence= struct
 
   let sch = let open Schematic in let open Tuple in
     custom
-      Schematic.[option String; sch_origin; [Paths.P.sch; Loc.Sch.t ]]
+      Schematic.[option String; sch_origin; [Pkg.sch; Loc.Sch.t ]]
       (fun r -> [r.root;r.origin; [r.loc.pkg; r.loc.loc] ])
       (fun [root;origin;[pkg;loc]] -> {root;origin;loc={pkg;loc}} )
 
@@ -101,7 +100,7 @@ end
 module Origin = struct
 
   type t =
-    | Unit of {source:Paths.P.t; path:Paths.S.t}
+    | Unit of {source:Pkg.t; path:Namespaced.t}
     (** aka toplevel module *)
     | Submodule
     | Namespace (** Temporary module from namespace *)
@@ -114,7 +113,7 @@ module Origin = struct
     | Unit s ->
       begin match s.source.Pkg.source with
         | Pkg.Local-> Pp.fp ppf "#"
-        | Pkg x -> Pp.fp ppf "#[%a]" Paths.Simple.pp x
+        | Pkg x -> Pp.fp ppf "#[%a]" Namespaced.pp x
         | Unknown -> Pp.fp ppf "#!"
         | Special n -> Pp.fp ppf "*(%s)" n
       end
@@ -126,7 +125,7 @@ module Origin = struct
 
   module Sch = struct open Schematic
     let raw =
-      Sum [ "Unit", [Paths.P.sch; Paths.S.sch];
+      Sum [ "Unit", [Pkg.sch; Namespaced.sch];
             "Submodule", Void; "First_class", Void; "Arg", Void;
             "Phantom", [ Bool; Divergence.sch];
             "Namespace", Void
@@ -154,7 +153,7 @@ module Origin = struct
 
     let reflect ppf = function
       | Unit u  -> Pp.fp ppf "Unit {source=%a;path=[%a]}"
-                     Pkg.reflect u.source Pp.(list ~sep:(const ";@ ") estring) u.path
+                     Pkg.reflect u.source Namespaced.reflect u.path
     | Submodule -> Pp.fp ppf "Submodule"
     | First_class -> Pp.fp ppf "First_class"
     | Arg -> Pp.fp ppf "Arg"
@@ -257,7 +256,7 @@ module Dict = struct
   let union =
     let rec merge _name x y = match x, y with
       | (Sig { origin = Unit {path = p;_}; _ } as x), Link path
-        when Namespaced.flatten path = p -> Some x
+        when path = p -> Some x
       (*      | x, Alias {weak=true; _ } -> Some x *)
       | Namespace n, Namespace n' ->
         Some (Namespace (Name.Map.union merge n n'))
@@ -461,7 +460,7 @@ and pp_arg ppf arg = Pp.fp ppf "(%a:%a)" (Pp.opt Pp.string) arg.name pp arg.sign
 
 let mockup ?origin ?path name =
   let origin = match origin, path with
-    | _, Some p -> Origin.Unit {source= p; path=[name]}
+    | _, Some p -> Origin.Unit {source= p; path=Namespaced.make name}
     | Some o, None -> o
     | _ -> Submodule in
   {

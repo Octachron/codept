@@ -50,7 +50,7 @@ end
 (** Module origin *)
 module Origin: sig
   type t =
-    | Unit of {source:Paths.Pkg.t; path:Paths.S.t}
+    | Unit of {source:Pkg.t; path:Namespaced.t}
     (** toplevel module mapped from a unit file *)
     | Submodule (** non top-level module *)
     | Namespace (** temporary module from namespace *)
@@ -175,7 +175,7 @@ val namespace: Namespaced.t -> named
 val aliases: t -> Namespaced.t list
 
 (** Create a mockup module with empty signature *)
-val mockup: ?origin:Origin.t -> ?path:Paths.P.t -> Name.t -> tracked_signature
+val mockup: ?origin:Origin.t -> ?path:Pkg.t -> Name.t -> tracked_signature
 
 (** {2 Printers} *)
 

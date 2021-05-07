@@ -8,7 +8,7 @@ dependencies might be inferred due to this ambiguity.
 "dependencies" :
   [{ "file" : "any_m/a/m.ml", "deps" : [["B", "M"]] },
   { "file" : "any_m/b/m.ml", "deps" : [["E", "M"], ["D", "M"]] },
-  { "file" : "any_m/c/m.ml", "deps" : [["Ext"], ["D", "M"]] },
+  { "file" : "any_m/c/m.ml", "deps" : [["D", "M"], ["Ext"]] },
   { "file" : "any_m/d/m.ml" },
   { "file" : "any_m/e/m.ml", "deps" : [["D", "M"]] },
   { "file" : "any_m/f/m.ml", "deps" : [["A", "M"]] }],

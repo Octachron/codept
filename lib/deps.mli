@@ -10,7 +10,7 @@ module Edge: sig
   val pp: t Pp.t
 end
 
-type dep ={ path: Paths.S.t; edge:Edge.t; pkg:Paths.Pkg.t; aliases: Paths.S.set }
+type dep ={ path: Namespaced.t; edge:Edge.t; pkg:Pkg.t; aliases: Namespaced.set }
 type t
 val empty: t
 val sch: t Schematic.t
@@ -19,21 +19,21 @@ val sch: t Schematic.t
 (** Add a new path to a dependency map or
     promote the type of an existing path to {!Edge.Epsilon} *)
 val update:
-  path:Paths.S.t -> ?aliases:Paths.S.set -> edge:Edge.t -> Paths.P.t -> t -> t
+  path:Namespaced.t -> ?aliases:Namespaced.set -> edge:Edge.t -> Pkg.t -> t -> t
 val make:
-  path:Paths.S.t -> ?aliases:Paths.S.set -> edge:Edge.t -> Paths.P.t -> t
+  path:Namespaced.t -> ?aliases:Namespaced.set -> edge:Edge.t -> Pkg.t -> t
 
 val merge: t -> t -> t
 val (+) : t -> t -> t
 
 val pp: Format.formatter -> t -> unit
 
-val find: Paths.S.t -> t -> dep option
+val find: Namespaced.t -> t -> dep option
 val fold: (dep -> 'acc -> 'acc) -> t -> 'acc -> 'acc
 
 val of_list: dep list -> t
 
-val pkgs: t -> Paths.P.t list
-val paths: t -> Paths.S.t list
+val pkgs: t -> Pkg.t list
+val paths: t -> Namespaced.t list
 val all: t -> dep list
-val pkg_set: t -> Paths.P.set
+val pkg_set: t -> Pkg.set

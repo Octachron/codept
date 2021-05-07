@@ -56,7 +56,7 @@ module Make
     (Eval: Stage.outliner with type envt := Envt.t):
   sig
 
-    type state = { resolved: Unit.r Paths.P.map;
+    type state = { resolved: Unit.r Pkg.map;
                    env: Envt.t;
                    pending: Eval.on_going i list;
                    postponed: Unit.s list

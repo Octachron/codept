@@ -41,7 +41,7 @@ let split either =
   split either ([],[])
 
 let default_path f =
-  Option.default (Namespaced.of_filename f)
+  Option.default (Namespaced.module_path_of_filename f)
 
 
 let info_split (io:Io.reader) = function
@@ -84,7 +84,7 @@ let load_file (io:Io.reader) policy sig_only opens (info,file,n) =
 
 let log_conflict policy proj (path, units) =
   Fault.raise policy Standard_faults.local_module_conflict
-    (Namespaced.of_path path, List.map proj units)
+    (path,  List.map proj units)
 
 let organize io policy sig_only opens files =
   let units, signatures = pre_organize policy io files in
@@ -161,8 +161,8 @@ let solve_from_seeds seeds loader files param
 
 let remove_units invisibles =
   List.filter @@ function
-    | { Unit.src = { Paths.Pkg.source=Local; file}; _ } ->
-      not @@ Paths.S.Set.mem file invisibles
+    | { Unit.src = { Pkg.source=Local; file}; _ } ->
+      not @@ Nms.Set.mem file invisibles
     | _ -> false
 
 
@@ -175,9 +175,9 @@ module Collisions = struct
   (** add a new collision [path] to a map of collision [m]
       for a module name [name] *)
   let add name path m =
-    let s = Option.default Paths.P.Set.empty
+    let s = Option.default Pkg.Set.empty
       @@ Nms.Map.find_opt name m in
-    Nms.Map.add name (Paths.P.Set.add path s) m
+    Nms.Map.add name (Pkg.Set.add path s) m
 
   (** Compute local/libraries collisions *)
   let libs (task:Common.task) units =
@@ -208,7 +208,7 @@ module Collisions = struct
   (** Print error message for a given collision map *)
   let handle policy fault collisions =
     let err name paths () =
-      Fault.raise policy fault (name,Paths.P.Set.elements paths) in
+      Fault.raise policy fault (name,Pkg.Set.elements paths) in
     Nms.Map.fold err collisions ()
 
   (** Compute local/local collisions *)
@@ -216,9 +216,9 @@ module Collisions = struct
     let potential_collisions =
     List.fold_left
       (fun collisions (u:Unit.s) -> add u.path u.src collisions )
-      empty units in
-    Nms.Map.filter (fun _k s -> Paths.P.Set.cardinal s > 1)
-      potential_collisions
+      empty units
+    in
+    Nms.Map.filter (fun _k s -> Pkg.Set.cardinal s > 1) potential_collisions
 
 end
 

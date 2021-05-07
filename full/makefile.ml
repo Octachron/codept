@@ -1,4 +1,3 @@
-module Pkg = Paths.Pkg
 module Pth = Paths.S
 
 type param =
@@ -16,7 +15,7 @@ type param =
 
 let preprocess_deps includes unit =
   let replace ({Deps.pkg; _ } as dep) l = match pkg with
-    | { Pkg.source = Unknown; file = [name] } ->
+    | { Pkg.source = Unknown; file = Namespaced.{ namespace=[]; name } } ->
       let pkg = Option.default pkg (Name.Map.find_opt name includes) in
       {dep with pkg} :: l
     | { Pkg.source = Pkg _ ; _ }  -> l

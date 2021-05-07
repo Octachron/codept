@@ -9,7 +9,6 @@ type t =
 type single = string -> Io.writer -> Format.formatter -> Params.t
   -> Common.info * string * Namespaced.t option -> unit
 
-module Pkg = Paths.Pkg
 open Params
 
 (** approx *)

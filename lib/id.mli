@@ -6,5 +6,5 @@ val compare: t -> t -> int
 val pp: t Pp.t
 val sch: t Schematic.t
 type seed
-val create_seed: Paths.Pkg.t -> seed
+val create_seed: Pkg.t -> seed
 val create: seed -> t

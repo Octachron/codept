@@ -1,6 +1,4 @@
-module Pth = Paths.Pkg
-
-let local = Pth.local
+let local = Pkg.local
 
 let root = if Array.length Sys.argv > 0 then Some (Sys.argv.(1)) else None
 
@@ -25,13 +23,14 @@ module Version = struct
 end
 
 
-let policy = Standard_policies.quiet
+let policy =
+  Standard_policies.quiet
 
 let read policy (info,f,path) =
   Unit.read_file policy info f path
 
 let read_simple policy (info,f) =
-  read policy (info, f, Namespaced.of_filename f)
+  read policy (info, f, Namespaced.filepath_of_filename f)
 
 let organize policy files =
   files
@@ -68,7 +67,7 @@ module Branch(Param:Stage.param) = struct
 
   module CSet =
     Set.Make(struct
-      type t = Name.t list
+      type t = Namespaced.t list
       let compare = compare
     end)
 
@@ -81,9 +80,10 @@ module Branch(Param:Stage.param) = struct
         core, cycles
       | _ ->
         match S.resolve_dependencies ~learn state with
-        | Ok (e,_) -> e, cycles
+        | Ok (e,_) ->
+          e, cycles
         | Error state ->
-          let units = state.pending in
+         let units = state.pending in
           let module F = Solver.Failure in
           let _, cmap = F.analyze S.blocker (S.alias_resolver state) units in
           let errs = F.to_list cmap in
@@ -93,8 +93,6 @@ module Branch(Param:Stage.param) = struct
             |> List.filter (function (F.Cycle _, _) -> true | _ -> false)
             |> List.map snd
             |> List.map (List.map name)
-            |> (* FIXME*)
-            List.map (List.map (fun x -> x.Namespaced.name))
             |> CSet.of_list
           in
           solve_and_collect_cycles (state::ancestors) ~learn
@@ -118,14 +116,17 @@ module Branch(Param:Stage.param) = struct
     |> Deps.pkgs
     |> List.sort compare
 
+  let green ppf s = Format.fprintf ppf "\x1b[32m%s\x1b[0m" s
 
   let simple_dep_test name list set =
     let r = normalize set = List.sort compare list in
-    if not r then
-      Pp.p "Failure %a(%s): expected:[%a], got:@[[%a]@]\n"
-        Pth.pp name (Sys.getcwd ())
-        Pp.(list Paths.P.pp) (List.sort compare list)
-        Pp.(list Paths.P.pp) (normalize set);
+    if r then
+      Pp.p "%a[%a]@." Pkg.pp name green "ok"
+    else
+      Pp.p "Simple test failure: %a(%s).@;<0 2>Expected:[%a], got:@[[%a]@]\n"
+        Pkg.pp name (Sys.getcwd ())
+        Pp.(list Pkg.pp) (List.sort compare list)
+        Pp.(list Pkg.pp) (normalize set);
     r
 
   let (%) f g x = f (g x)
@@ -133,13 +134,13 @@ module Branch(Param:Stage.param) = struct
   let normalize_2 set =
     let l = Deps.pkgs set in
     let is_inner =
-      function { Pth.source = Local; _ } -> true | _ -> false in
+      function { Pkg.source = Local; _ } -> true | _ -> false in
     let is_lib =
-      function { Pth.source = (Pkg _ | Special _ ) ; _ } -> true
+      function { Pkg.source = (Pkg _ | Special _ ) ; _ } -> true
              | _ -> false in
     let inner, rest = List.partition is_inner l in
     let lib, unkn = List.partition is_lib rest in
-    let norm = List.sort compare % List.map Pth.module_name in
+    let norm = List.sort compare % List.map Pkg.module_name in
     norm inner, norm lib, norm unkn
 
 
@@ -149,12 +150,15 @@ module Branch(Param:Stage.param) = struct
     let inner', lib', unkw' = normalize_2 set in
     let test subtitle x y =
       let r = x = y  in
-      if not r then
+      if r then
+        Pp.p "%a/%s[%a]@." Pkg.pp name subtitle green "ok"
+      else
         Pp.p "Failure %a %s: expected:[%a], got:@[[%a]@]\n"
-          Pth.pp name subtitle
+          Pkg.pp name subtitle
           Pp.(list estring) x
           Pp.(list estring) y;
-      r in
+      r
+    in
     test "local" inner inner'
     && test "lib" lib lib'
     && test "unknown" unkw unkw'
@@ -168,7 +172,7 @@ module Branch(Param:Stage.param) = struct
 
   let add_file {Unit.ml; mli} file =
     let k = classify file in
-    let x = k, file, Namespaced.of_filename file in
+    let x = k, file, Namespaced.module_path_of_filename file in
     match k.kind with
     | M2l.Structure -> { Unit.ml = x :: ml; mli }
     | M2l.Signature -> { Unit.mli = x :: mli; ml }
@@ -176,9 +180,9 @@ module Branch(Param:Stage.param) = struct
   let gen_deps_test libs inner_test roots l =
     let {Unit.ml;mli} =
       List.fold_left add_info {Unit.ml=[]; mli=[]} l in
-    let module M = Paths.P.Map in
+    let module M = Pkg.Map in
     let build exp = List.fold_left (fun m (_,f,_n,l) ->
-        M.add (Paths.P.local f) l m)
+        M.add (Pkg.local f) l m)
         M.empty exp in
     let exp = M.union (fun _ x _ -> Some x) (build ml) (build mli) in
     let sel (k,f,n, _) = k, f, n in
@@ -208,19 +212,21 @@ module Branch(Param:Stage.param) = struct
     with
       End_of_file -> []
 
-  let cycle_test expected l =
+  let cycle_test name expected l =
     let files = List.fold_left add_file {Unit.ml=[]; mli=[]} l in
     let cycles = analyze_cycle files in
       let expected = List.map (List.sort compare) expected in
       let cycles = List.map (List.sort compare) (CSet.elements cycles) in
       let r = cycles = expected in
-      if not r then
-        ( Pp.fp Pp.std "Failure: expected %a, got %a\n"
-            Pp.(list @@ list string) expected
-            Pp.(list @@ list string) cycles;
-          r )
+      if r then
+        Pp.p "cycle:%s[%a]@." name green "ok"
       else
-        r
+        ( Pp.fp Pp.std "Cycle %s failure:@;<0 2>expected %a, got %a@."
+            name
+            Pp.(list @@ list Namespaced.pp) expected
+            Pp.(list @@ list Namespaced.pp) cycles;
+         );
+      r
 end
 
 module Std = Branch(struct
@@ -240,13 +246,14 @@ module Eps = Branch(struct
 let both root x =
   Std.deps_test (Some root, x) && Eps.deps_test (Some root, x)
 
-let l = List.map Paths.P.local
-let u = List.map (fun x -> Paths.P.{(local x) with source=Unknown})
+let l = List.map Pkg.local
+let u = List.map (fun x -> Pkg.{(local x) with source=Unknown})
+let n = List.map Namespaced.make
 
 let std =
   let localize x = local x in
   List.map
-    (fun x -> Paths.P.{(localize x) with source=Special "stdlib"})
+    (fun x -> Pkg.{(localize x) with source=Special "stdlib"})
 
 let d x =
   x,
@@ -256,7 +263,7 @@ let d x =
   { n with name }
 
 let (/) p x =
-  x, Namespaced.of_filename ~nms:[p] x
+  x, Namespaced.module_path_of_filename ~nms:[p] x
 
 let dl x = List.map (fun (f,deps) -> d f, deps) x
 
@@ -473,9 +480,9 @@ let result =
     && ( chdir "../uncoupled";
          both ["A";"C"]
            [
-             d"a.ml", l["b.ml"];
-            "N" / "b.ml", [];
-            d"c.ml", l ["b.ml"]
+             d "a.ml", l["b.ml"];
+             "N" / "b.ml", [];
+             d "c.ml", l ["b.ml"]
            ]
        )
 
@@ -519,12 +526,14 @@ let result =
     (* Cycle tests *)
     && (
       chdir "../../cases";
-      Std.cycle_test [["Self_cycle"]] ["self_cycle.ml"]
+      Std.cycle_test "self" [n["Self_cycle"]] ["self_cycle.ml"]
     )
     &&
     (
       chdir "../complex/ω-cycle";
-      Std.cycle_test [["C1";"C2";"C3";"C4";"C5"]] [
+      Std.cycle_test "ω-cycle"
+        [n["C1";"C2";"C3";"C4";"C5"]]
+        [
         "a.ml"
       ; "b.ml"
       ; "c1.ml"
@@ -539,16 +548,16 @@ let result =
     )
     && (
       chdir "../2+2-cycles";
-      Std.cycle_test [["A";"B"]; ["C";"D"]] [ "a.ml" ; "b.ml"; "c.ml"; "d.ml"]
+      Std.cycle_test "2+2" [n["A";"B"]; n["C";"D"]] [ "a.ml" ; "b.ml"; "c.ml"; "d.ml"]
     )
     && (
       chdir "../8-cycles";
-      Std.cycle_test [ ["A";"B";"C";"D"]; ["A"; "H"; "G"; "F"; "E"]]
+      Std.cycle_test "8-cycles" [ n["A";"B";"C";"D"]; n["A"; "H"; "G"; "F"; "E"]]
         [ "a.ml" ; "b.ml"; "c.ml"; "d.ml"; "e.ml"; "f.ml"; "g.ml"; "h.ml"]
     )
     && (
       chdir "../aliased_cycle";
-      Std.cycle_test [ ["A"; "B"; "C"]]
+      Std.cycle_test "aliased" [ n["A"; "B"; "C"] ]
         [ "a.ml" ; "b.ml"; "c.ml"; "atlas.ml"]
     )
     && ( Version.( v < v_4_08) || (
@@ -569,7 +578,8 @@ let result =
                                ["Lexer"; "Parser";"Lexing";"List"],[]);
           "cmi.mli", (["M2l"], [], []);
 
-          "deps.ml", (["Option"; "Paths"; "Pp"; "Schematic"],["List"],[]);
+          "deps.ml", (["Namespaced"; "Option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);
+          "deps.mli", (["Namespaced"; "Pkg"; "Pp"; "Schematic"],["Format"],[]);
           "summary.mli", (
             ["Module";"Schematic"; "Pp"],
             ["Format"],
@@ -584,7 +594,7 @@ let result =
           "envt.ml", (
             ["Cmi"; "Deps"; "Summary"; "Transforms";
              "Fault"; "Dep_zipper"; "Module"; "Name"; "Namespaced"; "Paths";
-             "Standard_faults";"Standard_policies";"Option";"Pp"; "Uloc"],
+             "Standard_faults";"Standard_policies";"Option"; "Pkg"; "Pp"; "Uloc"],
             ["Array"; "Filename";"List";"Sys"; "Format"],
             []);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Paths"; "Pp"; "Schematic" ],
@@ -597,25 +607,25 @@ let result =
           "fault.mli", (["Paths"], ["Format"],[]);
           "format_tags.mli", ([],["Format"],[]);
           "format_compat.mli", ([],["Format"],[]);
-          "id.mli", ( ["Paths";"Pp"; "Schematic"],
+          "id.mli", ( ["Pkg";"Pp"; "Schematic"],
                           [], [] );
-          "id.ml", ( ["Paths";"Pp"; "Schematic"],
+          "id.ml", ( ["Pkg";"Pp"; "Schematic"],
                           [], [] );
-          "module.mli", ( ["Id"; "Paths"; "Name";"Namespaced"; "Schematic"; "Uloc"],
+          "module.mli", ( ["Id"; "Paths"; "Pkg"; "Name";"Namespaced"; "Schematic"; "Uloc"],
                           ["Format"], [] );
-          "module.ml", ( ["Id"; "Loc";"Paths";"Name"; "Namespaced"; "Option"; "Pp"
+          "module.ml", ( ["Id"; "Loc";"Paths"; "Pkg"; "Name"; "Namespaced"; "Option"; "Pp"
                          ; "Schematic"; "Schematic_indices"; "Uloc" ],
                          ["List"; "Format"; "Map"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map";"List"], [] );
           "namespaced.mli", ( ["Name";"Paths"; "Pp"; "Schematic"],
-                              ["Set";"Map"], [] );
-          "namespaced.ml", ( ["Name"; "Paths"; "Pp"; "Schematic"],
-                             ["Format";"List";"Set";"Map"], [] );
+                              ["Format"; "Set";"Map"], [] );
+          "namespaced.ml", ( ["Name"; "Paths"; "Pp"; "Schematic"; "Support"],
+                             ["Filename"; "Format";"List";"Set";"Map"; "String"], [] );
           "loc.mli", ( ["Schematic"], ["Format"], []);
           "loc.ml", ( ["Pp";"Schematic"], ["List"], []);
-          "uloc.mli", ( ["Loc"; "Paths"; "Pp"], [], []);
-          "uloc.ml", ( ["Format_tags"; "Loc"; "Paths"; "Pp"], [], []);
+          "uloc.mli", ( ["Loc"; "Pkg"; "Pp"], [], []);
+          "uloc.ml", ( ["Format_tags"; "Loc"; "Namespaced"; "Pkg"; "Pp"], [], []);
           "option.mli", ([],["Lazy"],[]);
           "option.ml", ([],["List";"Lazy"],[]);
           "pparse_compat.mli", ([], ["Parsetree"], []);
@@ -634,9 +644,9 @@ let result =
                       ["Sparser";"Slex"]);
           "mresult.mli", ([],[],[]);
           "mresult.ml", ([],["List"],[]);
-          "schema.ml", (["M2l"; "Module"; "Option"; "Paths"; "Schematic"],
+          "schema.ml", (["M2l"; "Module"; "Namespaced"; "Option"; "Schematic"],
                         [],  []);
-          "schema.mli", (["M2l"; "Module"; "Paths"; "Schematic"], [], []);
+          "schema.mli", (["M2l"; "Module"; "Namespaced"; "Schematic"], [], []);
           "schematic.mli", ([],["Format"], []);
           "schematic_indices.ml", (["Schematic"],[],[]);
 
@@ -646,29 +656,29 @@ let result =
                            [] );
           "solver.mli", (["Fault"; "Loc"; "Unit";
                           "Namespaced"; "Read";
-                          "Summary"; "Stage"; "Paths"],
+                          "Summary"; "Stage"; "Paths"; "Pkg"],
                          ["Format"],[]);
           "solver.ml", (
             ["Approx_parser"; "Deps"; "Summary"; "Stage"; "Loc";
              "M2l"; "Module"; "Mresult"; "Namespaced";
-             "Option"; "Pp"; "Paths"; "Read"; "Unit"; "Fault";
+             "Option"; "Pp"; "Paths"; "Pkg"; "Read"; "Unit"; "Fault";
              "Standard_faults"; "Uloc"],
             ["List"; "Map";"Format"],[]);
           "standard_faults.ml", (
             ["Fault"; "Format_tags"; "Module"; "Namespaced"; "Paths"; "Pp"
-            ; "Loc"; "Schematic"; "Uloc" ],
+            ; "Pkg"; "Loc"; "Schematic"; "Uloc" ],
             ["Format"; "Location"; "Syntaxerr"],[]);
           "standard_faults.mli", (
-            ["Fault"; "Name"; "Namespaced"; "Module"; "Paths"; "Schematic"; "Uloc" ],
+            ["Fault"; "Name"; "Namespaced"; "Module"; "Paths"; "Pkg"; "Schematic"; "Uloc" ],
             ["Lexer";"Syntaxerr"],[]);
           "standard_policies.ml", (["Fault"; "Standard_faults"; "Solver"],[],[]);
           "standard_policies.mli", (["Fault"],[],[]);
-          "unit.mli", (["Deps";"Paths"; "M2l"; "Module"; "Namespaced";
+          "unit.mli", (["Deps";"Pkg"; "M2l"; "Module"; "Namespaced";
                         "Fault"; "Read"],
                        ["Format";"Set"],[]);
           "unit.ml", (
             ["Approx_parser"; "Deps"; "M2l"; "Module"; "Namespaced";
-             "Fault"; "Option"; "Paths"; "Pp"; "Read";
+             "Fault"; "Option"; "Pkg"; "Pp"; "Read";
              "Standard_faults"],
             [ "List"; "Location"; "Set"],
             []);
@@ -681,7 +691,7 @@ let result =
              "Summary"]
           ,["Format"],[]);
           "stage.mli", (
-            ["Deps"; "Fault"; "Loc"; "M2l";"Module"; "Name"; "Namespaced"; "Paths";
+            ["Deps"; "Fault"; "Loc"; "M2l";"Module"; "Name"; "Namespaced"; "Paths"; "Pkg";
              "Pp"; "Summary"; "Transforms"; "Uloc"]
           ,["Format"],[]);
           "dep_zipper.ml", (
@@ -689,7 +699,7 @@ let result =
           ,[],[]);
           "zipper_fold.ml", (
             ["Deps"; "Id"; "Loc"; "M2l"; "Module"; "Mresult"; "Option";
-             "Paths"; "Pp"; "Stage"; "Summary"; "Zipper_skeleton"; "Zipper_def";
+             "Paths"; "Pkg"; "Pp"; "Stage"; "Summary"; "Zipper_skeleton"; "Zipper_def";
              "Zipper_pp"; "Uloc"]
           ,["List"; "Format"],[]);
           "zipper_pp.ml", (
@@ -709,6 +719,8 @@ let result =
             ["Deps"; "Id"; "M2l"; "Module"; "Name"; "Paths"; "Pp"; "Stage";
              "Summary"; "Transforms"; "Uloc"]
           ,[],[]);
+          "pkg.ml", (["Name"; "Namespaced"; "Pp"; "Schematic"],["Filename"; "Map"; "Set"; "String"],[]);
+          "pkg.mli", (["Name"; "Namespaced"; "Paths"; "Schematic"],["Format"; "Map"; "Set"],[]);
         ])
       )
     )

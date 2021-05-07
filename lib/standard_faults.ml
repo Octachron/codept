@@ -138,7 +138,7 @@ let module_conflict =
     (e2 "Global module conflict,@; Module %a is provided \
          simultaneously by %a"
         Format_tags.(with_tag M Namespaced.pp)
-        (Pp.in_text_list Format_tags.(with_tag M Paths.P.pp))
+        (Pp.in_text_list Format_tags.(with_tag M Pkg.pp))
     )
 
 
@@ -151,7 +151,7 @@ let local_module_conflict =
    (e2
        "Local module conflict,@; Module %a is provided \
         simultaneously by %a" Format_tags.(with_tag M Namespaced.pp)
-       Pp.(in_text_list Format_tags.(with_tag M Paths.P.pp))
+       Pp.(in_text_list Format_tags.(with_tag M Pkg.pp))
    )
 
 let concordant_approximation =
@@ -163,7 +163,7 @@ let concordant_approximation =
     (e1
        "@[<v>Approximate parsing of %a.@,\
         However, lower and upper bound agreed upon dependencies.@]"
-       Paths.P.pp
+       Pkg.pp
     )
 
 let discordant_approximation =
@@ -176,7 +176,7 @@ let discordant_approximation =
     (e3
        "@[<v>Approximate parsing of %a.@,\
         Computed dependencies: at least @[{%a}@], maybe: @[{%a}@]@]"
-       Paths.P.pp Pp.(list Paths.S.pp) Pp.(list Paths.S.pp)
+       Pkg.pp Pp.(list Namespaced.pp) Pp.(list Namespaced.pp)
     )
 
 

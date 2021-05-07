@@ -1,5 +1,4 @@
 
-module Pkg = Paths.Pkg
 module Pth = Paths.Simple
 
 type precision =
@@ -77,8 +76,7 @@ let adder add p = function
 
 module Group = struct
 
-  let module_path = Paths.S.chop_extension
-  let key unit = module_path unit.src.file
+  let key unit =  unit.path
 
   type 'ext group = 'ext t list pair
 
@@ -97,26 +95,26 @@ module Group = struct
   let empty = { mli = []; ml = [] }
 
   module Map = struct
-    type 'ext t = 'ext group Paths.Simple.Map.t
+    type 'ext t = 'ext group Namespaced.Map.t
 
-    let find path m = Paths.Simple.Map.find (module_path path) m
+    let find path m = Namespaced.Map.find path m
 
     let raw_add kind unit m =
       let key = key unit in
-      let grp = Option.default empty (Pth.Map.find_opt key m) in
-      Pth.Map.add key (raw_add kind unit grp) m
+      let grp = Option.default empty (Namespaced.Map.find_opt key m) in
+      Namespaced.Map.add key (raw_add kind unit grp) m
 
     let add unit m = raw_add unit.kind unit m
 
 
-    let of_list x = List.fold_left (fun x y -> add  y x) Pth.Map.empty x
+    let of_list x = List.fold_left (fun x y -> add  y x) Namespaced.Map.empty x
 
-    let fold f map start = Paths.S.Map.fold (fun _ -> f) map start
+    let fold f map start = Namespaced.Map.fold (fun _ -> f) map start
     let iter f map = fold (fun x () -> f x) map ()
   end
 
   let group {ml;mli} =
-    let start = Pth.Map.empty in
+    let start = Namespaced.Map.empty in
     let add kind m x = Map.raw_add kind x m in
     let mid = List.fold_left (add Structure) start ml in
     List.fold_left (add Signature) mid mli
@@ -125,13 +123,13 @@ module Group = struct
     let flat  = function
       | [] -> None, []
       | [x] -> Some x, []
-      | x :: q -> Some x, q in
+      | x :: q -> Some x, x::q in
     let mli, mli_err = flat grp.mli in
     let ml, ml_err = flat grp.ml in
     { ml; mli }, { ml = ml_err; mli = mli_err }
 
   let split map =
-    List.fold_left ( fun ({ml; mli}, errors ) (name,grp) ->
+    Namespaced.Map.fold ( fun name grp ({ml; mli}, errors ) ->
         let g, err = flatten grp in
         let err = err.ml @ err.mli in
         let errors = if err = [] then errors else
@@ -145,7 +143,7 @@ module Group = struct
           | { ml = None; mli = None } -> {ml;mli}
         end
       ,  errors
-      ) ({ ml = []; mli = [] },[])  (Pth.Map.bindings map)
+      ) map ({ ml = []; mli = [] },[])
 
 end
 

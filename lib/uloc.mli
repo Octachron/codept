@@ -1,5 +1,5 @@
 (** Location type for error message *)
-type t = { pkg:Paths.Pkg.t; loc:Loc.t}
+type t = { pkg:Pkg.t; loc:Loc.t}
 val none: t
 
 module Pp: sig

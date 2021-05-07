@@ -1,4 +1,3 @@
-module Pkg = Paths.Pkg
 module U = Unit
 
 type kind = Interface | Implementation | Signature
@@ -18,7 +17,7 @@ type task =
   {
     files: (info * string * Namespaced.t option) list;
     seeds: Namespaced.t list;
-    invisibles: Paths.S.set;
+    invisibles: Namespaced.Set.t;
     libs: string list;
     opens: Paths.S.t list
   }
@@ -39,9 +38,9 @@ let expand_dir dir =
     else dir
 
 let make_abs abs p =
-  let open Paths.Pkg in
+  let open Pkg in
   if abs && p.source = Local then
-    { p with file = Sys.getcwd() :: p.file }
+    { p with file = Namespaced.cons [Sys.getcwd()] p.file }
   else
     p
 

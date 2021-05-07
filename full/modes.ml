@@ -1,4 +1,3 @@
-module Pkg = Paths.Pkg
 open Params
 
 type mode =
@@ -30,8 +29,7 @@ let info _ _ ppf _param {Unit.ml; mli} =
   print ml; print mli
 
 let str x = Format.asprintf "%a" x
-let ufile (u:Unit.r) = str Paths.Pkg.pp u.src
-let upath (u:Unit.r) = Namespaced.flatten u.path
+let ufile (u:Unit.r) = str Pkg.pp u.src
 
 module LocalSet =
   Set.Make(struct type t = Schema.local_association let compare=compare end)
@@ -46,7 +44,7 @@ let assoc x set =
     | _ -> x in
   match x.mli, x.ml with
   | Some u, _ | None, Some u ->
-    let path = upath u in
+    let path = u.path in
     LocalSet.add
       { path; ml = Option.fmap ufile x.ml ; mli = Option.fmap ufile x.mli }
       set
@@ -56,9 +54,9 @@ let build_atlas (lib,unknow) (u:Unit.r) =
   let build_atlas {Deps.path; pkg; _} (lib,unknw)  =
     let add_libs lib path = LibSet.add { Schema.lib; path } in
     match pkg.source with
-    | Paths.P.Local|Paths.P.Special _ -> lib, unknw
-    | Paths.P.Pkg pkg' -> add_libs pkg' path lib, unknw
-    | Paths.P.Unknown -> lib, Paths.S.Set.add path unknw in
+    | Pkg.Local | Pkg.Special _ -> lib, unknw
+    | Pkg.Pkg pkg' -> add_libs pkg' path lib, unknw
+    | Pkg.Unknown -> lib, Namespaced.Set.add path unknw in
   Deps.fold build_atlas (Unit.deps u) (lib,unknow)
 
 let structured fmt _ _ ppf param units =
@@ -67,7 +65,7 @@ let structured fmt _ _ ppf param units =
   let pp = let open Schematic in
     match fmt with Json -> Ext.json Schema.x | Sexp -> Ext.sexp Schema.x in
   let lib, unknown =
-    List.fold_left build_atlas (LibSet.empty, Paths.S.Set.empty) all in
+    List.fold_left build_atlas (LibSet.empty, Namespaced.Set.empty) all in
   let groups = Unit.Group.group units in
   let local = Unit.Group.Map.fold assoc groups LocalSet.empty in
   let dep (u:Unit.r) =
@@ -75,7 +73,7 @@ let structured fmt _ _ ppf param units =
   let dependencies = List.map dep all in
   let local = LocalSet.elements local in
   let library = LibSet.elements lib in
-  let unknown = Paths.S.Set.elements unknown in
+  let unknown = Namespaced.Set.elements unknown in
   Pp.fp ppf "%a@." pp {dependencies;local; library; unknown}
 
 
@@ -84,11 +82,10 @@ let export name _ _ ppf _param {Unit.mli; _} =
   let sign (u:Unit.r)= Unit.signature u in
   let md (unit:Unit.r) =
     let uname = unit.path.name in
-    let fp = Namespaced.flatten unit.path in
     let m = {
       Module.origin =
-        Unit { source = { source=Pkg.Special name; file = fp };
-               path = fp
+        Unit { source = { source=Pkg.Special name; file = unit.path };
+               path = unit.path
              }
     ; signature = sign unit
     }
@@ -107,7 +104,7 @@ let signature filename writer ppf param {Unit.mli; _} =
   (* TODO: prefixed unit *)
   let md (u:Unit.r) =
     let origin =
-      Module.Origin.Unit {source=u.src;path=Namespaced.flatten u.path} in
+      Module.Origin.Unit {source=u.src;path=u.path} in
     u.path.name, Module.Sig ( Module.create ~origin (Unit.signature u ))
   in
   let mds = List.map md mli in
@@ -156,7 +153,6 @@ let modules ?filter _ _ =
 
 
 let pp_only_deps sort ?filter ppf u =
-  let open Unit in
   let elts = Deps.pkgs (Unit.deps u) in
   let elts = sort elts in
   let elts = match filter with

@@ -17,7 +17,7 @@ let full_topological_sort deps paths =
         sort sorted q
   and sort_at sorted x =
     guard x;
-    let sorted = Paths.Pkg.Set.fold sort_dep (deps x) sorted in
+    let sorted = Pkg.Set.fold sort_dep (deps x) sorted in
     let open Option in
     sorted >>| fun sorted ->
     mark x;

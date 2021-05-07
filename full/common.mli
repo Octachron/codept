@@ -20,7 +20,7 @@ type task =
     (** files to be analyzed *)
     seeds: Namespaced.t list;
     (** modules of which ancestors needs to be resolved *)
-    invisibles: Paths.S.set; (** files to be analyzed, quietly *)
+    invisibles: Namespaced.Set.t; (** files to be analyzed, quietly *)
     libs: Name.t list; (** libraries to be used in the analysis *)
     opens: Paths.S.t list (** modules to be opened at the start of any file *)
   }
@@ -30,7 +30,7 @@ type task =
 val expand_dir: string -> string
 
 (**[make_abs bool] if <bool> convert relative path to absolute path *)
-val make_abs: bool -> Paths.Pkg.t -> Paths.Pkg.t
+val make_abs: bool -> Pkg.t -> Pkg.t
 
 (** Check if a package name corresponds to one of the compiler
     distributed libraries *)

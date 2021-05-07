@@ -57,7 +57,7 @@ let param0 = {
 let task0 : Common.task = {
     Common.files = [];
     seeds = [];
-    invisibles = Paths.S.Set.empty;
+    invisibles = Namespaced.Set.empty;
     libs = [];
     opens = [];
   }
@@ -215,7 +215,7 @@ let usage_msg =
    \n\
    The following options are common with ocamldep:\n"
 open L
-open Task
+
 let args action param task fquery version =
   let set_t = set_t param in
   let set_f = set_f param in
@@ -233,13 +233,13 @@ let args action param task fquery version =
     "-allow-approx", set_p policy Codept_policies.parsing_approx,
     ": fall back to approximated parser \
                                         in presence of syntax errors.";
-    "-as-map", task_p as_map, "<file>: same as \
+    "-as-map", task_p Task.as_map, "<file>: same as \
                                    \"-no-alias-deps <file>\"";
     "-I", String (add_include param),
     "<dir>: do not filter files in <dir> when printing dependencies";
-    "-impl", taskc (add_impl Src), "<f>: read <f> as a ml file";
-    "-intf", taskc (add_intf Src), "<f>: read <f> as a mli file";
-    "-map", task_p map, "<file>: same as \"-no-alias-deps \
+    "-impl", taskc (Task.add_impl Src), "<f>: read <f> as a ml file";
+    "-intf", taskc (Task.add_intf Src), "<f>: read <f> as a mli file";
+    "-map", task_p Task.map, "<file>: same as \"-no-alias-deps \
                             -see <file>\"";
     "-ml-synonym", String (ml_synonym param),
     "<s>: use <s> extension as a synonym for ml";
@@ -252,7 +252,7 @@ let args action param task fquery version =
 
     "-one-line", set_f one_line,
     ": output makefile dependencies on a single line for each target";
-    "-open", taskc add_open,
+    "-open", taskc Task.add_open,
     "<name>: open module <name> at the start of all compilation units \
      (except units whose name is <name>).";
     "-pp", Cmd.String(fun s -> Clflags.preprocessor := Some s),
@@ -274,7 +274,7 @@ let args action param task fquery version =
      equivalent to the exact dependency set up to transitive closure";
     "-k", set_p policy Codept_policies.lax,
     ": ignore most recoverable errors and keep going";
-    "-L", taskc lib,
+    "-L", taskc Task.lib,
     "<dir>: use all cmi files in <dir> in the analysis";
     "-no-alias-deps", set_t transparent_aliases, ": delay aliases dependencies";
     "-nested", set_t nested,
@@ -361,9 +361,9 @@ let args action param task fquery version =
      file when given a ml file input";
     "-no-include", set_t no_include, ": do not include base directory by default";
     "-no-stdlib", no_stdlib param, ": do not use precomputed stdlib environment";
-    "-read-sig", taskc add_sig,
+    "-read-sig", taskc Task.add_sig,
     "<signature>: add signature to the base environment";
-    "-see", task_p add_invisible_file,
+    "-see", task_p Task.add_invisible_file,
     "<file>: use <file> in dependencies computation but do not display it."
 
     ^ "\n\nGeneric IO settings:\n";
@@ -393,7 +393,7 @@ let process version ?(extra=[]) argv =
   let args = Arg.align @@ extra @ args action params task findlib_query version in
     Compenv.readenv stderr Before_args;
     begin
-      try Extended_args.parse  argv args (add_file params task) usage_msg
+      try Extended_args.parse  argv args (Task.add_file params task) usage_msg
       with
       | Arg.Bad msg | Arg.Help msg ->
         (print_endline msg; exit 2)
@@ -408,5 +408,5 @@ let translate_findlib_query task query =
   let result = Findlib.process query in
   Pp.fp Pp.std "pp? %a\n" Pp.(opt string) result.pp;
   Option.iter ( fun p -> Clflags.preprocessor := Some p ) result.pp;
-  List.iter (lib task) result.libs; List.iter add_ppx result.ppxs;
+  List.iter (Task.lib task) result.libs; List.iter add_ppx result.ppxs;
   !task
