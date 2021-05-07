@@ -1,0 +1,11 @@
+{
+"version" : [0, 10, 3],
+"dependencies" :
+  [{ "file" : "split_unit/intf/a.mli" }, { "file" : "split_unit/impl/a.ml" }],
+"local" :
+  [{
+   "module" : ["A"],
+   "ml" : "split_unit/impl/a.ml",
+   "mli" : "split_unit/intf/a.mli"
+   }]
+}
