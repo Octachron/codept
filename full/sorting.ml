@@ -1,11 +1,12 @@
 (** Topological order functions *)
-let full_topological_sort deps paths =
+
+let full_topological_sort (type k) ~(key: _ -> k) deps paths =
   let visited = Hashtbl.create 17 in
   let temporary = Hashtbl.create 17 in
-  let guard x = Hashtbl.add temporary x true in
-  let cycle x = Hashtbl.mem temporary x in
-  let mark x = Hashtbl.add visited x true; Hashtbl.remove temporary x in
-  let is_visited x = Hashtbl.mem visited x in
+  let guard x = Hashtbl.add temporary (key x) true in
+  let cycle x = Hashtbl.mem temporary (key x) in
+  let mark x = Hashtbl.add visited (key x) true; Hashtbl.remove temporary (key x) in
+  let is_visited x = Hashtbl.mem visited (key x) in
   let rec sort sorted = function
     | [] -> sorted
     | a :: q ->
@@ -17,12 +18,12 @@ let full_topological_sort deps paths =
         sort sorted q
   and sort_at sorted x =
     guard x;
-    let sorted = Pkg.Set.fold sort_dep (deps x) sorted in
+    let sorted = List.fold_left sort_dep sorted (deps x) in
     let open Option in
     sorted >>| fun sorted ->
     mark x;
     x :: sorted
-  and sort_dep y sorted =
+  and sort_dep sorted y =
     if is_visited y then
       sorted
     else if cycle y then

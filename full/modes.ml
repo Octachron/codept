@@ -193,8 +193,8 @@ let dot _ _ ppf param {Unit.mli; _ } =
 
 
 let local_deps x =
-  let filter = function { Pkg.source = Local; _ } -> true | _ -> false in
-  x |> Unit.deps |> Deps.pkg_set |> Pkg.Set.filter filter
+  let filter x = match x.Deps.pkg.Pkg.source with Local -> Some (x.pkg, x.path) | _ -> None in
+  x |> Unit.deps |> Deps.all |> List.filter_map filter
 
 
 let sort _ _ ppf _param (units: _ Unit.pair) =
@@ -204,22 +204,23 @@ let sort _ _ ppf _param (units: _ Unit.pair) =
   (* errors should have handled earlier *) in
   let extract_path g l = match flat g with
     | { Unit.ml = Some x; mli = _ }
-    | { ml = None; mli = Some x }  -> x.Unit.src :: l
+    | { ml = None; mli = Some x }  -> (x.Unit.src, x.Unit.path) :: l
     | { ml = None; mli = None } -> l in
   let paths = G.Map.fold extract_path gs []  in
-  let deps path =
-    let key = path.Pkg.file in
+  let deps (_, path) =
+    let key = path in
     match flat @@ G.Map.find key gs with
     | { ml = Some x; mli = Some y } ->
-      if path = x.src then
-        let (+) = Pkg.Set.union in
-        (local_deps x) + (local_deps y) + (Pkg.Set.singleton y.src)
+      if path = x.path then
+        (local_deps x) @ (local_deps y)
+        @ [y.src, y.path]
       else
         local_deps y
     | { ml = Some x; mli = None } | { mli= Some x; ml =None } -> local_deps x
-    | { ml = None; mli = None } -> Pkg.Set.empty in
+    | { ml = None; mli = None } -> [] in
+  let sorted = Sorting.full_topological_sort ~key:fst deps paths in
   Option.iter (Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp ppf)
-    (Sorting.full_topological_sort deps paths)
+    (Option.fmap (List.map fst) sorted)
 
 
 module Filter = struct
