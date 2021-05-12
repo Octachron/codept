@@ -22,3 +22,6 @@ Makefile.config
 codept
 codept-client
 codept-server
+build/full
+build/lib
+build/preprocessor.exe

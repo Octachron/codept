@@ -1,23 +1,18 @@
-
-
+all: dirs tests codept
 include Makefile.common
-
-
-all: dirs tests $S/codept-server $S/codept-client $S/codept
 codept: $S/codept
+
 
 dirs:
 	mkdir -p full tests docs bundled
 
 $S/codept: $(OBJ) full/codept.cmx | dirs
-	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codeptSORT)) -o $S/codept
+	@$(OCAMLOPT) $(LKS) $(call tocmx, $(filter-out full/codept.ml,$(codeptSORT))) -o $S/codept
 
-$S/codept-client: $(OBJ) full/codept_client.cmx | dirs
-	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codept_clientSORT)) -o $S/codept-client
-
-
-$S/codept-server: $(OBJ) full/codept_server.cmx | dirs
-	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codept_serverSORT)) -o $S/codept-server
+#$S/codept-client: $(OBJ) full/codept_client.cmx | dirs
+#	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codept_clientSORT)) -o $S/codept-client
+#$S/codept-server: $(OBJ) full/codept_server.cmx | dirs
+#	@$(OCAMLOPT) $(LKS) $(call tocmx, $(codept_serverSORT)) -o $S/codept-server
 
 
 $S/test-run: $(OBJ) tests/run.cmx
@@ -30,7 +25,6 @@ $S/test-serialize: $(OBJ) tests/serialization.cmx
 test: $S/test-run $S/test-serialize
 	@cd $S && ./test-run && ./test-serialize
 
-
 print-%  : ; @echo $* = $($*)
 
 $(SRC:%.mli=%.cmi):%.cmi: $S/%.mli | dirs
@@ -41,6 +35,7 @@ $(SRC:%.mli=%.cmi):%.cmi: $S/%.mli | dirs
 
 $(OBJ):%.cmx: $S/%.ml | dirs
 	@$(OCAMLOPT) -c $< && mv $S/$@ $@ && mv $S/$*.o $*.o && mv $S/$*.cmt $*.cmt && (mv $S/$*.cmi $*.cmi 2> /dev/null ||true)
+
 $(BGENS:=.cmx):%.cmx: %.ml %.cmi
 	@$(OCAMLOPT) -c $<
 
@@ -71,4 +66,5 @@ $S/docs/index.html: $(ODOC)
 lib/slex.ml: $S/lib/slex.mll
 	ocamllex $< -o $@
 
-include codept.sort codept_server.sort codept_client.sort run.sort serialization.sort .depends
+include codept.sort run.sort serialization.sort .depends
+# codept_server.sort codept_client.sort

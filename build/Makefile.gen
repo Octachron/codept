@@ -8,11 +8,11 @@ lib/slex.ml: $S/lib/slex.mll
 lib/sparser.mli : $S/lib/sparser.mly
 	menhir $< --base lib/sexp/sparser
 
-depend: codept.sort codept_client.sort codept_server.sort run.sort serialization.sort lib/sparser.mli lib/slex.ml
+depend: codept.sort run.sort serialization.sort  $(GENS)
 	cd $S && $(DEPGEN) -package $(DEPS) -package unix -package threads $(SRC) \
 	$(SRCI) \
-	$(IMPL) $(addprefix build/, $(GENS)) $(MAINS) \
+	 $(IMPL) $(addprefix build/, $(GENS)) $(MAINS) \
 	| sed -e 's/build\///g' > build/.depends
 
 %.sort: $(GENS) $S/lib $S/full $S/bundled $S/tests
-	$(call sorted_deps, $*)
+	$(call sorted_deps,$*)

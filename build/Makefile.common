@@ -8,7 +8,7 @@ PKGS= -I +compiler-libs
 LKS = unix.cmxa threads.cmxa ocamlcommon.cmxa
 
 define sorted_deps
-  echo "$(1)SORT = `cd $S && $(DEPGEN) -package compiler-libs.common -package unix -package threads $(SRCI) $(IMPL) $(addprefix build/, $(GENS)) -ancestors-of $(1).ml -sort`" | sed -e 's/build\///g' > $(1).sort
+  echo "$(1)SORT = `cd $S && $(DEPGEN) -package compiler-libs.common -package unix -package threads $(SRCI) $(IMPL) $(MAINS) $(addprefix build/, $(GENS)) -ancestors-of $(1).ml -sort`" | sed -e 's/build\///g' > $(1).sort
 endef
 
 IDEPS=$(shell ocamlfind query $(DEPS))
@@ -16,16 +16,22 @@ IDEPS=$(shell ocamlfind query $(DEPS))
 OCAMLOPT= ocamlopt -thread  $(PKGS) $(OPTS)
 OCAMLC= ocamlc -thread $(PKGS) $(OPTS)
 DEPGEN=codept -no-alias-deps
-MAINS= full/codept_server.ml full/codept_client.ml full/codept.ml \
-       tests/run.ml tests/serialization.ml
+MAINS= full/codept.ml tests/run.ml tests/serialization.ml
+
+EXCLUDED_MAINS = full/codept_server.ml full/codept_client.ml
 
 OMAINS=$(addprefix $S/,$(MAINS))
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
 
-OSRC= $S/bundled/bundle.mli $(wildcard $S/lib/*.mli) $(wildcard $S/full/*.mli)
-OSRCI= $(wildcard $S/tests/*.ml) \
-       $(addprefix $S/full/codept, .ml _server.ml _client.ml)
+OMLPS= $(wildcard $S/lib/*.mlp) $(wildcard $S/full/*.mlp)
+MLPS= $(OMLPS:$S/%=%)
+
+IMPL_FILES = $S/bundled/bundle.ml $(wildcard $S/lib/*.ml) $(wildcard $S/full/*.ml) $(OMLPS:%.mlp=%.ml)
+OSRCI =$S/lib/zipper_def.ml $S/lib/schematic_indices.ml
+IMPL_FILES_WITH_MLI= $(filter-out $(OSRCI) $(OMAINS) $(addprefix $S/,$(EXCLUDED_MAINS)), $(IMPL_FILES))
+OSRC=$(IMPL_FILES_WITH_MLI:%.ml=%.mli)
+
 OIMPL = $(OSRC:.mli=.ml)
 
 SRC=$(patsubst $S/%,%, $(OSRC))
@@ -34,14 +40,15 @@ IMPL=$(patsubst $S/%,%, $(OIMPL))
 
 SRCA= $(SRC) $(SRCI)
 
-SRCO = $(basename $(SRCA))
+SRCO = $(filter-out $(BGENS), $(basename $(SRCA)))
 OBJ=$(SRCO:%=%.cmx)
 
 SRCOS = $(basename $(DSORT))
 OBJS= $(SRCOS:%=%.cmx)
 BOBJS=$(patsubst $S/%,%,$(OBJS))
 
-GENS=$(addprefix lib/, slex.ml sparser.mli)
+SGENS=$(addprefix lib/, slex.ml sparser.mli )
+GENS=$(SGENS) $(MLPS:%.mlp=%.ml)
 BGENS = $(basename $(GENS))
 
 LIB = $(wildcard $S/lib/*.mli)
@@ -51,3 +58,10 @@ ODOC = $(patsubst $S/lib/%,docs/%, $(LIBDOC))
 define tocmx
         $(addsuffix .cmx, $(basename $(1)))
 endef
+
+preprocessor.exe: $S/preprocessor.ml
+	$(OCAMLOPT) $< -o $@
+
+$(MLPS:%.mlp=%.ml):%.ml: $S/%.mlp preprocessor.exe
+	./preprocessor.exe $S/$@
+	mv $S/$@ $@
