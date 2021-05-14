@@ -31,3 +31,10 @@ let split_on_char sep s =
   split [] n (n-1)
 
 let opt conv s = try Some(conv s) with Failure _ -> None
+
+let filter_map f l =
+   List.rev @@ List.fold_left (fun acc x ->
+      match f x with
+      | Some x -> x :: acc
+      | None -> acc
+    ) [] l

@@ -15,7 +15,7 @@ type param =
 
 let preprocess_deps includes unit =
   let replace ({Deps.pkg; _ } as dep) l = match pkg with
-    | { Pkg.source = Unknown; file = Namespaced.{ namespace=[]; name } } ->
+    | { Pkg.source = Unknown; file = { Namespaced.namespace=[]; name } } ->
       let pkg = Option.default pkg (Name.Map.find_opt name includes) in
       {dep with pkg} :: l
     | { Pkg.source = Pkg _ ; _ }  -> l
