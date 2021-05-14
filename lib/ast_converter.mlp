@@ -520,15 +520,12 @@ and class_type ct =
     Annot.ext @@ with_loc ct.pcty_loc @@ extension_core ext
 # 4.06, 4.08
   | Pcty_open (_,module',cty) ->
+    Annot.local_open (from_loc module'.loc)
+    (Ident (npath module')) (class_type cty)
 # 4.08, oo
   | Pcty_open (module',cty) ->
-#end
-# 4.06, 4.07
-  Annot.local_open (from_loc module'.loc)
-  (Ident (npath module')) (class_type cty)
-# 4.07, oo
-  Annot.local_open (from_loc module'.popen_loc)
-  (Ident (npath module'.popen_expr)) (class_type cty)
+    Annot.local_open (from_loc module'.popen_loc)
+      (Ident (npath module'.popen_expr)) (class_type cty)
 #end
 and class_signature cs = Annot.union_map class_type_field cs.pcsig_fields
 and class_type_field ctf = match ctf.pctf_desc with
@@ -586,15 +583,12 @@ and class_expr ce =
     Annot.ext @@ with_loc loc @@ extension_core ext
 # 4.06, 4.08
   | Pcl_open(_,module',cl) ->
+    Annot.local_open (from_loc module'.loc)
+      (Ident (npath module')) @@ class_expr cl
 # 4.08, oo
   | Pcl_open(module',cl) ->
-#end
-# 4.06, 4.07
-  Annot.local_open (from_loc module'.loc)
-  (Ident (npath module')) @@ class_expr cl
-# 4.07, oo
-  Annot.local_open (from_loc module'.popen_loc)
-  (Ident (npath module'.popen_expr)) @@ class_expr cl
+    Annot.local_open (from_loc module'.popen_loc)
+      (Ident (npath module'.popen_expr)) @@ class_expr cl
 #end
 and class_field_kind = function
   | Cfk_virtual ct -> core_type ct
