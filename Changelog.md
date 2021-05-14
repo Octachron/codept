@@ -21,6 +21,10 @@
 
   * Support for OCaml 4.09, 4.10, 4.11, 4.12
 
+  * Support for split compilation units: the interface and
+    implementation file does not need to share a path to
+    be identified as part of the same compilation unit
+
 ## Internal
 
 * Switch to the zipper engine
