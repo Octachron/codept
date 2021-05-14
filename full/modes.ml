@@ -194,7 +194,7 @@ let dot _ _ ppf param {Unit.mli; _ } =
 
 let local_deps x =
   let filter x = match x.Deps.pkg.Pkg.source with Local -> Some (x.pkg, x.path) | _ -> None in
-  x |> Unit.deps |> Deps.all |> List.filter_map filter
+  x |> Unit.deps |> Deps.all |> Support.filter_map filter
 
 
 let sort _ _ ppf _param (units: _ Unit.pair) =
