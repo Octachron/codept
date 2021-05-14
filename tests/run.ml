@@ -682,7 +682,7 @@ let result =
              "Standard_faults"],
             [ "List"; "Location"; "Set"],
             []);
-          "support.ml", ([],["String"],[]);
+          "support.ml", ([],["String"; "List"],[]);
           "support.mli", ([],[],[]);
           "with_deps.ml", (["Deps"],[],[]);
           "with_deps.mli", (["Deps"],[],[]);
