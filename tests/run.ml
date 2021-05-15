@@ -447,18 +447,6 @@ let result =
          "z.mli", l["w.mli"]
        ]
   )
-  && (
-    let n = 100 in
-    let dep = l[ Printf.sprintf "m%d.mli" n ] in
-    chdir "../star";
-    ignore @@ Sys.command (Printf.sprintf "ocaml generator.ml %d" 100);
-    let rec deps k =
-      if k >= n then
-        [ Printf.sprintf "m%03d.mli" k, [] ]
-      else
-        (Printf.sprintf "m%03d.mli" k, dep) :: (deps @@ k+1) in
-    both ["M001"] @@ dl @@ deps 1
-  )
     &&
   ( chdir "../stops";
     both ["A"] @@ dl

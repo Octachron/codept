@@ -1,7 +1,7 @@
 *~
 **/_build/**
 **/.merlin
-tests/complex/star/m*.mli
+tests/generated/star/m*.mli
 *.cm[ioax]
 *.cmxa
 *.cmt
@@ -15,8 +15,6 @@ lib/format_tags.ml
 lib/version.ml
 lib/pparse_compat.ml
 full/extended_args.ml
-precomputed/std_num.ml
-precomputed/stdlib_data.ml
 **/#*#
 Makefile.config
 codept
