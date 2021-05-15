@@ -1,3 +1,15 @@
+
+let error = ref false
+let ok ppf = Format.fprintf ppf "\x1b[32mok\x1b[0m"
+let failure ppf = Format.fprintf ppf "\x1b[31mfailure\x1b[0m"
+let fail fmt =
+  Format.kfprintf (fun ppf -> error := true; Format.fprintf ppf "[%t]@." failure; error := true)
+    Format.std_formatter fmt
+let log fmt =
+  Format.ikfprintf (fun ppf -> Format.ifprintf ppf "[%t]@." ok) Format.std_formatter fmt
+
+
+
 let local = Pkg.local
 
 let root = if Array.length Sys.argv > 0 then Some (Sys.argv.(1)) else None
@@ -116,14 +128,13 @@ module Branch(Param:Stage.param) = struct
     |> Deps.pkgs
     |> List.sort compare
 
-  let green ppf s = Format.fprintf ppf "\x1b[32m%s\x1b[0m" s
 
   let simple_dep_test name list set =
     let r = normalize set = List.sort compare list in
     if r then
-      Pp.p "%a[%a]@." Pkg.pp name green "ok"
+      log "%a" Pkg.pp name
     else
-      Pp.p "Simple test failure: %a(%s).@;<0 2>Expected:[%a], got:@[[%a]@]\n"
+      fail "Simple test failure: %a(%s).@;<0 2>Expected:[%a], got:@[[%a]@]"
         Pkg.pp name (Sys.getcwd ())
         Pp.(list Pkg.pp) (List.sort compare list)
         Pp.(list Pkg.pp) (normalize set);
@@ -151,9 +162,9 @@ module Branch(Param:Stage.param) = struct
     let test subtitle x y =
       let r = x = y  in
       if r then
-        Pp.p "%a/%s[%a]@." Pkg.pp name subtitle green "ok"
+        log "%a/%s" Pkg.pp name subtitle
       else
-        Pp.p "Failure %a %s: expected:[%a], got:@[[%a]@]\n"
+        fail "Failure %a %s: expected:[%a], got:@[[%a]@]\n"
           Pkg.pp name subtitle
           Pp.(list estring) x
           Pp.(list estring) y;
@@ -219,9 +230,9 @@ module Branch(Param:Stage.param) = struct
       let cycles = List.map (List.sort compare) (CSet.elements cycles) in
       let r = cycles = expected in
       if r then
-        Pp.p "cycle:%s[%a]@." name green "ok"
+        log "cycle:%s" name
       else
-        ( Pp.fp Pp.std "Cycle %s failure:@;<0 2>expected %a, got %a@."
+        ( fail "Cycle %s failure:@;<0 2>expected %a, got %a"
             name
             Pp.(list @@ list Namespaced.pp) expected
             Pp.(list @@ list Namespaced.pp) cycles;
@@ -714,7 +725,7 @@ let result =
     )
 
 let () =
-  if result then
-    Format.printf "Success.\n"
+  if result && not !error then
+    (Format.printf "Success.\n"; exit 0)
   else
-    Format.printf "Failure.\n"
+    (Format.printf "Failure.\n"; exit 1)

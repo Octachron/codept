@@ -29,6 +29,21 @@ let () = Sys.chdir "../../tests/"
 
 
 
+
+let ok ppf = Format.fprintf ppf "\x1b[32mok\x1b[0m"
+let failure ppf = Format.fprintf ppf "\x1b[31mfailure\x1b[0m"
+
+
+let error_status = ref false
+let fail fmt =
+  Format.kfprintf (fun ppf -> Format.fprintf ppf "[%t]@." failure; error_status := true)
+    Format.std_formatter fmt
+
+let log fmt =
+  Format.ikfprintf (fun ppf -> Format.ifprintf ppf "[%t]@." ok) Format.std_formatter fmt
+
+
+
 let sep ="−"
 
 let rec skip_num pos s =
@@ -136,7 +151,7 @@ let uerror ppf = function
   | Unix.WEXITED x -> Format.fprintf ppf "WEXITED %d" x
   | Unix.WSTOPPED x -> Format.fprintf ppf "WSTOPPED %d" x
   | Unix.WSIGNALED x -> Format.fprintf ppf "WSIGNALED %d" x
-let error e x = Format.eprintf "error(%a) with %s@." uerror e x
+let error e x = fail "error(%a) with %s@." uerror e x
 
 let refname name =
   Filename.chop_extension name ^ ".ref"
@@ -148,7 +163,7 @@ let reference name =
   else
     ""
 
-let guard f x =
+let guard ~failure f x =
   let guard = x  ^ "/guard" in
   if Sys.file_exists guard then
     let chan = open_in guard in
@@ -156,7 +171,8 @@ let guard f x =
     close_in chan;
     let v = Version.read g in
     if Version.v >= v then
-      f x;
+      f x
+    else failure
   else
     f x
 
@@ -200,9 +216,6 @@ let arg x =
   else
     None
 
-let green ppf s = Format.fprintf ppf "\x1b[32m%s\x1b[0m" s
-let red ppf s = Format.fprintf ppf "\x1b[31m%s\x1b[0m" s
-
 let print_arg ppf = function
   | None -> Format.fprintf ppf "None"
   | Some x -> Array.iter (Format.fprintf ppf "%s@ ") x
@@ -217,10 +230,10 @@ let dir x =
     let s = read_all out in
     let ref = reference (x ^ "/reference") in
     if s %=% ref then
-      Format.printf "[%s]: %a@." x green "ok"
-    else
-      Format.printf "[%s]:@ %a,@ args:%a@ %s@,diff:@,@[<v>%a@]@." x red "failure"
-        print_arg arg s diff (s,ref)
+      log "%s" x
+    else fail "[%s]:@ args:%a@ %s@,diff:@,@[<v>%a@]@." x
+          print_arg arg s diff (s,ref);
+
   | e -> error e x
 
 let extract_attribute x =
@@ -285,17 +298,15 @@ let cases =
     let s = read_all x in
     let ref = reference (refname name) in
     if s %=% ref then
-      Format.printf "[%s]: %a(%s)@." name green "ok" vname
-    else begin
-      Format.printf "[%s]: %a(%s)@,%s@,diff:@,@[<v>%a@]@." name red "fail" vname
+      log "%s(%s)" name vname
+    else fail "[%s]:(%s)@,%s@,diff:@,@[<v>%a@]@." name  vname
         s diff (s,ref)
-    end
   in
   let peek l (_, case, pid, _ as x) =
     match Unix.waitpid [Unix.WNOHANG] pid with
     | 0, _ -> x :: l
     | _, WEXITED (0|2)  -> post x; l
-    | _, e  -> error e case; l in
+    | _, e  -> error e case;  l in
   let rec loop = function
     | [] -> ()
     | pending ->
@@ -305,6 +316,10 @@ let cases =
 let () =
   Sys.chdir "complex";
   let all = Sys.readdir "." in
-  Array.iter (fun x -> if x <> "." || x <> ".." then
-                 guard dir x)
+  let () = Array.iter (fun x ->
+      if x <> "." || x <> ".." then
+        guard ~failure:() dir x
+    )
     all
+  in
+  if !error_status then exit 1 else exit 0
