@@ -32,8 +32,6 @@ let () = Sys.chdir "../../tests/"
 
 let ok ppf = Format.fprintf ppf "\x1b[32mok\x1b[0m"
 let failure ppf = Format.fprintf ppf "\x1b[31mfailure\x1b[0m"
-
-
 let error_status = ref false
 let fail fmt =
   Format.kfprintf (fun ppf -> Format.fprintf ppf "[%t]@." failure; error_status := true)
