@@ -359,7 +359,7 @@ module Libraries = struct
   module I = Dep_zipper.Outline(Core)
   let param = {
     Transforms.policy = Standard_policies.quiet;
-    transparent_aliases = false;
+    transparent_aliases = true;
     (* we are not recording anything *)
     transparent_extension_nodes = false;
     (* extension nodes should not appear in cmi *)
