@@ -77,17 +77,31 @@ and module_type =
  *)
   | Sig of m2l (** [sig … end] *)
   | Fun of module_type fn (** [functor (X:S) → M] *)
-  | With of {
-      body: module_type;
-      deletions: Paths.S.set;
-      minors: minor list
-    }
-  (** [S with module N := …]
-      we are only tracking module level modification
-  *)
   | Of of module_expr (** [module type of …] *)
   | Extension_node of extension (** [%%… ] *)
   | Abstract (** placeholder *)
+  | With of {
+      body: module_type;
+      with_constraints: with_constraint list;
+    }
+
+and with_constraint =
+  | Type of minor list
+  (** [S with type t =/:= ... *)
+  | Module of {
+      lhs: Paths.S.t;
+      rhs: Paths.S.t Loc.ext;
+      delete: bool;
+    }
+  (** [S with module N.M := …]
+      we need to track abstract module type strenghthening.
+  *)
+  | Module_type of {
+      lhs: Paths.S.t;
+      rhs: module_type;
+      delete: bool
+    }
+
 and extension = {name:string; extension:extension_core}
 and extension_core =
   | Module of m2l
@@ -107,8 +121,8 @@ module Sch = struct
   open Schematic
 
   module Mu = struct
-    let m2l, expr, module_expr, module_type, minor, extension, arg =
-      Schematic_indices.seven
+    let m2l, expr, module_expr, module_type, minor, extension, arg, with_constraint =
+      Schematic_indices.eight
   end
 
   let access =
@@ -149,15 +163,22 @@ module Sch = struct
           "Open_me",[Array (reopen path_loc); Mu.module_expr]
         ]
 
+  let with_sch =
+    Sum [
+      "Type", annot;
+      "Module", [reopen Paths.S.sch; reopen path_loc; Bool ];
+      "Module_type", [reopen Paths.S.sch; Mu.module_type; Bool ];
+    ]
+
   let mt_sch =
     Sum [ "Alias", reopen Paths.S.sch;
           "Ident", reopen Paths.E.sch;
           "Sig", Mu.m2l;
           "Fun",[ Mu.arg; Mu.module_type ];
-          "With",[ Mu.module_type; Array (Array String); annot ];
           "Of", Mu.module_expr;
           "Extension_node", Mu.extension;
-          "Abstract", Void
+          "Abstract", Void;
+          "With",[ Mu.module_type; Array Mu.with_constraint ];
         ]
 
   let expr  =
@@ -222,6 +243,17 @@ module Sch = struct
       Open_me {opens;expr}
     | _ -> .
 
+  let rec with_constraint =
+    Custom { sch = with_sch; fwd; rev }
+  and fwd = let open Tuple in function
+    | Type x -> C (Z x)
+    | Module {lhs;rhs;delete} -> C (S (Z [lhs;rhs;delete]))
+    | Module_type {lhs;rhs;delete} -> C (S (S (Z [lhs;rhs;delete])))
+  and rev = let open Tuple in function
+      | C Z x -> Type x
+      | C S Z [lhs; rhs; delete] -> Module {lhs; rhs; delete}
+      | C S S Z [lhs; rhs; delete] -> Module_type {lhs; rhs; delete}
+      | _ -> .
 
   let rec module_type =
     Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev }
@@ -230,20 +262,20 @@ module Sch = struct
       | Ident x -> C (S (Z x))
       | Sig x -> C(S (S (Z x)))
       | Fun x -> C(S (S (S (Z [x.arg; x.body]))))
-      | With x -> C(S (S (S (S (Z [x.body; S.elements x.deletions; x.minors])))))
-      | Of x ->  C(S (S (S (S (S (Z x))))))
-      | Extension_node x ->  C(S (S (S (S (S (S (Z x)))))))
-      | Abstract ->  C(S (S (S (S (S (S (S E)))))))
+      | Of x ->  C(S (S (S (S (Z x)))))
+      | Extension_node x ->  C(S (S (S (S (S (Z x))))))
+      | Abstract ->          C(S (S (S (S (S (S E))))))
+      | With x ->            C(S (S (S (S (S (S (S (Z [x.body; x.with_constraints]))))))))
   and mt_rev = let open Tuple in function
       | C Z x -> Alias x
       | C S Z x -> Ident x
       | C S S Z x -> Sig x
       | C S S S Z [arg;body] -> Fun {arg;body}
-      | C S S S S Z [body;deletions;minors] ->
-        With {body;deletions = S.of_list deletions; minors}
-      | C S S S S S Z x -> Of x
-      | C S S S S S S Z x -> Extension_node x
-      | C S S S S S S S E -> Abstract
+      | C S S S S Z x -> Of x
+      | C S S S S S Z x -> Extension_node x
+      | C S S S S S S E -> Abstract
+      | C S S S S S S S Z [body;with_constraints] ->
+        With {body;with_constraints}
       | _ -> .
 
   let expr_loc = loc Mu.expr
@@ -298,6 +330,7 @@ module Sch = struct
       "minor", minor;
       "extension", extension;
       "arg",arg;
+       "with_constraint",with_constraint;
     ]
 
   let id = L.["m2l"]
@@ -406,6 +439,9 @@ module Build = struct
 
 end
 
+let and_list pr ppf x =
+  Pp.(list ~sep:(s "@, and @,") pr) ppf x
+
 let rec pp_expression ppf = function
   | Minor annot -> Pp.fp ppf "@[<hv 2>(@,%a@;<0 -2>)@;<0 -2>@]" pp_annot annot
   | Open me -> Pp.fp ppf "@[open [%a]@]" pp_me me
@@ -416,8 +452,7 @@ let rec pp_expression ppf = function
   | Bind_sig bind -> pp_bind_sig ppf bind
   | Extension_node e -> pp_extension ppf e
   | Bind_rec bs ->
-    Pp.fp ppf "rec@[[ %a ]@]"
-      (Pp.(list ~sep:(s "@, and @,")) @@ pp_bind ) bs
+    Pp.fp ppf "rec@[[ %a ]@]" (and_list pp_bind) bs
 
 and pp_minor ppf = function
   | Access a -> pp_access ppf a
@@ -483,11 +518,21 @@ and pp_mt ppf = function
   | Ident np -> Paths.Expr.pp ppf np
   | Sig m2l -> Pp.fp ppf "@,sig@, %a end" pp m2l
   | Fun { arg; body } ->  Pp.fp ppf "%a@,→%a" (Arg.pp pp_mt) arg pp_mt body
-  | With {body; deletions;minors} ->
-    Pp.fp ppf "%a@,/%a (%a)" pp_mt body Paths.S.Set.pp deletions pp_annot minors
+  | With x ->
+    Pp.fp ppf "%a@ %a" pp_mt x.body pp_with_constraints x.with_constraints
   | Of me -> Pp.fp ppf "module type of@, %a" pp_me me
   | Extension_node ext -> Pp.fp ppf "%a" pp_extension ext
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
+and pp_eq ppf delete =
+  Pp.string ppf (if delete then ":=" else "=")
+and pp_with ppf = function
+  | Type minors-> Pp.fp ppf "type (%a)" pp_annot minors
+  | Module {lhs; rhs; delete } ->
+    Pp.fp ppf "module %a@ %a@ %a" Paths.S.pp lhs pp_eq delete Paths.S.pp rhs.data
+  | Module_type {lhs; rhs; delete } ->
+    Pp.fp ppf "module type %a@ %a@ %a" Paths.S.pp lhs pp_eq delete pp_mt rhs
+and pp_with_constraints ppf l =
+  Pp.fp ppf "with@ %a" (and_list pp_with) l
 and pp_extension ppf x = Pp.fp ppf "[%%%s @[%a@]]" x.name pp_extension_core
     x.extension
 and pp_extension_core ppf = function

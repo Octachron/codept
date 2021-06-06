@@ -272,6 +272,7 @@ module Partial :
 
     val refresh: Id.seed -> 'any ty -> 'any ty
     val apply :  arg:modul_ -> param:modul_ -> body:modul_ -> modul_
+    val replace_at: level:level -> delete:bool -> path:Paths.S.t -> replacement:modul_ -> modul_ -> modul_
 
     val to_module : ?origin:origin -> t -> modul_
     val to_arg : t -> modul_

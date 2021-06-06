@@ -12,6 +12,7 @@ module type tree = sig
   type minor
   type minors
   type module_type
+  type with_constraints
   type m2l
   type expr
   type bind_rec
@@ -74,8 +75,15 @@ module type fold = sig
   val mt_ident : path_expr -> module_type
   val mt_of : module_expr -> module_type
   val mt_sig : m2l -> module_type
-  val mt_with :
-    minors -> Paths.Simple.set -> module_type -> module_type
+  val mt_with : module_type -> with_constraints -> module_type
+
+  val with_init: with_constraints
+  val with_type: minors -> with_constraints -> with_constraints
+  val with_module:
+    delete:bool -> lhs:Paths.S.t -> rhs:module_expr -> with_constraints -> with_constraints
+  val with_module_type:
+    delete:bool -> lhs:Paths.S.t -> rhs:module_type -> with_constraints -> with_constraints
+
   val open_add :
     path -> opens -> opens
   val open_init : opens
@@ -101,6 +109,7 @@ module type s = sig
     type minor = T.minor
     type minors = T.minors
     type module_type = (Zipper_skeleton.module_like, T.module_type) pair
+    type with_constraints = (Zipper_skeleton.module_like, T.with_constraints) pair
     type m2l = (Zipper_skeleton.m2l, T.m2l) pair
     type bind_rec = (state_diff, T.bind_rec) pair
     type path_expr_t = (Zipper_skeleton.module_like, T.path_expr) pair
@@ -188,12 +197,21 @@ module type s = sig
     | Fun_left: {name:Name.t option; diff:state_diff; body:M2l.module_type} -> M2l.module_type mt
     | Fun_right: (module_type Arg.t * state_diff) option
         -> M2l.module_type mt
-    | With_access:
-        {body:M2l.module_type; deletions: Paths.S.set} -> M2l.minor list mt
-    | With_body:
-        {minors:minors; deletions:Paths.S.set } -> M2l.module_type mt
+    | With_constraints: {
+        original_body:module_type;
+        right:M2l.with_constraint list
+      }
+        -> M2l.with_constraint mt
+    | With_body: M2l.with_constraint list -> M2l.module_type mt
     | Of: M2l.module_expr mt
     | Extension_node: string -> M2l.extension_core mt
+
+  type 'focus with_constraint =
+    | With_type: with_constraints ->  M2l.minor list with_constraint
+    | With_module: {body:with_constraints; lhs:Paths.S.t; delete:bool} -> path_in_context with_constraint
+    | With_module_type: {body:with_constraints; lhs:Paths.S.t; delete:bool} -> M2l.module_type with_constraint
+
+
 
   type 'focus ext =
     | Mod: M2l.m2l ext
@@ -212,6 +230,7 @@ module type s = sig
         (M2l.minor,M2l.minor list) elt
     | Me: 'elt me -> ('elt, M2l.module_expr) elt
     | Mt: 'elt mt -> ('elt, M2l.module_type) elt
+    | With_constraint: 'elt with_constraint -> ('elt, M2l.with_constraint) elt
     | Access: acc -> (Paths.Expr.t, waccess) elt
     | Ext: 'elt ext ->  ('elt, M2l.extension_core) elt
     | Path_expr: 'elt path_expr -> ('elt, Paths.Expr.t) elt

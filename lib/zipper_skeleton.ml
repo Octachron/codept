@@ -51,6 +51,21 @@ let empty = P.empty
 
 let abstract seed = P.{name=None; mty=Abstract (Id.create seed)}
 let apply param loc ~f ~x = T.apply_arg param.T.policy loc ~arg:x ~f
+
+let replace_at ~level ~delete ~path ~replacement (p:P.t) =
+  let mty = P.of_extended_mty @@ P.replace_at ~delete ~level ~path
+      ~replacement:(P.extend replacement.P.mty)
+      (P.extend p.mty) in
+  { p with mty }
+
+
+let with_module ~delete ~lhs ~rhs m =
+  replace_at ~level:Module.Module ~delete ~path:lhs ~replacement:rhs m
+
+let with_module_type ~delete ~lhs ~rhs m =
+  replace_at ~level:Module.Module_type ~delete ~path:lhs ~replacement:rhs m
+
+
 let unpacked =
   let mty = Module.Sig { signature=Blank; origin=First_class} in
   { empty with mty }

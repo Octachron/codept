@@ -593,6 +593,18 @@ module Def = struct
     | Module -> add
     | Module_type -> add_type
 
+  let find level name d = match level with
+    | Module -> Name.Map.find_opt name d.modules
+    | Module_type -> Name.Map.find_opt name d.module_types
+
+  let remove level name d = match level with
+    | Module ->
+      let modules = Name.Map.remove name d.modules in
+      { d with modules }
+    | Module_type ->
+      let module_types = Name.Map.remove name d.module_types in
+      { d with module_types }
+
   let pp = pp_definition
 
   let sch = let open Schematic in let open Schema in
@@ -757,6 +769,49 @@ module Subst = struct
         | param -> compute_constraints lvl arg param subst
       ) arg subst
 
+  let rec replace_at ~level ~delete ~path ~replacement = function
+    | Sig s ->
+      let signature, subst = sig_replace_at ~level ~delete ~path ~replacement s.signature in
+      Sig {s with signature}, subst
+    | m -> (* type error *) m, identity
+  and sig_replace_at ~level ~delete ~path ~replacement s =
+    match path, s with
+    | [], _ | _, Blank -> s, identity (* type error *)
+    | _ :: _, Exact e ->
+      let def, eq = def_replace_at ~level ~delete ~path ~replacement e in
+      Exact def, eq
+    | name :: q, Divergence ({after; before; _ } as d) ->
+      let level' = match q with [] -> level | _ :: _ -> Module in
+      match Def.find level' name after with
+      | None ->
+        let before, eq = sig_replace_at ~level ~delete ~path ~replacement before in
+        Divergence ({ d with after; before }), eq
+      | Some _ ->
+        let after, eq = def_replace_at ~level ~delete ~path ~replacement after in
+        Divergence ({ d with after; before }), eq
+  and def_replace_at ~level ~delete ~path ~replacement s = match path with
+    | [] -> (* error *) s, identity
+    | [name] ->
+      let s' =
+        if delete then Def.remove level name s
+        else Def.add_gen level s (name,extend replacement)
+      in
+      let eq =
+        match Def.find level name s with
+        | None -> (* type error *) identity
+        | Some old ->
+          compute_constraints level (extend replacement) old identity
+      in
+      s', eq
+    | a :: q ->
+      match Def.find Module a s with
+      | None -> (* type error *) s, identity
+      | Some sub ->
+        let m, eq = replace_at ~level ~delete ~path:q ~replacement sub in
+        Def.add_gen Module s (a,m), eq
+
+
+
   let compute_constraints ~arg ~param = compute_constraints Module arg param identity
 
   let pp ppf s =
@@ -802,6 +857,11 @@ module Partial = struct
     let res = Subst.apply subst body in
     debug "Result:@ %a ⇒@ %a@." pp body pp res;
     res
+
+
+  let replace_at ~level ~delete ~path ~replacement body =
+    let constrained, eq = Subst.replace_at ~delete ~level ~path ~replacement body in
+    Subst.apply eq constrained
 
  let rec pp_sty ppf: sty -> _ = function
     | Abstract n -> Pp.fp ppf "<abstract:%a>" Id.pp n

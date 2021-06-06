@@ -33,6 +33,11 @@ val empty: module_like
 
 val signature: module_like -> Module.signature option
 
+(** With constraint *)
+val with_module: delete:bool -> lhs:Paths.S.t -> rhs:module_like -> module_like -> module_like
+val with_module_type: delete:bool -> lhs:Paths.S.t -> rhs:module_like -> module_like -> module_like
+
+
 (** M2l *)
 val m2l_add : state_diff -> m2l -> m2l
 val m2l_init : m2l

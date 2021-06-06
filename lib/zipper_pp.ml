@@ -10,6 +10,7 @@ module type Result_printer = sig
   val pp_bindrec: T.bind_rec dprinter
   val pp_me: T.module_expr dprinter
   val pp_mt: T.module_type dprinter
+  val pp_with_constraints: T.with_constraints dprinter
   val pp_m2l: T.m2l dprinter
   val pp_minor: T.minor dprinter
   val pp_minors: T.minors dprinter
@@ -25,14 +26,18 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
   let option transition main x ppf = match x with
     | None -> ()
     | Some x -> Pp.fp ppf "%s%a" transition main x
+  let const f x ppf = f ppf x
   let fp1 fmt x ppf =Pp.fp ppf fmt x
   let fp2 fmt x y ppf =Pp.fp ppf fmt x y
+  let fp3 fmt x y z ppf =Pp.fp ppf fmt x y z
+  let fp4 fmt x y z w ppf =Pp.fp ppf fmt x y z w
   let optname ppf = function
     | None -> Format.fprintf ppf "_"
     | Some s -> Format.pp_print_string ppf s
   let r_arg x ppf = match x with
     | None -> ()
     | Some (l,_) -> Pp.fp ppf "%a:%t" Name.pp_opt l.Module.Arg.name (R.pp_mt l.signature.Zipper_def.user)
+  let pp_delete d ppf = Pp.fp ppf (if d then  ":=" else "=")
   let path_loc p ppf = Paths.S.pp ppf p.Loc.data
   let path p ppf = Paths.S.pp ppf p
   let leaf p ppf = Format.fprintf ppf "%t?" (path p.Zipper_skeleton.path)
@@ -52,6 +57,14 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
         )
     | Path_expr Proj (_app,_proj) :: rest ->
       path_expr (rest:Paths.Expr.t t) x
+    | With_constraint With_module {body;lhs; delete} :: rest ->
+      with_constraint (rest: M2l.with_constraint t)
+        (fp4 "%t with module %t %t %t"
+           (R.pp_with_constraints body.user)
+           (const Paths.S.pp lhs)
+           (pp_delete delete)
+           x
+        )
     | _ -> .
   and me: M2l.module_expr t -> _ = fun rest sub ->
     match rest with
@@ -109,12 +122,8 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
         )
     | Me Val :: rest -> me rest (fp1 "(val %t)" sub)
     | Ext Val :: rest -> ext (rest:M2l.extension_core t) sub
-    | Mt With_access m :: rest ->
-      mt rest (fun ppf -> Pp.fp ppf "%a access %t without {%a}"
-                  M2l.pp_mt m.body sub
-                  (Pp.list Paths.S.pp) (Paths.S.Set.elements m.deletions)
-              )
-
+    | With_constraint With_type body :: rest ->
+      with_constraint rest (fp2 "%t with type %t" (R.pp_with_constraints body.user) sub)
     | _ -> .
 
   and mt: M2l.module_type t -> _ = fun rest sub -> match rest with
@@ -142,10 +151,25 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
             ) m.right
         )
     | Me Constraint_right left :: rest -> me rest (fp2 "(%t:%t)" (R.pp_me left.user) sub)
-    | Mt With_body m :: rest ->
-      mt rest (fun ppf -> Pp.fp ppf "%t without {%a}" sub
-                  (Pp.list Paths.S.pp) (Paths.S.Set.elements m.deletions)
-              )
+    | With_constraint With_module_type {body;lhs;delete} :: rest ->
+      with_constraint (rest: M2l.with_constraint t)
+        (fp4 "%t with module type %t %t %t"
+           (R.pp_with_constraints body.user)
+           (const Paths.S.pp lhs)
+           (pp_delete delete)
+           sub
+        )
+    | Mt With_body wcstrs :: rest ->
+      mt rest (fp2 "%t with %t" sub (const M2l.pp_with_constraints wcstrs))
+    | _ -> .
+  and with_constraint: M2l.with_constraint t -> _ = fun rest sub ->
+    match rest with
+    | Mt With_constraints {original_body; right} :: rest ->
+      mt rest (fp3 "%t with %t%t"
+                 (R.pp_mt original_body.user)
+                 sub
+                 (const M2l.pp_with_constraints right)
+               )
     | _ -> .
   and expr: M2l.expression t -> _ = fun rest sub -> match rest with
     | M2l m :: rest ->
@@ -199,14 +223,16 @@ end
 
 module Opaque(X:Zipper_def.s) : Result_printer with module T := X.T = struct
   let const fmt _ ppf = Pp.fp ppf fmt
-  let pp_m2l = const "..."
-  let pp_me = const "..."
-  let pp_mt = const "..."
-  let pp_access = const "..."
-  let pp_path = const "..."
+  let ellipsis ppf = const "..." ppf
+  let pp_m2l = ellipsis
+  let pp_me = ellipsis
+  let pp_mt = ellipsis
+  let pp_access = ellipsis
+  let pp_path = ellipsis
+  let pp_with_constraints = ellipsis
   let pp_opens _ sub = sub
-  let pp_path_expr = const "..."
-  let pp_bindrec = const "..."
-  let pp_minors = const "..."
-  let pp_minor = const "..."
+  let pp_path_expr = ellipsis
+  let pp_bindrec = ellipsis
+  let pp_minors = ellipsis
+  let pp_minor = ellipsis
 end

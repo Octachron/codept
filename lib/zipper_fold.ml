@@ -75,8 +75,7 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
   let alias = both Sk.ident F.alias
   let mt_ident = user F.mt_ident
   let mt_sig = both Sk.str F.mt_sig
-  let mt_with access deletions =
-    both (Sk.m_with deletions) (F.mt_with access deletions)
+  let mt_with original  = user (F.mt_with original)
   let mt_of = user F.mt_of
   let mt_ext loc name = user_me (F.mt_ext ~loc name)
   let sig_abstract x  = const (Sk.abstract x) F.sig_abstract
@@ -94,6 +93,19 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
       backbone = Sk.ident proj_res.backbone;
       user = F.path_expr_proj app_res.user proj proj_res.user
     }
+
+  let with_type with_cstr cstrs =
+    {backbone = cstrs.backbone; user =  F.with_type with_cstr cstrs.user }
+
+  let with_module ~delete ~lhs me cstrs =
+    {backbone = Sk.with_module ~delete ~lhs ~rhs:me.backbone cstrs.backbone;
+     user =  F.with_module ~delete ~lhs ~rhs:me.user cstrs.user }
+
+  let with_module_type ~delete ~lhs mt cstrs =
+    {backbone = Sk.with_module_type ~delete ~lhs ~rhs:mt.backbone cstrs.backbone;
+     user =  F.with_module_type ~delete ~lhs ~rhs:mt.user cstrs.user }
+
+  let with_init body = { backbone = body.backbone; user = F.with_init }
 
 end
 
@@ -239,16 +251,35 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       let arg_path = Mt(Fun_left {name; diff; body} )::path in
       mt arg_path ~param ~ctx ~state signature >>=
       fn_mt mt ~path ~param ~ctx ~state name body
-    | With {body;deletions;minors=a} ->
-      let access_path = Mt (With_access {body;deletions})::path in
-      minors ~param ~ctx:(rm_loc ctx) ~state access_path a >>= fun minors ->
-      mt (Mt (With_body {minors;deletions})::path) ~param ~ctx ~state body
-      >>| D.mt_with minors deletions
+    | With {body;with_constraints=with_cstrs} ->
+      mt (Mt (With_body with_cstrs)::path) ~param ~ctx ~state body >>= fun body ->
+      with_constraints path ~param ~ctx ~state ~original_body:body ~with_action:(D.with_init body)
+        with_cstrs
+      >>|  D.mt_with body.user
     | Of m -> me (Mt Of :: path) ~param ~ctx ~state m >>| D.mt_of
     | Extension_node {name;extension=e} -> Sk.ext param ctx.uloc name;
       ext ~ctx:(rm_loc ctx) ~param ~state (Mt (Extension_node name)::path)  e
       >>| D.mt_ext ctx.uloc name
     | Abstract -> Ok (D.sig_abstract ctx.seed)
+  and with_constraints path ~param ~ctx ~state ~original_body ~with_action = function
+    | [] -> Ok with_action
+    | a :: q ->
+      let elt = With_constraints {original_body; right=q} in
+      with_constraint (Mt elt::path) ~param ~ctx ~state with_action a >>= fun with_action ->
+      with_constraints path ~param ~ctx ~state ~original_body ~with_action q
+  and with_constraint path ~param ~ctx ~state with_action = function
+    | Type m ->
+      let path = With_constraint (With_type with_action)::path in
+      minors path ~param ~ctx:(rm_loc ctx) ~state m >>| fun m ->
+      D.with_type m with_action
+    | Module {delete; lhs; rhs} ->
+      let path = With_constraint (With_module {body=with_action;delete;lhs}):: path in
+      resolve path ~param ~ctx ~state ~level:Module rhs.data >>| fun me ->
+          D.with_module ~delete ~lhs (D.me_ident me) with_action
+    | Module_type {delete; lhs; rhs} ->
+      let path = With_constraint (With_module_type {body=with_action; delete;lhs}) :: path in
+      mt path ~param ~ctx ~state rhs >>| fun mt ->
+      D.with_module_type ~delete ~lhs mt with_action
   and bind_rec_sig path diff left ~param ~ctx ~state : _ L.t -> _ = function
     | [] ->
       let state = State.merge state diff in
@@ -374,6 +405,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         restart_path_expr ~param ~ctx ~state (path:Paths.Expr.t path) (D.path_expr_pure x)
      | Path_expr (Proj (app_res,proj)) :: path ->
         restart_path_expr ~param ~ctx ~state (path:Paths.Expr.t path) (D.path_expr_proj app_res proj x)
+     | With_constraint With_module {body;lhs; delete} :: path ->
+       restart_with path ~param ~state ~ctx (D.with_module ~delete ~lhs (D.me_ident x) body)
      | _ -> .
   and restart_me: module_expr Path.t -> _ = fun path ~state ~ctx ~param x -> match path with
     | Expr Include :: rest ->
@@ -454,8 +487,12 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       restart_mt  ~state ~param ~ctx path (D.mk_arg F.mt_fun arg.name arg.signature x)
     | Mt Fun_right None :: path ->
       restart_mt ~param ~ctx ~state path (D.mt_fun_none x)
-    | Mt With_body {minors;deletions} :: path ->
-      restart_mt ~param ~ctx ~state path (D.mt_with minors deletions x)
+    | Mt With_body constraints :: path ->
+      with_constraints path ~param ~ctx ~state ~original_body:x ~with_action:(D.with_init x)
+        constraints
+        >>| D.mt_with x.user >>= restart_mt ~param ~ctx ~state path
+    | With_constraint With_module_type {body; delete; lhs } :: path ->
+      restart_with path ~param ~ctx ~state (D.with_module_type ~delete ~lhs x body)
     | Me Constraint_right body :: path ->
       restart_me ~param ~ctx ~state path (D.me_constraint body x)
     | Expr SigInclude :: path ->
@@ -464,6 +501,12 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       bind_rec_sig path (Sk.bind_rec_add name x.backbone diff)
         ((name, x.user, expr) :: left) ~param ~ctx ~state  right >>=
       restart_expr ~ctx ~state ~param path
+    | _ -> .
+  and restart_with: with_constraint path -> _ = fun path ~state ~param ~ctx x ->
+    match path with
+    | Mt With_constraints {original_body; right} :: path ->
+      with_constraints path ~param ~ctx ~state ~original_body ~with_action:x right
+      >>| D.mt_with original_body.user >>= restart_mt ~param ~ctx ~state path
     | _ -> .
   and restart_path_expr: Paths.Expr.t path -> _ =
     fun path  ~param ~ctx ~state x -> match path with
@@ -500,11 +543,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       restart_minor path ~state ~param ~ctx (D.local_open expr x)
     | Me Val :: path ->
       restart_me path ~state ~ctx ~param (D.me_val x)
-    | Mt With_access {body;deletions} :: path ->
-      mt (Mt(With_body {deletions;minors=x}) :: path)
-        ~ctx ~state ~param body
-      >>| D.mt_with x deletions
-      >>= restart_mt ~ctx ~state ~param path
+    | With_constraint With_type body :: path ->
+      restart_with ~ctx ~state ~param path (D.with_type x body)
     | Ext Val :: path ->
       restart_ext (path: extension_core path) ~ctx ~param ~state
         (F.ext_val x)

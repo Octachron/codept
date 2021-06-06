@@ -38,9 +38,8 @@ let fail fmt =
     Format.std_formatter fmt
 
 let log fmt =
-  Format.ikfprintf (fun ppf -> Format.ifprintf ppf "[%t]@." ok) Format.std_formatter fmt
-
-
+  Format.ikfprintf (fun ppf -> Format.ifprintf ppf "[%t]@." ok)
+    Format.std_formatter fmt
 
 let sep ="−"
 

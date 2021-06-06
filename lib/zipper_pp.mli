@@ -10,6 +10,7 @@ module type Result_printer = sig
   val pp_bindrec: T.bind_rec dprinter
   val pp_me: T.module_expr dprinter
   val pp_mt: T.module_type dprinter
+  val pp_with_constraints: T.with_constraints dprinter
   val pp_m2l: T.m2l dprinter
   val pp_minor: T.minor dprinter
   val pp_minors: T.minors dprinter

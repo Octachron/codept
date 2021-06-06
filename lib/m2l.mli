@@ -108,18 +108,31 @@ and module_type =
  *)
   | Sig of m2l (** [sig … end] *)
   | Fun of module_type fn (** [functor (X:S) → M] *)
-  | With of {
-      body: module_type;
-      deletions: Paths.S.set;
-      minors: minor list
-      (** equalities: type t= A.M.x N.y -> {A.M; N} *)
-    }
-  (** [S with module N := …]
-      we are only tracking module level modification
-  *)
   | Of of module_expr (** [module type of …] *)
   | Extension_node of extension (** [%%… ] *)
-  | Abstract (** placeholder *)
+  | Abstract (** module type T *)
+  | With of {
+      body: module_type;
+      with_constraints: with_constraint list;
+    }
+  (** [ S with ... ] *)
+
+and with_constraint =
+  | Type of minor list
+  (** [S with type t =/:= ... *)
+  | Module of {
+      lhs: Paths.S.t;
+      rhs: Paths.S.t Loc.ext;
+      delete: bool;
+    }
+  (** [S with module N.M := …]
+      we need to track abstract module type strenghthening.
+  *)
+  | Module_type of {
+      lhs: Paths.S.t;
+      rhs: module_type;
+      delete: bool
+    }
 
 (** Functor auxiliary type *)
 and 'a fn = { arg: module_type Module.Arg.t option; body:'a }
@@ -210,4 +223,5 @@ val pp_expression: Format.formatter -> expression -> unit
 val pp_annot: Format.formatter -> minor list -> unit
 val pp_me: Format.formatter -> module_expr -> unit
 val pp_mt: Format.formatter -> module_type -> unit
+val pp_with_constraints: Format.formatter -> with_constraint list -> unit
 val pp_access: access Pp.t

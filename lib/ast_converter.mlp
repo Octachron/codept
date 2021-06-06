@@ -67,11 +67,6 @@ module H = struct
     | None -> Annot.empty
     | Some data -> Annot.access {loc; data}
 
-  let me_access lid =
-    let x = from_lid @@ txt lid in
-    let loc = extract_loc lid in
-    Annot.access { loc; data = x }
-
   let do_open loc me =
     [{ Loc.data = M2l.Open me; loc = from_loc loc } ]
 
@@ -660,10 +655,8 @@ and module_type (mt:Parsetree.module_type) =
     let arg = Some ( {Arg.name = txt name; signature = module_type s }) in
     Fun { arg; body = module_type res }
 #end
-  | Pmty_with (mt, wlist) (* MT with ... *) ->
-    let deletions, {Loc.data=minors; _ } =
-      List.fold_left with_more (Paths.S.Set.empty,Annot.empty) wlist in
-    With { body = module_type mt; deletions; minors }
+  | Pmty_with (mt, with_c) (* MT with ... *) ->
+    With { body = module_type mt; with_constraints = List.map with_constraint with_c }
   | Pmty_typeof me (* module type of ME *) ->
     Of (module_expr me)
   | Pmty_extension ext (* [%id] *) ->
@@ -720,7 +713,7 @@ and recmodules mbs =
   let loc = List.fold_left Loc.keep_one Nowhere @@
     List.map (fun mb -> from_loc mb.pmb_loc) mbs in
   [ Loc.create loc @@ Bind_rec (List.map module_binding_raw mbs)]
-and with_more (dels,access) =
+and with_constraint =
   function
 # oo, 4.06
   | Pwith_typesubst td (* with type X.t := ... *)
@@ -728,12 +721,13 @@ and with_more (dels,access) =
   | Pwith_typesubst (_,td) (* with type X.t := ... *)
 #end
   | Pwith_type (_,td)(* with type X.t = ... *) ->
-    dels, Annot.merge access (type_declaration td)
-  | Pwith_module (_,l) (* with module X.Y = Z *) ->
-    dels, Annot.merge access (H.me_access l)
-  | Pwith_modsubst (l, me) ->
-    Paths.S.Set.add (subst_path l) dels,
-    Annot.merge access (H.me_access me)
+    Type (data @@ type_declaration td)
+  | Pwith_module (l,rhs) (* with module X.Y = Z *) ->
+    let loc = rhs.Location.loc in
+    Module  {delete=false; lhs= subst_path l; rhs = with_loc loc (H.npath rhs)  }
+  | Pwith_modsubst (l, rhs) ->
+    let loc = rhs.Location.loc in
+    Module  {delete=true; lhs= subst_path l; rhs = with_loc loc (H.npath rhs) }
 and extension n =
   Extension_node (extension_core n)
 and extension_core (name,payload) =
