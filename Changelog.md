@@ -3,7 +3,7 @@
 ## Features
 
   * Support for abstract module types:
-	Codept is now aware that Y is X.M.Y and
+	Codept is now aware that `Y` is `X.M.Y` and
 	not an external module in
 
 ```ocaml
@@ -27,14 +27,15 @@
 
 ## Bug fix
 
-	* Nested with constraints `with A.B. ...` triggers aliases dependency
-	  in -no-alias-deps mode
+ * Nested with constraints `with A.B. ...` triggers aliases dependency
+ in -no-alias-deps mode
+
 ```ocaml
 module type s = sig module Alias = Deps end
 module E = struct end
 module type s2 = s with module Deps.Sub = E
 ```
-	
+
 ## Internal
 
 * Switch to the zipper engine
