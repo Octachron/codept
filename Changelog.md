@@ -25,6 +25,16 @@
     implementation file does not need to share a path to
     be identified as part of the same compilation unit
 
+## Bug fix
+
+	* Nested with constraints `with A.B. ...` triggers aliases dependency
+	  in -no-alias-deps mode
+```ocaml
+module type s = sig module Alias = Deps end
+module E = struct end
+module type s2 = s with module Deps.Sub = E
+```
+	
 ## Internal
 
 * Switch to the zipper engine
