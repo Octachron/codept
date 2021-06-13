@@ -1,0 +1,16 @@
+[[1m[36mNotification[0m]: [1mcases/alias_in_with.ml:l7.0−37[0m,
+a non-resolvable module, [1mExt[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [1mcases/alias_in_with.ml:l15.0−41[0m,
+a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [1mcases/alias_in_with.ml:l26.0−l28.27[0m,
+a non-resolvable module, [1mExt3[0m, has been replaced by an approximation
+{
+"version" : [0, 10, 3],
+"dependencies" :
+  [{
+   "file" : "cases/alias_in_with.ml",
+   "deps" : [["Ext3"], ["Ext2"], ["Ext"]]
+   }],
+"local" : [{ "module" : ["Alias_in_with"], "ml" : "cases/alias_in_with.ml" }],
+"unknown" : [["Ext"], ["Ext2"], ["Ext3"]]
+}

@@ -65,6 +65,31 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
            (pp_delete delete)
            x
         )
+    | With_constraint With_lhs {body;delete; lhs=_; rhs=Type t} :: rest ->
+      with_constraint (rest: M2l.with_constraint t)
+        (fp4 "%t with type %t%t%t"
+           (R.pp_with_constraints body.user)
+           x
+           (pp_delete delete)
+           (const M2l.pp_annot t)
+        )
+
+    | With_constraint With_lhs {body;delete; lhs=_; rhs=Module p} :: rest ->
+      with_constraint (rest: M2l.with_constraint t)
+        (fp4 "%t with module %t%t%t"
+           (R.pp_with_constraints body.user)
+           x
+           (pp_delete delete)
+           (const Paths.S.pp p.data)
+        )
+    | With_constraint With_lhs {body;delete; lhs=_; rhs=Module_type t} :: rest ->
+      with_constraint (rest: M2l.with_constraint t)
+        (fp4 "%t with module type %t%t%t"
+           (R.pp_with_constraints body.user)
+           x
+           (pp_delete delete)
+           (const M2l.pp_mt t)
+        )
     | _ -> .
   and me: M2l.module_expr t -> _ = fun rest sub ->
     match rest with

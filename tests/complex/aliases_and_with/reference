@@ -1,0 +1,9 @@
+{
+"version" : [0, 10, 3],
+"dependencies" :
+  [{ "file" : "aliases_and_with/a1.ml" },
+  { "file" : "aliases_and_with/main.ml", "deps" : [["A1"]] }],
+"local" :
+  [{ "module" : ["A1"], "ml" : "aliases_and_with/a1.ml" },
+  { "module" : ["Main"], "ml" : "aliases_and_with/main.ml" }]
+}

@@ -166,6 +166,8 @@ module State(Env:Stage.envt) = struct
   let peek x = x
   let resolve param state
       ({edge; loc; level; path; within; _ }: path_in_context) =
+    debug "@[<hv>State: %a@ @[<hv 2>Looking for@ %a@]@]@."
+      Env.pp state.current Paths.S.pp path;
     let edge =
       if not param.T.epsilon_dependencies then Some Deps.Edge.Normal
       else edge in

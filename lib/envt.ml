@@ -79,6 +79,7 @@ module Core = struct
 
   module D = struct
     let path_record ~path ?aliases ~edge pkg  =
+      debug "Recording: %a" Namespaced.pp path;
       deps (Deps.make ~path ?aliases ~edge pkg )
 
     let phantom_record ?aliases name =

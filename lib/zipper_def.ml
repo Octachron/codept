@@ -79,6 +79,7 @@ module type fold = sig
 
   val with_init: with_constraints
   val with_type: minors -> with_constraints -> with_constraints
+  val with_lhs: path -> with_constraints -> with_constraints
   val with_module:
     delete:bool -> lhs:Paths.S.t -> rhs:module_expr -> with_constraints -> with_constraints
   val with_module_type:
@@ -207,6 +208,8 @@ module type s = sig
     | Extension_node: string -> M2l.extension_core mt
 
   type 'focus with_constraint =
+    | With_lhs: {body:with_constraints; delete:bool; lhs:Paths.S.t; rhs: M2l.with_rhs } ->
+        path_in_context with_constraint
     | With_type: with_constraints ->  M2l.minor list with_constraint
     | With_module: {body:with_constraints; lhs:Paths.S.t; delete:bool} -> path_in_context with_constraint
     | With_module_type: {body:with_constraints; lhs:Paths.S.t; delete:bool} -> M2l.module_type with_constraint

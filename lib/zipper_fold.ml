@@ -95,7 +95,10 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
     }
 
   let with_type with_cstr cstrs =
-    {backbone = cstrs.backbone; user =  F.with_type with_cstr cstrs.user }
+    { backbone = cstrs.backbone; user = F.with_type with_cstr cstrs.user }
+
+  let with_lhs lhs cstrs =
+    {backbone = cstrs.backbone; user =  F.with_lhs lhs.user cstrs.user }
 
   let with_module ~delete ~lhs me cstrs =
     {backbone = Sk.with_module ~delete ~lhs ~rhs:me.backbone cstrs.backbone;
@@ -267,16 +270,25 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       let elt = With_constraints {original_body; right=q} in
       with_constraint (Mt elt::path) ~param ~ctx ~state with_action a >>= fun with_action ->
       with_constraints path ~param ~ctx ~state ~original_body ~with_action q
-  and with_constraint path ~param ~ctx ~state with_action = function
+  and with_constraint path ~param ~ctx ~state with_action {lhs;delete;rhs} =
+    let path' = With_constraint (With_lhs {body=with_action;lhs;delete;rhs}) :: path in
+    match rhs, List.rev lhs with
+    | Type _, ([_]| []) -> with_constraint_rhs path ~param ~ctx ~state lhs delete with_action rhs
+    | Type _, _ :: sublhs | _, sublhs ->
+      let sublhs = List.rev sublhs in
+      let level : level = match rhs with Type _ | Module _ -> Module | Module_type _ -> Module_type in
+      resolve path' ~level ~param ~ctx ~state ?within:(Sk.signature with_action.backbone) sublhs >>= fun l ->
+      with_constraint_rhs path ~param ~ctx ~state lhs delete (D.with_lhs l with_action) rhs
+  and with_constraint_rhs path ~param ~ctx ~state lhs delete with_action = function
     | Type m ->
       let path = With_constraint (With_type with_action)::path in
       minors path ~param ~ctx:(rm_loc ctx) ~state m >>| fun m ->
       D.with_type m with_action
-    | Module {delete; lhs; rhs} ->
+    | Module rhs ->
       let path = With_constraint (With_module {body=with_action;delete;lhs}):: path in
       resolve path ~param ~ctx ~state ~level:Module rhs.data >>| fun me ->
           D.with_module ~delete ~lhs (D.me_ident me) with_action
-    | Module_type {delete; lhs; rhs} ->
+    | Module_type rhs ->
       let path = With_constraint (With_module_type {body=with_action; delete;lhs}) :: path in
       mt path ~param ~ctx ~state rhs >>| fun mt ->
       D.with_module_type ~delete ~lhs mt with_action
@@ -407,6 +419,9 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         restart_path_expr ~param ~ctx ~state (path:Paths.Expr.t path) (D.path_expr_proj app_res proj x)
      | With_constraint With_module {body;lhs; delete} :: path ->
        restart_with path ~param ~state ~ctx (D.with_module ~delete ~lhs (D.me_ident x) body)
+     | With_constraint With_lhs {body;lhs;delete;rhs} :: path ->
+       with_constraint path ~param ~state ~ctx body {lhs;delete;rhs}
+       >>= restart_with path ~param ~state ~ctx
      | _ -> .
   and restart_me: module_expr Path.t -> _ = fun path ~state ~ctx ~param x -> match path with
     | Expr Include :: rest ->

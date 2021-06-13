@@ -85,22 +85,15 @@ and module_type =
       with_constraints: with_constraint list;
     }
 
-and with_constraint =
+and with_constraint = { lhs: Paths.S.t; delete:bool; rhs: with_rhs }
+and with_rhs =
   | Type of minor list
   (** [S with type t =/:= ... *)
-  | Module of {
-      lhs: Paths.S.t;
-      rhs: Paths.S.t Loc.ext;
-      delete: bool;
-    }
+  | Module of  Paths.S.t Loc.ext
   (** [S with module N.M := …]
       we need to track abstract module type strenghthening.
   *)
-  | Module_type of {
-      lhs: Paths.S.t;
-      rhs: module_type;
-      delete: bool
-    }
+  | Module_type of  module_type
 
 and extension = {name:string; extension:extension_core}
 and extension_core =
@@ -163,12 +156,24 @@ module Sch = struct
           "Open_me",[Array (reopen path_loc); Mu.module_expr]
         ]
 
-  let with_sch =
+  let with_sch_rhs =
     Sum [
       "Type", annot;
-      "Module", [reopen Paths.S.sch; reopen path_loc; Bool ];
-      "Module_type", [reopen Paths.S.sch; Mu.module_type; Bool ];
+      "Module", reopen path_loc;
+      "Module_type", Mu.module_type;
     ]
+  let rec with_constraint_rhs =
+    Custom { sch = with_sch_rhs; fwd; rev }
+  and fwd = function
+    | Type x -> C (Z x)
+    | Module m -> C (S (Z m))
+    | Module_type mt -> C (S (S (Z mt)))
+  and rev = function
+      | C Z x -> Type x
+      | C S Z m -> Module m
+      | C S S Z mt -> Module_type mt
+      | _ -> .
+  let with_sch : _  s = [ reopen Paths.S.sch; Bool; with_constraint_rhs ]
 
   let mt_sch =
     Sum [ "Alias", reopen Paths.S.sch;
@@ -243,17 +248,12 @@ module Sch = struct
       Open_me {opens;expr}
     | _ -> .
 
+
   let rec with_constraint =
     Custom { sch = with_sch; fwd; rev }
-  and fwd = let open Tuple in function
-    | Type x -> C (Z x)
-    | Module {lhs;rhs;delete} -> C (S (Z [lhs;rhs;delete]))
-    | Module_type {lhs;rhs;delete} -> C (S (S (Z [lhs;rhs;delete])))
-  and rev = let open Tuple in function
-      | C Z x -> Type x
-      | C S Z [lhs; rhs; delete] -> Module {lhs; rhs; delete}
-      | C S S Z [lhs; rhs; delete] -> Module_type {lhs; rhs; delete}
-      | _ -> .
+  and fwd {lhs; delete; rhs } = [lhs; delete; rhs ]
+  and rev = let open Tuple in function [lhs;delete;rhs] -> {lhs;delete;rhs}
+
 
   let rec module_type =
     Custom { sch = mt_sch; fwd = mt_fwd; rev = mt_rev }
@@ -525,11 +525,11 @@ and pp_mt ppf = function
   | Abstract -> Pp.fp ppf "⟨abstract⟩"
 and pp_eq ppf delete =
   Pp.string ppf (if delete then ":=" else "=")
-and pp_with ppf = function
-  | Type minors-> Pp.fp ppf "type (%a)" pp_annot minors
-  | Module {lhs; rhs; delete } ->
+and pp_with ppf {lhs; delete; rhs}= match rhs with
+  | Type minors-> Pp.fp ppf "type %a%a...(%a)" Paths.S.pp lhs pp_eq delete pp_annot minors
+  | Module rhs ->
     Pp.fp ppf "module %a@ %a@ %a" Paths.S.pp lhs pp_eq delete Paths.S.pp rhs.data
-  | Module_type {lhs; rhs; delete } ->
+  | Module_type rhs ->
     Pp.fp ppf "module type %a@ %a@ %a" Paths.S.pp lhs pp_eq delete pp_mt rhs
 and pp_with_constraints ppf l =
   Pp.fp ppf "with@ %a" (and_list pp_with) l

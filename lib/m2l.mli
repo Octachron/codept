@@ -117,22 +117,15 @@ and module_type =
     }
   (** [ S with ... ] *)
 
-and with_constraint =
+and with_constraint = { lhs: Paths.S.t; delete:bool; rhs: with_rhs }
+and with_rhs =
   | Type of minor list
   (** [S with type t =/:= ... *)
-  | Module of {
-      lhs: Paths.S.t;
-      rhs: Paths.S.t Loc.ext;
-      delete: bool;
-    }
+  | Module of Paths.S.t Loc.ext
   (** [S with module N.M := …]
       we need to track abstract module type strenghthening.
   *)
-  | Module_type of {
-      lhs: Paths.S.t;
-      rhs: module_type;
-      delete: bool
-    }
+  | Module_type of module_type
 
 (** Functor auxiliary type *)
 and 'a fn = { arg: module_type Module.Arg.t option; body:'a }
