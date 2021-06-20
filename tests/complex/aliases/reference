@@ -1,5 +1,5 @@
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "aliases/amap.ml", "deps" : [["Long__B"]] },
   { "file" : "aliases/long__A.ml" }, { "file" : "aliases/long__B.ml" },

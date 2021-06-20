@@ -5,7 +5,7 @@ ambiguous, due to the opening of the external module [1mExtern[0m, at
 location [1ml3.0−11[0m. Spurious dependencies might be inferred due to this
 ambiguity.
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "cases/phantom_maze_4.ml", "deps" : [["Extern"]] }],
 "local" :

@@ -9,7 +9,7 @@
     ω-cycle/k.ml, ω-cycle/l.ml, ω-cycle/w.ml}
     depend on the compilation units "ω-cycle/c2.ml" that could not be resolved.
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "ω-cycle/a.ml", "deps" : [["B"]] },
   { "file" : "ω-cycle/b.ml", "deps" : [["K"]] },

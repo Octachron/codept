@@ -9,7 +9,7 @@ a non-resolvable module, [1mXeno2[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/recmods.ml:l30.2−12[0m,
 a non-resolvable module, [1mXeno3[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{
    "file" : "cases/recmods.ml",

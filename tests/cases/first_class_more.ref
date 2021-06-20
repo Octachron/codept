@@ -1,5 +1,5 @@
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" : [{ "file" : "cases/first_class_more.ml" }],
 "local" :
   [{ "module" : ["First_class_more"], "ml" : "cases/first_class_more.ml" }]

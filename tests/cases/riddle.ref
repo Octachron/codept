@@ -3,7 +3,7 @@ first-class module [1mM[0m was opened while its signature was unknown.
 [[1m[36mNotification[0m]: [1mcases/riddle.ml:l114.11−13[0m,
 a non-resolvable module, [1mM5[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" : [{ "file" : "cases/riddle.ml", "deps" : [["M5"]] }],
 "local" : [{ "module" : ["Riddle"], "ml" : "cases/riddle.ml" }],
 "unknown" : [["M5"]]

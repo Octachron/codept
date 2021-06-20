@@ -1,5 +1,5 @@
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "aliases_and_map/m.mli" },
   { "file" : "aliases_and_map/n__A.mli", "deps" : [["M"]] },

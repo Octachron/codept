@@ -13,7 +13,7 @@
       G −([1m8-cycles/g.ml:l8.0−6[0m)⟶ F −([1m8-cycles/f.ml:l7.0−6[0m)⟶
       E −([1m8-cycles/e.ml:l6.0−6[0m)⟶ A
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "8-cycles/a.ml", "deps" : [["H"], ["B"]] },
   { "file" : "8-cycles/b.ml", "deps" : [["C"]] },

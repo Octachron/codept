@@ -4,7 +4,7 @@ a non-resolvable module, [1mN[0m, has been replaced by an approximation
 to the opening of the external module [1mN[0m, at location [1ml1.0−6[0m. Spurious
 dependencies might be inferred due to this ambiguity.
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "uncoupled/a.ml", "deps" : [["N"], ["B"]] },
   { "file" : "uncoupled/b.ml" },

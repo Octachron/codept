@@ -1,5 +1,5 @@
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "mixed/a.mli", "deps" : [["D"], ["B"]] },
   { "file" : "mixed/b.ml", "deps" : [["C"]] },

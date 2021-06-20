@@ -12,7 +12,7 @@ dependencies might be inferred due to this ambiguity.
 [[1m[35mWarning[0m]: Approximate parsing of cases/broken2.ml.
            Computed dependencies: at least {Ext; Ext2}, maybe: {A}
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "cases/broken2.ml", "deps" : [["Ext2"], ["Ext"], ["A"]] }],
 "local" : [{ "module" : ["Broken2"], "ml" : "cases/broken2.ml" }],

@@ -10,7 +10,7 @@ dependencies might be inferred due to this ambiguity.
 [[1m[35mWarning[0m]: Approximate parsing of broken_network/broken.ml.
            Computed dependencies: at least {}, maybe: {B}
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "broken_network/a.ml", "deps" : [["C"], ["Broken"], ["B"]] },
   { "file" : "broken_network/broken.ml", "deps" : [["B"]] },

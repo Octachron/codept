@@ -4,7 +4,7 @@ a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 to the opening of the external module [1mExt[0m, at location [1ml3.0−8[0m. Spurious
 dependencies might be inferred due to this ambiguity.
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "collision/a.ml", "deps" : [["Ext"], ["B"]] },
   { "file" : "collision/b.ml" },

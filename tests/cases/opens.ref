@@ -3,7 +3,7 @@ a non-resolvable module, [1mA[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/opens.ml:l2.0−6[0m,
 a non-resolvable module, [1mB[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" : [{ "file" : "cases/opens.ml", "deps" : [["B"], ["A"]] }],
 "local" : [{ "module" : ["Opens"], "ml" : "cases/opens.ml" }],
 "unknown" : [["A"], ["B"]]

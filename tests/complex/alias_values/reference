@@ -1,5 +1,5 @@
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "alias_values/a.ml" }, { "file" : "alias_values/b.ml" },
   { "file" : "alias_values/c.ml", "deps" : [["B"], ["A"]] }],

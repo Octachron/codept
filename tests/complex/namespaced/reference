@@ -1,5 +1,5 @@
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "namespaced/NAME__a.ml", "deps" : [["NAME__b"], ["Main"]] },
   { "file" : "namespaced/NAME__b.ml", "deps" : [["NAME__c"], ["Main"]] },

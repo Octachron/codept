@@ -1,8 +1,8 @@
 [[1m[31mError[0m]: Local module conflict,
- Module [1mA[0m is provided simultaneously by [1mmodule_collision/A.mli[0m and
-[1mmodule_collision/a/a.mli[0m
+ Module [1mA[0m is provided simultaneously by [1mmodule_collision/a/a.mli[0m and
+[1mmodule_collision/A.mli[0m
 {
-"version" : [0, 10, 3],
-"dependencies" : [{ "file" : "module_collision/A.mli" }],
-"local" : [{ "module" : ["A"], "mli" : "module_collision/A.mli" }]
+"version" : [0, 11, 0],
+"dependencies" : [{ "file" : "module_collision/a/a.mli" }],
+"local" : [{ "module" : ["A"], "mli" : "module_collision/a/a.mli" }]
 }

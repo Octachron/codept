@@ -10,7 +10,7 @@ Spurious dependencies might be inferred due to this ambiguity.
 ambiguous, due to the opening of the external module [1mA[0m, at location [1ml7.0−6[0m.
 Spurious dependencies might be inferred due to this ambiguity.
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{ "file" : "cases/phantom_maze_2.ml", "deps" : [["E"], ["D"]] }],
 "local" :

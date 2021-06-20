@@ -5,7 +5,7 @@ a non-resolvable module, [1mSig_lex[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/sig_reader.ml:l5.19−40[0m,
 a non-resolvable module, [1mSig_parse[0m, has been replaced by an approximation
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{
    "file" : "cases/sig_reader.ml",

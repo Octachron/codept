@@ -14,7 +14,7 @@ a non-resolvable module, [1mExt5[0m, has been replaced by an approximation
            Computed dependencies: at least {Ext2; Ext3; Ext4; Ext5}, maybe: 
            {Ext}
 {
-"version" : [0, 10, 3],
+"version" : [0, 11, 0],
 "dependencies" :
   [{
    "file" : "cases/broken.ml",
