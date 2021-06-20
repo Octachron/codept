@@ -1,6 +1,6 @@
 {
   "$schema" : "http://json-schema.org/schema#",
-  "title" : "codept/sig/0.10.3",
+  "title" : "codept/sig/0.11.0",
   "description" : "module level ocaml signature",
   "definitions" :
   {"Module" : {

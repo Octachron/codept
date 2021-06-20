@@ -126,7 +126,7 @@ let deps =
 
 
 let x  = {
-  Ext.title ="codept.0.10.3/deps";
+  Ext.title ="codept.0.11.0/deps";
   description = "dependencies and module-to-files mapping of ocaml project";
   label = Lbl.Deps.l;
   version;

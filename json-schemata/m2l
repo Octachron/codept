@@ -1,6 +1,6 @@
 {
   "$schema" : "http://json-schema.org/schema#",
-  "title" : "codept/m2l/0.10.3",
+  "title" : "codept/m2l/0.11.0",
   "description" : "module level ocaml file skeleton",
   "definitions" :
   {"Paths" : {
@@ -129,17 +129,15 @@
                                                          }, "required" : [ "Sig" ]},{"type" : "object",
     "properties" : {
       "Fun" : { "type" : "array",  "items" :[ { "$ref":"#/definitions/m2l/6" },  { "$ref":"#/definitions/m2l/3" } ] }
-      }, "required" : [ "Fun" ]},{"type" : "object",
-    "properties" : {
-      "With" : { "type" : "array",
-         "items" :[ { "$ref":"#/definitions/m2l/3" },  { "type" : "array", "items" : { "type" : "array", "items" : { "type" : "string" } } },
-            { "type" : "array", "items" : { "$ref":"#/definitions/m2l/4" } } ] }
-      }, "required" : [ "With" ]},{"type" : "object", "properties" : {
-                                                        "Of" : { "$ref":"#/definitions/m2l/2" }
-                                                        }, "required" : [ "Of" ]},{"type" : "object",
+      }, "required" : [ "Fun" ]},{"type" : "object", "properties" : {
+                                                       "Of" : { "$ref":"#/definitions/m2l/2" }
+                                                       }, "required" : [ "Of" ]},{"type" : "object",
     "properties" : {
       "Extension_node" : { "$ref":"#/definitions/m2l/5" }
-      }, "required" : [ "Extension_node" ]},{"enum" : ["Abstract"]}]
+      }, "required" : [ "Extension_node" ]},{"enum" : ["Abstract"]},{"type" : "object",
+    "properties" : {
+      "With" : { "type" : "array",  "items" :[ { "$ref":"#/definitions/m2l/3" },  { "type" : "array", "items" : { "$ref":"#/definitions/m2l/7" } } ] }
+      }, "required" : [ "With" ]}]
   },
   "4" : {
   "oneOf" :[{"type" : "object",
@@ -249,6 +247,29 @@
                                                                           "Some" : { "type" : "string" }
                                                                           }, "required" : [ "Some" ]}] },  { "$ref":"#/definitions/m2l/3" } ] }
       }, "required" : [ "Some" ]}]
+  },
+  "7" : { "type" : "array",
+   "items" :[ { "type" : "array", "items" : { "type" : "string" } },  { "type" : "string" },
+      {
+        "oneOf" :[{"type" : "object", "properties" : {
+                                        "Type" : { "type" : "array", "items" : { "$ref":"#/definitions/m2l/4" } }
+                                        }, "required" : [ "Type" ]},{"type" : "object",
+          "properties" : {
+            "Module" : { "type" : "array",
+               "items" :[ { "type" : "array", "items" : { "type" : "string" } },
+                  {
+                    "oneOf" :[{"enum" : ["Nowhere"]},{"type" : "object",
+                      "properties" : {
+                        "Simple" : { "type" : "array",  "items" :[ { "type" : "number" },  { "type" : "number" },  { "type" : "number" } ] }
+                        }, "required" : [ "Simple" ]},{"type" : "object",
+                      "properties" : {
+                        "Multiline" : { "type" : "array",
+                           "items" :[ { "type" : "array",  "items" :[ { "type" : "number" },  { "type" : "number" } ] },
+                              { "type" : "array",  "items" :[ { "type" : "number" },  { "type" : "number" } ] } ] }
+                        }, "required" : [ "Multiline" ]}] } ] }
+            }, "required" : [ "Module" ]},{"type" : "object", "properties" : {
+                                                                "Module_type" : { "$ref":"#/definitions/m2l/3" }
+                                                                }, "required" : [ "Module_type" ]}] } ]
   } } },
   "type" : "object",
   "properties" : {

@@ -1,6 +1,6 @@
 {
   "$schema" : "http://json-schema.org/schema#",
-  "title" : "codept.0.10.3/deps",
+  "title" : "codept.0.11.0/deps",
   "description" : "dependencies and module-to-files mapping of ocaml project",
   "definitions" : {},
   "type" : "object",
