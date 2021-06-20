@@ -19,7 +19,7 @@
   open Y
 ```
 
-  * Support for OCaml 4.09, 4.10, 4.11, 4.12
+  * Support for OCaml 4.09, 4.10, 4.11, 4.12, 4.13
 
   * Support for split compilation units: the interface and
     implementation file does not need to share a path to

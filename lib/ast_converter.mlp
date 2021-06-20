@@ -400,13 +400,22 @@ and pattern pat =
   | Ppat_array patterns (* [| P1; ...; Pn |] *)
   | Ppat_tuple patterns (* (P1, ..., Pn) *) ->
     Pattern.union_map pattern patterns
-
+# oo, 4.12
   | Ppat_construct (c, p)
     (* C                None
        C P              Some P
        C (P1, ..., Pn)  Some (Ppat_tuple [P1; ...; Pn])
     *) ->
     Pattern.( access c ++ Pattern.opt pattern p )
+# 4.12, oo
+  | Ppat_construct (c, p) ->
+        (* C                    None
+           C P                  Some ([], P)
+           C (P1, ..., Pn)      Some ([], Ppat_tuple [P1; ...; Pn])
+           C (type a b) P       Some ([a; b], P)
+         *)
+    Pattern.( access c ++ Pattern.opt pattern (Option.fmap snd p) )
+#end
   | Ppat_variant (_, p) (*`A (None), `A P(Some P)*) ->
     Pattern.opt pattern p
   | Ppat_record (fields, _flag)
@@ -708,6 +717,11 @@ and signature_item item =
        Bind{ name= Some msub.pms_name.txt; expr= Ident(npath msub.pms_manifest)} in
      do_open msub.pms_loc (Str [with_loc msub.pms_loc ghost])
 #end
+# 4.13, oo
+  | Psig_modtypesubst mtsub ->
+     let ghost = module_type_declaration mtsub in
+     do_open mtsub.pmtd_loc (Str [with_loc mtsub.pmtd_loc (Bind_sig ghost)])
+#end
 and class_description x =  class_type_declaration x
 and recmodules mbs =
   let loc = List.fold_left Loc.keep_one Nowhere @@
@@ -730,6 +744,13 @@ and with_constraint =
   | Pwith_modsubst (l, rhs) ->
     let loc = rhs.Location.loc in
     {delete=true; lhs= subst_path l; rhs = Module (with_loc loc (H.npath rhs)) }
+# 4.13, oo
+  | Pwith_modtype (l,rhs) (* with module X.Y = Z *) ->
+    {delete=false; lhs= subst_path l; rhs = Module_type (module_type rhs)  }
+  | Pwith_modtypesubst (l, rhs) ->
+    {delete=true; lhs= subst_path l; rhs = Module_type (module_type rhs) }
+#end
+
 and extension n =
   Extension_node (extension_core n)
 and extension_core (name,payload) =
@@ -752,9 +773,14 @@ and matched_patt_expr x y =
   | Ppat_constraint _ , Pexp_constraint _ -> pattern x, expr y
   | _, Pexp_constraint (_,t) ->
     pattern { x with ppat_desc = Ppat_constraint(x,t)}, expr y
-  | Ppat_construct (_,po), Pexp_construct(_,eo)|
-    Ppat_variant (_,po), Pexp_variant(_,eo)
-    ->
+  | Ppat_construct (_,po), Pexp_construct(_,eo) ->
+# 4.13, oo
+    let po = Option.fmap snd po in
+#end
+    Option.( (po >>= fun p -> eo >>| fun e -> matched_patt_expr p e) ><
+             (Pattern.opt pattern po, Annot.opt expr eo)
+           )
+  | Ppat_variant (_,po), Pexp_variant(_,eo) ->
     Option.( (po >>= fun p -> eo >>| fun e -> matched_patt_expr p e) ><
              (Pattern.opt pattern po, Annot.opt expr eo)
            )
