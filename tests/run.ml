@@ -27,10 +27,11 @@ module Version = struct
   type t = {major:int; minor:int}
   let v = { major; minor }
 
-  let v_4_04 = { minor = 4; major = 4 }
-  let v_4_06 = { minor = 6; major = 4 }
-  let v_4_07 = { minor = 7; major = 4 }
-  let v_4_08 = { minor = 8; major = 4 }
+  let v_4_04 = { minor = 4;  major = 4 }
+  let v_4_06 = { minor = 6;  major = 4 }
+  let v_4_07 = { minor = 7;  major = 4 }
+  let v_4_08 = { minor = 8;  major = 4 }
+  let v_4_13 = { minor = 13; major = 4 }
 
 end
 
@@ -327,7 +328,8 @@ let result =
     ["tuple.ml", u["A"; "B"; "C"]];
     ["unknown_arg.ml", u["Ext"] ];
     ["with.ml", u["Ext"]];
-    ["with_more.ml", u["Ext";"Ext3"]]
+    ["with_more.ml", u["Ext";"Ext3"]];
+    ["alias_in_with.ml", u["Ext";"Ext2"; "Ext3"]]
   ]
 
   && ( Version.( v < v_4_04) ||
@@ -336,6 +338,10 @@ let result =
   && ( Version.( v < v_4_08) ||
        Std.deps_test_single [d"option_monad.ml", u["Ext";"Ext3";"Ext4"]]
      )
+  && ( Version.(v < v_4_13) ||
+       Std.deps_test_single [d"with_module_type.ml", []]
+     )
+
 
   (* Note the inferred dependencies is wrong, but there is not much
      (or far too much ) to do here *)
@@ -566,6 +572,14 @@ let result =
            "b.mli", l["a.mli"] @ u["Local"] ;
          ])
        )
+    &&
+    (
+      chdir "../aliases_and_with";
+      both ["A1";"Main"] @@ dl [
+        "a1.ml", [];
+        "main.ml", l["a1.ml"]  ;
+      ]
+    )
     &&
     ( chdir "../../../lib";
       Std.gen_deps_test (Std.ocamlfind "compiler-libs") Std.precise_deps_test

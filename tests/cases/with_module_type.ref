@@ -1,0 +1,6 @@
+{
+"version" : [0, 10, 3],
+"dependencies" : [{ "file" : "cases/with_module_type.ml" }],
+"local" :
+  [{ "module" : ["With_module_type"], "ml" : "cases/with_module_type.ml" }]
+}
