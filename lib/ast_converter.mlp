@@ -400,14 +400,14 @@ and pattern pat =
   | Ppat_array patterns (* [| P1; ...; Pn |] *)
   | Ppat_tuple patterns (* (P1, ..., Pn) *) ->
     Pattern.union_map pattern patterns
-# oo, 4.12
+# oo, 4.13
   | Ppat_construct (c, p)
     (* C                None
        C P              Some P
        C (P1, ..., Pn)  Some (Ppat_tuple [P1; ...; Pn])
     *) ->
     Pattern.( access c ++ Pattern.opt pattern p )
-# 4.12, oo
+# 4.13, oo
   | Ppat_construct (c, p) ->
         (* C                    None
            C P                  Some ([], P)
@@ -731,16 +731,16 @@ and with_constraint =
   function
 # oo, 4.06
   | Pwith_typesubst td (* with type X.t := ... *) ->
-    { delete=true; lhs=td.name; rhs = Type (data @@ type_declaration td) }
+    { delete=true; lhs=subst_path td.ptype_name; rhs = Type (data @@ type_declaration td) }
 # 4.06, oo
   | Pwith_typesubst (l,td) (* with type X.t := ... *) ->
     { delete=true; lhs=subst_path l; rhs = Type (data @@ type_declaration td) }
 #end
   | Pwith_type (lhs,td)(* with type X.t = ... *) ->
-    { delete=false; lhs= subst_path lhs; rhs = Type (data @@ type_declaration td)}
+    { delete=false; lhs=H.npath lhs; rhs = Type (data @@ type_declaration td)}
   | Pwith_module (l,rhs) (* with module X.Y = Z *) ->
     let loc = rhs.Location.loc in
-    {delete=false; lhs= subst_path l; rhs = Module (with_loc loc (H.npath rhs))  }
+    {delete=false; lhs= H.npath l; rhs = Module (with_loc loc (H.npath rhs))  }
   | Pwith_modsubst (l, rhs) ->
     let loc = rhs.Location.loc in
     {delete=true; lhs= subst_path l; rhs = Module (with_loc loc (H.npath rhs)) }

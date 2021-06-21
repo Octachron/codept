@@ -418,8 +418,10 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
      | Path_expr (Proj (app_res,proj)) :: path ->
         restart_path_expr ~param ~ctx ~state (path:Paths.Expr.t path) (D.path_expr_proj app_res proj x)
      | With_constraint With_module {body;lhs; delete} :: path ->
-       restart_with path ~param ~state ~ctx (D.with_module ~delete ~lhs (D.me_ident x) body)
+       restart_with (path: M2l.with_constraint path) ~param ~state ~ctx
+         (D.with_module ~delete ~lhs (D.me_ident x) body)
      | With_constraint With_lhs {body;lhs;delete;rhs} :: path ->
+       let path : M2l.with_constraint path = path in
        with_constraint path ~param ~state ~ctx body {lhs;delete;rhs}
        >>= restart_with path ~param ~state ~ctx
      | _ -> .
