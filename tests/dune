@@ -17,19 +17,21 @@
   (libraries unix codept_lib)
 )
 
-(alias
- (name   runtest)
+(rule
+ (alias   runtest)
+ (deps run.exe)
  (action (run %{exe:run.exe} ../../.. ))
- )
+)
 
-(alias
- (name   runtest)
+(rule
+ (alias   runtest)
+ (deps run.exe)
  (action (run %{exe:serialization.exe}))
 )
 
 
-(alias
- (name   runtest)
+(rule
+ (alias   runtest)
  (deps ../full/codept.exe step_by_step.exe)
  (action (run %{exe:integrated.exe}))
 )

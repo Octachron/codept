@@ -1,4 +1,4 @@
-# Version 0.11.0
+# 0.11.0 (22 June 2021)
 
 ## Features
 
