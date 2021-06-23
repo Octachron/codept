@@ -17,26 +17,26 @@
 
 (rule
   (targets format_compat.ml)
-  (deps format_compat.mlp ../preprocessor.exe)
-  (action (run ../preprocessor.exe %{targets}))
+  (deps (:gen ../preprocessor.exe) format_compat.mlp )
+  (action (run %{gen} %{targets}))
 )
 
 (rule
   (targets format_tags.ml)
-  (deps format_tags.mlp ../preprocessor.exe)
-  (action (run ../preprocessor.exe %{targets}))
+  (deps format_tags.mlp (:gen ../preprocessor.exe))
+  (action (run %{gen} %{targets}))
 )
 
 
 (rule
   (targets ast_converter.ml)
-  (deps ast_converter.mlp ../preprocessor.exe)
-  (action (run ../preprocessor.exe %{targets}))
+  (deps ast_converter.mlp (:gen ../preprocessor.exe))
+  (action (run %{gen} %{targets}))
 )
 
 
 (rule
   (targets cmi.ml)
-  (deps cmi.mlp ../preprocessor.exe)
-  (action (run ../preprocessor.exe %{targets}))
+  (deps cmi.mlp (:gen ../preprocessor.exe))
+  (action (run %{gen} %{targets}))
 )
