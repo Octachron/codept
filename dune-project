@@ -1,4 +1,4 @@
-(lang dune 2.7)
+(lang dune 2.5)
 (using menhir 2.0)
 
 (name codept)
@@ -14,7 +14,7 @@
   (version 0.11.0)
   (license gpl-3)
   (synopsis "Alternative ocaml dependency analyzer")
-  (depends dune menhir)
+  (depends dune menhir ocamlfind {with-test})
   (description "Codept intends to be a dependency solver for OCaml project and an alternative to ocamldep. Compared to ocamldep, codept major features are:
 
  * whole project analysis
