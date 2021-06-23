@@ -14,7 +14,7 @@
   (version 0.11.0)
   (license gpl-3)
   (synopsis "Alternative ocaml dependency analyzer")
-  (depends dune menhir {build & >= 20180523} ocamlfind {with-test})
+  (depends dune menhir {build & >= 20180523})
   (description "Codept intends to be a dependency solver for OCaml project and an alternative to ocamldep. Compared to ocamldep, codept major features are:
 
  * whole project analysis

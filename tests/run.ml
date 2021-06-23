@@ -216,11 +216,11 @@ module Branch(Param:Stage.param) = struct
 
   let deps_test_single l = deps_test (None,l)
 
-  let ocamlfind name =
-    let cmd = "ocamlfind query " ^ name in
+  let compiler_libs =
+    let cmd = "ocamlc -where " in
     let cin = Unix.open_process_in cmd in
     try
-      [input_line cin]
+      [Filename.concat (input_line cin) "compiler-libs" ]
     with
       End_of_file -> []
 
@@ -582,7 +582,7 @@ let result =
     )
     &&
     ( chdir "../../../lib";
-      Std.gen_deps_test (Std.ocamlfind "compiler-libs") Std.precise_deps_test
+      Std.gen_deps_test Std.compiler_libs Std.precise_deps_test
         (Some ~:["Solver"; "Standard_policies"])
         (dl[
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
