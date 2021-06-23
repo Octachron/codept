@@ -1,3 +1,11 @@
+; on old versions of OCaml (<= 4.06), the compilation requires the [unused-open] warning ??!
+(env
+ (release
+  (ocamlc_flags (:standard -w +33 ))
+  (ocamlopt_flags (:standard -w +33 ))
+ )
+)
+
 (ocamllex (modules slex))
 (menhir (modules sparser))
 
