@@ -1,0 +1,4 @@
+(executable
+  (name codept_client)
+  (libraries unix codept_core codept_lib bundled)
+)

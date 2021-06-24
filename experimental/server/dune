@@ -1,0 +1,4 @@
+(executable
+  (name codept_server)
+  (libraries threads unix codept_core codept_lib bundled)
+)

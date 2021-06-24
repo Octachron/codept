@@ -3,7 +3,7 @@ module Findmap = Map.Make(struct type t = Findlib.query let compare = compare en
 
 type t = {
   env: Envt.Core.t;
-  signatures: Module.t list Name.map;
+  signatures: Module.named list Name.map;
   m2l: Unit.s Name.map;
   findlib: ( (Common.task -> Common.task) * (unit -> unit) ) Findmap.t
 }

@@ -1,17 +1,11 @@
 (executable
   (public_name codept)
   (package codept)
-  (libraries unix codept_lib bundled)
+  (libraries unix codept_core codept_lib bundled)
 )
 
 (install
   (section man)
   (package codept)
   (files ../docs/codept.1)
-)
-
-(rule
-  (targets extended_args.ml)
-  (deps extended_args.mlp ../preprocessor.exe)
-  (action (run ../preprocessor.exe %{targets}))
 )

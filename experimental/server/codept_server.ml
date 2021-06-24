@@ -68,8 +68,8 @@ let io = {
     m2l = begin
       fun fmt (kind,filename) ppf m2l ->
         Sh.map (fun (cached:Cache.t) ->
-            let src = Paths.P.local filename in
-            let path = Namespaced.make @@ Paths.P.module_name src in
+            let src = Pkg.local filename in
+            let path = Namespaced.make @@ Pkg.module_name src in
             let u: Unit.s =
               { precision = Exact; code = m2l;
                 path; src; kind = kind.kind; more = () } in

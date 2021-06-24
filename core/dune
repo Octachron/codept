@@ -1,0 +1,11 @@
+(library
+  (name codept_core)
+  (libraries unix codept_lib bundled)
+  (wrapped false)
+)
+
+(rule
+  (targets extended_args.ml)
+  (deps extended_args.mlp ../preprocessor.exe)
+  (action (run ../preprocessor.exe %{targets}))
+)
