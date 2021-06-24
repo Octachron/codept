@@ -33,14 +33,14 @@
 ```ocaml
 module type s = sig module Alias = Deps end
 module E = struct end
-module type s2 = s with module Deps.Sub = E
+module type s2 = s with module Alias.Sub = E
 ```
 
 ## Internal
 
 * Switch to the zipper engine
 * Fully typed recursive definition for schema
-* Extended test suite
+* Extended testsuite
 * More precise term subast (no more encoding)
 
 # Version 0.10.3
