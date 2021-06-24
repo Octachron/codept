@@ -12,7 +12,7 @@
 (package
   (name codept)
   (version 0.11.0)
-  (license gpl-3)
+  (license GPL-3.0-or-later)
   (synopsis "Alternative ocaml dependency analyzer")
   (depends dune menhir {build & >= 20180523})
   (description "Codept intends to be a dependency solver for OCaml project and an alternative to ocamldep. Compared to ocamldep, codept major features are:
