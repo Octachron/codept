@@ -509,7 +509,11 @@ and case cs =
 and do_include incl =
   [ with_loc incl.pincl_loc @@ Include (module_expr incl.pincl_mod) ]
 and extension_constructor extc: M2l.Annot.t = match extc.pext_kind with
+# 4.14, oo
+  | Pext_decl (_vars, args, cto) ->
+# oo, 4.14
   | Pext_decl (args, cto) ->
+#end
     constructor_args args
     ++ Annot.opt core_type cto
   | Pext_rebind name -> access name
