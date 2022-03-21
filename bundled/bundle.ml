@@ -58,11 +58,13 @@ let chained = [ array; obj; printexc; random;scanf ]
 let simples =
   List.map simple
     [ "Arg"; "ArrayLabels"; "Buffer"; "Bytes"; "BytesLabels";
-      "Callback"; "CamlinternalFormat"; "CamlinternalFormatBasics";
+      "Callback";
+      "CamlinternalOO"; "CamlinternalLazy"; "CamlinternalFormat";
+      "CamlinternalFormatBasics"; "CamlinternalMod";
       "Char"; "Complex"; "Digest"; "Filename"; "Format";
       "Gc"; "Genlex"; "Int32"; "Int64"; "Lazy"; "Lexing"; "List";
-      "ListLabels"; "Marshal"; "NativeInt"; "Oo"; "Parsing"; "Printf"; "Queue";
-      "Stack"; "Stream"; "String"; "StringLabels"; "Sys"; "Uchar"]
+      "ListLabels"; "Marshal"; "Nativeint"; "Oo"; "Parsing"; "Printf"; "Queue";
+      "Stack"; "Stream"; "String"; "StringLabels"; "Uchar"]
 
 type 'p mk = ?nms:string -> ?mds:'a -> ?mts:'b -> 'c
   constraint 'p = 'a * 'b * 'c
@@ -83,6 +85,11 @@ let set (mk: _ mk) =
     ~mds:[mkfunctor "Make" ["Ord"]]
     ~mts:[submodule "OrderedType"; submodule "S"]
 
+let sys =
+  root "Sys" 
+    ~mds:[mkfunctor "Make" ["Immediate"; "Nonimmediate"] ]
+    ~mts:[submodule "Immediate"; submodule "Non_immediate"]
+
 let stdlabels =
   root "Stdlabels"
     ~mds:(List.map submodule ["Array"; "List"; "Bytes"; "String"])
@@ -100,6 +107,7 @@ let hms = List.map ((|>) root) hms_base
 
 let before v x = if version < v then x else []
 let after v x = if version >= v then x else []
+let in_between v1 v2 x = if version >= v1 && version < v2 then x else []
 
 let bigarray ?nms () =
   root ?nms "Bigarray"
@@ -112,7 +120,7 @@ let bigarray ?nms () =
     ]
 
 let complex =
-  weak :: hms @ more_labels :: stdlabels :: chained
+  after (4,10) [sys] @ weak :: hms @ more_labels :: stdlabels :: chained
 
 
 let float = if version < (4,08) then simple "Float" else
@@ -121,10 +129,12 @@ let float = if version < (4,08) then simple "Float" else
 let simple_stdlib = Dict.of_list @@
   before (4,08) [pervasives; simple "Sort"]
   @ after (4,03) [ephemeron]
-  @ after (4,04) [spacetime]
+  @ in_between (4,04) (4,12) [spacetime]
   @ after (4,07) [bigarray ();float; simple "Seq"]
   @ after (4,08)
     (List.map simple ["Fun";"Bool";"Option";"Int";"Result";"LargeFile"; "Unit"])
+  @ before (4,10) [simple "Sys"]
+  @ after (4,14) [simple "In_channel"; simple "Out_channel"]
   @ complex
   @ simples
 
