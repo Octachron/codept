@@ -20,7 +20,7 @@ let pp_as_filepath ppf n =
 
 let reflect  ppf n =
   let es ppf = Pp.fp ppf {|"%s"|} in
-  Pp.fp ppf "{name=%S;namespace=%a}"
+  Pp.fp ppf "{name=%S;namespace=[%a]}"
     n.name
     Pp.(list ~sep:(const "; ") es) n.namespace
 

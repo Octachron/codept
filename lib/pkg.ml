@@ -95,7 +95,7 @@ let reflect_source ppf =
   | Special n -> Pp.fp ppf "Special %a" es n
 
 let reflect ppf {source;file} =
-  Pp.fp ppf "{source=%a; file=[%a]}"
+  Pp.fp ppf "{source=%a; file=%a}"
     reflect_source source
     Namespaced.reflect file
 

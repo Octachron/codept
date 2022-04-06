@@ -152,7 +152,7 @@ module Origin = struct
   end let sch = Sch.t
 
     let reflect ppf = function
-      | Unit u  -> Pp.fp ppf "Unit {source=%a;path=[%a]}"
+      | Unit u  -> Pp.fp ppf "Unit {source=%a;path=%a}"
                      Pkg.reflect u.source Namespaced.reflect u.path
     | Submodule -> Pp.fp ppf "Submodule"
     | First_class -> Pp.fp ppf "First_class"
@@ -371,8 +371,8 @@ let reflect_opt reflect ppf = function
   | Some x -> Pp.fp ppf "Some %a" reflect x
 
 let rec reflect ppf = function
-  | Sig m ->  Pp.fp ppf "M %a" reflect_m m
-  | Fun (arg,x) ->  Pp.fp ppf "Fun (%a;%a)" (reflect_opt reflect_arg) arg reflect x
+  | Sig m ->  Pp.fp ppf "Sig (%a)" reflect_m m
+  | Fun (arg,x) ->  Pp.fp ppf "Fun (%a,%a)" (reflect_opt reflect_arg) arg reflect x
   | Namespace modules ->
     Pp.fp ppf "Namespace (%a)"
       reflect_mdict modules
@@ -384,7 +384,7 @@ let rec reflect ppf = function
     Pp.fp ppf "Link (%a)"
       reflect_namespaced path
   | Abstract n -> Pp.fp ppf "Abstract %a" Id.pp n
-
+and reflect_named ppf (n,m) = Pp.fp ppf "(%S,%a)" n reflect m
 and reflect_namespaced ppf nd =
   if nd.namespace = [] then
     Pp.fp ppf "Namespaced.make %a"
@@ -411,14 +411,13 @@ and reflect_definition ppf {modules; module_types} =
       reflect_mdict modules
       reflect_mdict module_types
 and reflect_mdict ppf dict =
-      Pp.(list ~sep:(s ";@ ") @@ reflect_pair) ppf (Name.Map.bindings dict)
-and reflect_pair ppf (_,md) = reflect ppf md
+      Pp.(list ~sep:(s ";@ ") @@ reflect_named) ppf (Name.Map.bindings dict)
 and reflect_arg ppf arg = Pp.fp ppf "{name=%a;signature=%a}"
     (reflect_opt Pp.estring) arg.name reflect arg.signature
 
 let reflect_modules ppf dict =
   Pp.fp ppf "Dict.of_list @[<v 2>[%a]@]"
-    (Pp.list ~sep:(Pp.s ";@ ") @@ fun ppf (_,m) -> reflect ppf m)
+    (Pp.list ~sep:(Pp.s ";@ ") reflect_named)
     (Name.Map.bindings dict)
 
 let rec pp ppf = function
