@@ -1,5 +1,6 @@
 {
 "version" : [0, 11, 0],
-"dependencies" : [{ "file" : "cases/module_rec.ml", "deps" : [["Set"]] }],
+"dependencies" :
+  [{ "file" : "cases/module_rec.ml", "deps" : [["Stdlib", "Set"]] }],
 "local" : [{ "module" : ["Module_rec"], "ml" : "cases/module_rec.ml" }]
 }

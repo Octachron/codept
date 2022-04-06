@@ -10,8 +10,8 @@ a non-resolvable module, [1mSig_parse[0m, has been replaced by an approximatio
   [{
    "file" : "cases/sig_reader.ml",
    "deps" :
-     [["Sig_parse"], ["Sig_lex"], ["Module"], ["List"], ["Lexing"],
-     ["Format"]]
+     [["Stdlib", "List"], ["Stdlib", "Lexing"], ["Stdlib", "Format"],
+     ["Sig_parse"], ["Sig_lex"], ["Module"]]
    }],
 "local" : [{ "module" : ["Sig_reader"], "ml" : "cases/sig_reader.ml" }],
 "unknown" : [["Module"], ["Sig_lex"], ["Sig_parse"]]

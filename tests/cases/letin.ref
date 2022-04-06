@@ -1,5 +1,6 @@
 {
 "version" : [0, 11, 0],
-"dependencies" : [{ "file" : "cases/letin.ml", "deps" : [["List"]] }],
+"dependencies" :
+  [{ "file" : "cases/letin.ml", "deps" : [["Stdlib", "List"]] }],
 "local" : [{ "module" : ["Letin"], "ml" : "cases/letin.ml" }]
 }
