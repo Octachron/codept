@@ -263,9 +263,8 @@ let u = List.map (fun x -> Pkg.{(local x) with source=Unknown})
 let n = List.map Namespaced.make
 
 let std =
-  let localize x = local x in
-  List.map
-    (fun x -> Pkg.{(localize x) with source=Special "stdlib"})
+  let localize x = { Pkg.source = Special "stdlib"; file = Namespaced.make ~nms:["Stdlib"] x } in
+  List.map localize
 
 let d x =
   x,
