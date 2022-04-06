@@ -2,6 +2,7 @@
   (libraries bundled)
 )
 
+
 (executable
   (name run) (modules Run)
   (libraries unix codept_lib bundled)
@@ -16,6 +17,8 @@
   (name integrated) (modules Integrated)
   (libraries unix codept_lib)
 )
+
+(test (name bundle_sync) (modules Bundle_sync) (libraries bundled bundle_refs codept_lib))
 
 (rule
  (alias   runtest)
