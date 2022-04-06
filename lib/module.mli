@@ -218,6 +218,15 @@ module Def: sig
   type t = definition
 end
 
+
+(** Equalities *)
+module Equal: sig
+  val eq: _ ty -> _ ty -> bool
+  val dict: Dict.t -> Dict.t -> bool
+  val signature: signature -> signature -> bool
+end
+
+
 (** Helper functions for signature *)
 module Sig :
   sig

@@ -819,7 +819,36 @@ module Subst = struct
 
 end
 
-
+module Equal = struct
+  let rec eq: type a b. a ty -> b ty -> bool = fun x y ->
+    match x, y with
+    | Sig x, Sig y -> tsig x y
+    | Alias _, Alias _ -> x = y
+    | Abstract x, Abstract y -> x = y
+    | Fun (xa,xb), Fun (ya,yb) -> arg_opt xa ya && eq xb yb
+    | Link _ as x, (Link _ as y) -> x = y
+    | Namespace x, Namespace y -> dict x y
+    | _ -> false
+  and tsig x y =
+    x.origin = y.origin && signature x.signature y.signature
+  and signature x y =
+    match x, y with
+    | Blank, Blank -> true
+    | Exact x, Exact y -> def x y
+    | Divergence x, Divergence y ->
+      x.point = y.point
+      && def x.after y.after
+      && signature x.before y.before
+    | _ -> false
+  and def x y =
+    dict x.modules y.modules && dict x.module_types y.module_types
+  and dict x y = Name.Map.equal eq x y
+  and arg_opt: type a b. a ty Arg.t option -> b ty Arg.t option -> bool =
+    fun x y -> match x, y with
+      | Some x, Some y -> x.name = y.name && eq x.signature y.signature
+      | None, None -> true
+      | _ -> false
+end
 
 module Partial = struct
 
