@@ -1,3 +1,13 @@
+# 0.11.1 (22 June 2021)
+
+## Features
+
+   * Support for OCaml 4.14
+   
+## Bug fixes
+
+   * Synchronize the bundled stdlib with the real one
+
 # 0.11.0 (22 June 2021)
 
 ## Features
