@@ -49,11 +49,13 @@ let ephemeron v =
 
 let chain name sub = root name ~mds:(List.map submodule sub)
 
-let pervasives =  chain "Pervasive" ["LargeFile"]
+let pervasives =  chain "Pervasives" ["LargeFile"]
 
 let obj v =
-  if v >= (4, 14) then
+  if v >= (4, 12) then
     chain "Obj" ["Closure"; "Ephemeron"; "Extension_constructor"]
+  else if v >= (4, 8) then
+    chain "Obj" ["Ephemeron"; "Extension_constructor"]
   else
     chain "Obj" ["Ephemeron"]
 let printexc = chain "Printexc" ["Slot"]
@@ -67,7 +69,7 @@ let array_labels version =
   if version >= (4,06) then chain "ArrayLabels" ["Floatarray"] else
     simple "ArrayLabels"
 
-let gc v = if v <= (4,12) || v >= (5, 0) then simple "Gc" else chain "Gc" ["Memprof"]
+let gc v = if v < (4,11) || v >= (5, 0) then simple "Gc" else chain "Gc" ["Memprof"]
 
 let chained version = [ gc version; array version; array_labels version; obj version; printexc; random;scanf ]
 
@@ -80,7 +82,9 @@ let simples =
       "Char"; "Complex"; "Digest"; "Filename"; "Format";
       "Genlex"; "Int32"; "Int64"; "Lazy"; "Lexing"; "List";
       "ListLabels"; "Marshal"; "Nativeint"; "Oo"; "Parsing"; "Printf"; "Queue";
-      "Stack"; "Stream"; "String"; "StringLabels"; "Uchar"]
+      "Stack"; "Stream"; "String"; "StringLabels"; "Uchar";
+      "LargeFile"
+    ]
 
 type 'p mk = ?special:string -> ?nms:Namespaced.p -> ?mds:'a -> ?mts:'b -> 'c
   constraint 'p = 'a * 'b * 'c
@@ -108,11 +112,16 @@ let immediate64 =
 
 let sys = root "Sys" ~mds:[immediate64]
 
-let alias suffix name  = name, Alias {path=Namespaced.make (name ^ suffix);phantom=None}
+let alias ?nms suffix name  = name, Alias {path=Namespaced.make ?nms (name ^ suffix);phantom=None}
 
-let stdlabels =
-  root "StdLabels"
-    ~mds:(List.map (alias "Labels") ["Array"; "List"; "Bytes"; "String"])
+let stdlabels v =
+  if v < (4,7) then
+    (* ??? *)
+    root "StdLabels"
+      ~mds:(alias "Labels" "String" :: List.map (alias ~nms:["Stdlib"] "Labels") ["Array"; "List"; "Bytes"])
+  else
+    root "StdLabels"
+      ~mds:(List.map (alias "Labels") [ "Array"; "List"; "Bytes"; "String"])
 
 let spacetime = root "Spacetime"
    ~mds:[submodule "Series"; submodule "Snapshot"]
@@ -140,22 +149,25 @@ let bigarray ?special ?nms () =
     ]
 
 let complex v =
-  after v (4,10) [sys] @ weak :: hms @ more_labels :: stdlabels :: chained v
+  after v (4,10) [sys] @ weak :: hms @ more_labels :: stdlabels v :: chained v
 
 
-let float version = if version < (4,08) then simple "Float" else
+let float version = if version < (4,07) then simple "Float"
+  else if version < (4,08) then
+    chain "Float" ["Array"]
+  else
     chain "Float" ["Array"; "ArrayLabels"]
 
 let simple_stdlib v = Dict.of_list @@
-  before v (4,08) [pervasives; simple "Sort"]
+    before v (4,07) [simple "CamlinternalBigarray"]
+  @ before v (4,08) [pervasives; simple "Sort"]
   @ after v (4,03) [ephemeron v]
   @ in_between v (4,04) (4,12) [spacetime]
   @ after v (4,07) [bigarray ();float v; simple "Seq"]
   @ after v  (4,08)
-    (List.map simple ["Fun";"Bool";"Option";"Int";"Result";"LargeFile"; "Unit"])
+    (List.map simple ["Fun";"Bool";"Option";"Int";"Result"; "Unit"])
   @ before v  (4,10) [simple "Sys"]
-  @ after v (4,12) [simple "Either"]
-  @ after v (4,13) [simple "Atomic"; simple "CamlinternalAtomic"]
+  @ after v (4,12) [simple "Either"; simple "Atomic"; simple "CamlinternalAtomic"]
   @ after v (4,14) [simple "In_channel"; simple "Out_channel"]
   @ complex v
   @ simples
@@ -173,7 +185,7 @@ let num =
 let bigarray = Dict.of_list [bigarray ~special:"stdlib/bigarray" ~nms:[] ()]
 
 let unix =
-  top (fun x -> root ~special:"stdlib/unix" ~nms:[] x ~mds:[submodule "Largefile"] )
+  top (fun x -> root ~special:"stdlib/unix" ~nms:[] x ~mds:[submodule "LargeFile"] )
   [ "Unix"; "UnixLabels"]
 
 let graphics =

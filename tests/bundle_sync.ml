@@ -8,19 +8,48 @@ let mk ?(special="stdlib") ?(nms=["Stdlib"])  ?(mds=[]) ?(mts=[]) name =
     Module.Origin.Unit {source={source=Special special; file=path}; path} in
   Module.Sig { origin; signature=Module.Sig.of_lists mds mts}
 
+let submodule ?special:_ ?nms:_ ?(mds=[]) ?(mts=[]) name =
+  name, Module.Sig { origin=Submodule; signature=Module.Sig.of_lists mds mts}
 
-let compare v =
+
+module V = struct type t = int * int let compare=compare end
+module Vmap = Map.Make(V)
+
+let refs =
+  List.fold_left (fun m (mj,mn,lib) -> Vmap.add (mj,mn) lib m) Vmap.empty
+    (let open Bundle_refs in
+     [
+       4, 14, Stdlib_414.modules;
+       4, 13, Stdlib_413.modules;
+       4, 12, Stdlib_412.modules;
+       4, 11, Stdlib_411.modules;
+       4, 10, Stdlib_410.modules;
+       4, 09, Stdlib_409.modules;
+       4, 08, Stdlib_408.modules;
+       4, 07, Stdlib_407.modules;
+       4, 06, Stdlib_406.modules;
+     ]
+    )
+
+let compare v ref =
   let computed =
     match Bundle.versioned_stdlib v with
-    | ["Stdlib", Namespace n] ->
+    | ["Stdlib", Module.Namespace n] ->
       n
     | _ -> assert false
   in
+  let largeFile = "LargeFile" in
+  let pervasives = "Pervasives" in
+  (* we add Stdlib.LargeFile by hand *)
   let ref =
-    (* we add Stdlib.LargeFile by hand *)
-    let largeFile = "LargeFile" in
-    Name.Map.add largeFile (mk largeFile)
-    @@ Bundle_refs.Stdlib_414.modules in
+    Name.Map.add largeFile (mk largeFile) ref
+  in
+  let ref =
+    if v <= (4, 7) then
+      Name.Map.add pervasives (mk pervasives ~mds:[submodule largeFile]) ref
+    else
+      ref
+  in
   let diff k x y = match x, y with
     | Some _, None -> Some (Error (dp1 "Missing %s" k))
     | None, Some _ -> Some (Error (dp1 "Wrong additional module %s" k))
@@ -50,4 +79,4 @@ let compare v =
 
 let () =
   Format_tags.enable Pp.err;
-  assert (compare (4, 14))
+  assert (Vmap.for_all compare refs)
