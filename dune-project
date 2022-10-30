@@ -8,13 +8,14 @@
 (bug_reports https://github.com/Octachron/codept/issues)
 (source (github Octachron/codept))
 
+ (generate_opam_files true)
 
 (package
   (name codept)
-  (version 0.11.0)
+  (version 0.12.0)
   (license GPL-3.0-or-later)
   (synopsis "Alternative ocaml dependency analyzer")
-  (depends dune menhir {build & >= 20180523})
+  (depends dune (menhir (>= 20180523)))
   (description "Codept intends to be a dependency solver for OCaml project and an alternative to ocamldep. Compared to ocamldep, codept major features are:
 
  * whole project analysis
