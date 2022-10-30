@@ -1,3 +1,9 @@
+# 0.12
+
+## Bug fixes
+
+   * Restore "-sort"
+
 # 0.11.1 (22 June 2021)
 
 ## Features

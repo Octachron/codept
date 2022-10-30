@@ -196,8 +196,21 @@ let local_deps x =
   let filter x = match x.Deps.pkg.Pkg.source with Local -> Some (x.pkg, x.path) | _ -> None in
   x |> Unit.deps |> Deps.all |> Support.filter_map filter
 
+let pp_cycle ppf path =
+  Pp.fp ppf "Cycle detected: %a@."
+    (Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp)
+    (List.map fst path)
 
-let sort _ _ ppf _param (units: _ Unit.pair) =
+
+let cycle_in_sort =
+  Fault.info ["codept"; "sort"] "Cycle detected when sorting modules" pp_cycle
+
+let mode_policy p  =
+  Fault.register ~lvl:Fault.Level.critical cycle_in_sort p
+
+
+let sort _ _ ppf param (units: _ Unit.pair) =
+  let policy = mode_policy param.analyzer.policy in
   let module G = Unit.Group in
   let gs = G.group units in
   let flat g = fst @@ G.flatten g
@@ -207,11 +220,11 @@ let sort _ _ ppf _param (units: _ Unit.pair) =
     | { ml = None; mli = Some x }  -> (x.Unit.src, x.Unit.path) :: l
     | { ml = None; mli = None } -> l in
   let paths = G.Map.fold extract_path gs []  in
-  let deps (_, path) =
+  let deps (src, path) =
     let key = path in
     match flat @@ G.Map.find key gs with
     | { ml = Some x; mli = Some y } ->
-      if path = x.path then
+      if src = x.src then
         (local_deps x) @ (local_deps y)
         @ [y.src, y.path]
       else
@@ -219,8 +232,13 @@ let sort _ _ ppf _param (units: _ Unit.pair) =
     | { ml = Some x; mli = None } | { mli= Some x; ml =None } -> local_deps x
     | { ml = None; mli = None } -> [] in
   let sorted = Sorting.full_topological_sort ~key:fst deps paths in
-  Option.iter (Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp ppf)
-    (Option.fmap (List.map fst) sorted)
+  match sorted with
+  | Error path ->
+    Fault.raise policy cycle_in_sort path
+  | Ok sorted ->
+    Pp.fp ppf "%a@."
+     (Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp)
+    (List.map fst sorted)
 
 
 module Filter = struct

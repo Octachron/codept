@@ -1,36 +1,37 @@
 (** Topological order functions *)
 
+type 'a action =
+  | Explore of 'a list
+  | Add of 'a
+
 let full_topological_sort (type k) ~(key: _ -> k) deps paths =
   let visited = Hashtbl.create 17 in
-  let temporary = Hashtbl.create 17 in
-  let guard x = Hashtbl.add temporary (key x) true in
-  let cycle x = Hashtbl.mem temporary (key x) in
-  let mark x = Hashtbl.add visited (key x) true; Hashtbl.remove temporary (key x) in
-  let is_visited x = Hashtbl.mem visited (key x) in
-  let rec sort sorted = function
-    | [] -> sorted
-    | a :: q ->
-      if is_visited a then
-        sort sorted q
-      else if cycle a then None
-      else
-        let sorted = sort_at sorted a in
-        sort sorted q
-  and sort_at sorted x =
-    guard x;
-    let sorted = List.fold_left sort_dep sorted (deps x) in
-    let open Option in
-    sorted >>| fun sorted ->
-    mark x;
-    x :: sorted
-  and sort_dep sorted y =
-    if is_visited y then
-      sorted
-    else if cycle y then
-      None
-    else
-      sort_at sorted y in
-  Option.fmap List.rev @@ sort (Some []) paths
+  let future = Hashtbl.create 17 in
+  let add x =
+    let k = key x in
+    Hashtbl.remove future k;
+    Hashtbl.add visited k true
+  in
+  let cycle x = Hashtbl.mem future (key x) in
+  let visited x = Hashtbl.mem visited (key x) in
+  let guard x = Hashtbl.add future (key x) true in
+  let rec sort path sorted = function
+    | [] -> Ok sorted
+    | Explore [] :: q -> sort path sorted q
+    | Add x :: q ->
+      add x;
+      sort (List.tl path) (x::sorted) q
+    | Explore (a::nodes) :: q ->
+      if cycle a then
+        Error ( a::path)
+      else if visited a then
+        sort path sorted (Explore nodes :: q)
+      else begin
+        guard a;
+        sort (a::path) sorted (Explore (deps a) :: Add a :: Explore nodes :: q)
+      end
+  in
+  Mresult.Ok.fmap List.rev @@ sort [] [] [Explore paths]
 
 let remember_order units =
   let open Unit in
