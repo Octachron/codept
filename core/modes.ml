@@ -236,7 +236,7 @@ let sort _ _ ppf param (units: _ Unit.pair) =
   | Error path ->
     Fault.raise policy cycle_in_sort path
   | Ok sorted ->
-    Pp.fp ppf "%a@."
+    Pp.fp ppf "%a"
      (Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp)
     (List.map fst sorted)
 
