@@ -5,7 +5,7 @@ open Ocamlbuild_plugin
 let mdeps = A "-nl-modules"
 let fdeps = A "-modules"
 let gen_sig = A "-sig"
-let m2l_gen = A "-m2l-sexp"
+let m2l_gen = A "-m2l"
 let o = A "-o"
 
 let is_pflag_included root s =

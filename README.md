@@ -219,7 +219,7 @@ by codept
      only analyze files which are an ancestor of the module `modulename`.Note that the input name is capitalized and extension are removed to avoid some discomfort.
 
 
-   * `-transparent-extension-node bool`
+   * `-extension-node bool`
    decide what to do with extension nodes, if `bool` is true, extension node are considered as transparent and analyzed, otherwise they are left alone. Note that ocaml built-in extension nodes (i.e. `[%extension_constructor … ]` nodes)  are always analyzed and are not affected by this option.
 
 
