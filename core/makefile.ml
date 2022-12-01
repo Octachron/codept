@@ -71,7 +71,7 @@ let tokenize_deps includes param input dep (unit,imore,dmore) =
   let make_abs = Common.make_abs param.abs_path in
   let pkg_pp = Pkg.pp_gen param.slash in
   let open Unit in
-  let dep x= make_abs @@ dep x in
+  let dep x= make_abs @@ dep x.Deps.pkg in
   let tok f x = Format.asprintf "%a" f x in
   let compare x y = compare (Pkg.module_name y) (Pkg.module_name x) in
   let tokens l = List.map (tok pkg_pp)

@@ -43,10 +43,10 @@ val structured: Schematic.format option -> mode
 
 (** Display the list of modules dependencies of the input compilation units
     using ocamldep format *)
-val modules : ?filter:(Pkg.t -> bool) -> mode
+val modules : ?filter:(Deps.dep -> bool) -> mode
 
 (** Display module dependencies line-by-line, intended to use by ocamlbuild *)
-val line_modules: ?filter:(Pkg.t -> bool) -> mode
+val line_modules: ?filter:(Deps.dep -> bool) -> mode
 
 (** Export the inferred m2l signature in a s-expression format, intended
     to be read by ulterior call to codept *)

@@ -111,66 +111,64 @@ let signature filename writer ppf param {Unit.mli; _} =
   writer.Io.sign param.internal_format filename ppf mds
 
 
-let dependencies ?filter sort (u:Unit.r) =
+let dependencies ?filter (u:Unit.r) =
   let filter = match filter with
     | Some f -> List.filter f
     | None -> fun x -> x in
   u
-  |> Unit.deps
-  |> Deps.pkgs
-  |> sort
+  |> Unit.deps |> Deps.all
   |> filter
-  |> List.map Pkg.module_name
 
-
-let pp_module {Makefile.abs_path;slash; _ } proj ppf (u:Unit.r) =
+let pp_module {Makefile.abs_path;slash; _ } ?filter sort ppf (u:Unit.r) =
   let pp_pkg = Pkg.pp_gen slash in
-  let elts = proj u in
+  let pp_dep ppf d = Namespaced.pp ppf d.Deps.path in
+  let elts = sort @@ dependencies ?filter u in
   Pp.fp ppf "%a: %a\n" pp_pkg (Common.make_abs abs_path u.src)
-    Pp.( list ~sep:(s" ") Name.pp )
+    Pp.( list ~sep:(s" ") pp_dep )
     elts
 
-let mname x = Namespaced.make @@ Pkg.module_name x
-let upath x = mname @@ x.Unit.src
+let mpath x = x.Deps.path
+let upath x = Namespaced.make @@ Pkg.module_name x.Unit.src
 
 module Hidden = struct
-let sort proj _param mli =
+let sort mli naming =
   let order = Sorting.remember_order mli in
-  Sorting.toposort order proj
+  Sorting.toposort order naming
 end
 open Hidden
 
-let gen_modules proj ppf param {Unit.mli; ml } =
-  let sort_p = sort mname param mli in
-  let sort_u = sort upath param mli in
-  let print units = Pp.fp ppf "%a"
-      Pp.(list ~sep:(s"") @@ pp_module param.makefile @@ proj sort_p)
-      (sort_u units) in
+let gen_modules ?filter ppf param {Unit.mli; ml } =
+  let sort_p = sort mli mpath in
+  let sort_u = sort mli upath in
+  let print units =
+    Pp.(list ~sep:(s"") @@ pp_module param.makefile ?filter sort_p)
+      ppf
+      (sort_u units)
+  in
   print ml; print mli
 
 let modules ?filter _ _ =
-  gen_modules (dependencies ?filter)
-
+  gen_modules ?filter
 
 let pp_only_deps sort ?filter ppf u =
-  let elts = Deps.pkgs (Unit.deps u) in
+  let elts = Deps.all @@ Unit.deps u in
   let elts = sort elts in
   let elts = match filter with
     | Some f -> List.filter f elts
     | None -> elts in
   Pp.fp ppf "%a"
-    Pp.( list ~sep:(s"\n") Name.pp )
-    ( List.map Pkg.module_name elts)
+    Pp.( list ~sep:(s"\n") Namespaced.pp )
+    (List.map (fun d -> d.Deps.path) elts)
 
-let line_modules ?filter _ _ ppf param {Unit.mli; ml } =
-  let sort_p = sort mname param mli in
-  let sort_u = sort upath param mli in
+let line_modules ?filter _ _ ppf _param {Unit.mli; ml } =
+  let sort_p = sort mli mpath in
+  let sort_u = sort mli upath in
   let print units = Pp.fp ppf "%a"
       Pp.(list ~sep:(s"") @@ pp_only_deps sort_p ?filter)
       (sort_u units) in
   print ml; print mli
 
-let dot _ _ ppf param {Unit.mli; _ } =
+let dot _ _ ppf _param {Unit.mli; _ } =
   let escaped = Name.Set.of_list
       [ "graph"; "digraph"; "subgraph"; "edge"; "node"; "strict" ] in
   let escape ppf s =
@@ -179,13 +177,13 @@ let dot _ _ ppf param {Unit.mli; _ } =
     else
       Pp.string ppf s in
   let open Unit in
-  let sort = sort mname param mli in
+  let sort = sort mli mpath in
   Pp.fp ppf "digraph G {\n";
   List.iter (fun u ->
       List.iter (fun p ->
           Pp.fp ppf "%a -> %a \n"
             escape (Namespaced.to_string u.path)
-            escape (Pkg.module_name p)
+            escape (Namespaced.module_name p.Deps.path)
         )
         (sort @@ Unit.local_dependencies u)
     ) mli;
@@ -242,17 +240,17 @@ let sort _ _ ppf param (units: _ Unit.pair) =
 
 
 module Filter = struct
-  let inner = function
+  let inner x = match x.Deps.pkg with
     | { Pkg.source = Local; _ } -> true
     |  _ -> false
 
   let dep = fun _ -> true
 
-  let extern = function
+  let extern  x = match x.Deps.pkg with
     | { Pkg.source = Unknown; _ } -> true
     | _ -> false
 
-  let lib = function
+  let lib  x = match x.Deps.pkg with
     | { Pkg.source = (Pkg _ | Special _ ) ; _ } -> true
     | _ -> false
 

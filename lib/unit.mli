@@ -31,7 +31,7 @@ type r = u
 
 val signature: r -> Module.signature
 val deps: r -> Deps.t
-val local_dependencies: r -> Pkg.t list
+val local_dependencies: r -> Deps.dep list
 val update: Deps.t -> r -> r
 
 (** Conversion function between input and output types *)
