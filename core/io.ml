@@ -1,6 +1,6 @@
 
 type reader = {
-  sign: string -> (Module.named list, Schematic.Ext.error) result;
+  sign:  string -> (Module.Namespace.t, Schematic.Ext.error) result;
   m2l: Fault.Policy.t -> Read.kind -> string
     -> Namespaced.t -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
@@ -8,7 +8,7 @@ type reader = {
 }
 
 type writer = {
-  sign: Schematic.format -> string -> Format.formatter -> Module.named list -> unit;
+  sign: Schematic.format -> Format.formatter -> Module.Namespace.t -> unit;
   m2l: Schematic.format -> (Read.kind * string) -> Format.formatter -> M2l.t -> unit
 }
 
@@ -36,7 +36,7 @@ end
 
 let parse_sig lexbuf=
   try
-    Schematic.Ext.strict Schema.sign @@ Sparser.main Slex.main lexbuf
+    Schematic.Ext.strict Schema.namespace @@ Sparser.main Slex.main lexbuf
   with
   Sparser.Error -> Error Unknown_format
 
@@ -65,12 +65,12 @@ let direct = {
 
       );
     sign =
-      (fun format _ ppf (mds: Module.named list) ->
+      (fun format ppf (mds: Module.Namespace.t) ->
          match format with
          | Sexp ->  Schematic.minify ppf "%a@.\n"
-                      (Schematic.Ext.sexp Schema.sign) mds
+                      (Schematic.Ext.sexp Schema.namespace) mds
          | Json ->  Schematic.minify ppf "%a@.\n"
-                      (Schematic.Ext.json Schema.sign) mds
+                      (Schematic.Ext.json Schema.namespace) mds
       )
   }
 }

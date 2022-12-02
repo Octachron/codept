@@ -100,15 +100,16 @@ let export name _ _ ppf _param {Unit.mli; _} =
              let open Sig in @;\
              %a @]@." Module.reflect_modules s
 
-let signature filename writer ppf param {Unit.mli; _} =
-  (* TODO: prefixed unit *)
+let signature _ writer ppf param {Unit.mli; _} =
   let md (u:Unit.r) =
     let origin =
-      Module.Origin.Unit {source=u.src;path=u.path} in
-    u.path.name, Module.Sig ( Module.create ~origin (Unit.signature u ))
+      Module.Origin.Unit {source=u.src;path=u.path}
+    in
+    Module.Namespace.from_module u.path origin (Unit.signature u)
   in
-  let mds = List.map md mli in
-  writer.Io.sign param.internal_format filename ppf mds
+  let mds = List.fold_left (fun s mli -> Module.Namespace.merge s (md mli))
+      Module.Dict.empty mli in
+  writer.Io.sign param.internal_format ppf mds
 
 
 let dependencies ?filter (u:Unit.r) =

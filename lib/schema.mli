@@ -3,10 +3,11 @@ open Schematic
 module Lbl: sig
   type deps
   type m2l
-  type sig'
+  type namespace
 end
 
-val sign: (Lbl.sig', Module.named list) Ext.t
+val namespace: (Lbl.namespace, Module.Namespace.t) Ext.t
+
 val m2l: (Lbl.m2l, M2l.t) Ext.t
 
 type p = Namespaced.t

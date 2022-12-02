@@ -159,7 +159,7 @@ let large_output ppf =
 
 let print_json_schema  =
   function
-  | "sig" -> large_output Pp.std; Schematic.Ext.json_schema Pp.std Schema.sign
+  | "sig" -> large_output Pp.std; Schematic.Ext.json_schema Pp.std Schema.namespace
   | "m2l" -> large_output Pp.std; Schematic.Ext.json_schema Pp.std Schema.m2l
   | "deps" -> large_output Pp.std; Schematic.Ext.json_schema Pp.std Schema.x
   | _ -> ()

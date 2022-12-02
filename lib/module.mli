@@ -297,3 +297,12 @@ module Partial :
 
 
   end
+
+
+module Namespace: sig
+  type t = Dict.t
+  val from_module: Namespaced.t -> Origin.t -> Sig.t -> t
+  val merge: t -> t -> t
+  val merge_all: t list -> t
+  val sch : t Schematic.t
+end

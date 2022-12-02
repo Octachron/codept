@@ -3,10 +3,10 @@ open Schematic
 module Lbl = struct
   module M2l = Label(struct let l = "m2l" end)
   module Deps = Label(struct let l = "deps" end)
-  module Sig = Label(struct let l = "sig" end)
+  module Namespace = Label(struct let l = "namespace" end)
   type m2l = M2l.t
   type deps = Deps.t
-  type sig' = Sig.t
+  type namespace = Namespace.t
 end
 
 let version = { Version.major = 0; minor=11; patch=0 }
@@ -19,12 +19,14 @@ let m2l = { Schematic.Ext.title = "codept/m2l/0.11.0";
             inner = M2l.sch
           }
 
-let sign = { Schematic.Ext.title = "codept/sig/0.11.0";
-             description = "module level ocaml signature";
+let namespace = { Schematic.Ext.title = "codept/namespace/0.11.0";
+             description = "namespaced compilation units";
              version;
-             label = Lbl.Sig.l;
-             inner = Array (pair String Module.Schema.module')
+             label = Lbl.Namespace.l;
+             inner = Module.Namespace.sch
            }
+
+
 
 module Module = Label(struct let l = "module" end)
 module Ml = Label(struct let l = "ml" end)

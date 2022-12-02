@@ -2,7 +2,7 @@
 (** System interaction functions *)
 
 type reader = {
-  sign: string -> (Module.named list, Schematic.Ext.error) result ;
+  sign: string -> (Module.Namespace.t, Schematic.Ext.error) result ;
   m2l: Fault.Policy.t -> Read.kind -> string -> Namespaced.t
     -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
@@ -10,7 +10,7 @@ type reader = {
 }
 
 type writer = {
-  sign: Schematic.format -> string -> Format.formatter -> Module.named list -> unit;
+  sign: Schematic.format -> Format.formatter -> Module.Namespace.t -> unit;
   m2l: Schematic.format -> (Read.kind * string) -> Format.formatter -> M2l.t -> unit
 }
 
@@ -20,6 +20,6 @@ type t = {
 }
 
 (** Read signature file *)
-val read_sigfile: string -> (Module.named list, Schematic.Ext.error) result
+val read_sigfile: string -> (Module.Namespace.t, Schematic.Ext.error) result
 
 val direct: t

@@ -275,6 +275,13 @@ module Dict = struct
       | Some _ as x, None -> x
       | None, _ -> None
     ) x y
+
+  let sch elt =
+    let open Schematic in
+    Custom {
+      fwd = Name.Map.bindings;
+      rev = of_list;
+      sch = Array (pair String elt)}
 end
 
 (* TODO: Behavior with links *)
@@ -517,24 +524,26 @@ module Schema = struct
   end
 
   let named () = Schematic.pair String Mu.module'
+  let dict () = Dict.sch Mu.module'
   let schr = Obj [
       Opt, Origin_f.l, (reopen Origin.sch);
-      Opt, Modules.l,  Array (named ());
-      Opt, Module_types.l, Array (named ())
+      Opt, Modules.l,  dict ();
+      Opt, Module_types.l, dict ()
     ]
 
+  let d x = if x = Dict.empty then None else Some x
   let rec m = Custom { fwd; rev; sch = schr }
   and fwd x =
     let s = flatten x.signature in
     Record.[
       Origin_f.l $=? (default Origin.Submodule x.origin);
-      Modules.l $=? (l @@ to_list s.modules);
-      Module_types.l $=? (l @@ to_list s.module_types)
+      Modules.l $=? d s.modules;
+      Module_types.l $=? d s.module_types
     ]
   and rev = let open Record in
     fun [ _, o; _, m; _, mt] ->
       create ~origin:(o >< Origin.Submodule)
-        (Exact (signature_of_lists (m >< []) (mt >< [])) )
+        (Exact { modules = m >< Dict.empty; module_types = mt >< Dict.empty})
 
   let opt_arg = option Mu.arg
   let rec module' =
@@ -968,3 +977,18 @@ module Partial = struct
    end
    let sch = Sch.partial
  end
+
+module Namespace = struct
+  type t = dict
+  let merge = Dict.union
+  let merge_all = List.fold_left merge Dict.empty
+  let rec from_module nms origin sign =
+    match nms.Namespaced.namespace with
+      | [] ->
+        Dict.of_list [nms.name, Sig (create ~origin sign)]
+      | a :: namespace ->
+        let sign = Namespace (from_module { nms with namespace } origin sign) in
+        Dict.of_list [a, sign]
+
+    let sch = Dict.sch Schema.module'
+end

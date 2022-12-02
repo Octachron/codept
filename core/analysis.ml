@@ -68,7 +68,7 @@ let signature_error policy = function
 let pre_organize policy io files =
   let units, signatures = split (info_split io) files in
   let signatures =
-    List.flatten @@ Option.List'.filter
+    Module.Namespace.merge_all @@ Option.List'.filter
     @@ List.map (signature_error policy) signatures in
   units, signatures
 
@@ -132,8 +132,8 @@ let start_env io param libs signatures fileset =
       ~implicits
       base_sign
   in
-  let add env (name,u) = Envt.Core.add_unit env name u in
-  let env = List.fold_left add env signatures in
+  let add name u env = Envt.Core.add_unit env name u in
+  let env = Name.Map.fold add signatures env in
     E ((module Envt.Core), env)
 
 (** Solver step *)
