@@ -1,7 +1,6 @@
 
 module With_deps = With_deps
-
-let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
+open Debug
 
 type 'a i = { input: Unit.s; code: 'a}
 let make initial (input:Unit.s) =

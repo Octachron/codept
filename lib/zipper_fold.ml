@@ -1,6 +1,5 @@
 [@@@warning "-37"]
-
-let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
+open Debug
 
 module L = struct
   type 'a t = 'a list = [] | (::) of 'a * 'a t
