@@ -11,8 +11,7 @@ module T = Transforms
 let fault param x = Fault.handle param.T.policy x
 let raisef param f t = fault param (Fault.emit f t)
 
-let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
-
+open Debug
 
 type path = T.answer
 type query = path T.query_result

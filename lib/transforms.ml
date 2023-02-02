@@ -1,5 +1,4 @@
-
-let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
+open Debug
 
 
 type level = Module.level = Module | Module_type

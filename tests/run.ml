@@ -588,6 +588,7 @@ let result =
           "approx_parser.mli", (["M2l"], [],[]);
           "approx_parser.ml", (["Deps"; "Loc"; "Read";"M2l";"Paths"],
                                ["Lexer"; "Parser";"Lexing";"List"],[]);
+          "debug.ml", (["Pp"], ["Format"; "Sys"], []);
           "cmi.mli", (["M2l"], [], []);
 
           "deps.ml", (["Namespaced"; "Option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);
@@ -604,10 +605,10 @@ let result =
              "Transforms"; "Uloc"],
             [], []);
           "envt.ml", (
-            ["Cmi"; "Deps"; "Summary"; "Transforms";
+            ["Cmi"; "Debug"; "Deps"; "Summary"; "Transforms";
              "Fault"; "Dep_zipper"; "Module"; "Name"; "Namespaced"; "Paths";
              "Standard_faults";"Standard_policies";"Option"; "Pkg"; "Pp"; "Uloc"],
-            ["Array"; "Filename";"List";"Sys"; "Format"],
+            ["Array"; "Filename";"List";"Sys"],
             []);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Paths"; "Pp"; "Schematic" ],
                       ["Format"],[]);
@@ -671,7 +672,7 @@ let result =
                           "Summary"; "Stage"; "Paths"; "Pkg"],
                          ["Format"],[]);
           "solver.ml", (
-            ["Approx_parser"; "Deps"; "Summary"; "Stage"; "Loc";
+            ["Approx_parser"; "Debug"; "Deps"; "Summary"; "Stage"; "Loc";
              "M2l"; "Module"; "Mresult"; "Namespaced";
              "Option"; "Pp"; "Paths"; "Pkg"; "Read"; "Unit"; "Fault";
              "Standard_faults"; "Uloc"],
@@ -699,9 +700,9 @@ let result =
           "with_deps.ml", (["Deps"],[],[]);
           "with_deps.mli", (["Deps"],[],[]);
           "transforms.ml", (
-            ["Deps"; "Fault"; "Module"; "Name"; "Paths"; "Pp"; "Standard_faults";
+            ["Debug"; "Deps"; "Fault"; "Module"; "Name"; "Paths"; "Pp"; "Standard_faults";
              "Summary"]
-          ,["Format"],[]);
+          ,[],[]);
           "stage.mli", (
             ["Deps"; "Fault"; "Loc"; "M2l";"Module"; "Name"; "Namespaced"; "Paths"; "Pkg";
              "Pp"; "Summary"; "Transforms"; "Uloc"]
@@ -710,10 +711,10 @@ let result =
             ["Deps"; "Module"; "Stage"; "Transforms"; "Zipper"; "Zipper_fold"]
           ,[],[]);
           "zipper_fold.ml", (
-            ["Deps"; "Id"; "Loc"; "M2l"; "Module"; "Mresult"; "Option";
-             "Paths"; "Pkg"; "Pp"; "Stage"; "Summary"; "Zipper_skeleton"; "Zipper_def";
+            ["Debug"; "Deps"; "Id"; "Loc"; "M2l"; "Module"; "Mresult"; "Option";
+             "Paths"; "Pkg"; "Stage"; "Summary"; "Zipper_skeleton"; "Zipper_def";
              "Zipper_pp"; "Uloc"]
-          ,["List"; "Format"],[]);
+          ,["List"],[]);
           "zipper_pp.ml", (
             ["Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
           ,["Format"],[]);
@@ -724,7 +725,7 @@ let result =
              "Zipper_skeleton"]
           ,[],[]);
           "zipper_skeleton.ml", (
-            ["Deps"; "Fault"; "Id"; "M2l"; "Module"; "Name"; "Namespaced"; "Option"; "Paths"; "Pp";
+            ["Debug"; "Deps"; "Fault"; "Id"; "M2l"; "Module"; "Name"; "Namespaced"; "Option"; "Paths"; "Pp";
              "Stage"; "Standard_faults"; "Summary"; "Transforms"; "Uloc"]
           ,["Format"; "List"],[]);
           "zipper_skeleton.mli", (

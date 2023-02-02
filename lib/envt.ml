@@ -2,8 +2,7 @@ module M = Module
 module Edge = Deps.Edge
 module T = Transforms
 module Y = Summary
-
-let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
+open Debug
 
 type answer_type = T.answer_type =
   | Namespace of Module.dict
