@@ -1,2 +1,4 @@
 -k
 -deps
+module_collision/Z/a.mli
+module_collision/B/A.mli
