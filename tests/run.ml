@@ -695,7 +695,7 @@ let result =
              "Standard_faults"],
             [ "List"; "Location"; "Set"],
             []);
-          "support.ml", ([],["String"; "List"],[]);
+          "support.ml", ([],["String"; "List"; "Sys"],[]);
           "support.mli", ([],[],[]);
           "with_deps.ml", (["Deps"],[],[]);
           "with_deps.mli", (["Deps"],[],[]);
