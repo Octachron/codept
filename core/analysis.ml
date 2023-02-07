@@ -19,7 +19,7 @@ let (%) f g x = f @@ g x
 let open_within opens unit =
   List.fold_right (fun m (unit:Unit.s) ->
       match m with
-      | [root] when unit.path = { name = root; namespace = [] } ->
+      | [root] when unit.path.file = root && unit.path.namespace = [] ->
         unit
       | m ->
         { unit with

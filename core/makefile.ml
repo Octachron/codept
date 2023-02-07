@@ -15,8 +15,8 @@ type param =
 
 let preprocess_deps includes unit =
   let replace ({Deps.pkg; _ } as dep) l = match pkg with
-    | { Pkg.source = Unknown; file = { Namespaced.namespace=[]; name } } ->
-      let pkg = Option.default pkg (Name.Map.find_opt name includes) in
+    | { Pkg.source = Unknown; file = { Namespaced.namespace=[]; name; _ } } ->
+      let pkg = Option.default pkg (Modname.Map.find_opt name includes) in
       {dep with pkg} :: l
     | { Pkg.source = Pkg _ ; _ }  -> l
     | _ -> dep :: l
@@ -56,14 +56,14 @@ let expand_includes policy synonyms includes =
           match Common.classify policy synonyms x with
           | None | Some { Common.kind = Signature; _ } -> m
           | Some { Common.kind = Interface | Implementation ; _ } ->
-            Name.Map.add (Read.name x)
+            Modname.Map.add (Read.name x)
               Pkg.( dir / local x) m
         )
         expanded files
     else
       expanded
   in
-  List.fold_left read_dir Name.Map.empty includes
+  List.fold_left read_dir Modname.Map.empty includes
 
 
 let tokenize_deps includes param input dep (unit,imore,dmore) =

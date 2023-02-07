@@ -81,7 +81,7 @@ let export name _ _ ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
   let sign (u:Unit.r)= Unit.signature u in
   let md (unit:Unit.r) =
-    let uname = unit.path.name in
+    let uname = unit.path.file in
     let m = {
       Module.origin =
         Unit { source = { source=Pkg.Special name; file = unit.path };
@@ -129,7 +129,7 @@ let pp_module {Makefile.abs_path;slash; _ } ?filter sort ppf (u:Unit.r) =
     elts
 
 let mpath x = x.Deps.path
-let upath x = Namespaced.make @@ Pkg.module_name x.Unit.src
+let upath x = Namespaced.make @@ Modname.to_string @@ Pkg.module_name x.Unit.src
 
 module Hidden = struct
 let sort mli naming =
@@ -184,7 +184,7 @@ let dot _ _ ppf _param {Unit.mli; _ } =
       List.iter (fun p ->
           Pp.fp ppf "%a -> %a \n"
             escape (Namespaced.to_string u.path)
-            escape (Namespaced.module_name p.Deps.path)
+            escape (Modname.to_string (Namespaced.module_name p.Deps.path))
         )
         (sort @@ Unit.local_dependencies u)
     ) mli;
