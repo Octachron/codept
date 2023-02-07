@@ -587,12 +587,12 @@ let result =
         (Some ~:["Solver"; "Standard_policies"])
         (dl[
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
-          "approx_parser.mli", (["M2l"], [],[]);
+          "approx_parser.mli", (["M2l";"Modname"], [],[]);
           "approx_parser.ml", (["Deps"; "Loc"; "Read";"M2l";"Paths"],
                                ["Lexer"; "Parser";"Lexing";"List"],[]);
           "debug.ml", (["Pp"], ["Format";"Sys";"Printexc"], []);
           "cmi.mli", (["M2l"], [], []);
-          "modname.ml", (["Debug"; "Support"], ["Bytes"; "Filename"; "Format"; "Map"; "String"], []);
+          "modname.ml", (["Support"; "Pp"], ["Bytes"; "Filename"; "Format"; "Map"; "String"], []);
           "modname.mli", (["Pp"], ["Map"], []);
 
           "deps.ml", (["Namespaced"; "Option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);
@@ -610,7 +610,7 @@ let result =
             [], []);
           "envt.ml", (
             ["Cmi"; "Debug"; "Deps"; "Summary"; "Transforms";
-             "Fault"; "Dep_zipper"; "Module"; "Name"; "Namespaced"; "Paths";
+             "Fault"; "Dep_zipper"; "Modname"; "Module"; "Name"; "Namespaced"; "Paths";
              "Standard_faults";"Standard_policies";"Option"; "Pkg"; "Pp"; "Uloc"],
             ["Array"; "Filename";"List";"Sys"],
             []);
@@ -630,14 +630,14 @@ let result =
                           [], [] );
           "module.mli", ( ["Id"; "Paths"; "Pkg"; "Name";"Namespaced"; "Schematic"; "Uloc"],
                           ["Format"], [] );
-          "module.ml", ( ["Id"; "Loc";"Paths"; "Pkg"; "Name"; "Namespaced"; "Option"; "Pp"
+          "module.ml", ( ["Id"; "Loc";"Paths"; "Pkg"; "Modname"; "Name"; "Namespaced"; "Option"; "Pp"
                          ; "Schematic"; "Schematic_indices"; "Uloc" ],
                          ["List"; "Format"; "Map"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map";"List"], [] );
-          "namespaced.mli", ( ["Name";"Paths"; "Pp"; "Schematic"],
+          "namespaced.mli", ( ["Modname";"Name";"Paths"; "Pp"; "Schematic"],
                               ["Format"; "Set";"Map"], [] );
-          "namespaced.ml", ( ["Name"; "Paths"; "Pp"; "Schematic"; "Support"],
+          "namespaced.ml", ( ["Modname"; "Paths"; "Pp"; "Schematic"; "Support"],
                              ["Filename"; "Format";"List";"Set";"Map"; "String"], [] );
           "loc.mli", ( ["Schematic"], ["Format"], []);
           "loc.ml", ( ["Pp";"Schematic"], ["List"], []);
@@ -652,11 +652,11 @@ let result =
                         "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
-          "read.mli", (["M2l"; "Name"; "Schematic"],["Lexer";"Syntaxerr"],[]);
+          "read.mli", (["M2l"; "Modname"; "Schematic"],["Lexer";"Syntaxerr"],[]);
           "read.ml", (["Ast_converter"; "Cmi"; "M2l"; "Pparse_compat";"Schema"
-                      ; "Schematic" ],
+                      ; "Modname"; "Schematic"; "Support" ],
                       ["Filename"; "Lexer"; "Lexing"; "List"; "Location";
-                       "Parse"; "Parsetree"; "Parsing"; "Pparse"; "String";
+                       "Parse"; "Parsetree"; "Parsing"; "Pparse";
                        "Syntaxerr"],
                       ["Sparser";"Slex"]);
           "mresult.mli", ([],[],[]);
@@ -677,10 +677,10 @@ let result =
                          ["Format"],[]);
           "solver.ml", (
             ["Approx_parser"; "Debug"; "Deps"; "Summary"; "Stage"; "Loc";
-             "M2l"; "Module"; "Mresult"; "Namespaced";
+             "M2l"; "Modname"; "Module"; "Mresult"; "Namespaced";
              "Option"; "Pp"; "Paths"; "Pkg"; "Read"; "Unit"; "Fault";
              "Standard_faults"; "Uloc"],
-            ["List"; "Map";"Format"],[]);
+            ["List";"Filename";"Map";"Format";"String"],[]);
           "standard_faults.ml", (
             ["Fault"; "Format_tags"; "Module"; "Namespaced"; "Paths"; "Pp"
             ; "Pkg"; "Loc"; "Schematic"; "Uloc" ],
@@ -737,7 +737,7 @@ let result =
              "Summary"; "Transforms"; "Uloc"]
           ,[],[]);
           "pkg.ml", (["Name"; "Namespaced"; "Pp"; "Schematic"],["Filename"; "Map"; "Set"; "String"],[]);
-          "pkg.mli", (["Name"; "Namespaced"; "Paths"; "Schematic"],["Format"; "Map"; "Set"],[]);
+          "pkg.mli", (["Modname"; "Name"; "Namespaced"; "Paths"; "Schematic"],["Format"; "Map"; "Set"],[]);
         ])
       )
     )
