@@ -1,46 +1,48 @@
 type p = Paths.S.t
-type t = { namespace: p; name: Name.t }
+type t = { namespace: p; name: Modname.t; file: string }
 type namespaced = t
 
 
 let pp ppf n =
   if n.namespace = [] then
-    Pp.string ppf n.name
+    Modname.pp ppf n.name
   else
-    Pp.fp ppf "%a.%s" Paths.S.pp n.namespace n.name
+    Pp.fp ppf "%a.%a" Paths.S.pp n.namespace Modname.pp n.name
 
 
 
 let pp_as_filepath ppf n =
   if n.namespace = [] then
-    Pp.string ppf n.name
+    Pp.string ppf n.file
   else
     Pp.fp ppf "%a%s%s"
-      Pp.(list ~sep:(const Filename.dir_sep) string) n.namespace Filename.dir_sep n.name
+      Pp.(list ~sep:(const Filename.dir_sep) string) n.namespace Filename.dir_sep n.file
 
 let reflect  ppf n =
   let es ppf = Pp.fp ppf {|"%s"|} in
-  Pp.fp ppf "{name=%S;namespace=[%a]}"
-    n.name
+  Pp.fp ppf "{name=%a;namespace=[%a];file=%S}"
+    Modname.reflect n.name
     Pp.(list ~sep:(const "; ") es) n.namespace
+    n.file
 
 let cons prefix n = { n with namespace = prefix @ n.namespace }
 
 let to_string = Format.asprintf "%a" pp
-let make ?(nms=[]) name = { namespace = nms; name }
-let flatten n = n.namespace @ [n.name]
+let make ?(nms=[]) file = { namespace = nms; name= Modname.of_path file; file }
+let flatten n = n.namespace @ [Modname.to_string n.name]
 let of_path l =
   let rec split l = function
     | [a] -> l, a
     | a :: q -> split (a::l) q
     | [] -> raise @@ Invalid_argument("Namespaced.of_path: empty path")
   in
-  let p, name = split [] l in
-  { namespace = List.rev p; name }
+  let p, file = split [] l in
+  let name = Modname.of_path (String.concat Filename.dir_sep l) in
+  { namespace = List.rev p; name; file; }
 
 let head = function
   | {namespace=a :: _ ; _ } -> a
-  | {namespace=[]; name } -> name
+  | {namespace=[]; file; _ } -> file
 
 let sch =
   let open Schematic in
@@ -48,10 +50,14 @@ let sch =
     (fun x -> flatten x)
     (fun x -> of_path x)
 
+let compare a b =
+  let v = compare a.namespace b.namespace in
+  if v = 0 then Modname.compare a.name b.name
+  else v
 
 module Ordered = struct
   type nonrec t = t
-  let compare: t -> t -> int = compare
+  let compare = compare
 end
 
 module Map= struct
@@ -71,35 +77,28 @@ end
 type set = Set.t
 
 
-let may_chop_extension a =
-  try Filename.chop_extension a with
-    Invalid_argument _ -> a
-
-let module_name file =
-  String.capitalize_ascii @@ may_chop_extension @@ file
-
 let module_path_of_filename ?(nms=[]) filename =
+  let name = Modname.of_path filename in
   let p = Paths.S.parse_filename filename in
   match List.rev p with
   | [] ->  raise  @@  Invalid_argument "Invalid name for a compilation unit"
-  | name :: _ ->
+  | file :: _ ->
     { namespace = nms ;
-      name = module_name name
+      file; name;
     }
 
 let filepath_of_filename ?(nms=[]) filename =
+  let name = Modname.of_path filename in
   let p = Paths.S.parse_filename filename in
   match List.rev p with
   | [] ->  raise  @@  Invalid_argument "Invalid name for a compilation unit"
-  | name :: r ->
+  | file :: r ->
     { namespace = nms @ List.rev r ;
-      name
+      file; name;
     }
 
 
-let module_name x = module_name x.name
-
-let chop_extension p = { p with name = Filename.chop_extension p.name }
+let module_name x = x.name
 
 let extension a =
   let ext = Support.extension a in
@@ -116,4 +115,4 @@ let may_change_extension f a =
     base ^ f ext
 
 let change_file_extension f p =
-  { p with name = may_change_extension f p.name }
+  { p with file = may_change_extension f p.file }

@@ -18,7 +18,7 @@ val local : string -> path
 val (/): Paths.Simple.t -> t -> t
 
 val is_known : t -> bool
-val module_name : path -> string
+val module_name : path -> Modname.t
 
 (** {2 Extension handling } *)
 val update_extension : (string -> string) -> path -> path

@@ -1,5 +1,5 @@
 type t = { pkg:Pkg.t; loc:Loc.t }
-let none = { pkg = Pkg.{ source= Unknown; file=Namespaced.make "" }; loc = Loc.Nowhere }
+let none = { pkg = Pkg.{ source= Unknown; file=Namespaced.make "Empty" }; loc = Loc.Nowhere }
 
 module Pp = struct
 

@@ -13,8 +13,7 @@ type kind = { format: format; kind: M2l.kind }
 type ocaml_parsing_error = Syntax of Syntaxerr.error | Lexer of Lexer.error
 type error = Ocaml of ocaml_parsing_error | Serialized of Schematic.Ext.error
 
-let name filename = String.capitalize_ascii @@
-  Filename.chop_extension @@ Filename.basename filename
+let name str = Modname.modulize (Support.remove_extension (Filename.basename str))
 
 let ok x = Ok x
 
