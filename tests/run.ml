@@ -588,7 +588,7 @@ let result =
           "approx_parser.mli", (["M2l"], [],[]);
           "approx_parser.ml", (["Deps"; "Loc"; "Read";"M2l";"Paths"],
                                ["Lexer"; "Parser";"Lexing";"List"],[]);
-          "debug.ml", (["Pp"], ["Format"; "Sys"], []);
+          "debug.ml", (["Pp"], ["Format";"Sys";"Printexc"], []);
           "cmi.mli", (["M2l"], [], []);
 
           "deps.ml", (["Namespaced"; "Option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);
