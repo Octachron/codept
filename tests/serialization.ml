@@ -80,7 +80,7 @@ let round_trip' name sch src trip =
 
 (* sig from solver.mli *)
 ;; round_trip' "solver.mli" (Array (pair String Module.Schema.module'))
-  {|((Solver(M((origin(Unit((Local(lib solver.mli))(Solver))))(modules((Directed(Fun((Some((Some Envt)(M())))(Fun((Some((Some Param)(M())))(Fun((Some((Some Eval)(M())))(M()))))))))(Failure(M()))(Make(Fun((Some((Some Envt)(M())))(Fun((Some((Some Param)(M())))(Fun((Some((Some Eval)(M())))(M()))))))))))))))|}
+  {|((Solver(M((origin(Unit((Local(lib Solver))(Solver))))(modules((Directed(Fun((Some((Some Envt)(M())))(Fun((Some((Some Param)(M())))(Fun((Some((Some Eval)(M())))(M()))))))))(Failure(M()))(Make(Fun((Some((Some Envt)(M())))(Fun((Some((Some Param)(M())))(Fun((Some((Some Eval)(M())))(M()))))))))))))))|}
   [sexp;json;sexp;json;json;sexp;sexp;json;json;sexp]
 
 let () =
