@@ -15,7 +15,10 @@ let local = Pkg.local
 let root = if Array.length Sys.argv > 0 then Some (Sys.argv.(1)) else None
 
 let (%) f g x = f (g x)
-let (~:) = List.map Namespaced.make
+let (~:) = List.map (fun str ->
+  match List.rev (Support.split_on_char '.' str) with
+  | [] -> assert false
+  | name :: nms -> Namespaced.make ~nms:(List.rev nms) name)
 
 let classify filename =  match Support.extension filename with
   | "ml" -> { Read.format= Src; kind  = M2l.Structure }
@@ -269,9 +272,7 @@ let std =
 let d x =
   x,
   let nms = List.map String.capitalize_ascii @@ Support.split_on_char '/' x in
-  let n = Namespaced.of_path nms in
-  let name = Paths.S.(module_name @@ parse_filename n.name) in
-  { n with name }
+  Namespaced.of_path nms
 
 let (/) p x =
   x, Namespaced.module_path_of_filename ~nms:[p] x
