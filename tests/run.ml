@@ -174,9 +174,9 @@ module Branch(Param:Stage.param) = struct
           Pp.(list estring) y;
       r
     in
-    test "local" inner inner'
-    && test "lib" lib lib'
-    && test "unknown" unkw unkw'
+    test "local" inner (List.map Modname.to_string inner')
+    && test "lib" lib (List.map Modname.to_string lib')
+    && test "unknown" unkw (List.map Modname.to_string unkw')
 
   let add_info {Unit.ml; mli} ((f,p), info) =
     let k = classify f in
@@ -232,7 +232,8 @@ module Branch(Param:Stage.param) = struct
     let cycles = analyze_cycle files in
       let expected = List.map (List.sort compare) expected in
       let cycles = List.map (List.sort compare) (CSet.elements cycles) in
-      let r = cycles = expected in
+      let r = List.map2 (List.map2 Namespaced.compare) cycles expected in
+      let r = List.for_all (List.for_all ((=) 0)) r in
       if r then
         log "cycle:%s" name
       else
