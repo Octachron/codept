@@ -72,4 +72,4 @@ let () =
         loop (guard-1) zipper
     | Ok (_sig, deps) -> deps in
   let deps = loop 1_000_000 (O.initial m2l) in
-  pp file name deps
+  pp file (Modname.to_string name) deps
