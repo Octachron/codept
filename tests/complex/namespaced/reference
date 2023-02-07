@@ -1,10 +1,10 @@
 {
 "version" : [0, 11, 0],
 "dependencies" :
-  [{ "file" : "namespaced/NAME__a.ml", "deps" : [["NAME__b"], ["Main"]] },
+  [{ "file" : "namespaced/main.ml" },
+  { "file" : "namespaced/NAME__a.ml", "deps" : [["NAME__b"], ["Main"]] },
   { "file" : "namespaced/NAME__b.ml", "deps" : [["NAME__c"], ["Main"]] },
-  { "file" : "namespaced/NAME__c.ml", "deps" : [["Main"]] },
-  { "file" : "namespaced/main.ml" }],
+  { "file" : "namespaced/NAME__c.ml", "deps" : [["Main"]] }],
 "local" :
   [{ "module" : ["Main"], "ml" : "namespaced/main.ml" },
   { "module" : ["NAME__a"], "ml" : "namespaced/NAME__a.ml" },
