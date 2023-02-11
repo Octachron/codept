@@ -325,7 +325,7 @@ module D = struct end
 a.ml: B C D
 b.ml:
 ```
-In this output, the dependencies `B` and `C` for the unit A are fictitious.
+In this output, the dependencies `C` and `D` for the unit A are fictitious.
 Contrarily, `codept -modules a.ml b.ml` uses all the information available in both file at once and produces the exact dependency graph in this situation.
 ```
 a.ml: B
