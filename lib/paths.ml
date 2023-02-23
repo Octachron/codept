@@ -66,9 +66,9 @@ struct
     | a :: q -> a :: chop_extension q
 
   let parse_filename name =
-    let l = Support.split_on_char (String.get (Filename.dir_sep) 0) name in
-    match List.rev l with
-    | "" :: q -> List.rev q
+    Support.cuts ~empty:true ~sep:Filename.dir_sep name
+    |> List.rev |> function
+    | "" :: l -> List.rev l
     | l -> List.rev l
 
   let module_name = module_name
