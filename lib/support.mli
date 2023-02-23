@@ -20,6 +20,21 @@ val remove_extension: string -> string
     [remove_extension s ^ "." ^ extension s = s]
 *)
 
-val split_on_char: char -> string -> string list
 val opt: ('a -> 'b) -> 'a -> 'b option
 val filter_map: ('a -> 'b option) -> 'a list -> 'b list
+
+val cuts : empty:bool -> sep:string -> string -> string list
+(** [cuts ~empty ~sep s] is the list of all substrings of [s] that are
+    delimited by matches of the non empty separator string [sep]. Empty
+    substrings are omitted in the list if [empty] is [false].
+
+    Matching separators in [s] starts from the beginning of [s]. Once one
+    is found, the separator is skipped and matching starts again, that is
+    separator matches can't overlap. If there is no separator match in [s],
+    the list [[s]] is returned.
+
+    The following invariants hold:
+    - [String.concat sep (cuts ~empty:true ~sep s) = s]
+    - [cuts ~empty:true ~sep s <> []]
+
+    @raise Invalid_argument if [sep] is the empty string. *)
