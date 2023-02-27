@@ -47,7 +47,7 @@ let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 let name_of_path v =
   match List.rev (Paths.S.parse_filename v) with
   | [] -> invalid_arg "Invalid empty module path: %S" v
-  | x :: _ -> Modname.modulize (Support.remove_extension x)
+  | x :: _ -> Unitname.modulize x
 
 let (#.) s (start,stop) = sub s start stop
 let (--) start stop = start, stop
@@ -105,7 +105,7 @@ let add_file kind format task udesc =
   let path = match udesc.prefix, udesc.explicit_path with
     | [], None -> None
     | p, None ->
-      Some (Namespaced.make ~nms:p (Modname.to_string (name_of_path udesc.filename)))
+      Some (Namespaced.make ~nms:p (Modname.to_string (Unitname.modname (name_of_path udesc.filename))))
     | p, Some x -> Some Namespaced.{ x with namespace = p @ x.namespace }
   in
   let k = { Common.kind ; format } in
@@ -173,7 +173,7 @@ and add_dir ~prefix:(mpre0,mpre1,fpre) first ~cycle_guard param task
       let mpre1 =
         if L.(param#!nested ) && not first then
           let mname =  name_of_path dir_name in
-          Modname.to_string mname :: mpre1
+          Modname.to_string (Unitname.modname mname) :: mpre1
         else mpre1 in
       let f n = add_file_rec ~prefix:(mpre0, mpre1, dir_name :: fpre) ~start:false
           ~cycle_guard param task (n,None) in

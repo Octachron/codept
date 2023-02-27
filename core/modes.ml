@@ -81,7 +81,7 @@ let export name _ _ ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
   let sign (u:Unit.r)= Unit.signature u in
   let md (unit:Unit.r) =
-    let uname = unit.path.file in
+    let uname = Unitname.filename unit.path.name in
     let m = {
       Module.origin =
         Unit { source = { source=Pkg.Special name; file = unit.path };
