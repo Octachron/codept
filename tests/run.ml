@@ -593,7 +593,7 @@ let result =
                                ["Lexer"; "Parser";"Lexing";"List"],[]);
           "debug.ml", (["Pp"], ["Format";"Sys";"Printexc"], []);
           "cmi.mli", (["M2l"], [], []);
-          "modname.ml", (["Support"; "Pp"], ["Bytes"; "Filename"; "Format"; "Map"; "String"], []);
+          "modname.ml", (["Support"; "Pp"], ["Format"; "Map"; "String"], []);
           "modname.mli", (["Pp"], ["Map"], []);
 
           "deps.ml", (["Namespaced"; "Option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);

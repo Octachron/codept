@@ -21,26 +21,7 @@ let v str = match of_string str with
 
 let pp ppf t = Format.pp_print_string ppf t
 let reflect ppf t = Pp.fp ppf "(Modname.v %S)" t
-
-let of_path fpath =
-  let fpath = Support.remove_extension (Filename.basename fpath) in
-  v (String.capitalize_ascii fpath)
-
 let to_string v = v
-let invalid_arg fmt = Format.kasprintf invalid_arg fmt
-
-let modulize str =
-  if String.length str < 1
-  then invalid_arg "Impossible to modulize an empty string";
-  if not (is_upper str.[0] || is_lower str.[0])
-  then invalid_arg "Impossible to modulize %S" str;
-  let res = Bytes.create (String.length str) in
-  for i = 0 to String.length str - 1 do
-    if is_valid str.[i]
-    then Bytes.set res i str.[i]
-    else Bytes.set res i '_'
-  done ; String.capitalize_ascii (Bytes.unsafe_to_string res)
-
 let compare = String.compare
 
 module Map = Map.Make (String)
