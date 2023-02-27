@@ -182,7 +182,8 @@ module Failure = struct
 
   let approx_cycle recpatch set code =
     let mock (unit: Unit.s) =
-      Modname.to_string unit.path.name, Module.(md @@ mockup (Modname.to_string unit.path.name) ~path:unit.src) in
+      Modname.to_string (Namespaced.module_name unit.path),
+      Module.(md @@ mockup (Modname.to_string (Namespaced.module_name unit.path)) ~path:unit.src) in
     let cycle_summary =
       UMap.fold
         (fun k _ acc -> Summary.see (mock k) acc) set Summary.empty in
@@ -294,9 +295,10 @@ struct
         | Exact ->
           { state with pending = make Eval.initial u :: state.pending }
         | Approx ->
-          let mock = Module.mockup (Modname.to_string u.path.name) ~path:u.src in
+          let mock = Module.mockup (Modname.to_string (Namespaced.module_name u.path)) ~path:u.src in
           let env = Envt.add_unit state.env
-              ~namespace:u.path.namespace (Modname.to_string u.path.name) (Module.md mock) in
+              ~namespace:u.path.namespace
+              (Modname.to_string (Namespaced.module_name u.path)) (Module.md mock) in
           { state with postponed = u:: state.postponed; env }
       )
       { postponed = [];
@@ -320,7 +322,7 @@ struct
               ~origin:(Unit {source=input.src; path=input.path})
               sg in
           Envt.add_unit ~namespace:input.path.namespace state.env
-            (Modname.to_string input.path.name)
+            (Modname.to_string (Namespaced.module_name input.path))
             (Module.Sig md)
         end
         else
@@ -374,9 +376,8 @@ struct
       match Envt.resolve_alias path env with
       | Some x -> x
       | None ->
-        let file = List.hd path in
-        let name = Modname.of_path (String.concat Filename.dir_sep path) in
-        { name; file; namespace = [] }
+        let name = Unitname.modulize (String.concat Filename.dir_sep path) in
+        { name; namespace = [] }
 
   let blocker = Eval.block
 
@@ -458,9 +459,10 @@ struct
     match u.precision with
     | Exact -> add_pending (make Eval.initial u) state
     | Approx ->
-      let mockup = Module.(md @@ mockup ~path:u.src (Modname.to_string u.path.name)) in
+      let mockup = Module.(md @@ mockup ~path:u.src (Modname.to_string (Namespaced.module_name u.path))) in
       let env =
-        Envt.add_unit state.env ~namespace:u.path.namespace (Modname.to_string u.path.name) mockup in
+        Envt.add_unit state.env ~namespace:u.path.namespace
+          (Modname.to_string (Namespaced.module_name u.path)) mockup in
       { state with env; postponed = u :: state.postponed }
 
   let add_pair state pair =
@@ -502,7 +504,8 @@ struct
             Module.Origin.Unit {source=src; path} in
           let md = Module.md @@ Module.create ~origin sg in
           let env =
-            Envt.add_unit state.env ~namespace:path.namespace (Modname.to_string path.name) md in
+            Envt.add_unit state.env ~namespace:path.namespace
+              (Modname.to_string (Namespaced.module_name path)) md in
           { state with env;
                        learned = Namespaced.Set.add path state.learned
           } in

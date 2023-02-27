@@ -253,7 +253,7 @@ module Core = struct
     debug "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
       env.current;
     if nms.namespace = [] then
-      add (Modname.to_string nms.name, Link nms)
+      add (Modname.to_string (Unitname.modname nms.name), Link nms)
     else
       add (Module.namespace nms)
 
@@ -308,7 +308,8 @@ module Core = struct
       | Some m ->
         match m.main with
         | M.Namespace _ -> path
-        | M.Sig { origin = Unit {path=p; _ } ; _ } -> p.namespace @ (Modname.to_string p.name) :: q
+        | M.Sig { origin = Unit {path=p; _ } ; _ } ->
+          p.namespace @ (Modname.to_string (Unitname.modname p.name)) :: q
         | M.Alias {path;_} -> Namespaced.flatten path @ q
         | _ -> path
 

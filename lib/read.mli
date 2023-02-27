@@ -16,8 +16,8 @@ type ocaml_parsing_error = Syntax of Syntaxerr.error | Lexer of Lexer.error
 type error = Ocaml of ocaml_parsing_error | Serialized of Schematic.Ext.error
 
 
-val name: string -> Modname.t
+val name: string -> Unitname.t
 (** [name filename] gives the module name corresponding to filename *)
 
 val file: kind -> string ->
-  Modname.t * (M2l.t, error) result
+  Unitname.t * (M2l.t, error) result

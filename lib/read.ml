@@ -13,7 +13,7 @@ type kind = { format: format; kind: M2l.kind }
 type ocaml_parsing_error = Syntax of Syntaxerr.error | Lexer of Lexer.error
 type error = Ocaml of ocaml_parsing_error | Serialized of Schematic.Ext.error
 
-let name str = Modname.modulize (Support.remove_extension (Filename.basename str))
+let name str = Unitname.modulize str
 
 let ok x = Ok x
 

@@ -394,12 +394,12 @@ let rec reflect ppf = function
 and reflect_named ppf (n,m) = Pp.fp ppf "(%S,%a)" n reflect m
 and reflect_namespaced ppf nd =
   if nd.namespace = [] then
-    Pp.fp ppf "Namespaced.make %a"
-      Modname.reflect nd.name
+    Pp.fp ppf "Namespaced.make (%a)"
+      Unitname.reflect nd.name
   else
-    Pp.fp ppf "Namespaced.make ~nms:[%a] %a"
+    Pp.fp ppf "Namespaced.make ~nms:[%a] (%a)"
       Pp.(list ~sep:(s";@ ") @@ estring) nd.namespace
-      Modname.reflect nd.name
+      Unitname.reflect nd.name
 and reflect_m ppf {origin;signature} =
   Pp.fp ppf {|@[<hov>{origin=%a; signature=%a}@]|}
     Origin.reflect origin
@@ -483,7 +483,7 @@ let namespace (path:Namespaced.t) =
     match path with
     | [] -> raise (Invalid_argument "Module.namespace: empty namespace")
     | [name] ->
-      name, Namespace (Dict.of_list [Modname.to_string global.name, Link global])
+      name, Namespace (Dict.of_list [Modname.to_string (Unitname.modname global.name), Link global])
     | name :: rest ->
       name, Namespace (Dict.of_list [namespace global rest])
   in
@@ -985,7 +985,7 @@ module Namespace = struct
   let rec from_module nms origin sign =
     match nms.Namespaced.namespace with
       | [] ->
-        Dict.of_list [nms.file, Sig (create ~origin sign)]
+        Dict.of_list [Unitname.filename nms.name, Sig (create ~origin sign)]
       | a :: namespace ->
         let sign = Namespace (from_module { nms with namespace } origin sign) in
         Dict.of_list [a, sign]

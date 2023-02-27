@@ -1,35 +1,35 @@
 type p = Paths.S.t
-type t = { namespace: p; name: Modname.t; file: string }
+type t = { namespace: p; name: Unitname.t; }
 type namespaced = t
 
 
 let pp ppf n =
   if n.namespace = [] then
-    Modname.pp ppf n.name
+    Unitname.pp_as_modname ppf n.name
   else
-    Pp.fp ppf "%a.%a" Paths.S.pp n.namespace Modname.pp n.name
+    Pp.fp ppf "%a.%a" Paths.S.pp n.namespace Unitname.pp_as_modname n.name
 
 
 
 let pp_as_filepath ppf n =
   if n.namespace = [] then
-    Pp.string ppf n.file
+    Unitname.pp_as_filepath ppf n.name
   else
     Pp.fp ppf "%a%s%s"
-      Pp.(list ~sep:(const Filename.dir_sep) string) n.namespace Filename.dir_sep n.file
+      Pp.(list ~sep:(const Filename.dir_sep) string) n.namespace Filename.dir_sep
+      (Unitname.filename n.name)
 
 let reflect  ppf n =
   let es ppf = Pp.fp ppf {|"%s"|} in
-  Pp.fp ppf "{name=%a;namespace=[%a];file=%S}"
-    Modname.reflect n.name
+  Pp.fp ppf "{name=%a;namespace=[%a];}"
+    Unitname.reflect n.name
     Pp.(list ~sep:(const "; ") es) n.namespace
-    n.file
 
 let cons prefix n = { n with namespace = prefix @ n.namespace }
 
 let to_string = Format.asprintf "%a" pp
-let make ?(nms=[]) file = { namespace = nms; name= Modname.of_path file; file }
-let flatten n = n.namespace @ [Modname.to_string n.name]
+let make ?(nms=[]) file = { namespace = nms; name= Unitname.modulize file }
+let flatten n = n.namespace @ [Modname.to_string (Unitname.modname n.name)]
 let of_path l =
   let rec split l = function
     | [a] -> l, a
@@ -37,12 +37,12 @@ let of_path l =
     | [] -> raise @@ Invalid_argument("Namespaced.of_path: empty path")
   in
   let p, file = split [] l in
-  let name = Modname.of_path (String.concat Filename.dir_sep l) in
-  { namespace = List.rev p; name; file; }
+  let name = Unitname.modulize file in
+  { namespace = List.rev p; name; }
 
 let head = function
   | {namespace=a :: _ ; _ } -> a
-  | {namespace=[]; file; _ } -> file
+  | {namespace=[]; name; _ } -> Unitname.filename name
 
 let sch =
   let open Schematic in
@@ -52,7 +52,7 @@ let sch =
 
 let compare a b =
   let v = compare a.namespace b.namespace in
-  if v = 0 then Modname.compare a.name b.name
+  if v = 0 then Unitname.compare_as_modnames a.name b.name
   else v
 
 module Ordered = struct
@@ -78,27 +78,24 @@ type set = Set.t
 
 
 let module_path_of_filename ?(nms=[]) filename =
-  let name = Modname.of_path filename in
-  let p = Paths.S.parse_filename filename in
-  match List.rev p with
-  | [] ->  raise  @@  Invalid_argument "Invalid name for a compilation unit"
-  | file :: _ ->
+  let name = Unitname.modulize filename in
+  match List.rev (Support.split_on_char Filename.dir_sep.[0] filename) with
+  | [] -> raise @@ Invalid_argument "Invalid name for a compilation unit"
+  | _ ->
     { namespace = nms ;
-      file; name;
+      name;
     }
 
 let filepath_of_filename ?(nms=[]) filename =
-  let name = Modname.of_path filename in
-  let p = Paths.S.parse_filename filename in
-  match List.rev p with
-  | [] ->  raise  @@  Invalid_argument "Invalid name for a compilation unit"
-  | file :: r ->
+  let name = Unitname.modulize filename in
+  match List.rev (Support.split_on_char Filename.dir_sep.[0] filename) with
+  | [] -> raise @@ Invalid_argument "Invalid name for a compilation unit"
+  | _filename :: r ->
     { namespace = nms @ List.rev r ;
-      file; name;
+      name;
     }
 
-
-let module_name x = x.name
+let module_name x = Unitname.modname x.name
 
 let extension a =
   let ext = Support.extension a in

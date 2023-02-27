@@ -29,7 +29,7 @@ module Sch = struct open Schematic
 end let sch = Sch.all
 
 let filename ?(sep=sep) p =
-  let flatten n = n.Namespaced.namespace @ [ n.file ] in
+  let flatten n = n.Namespaced.namespace @ [ Unitname.filename n.name ] in
   begin match p.source with
     | Pkg n -> String.concat sep (flatten n) ^ sep
     | _ -> ""

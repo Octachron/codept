@@ -1,7 +1,7 @@
 (** Namespaced name, useful for packed module *)
 
 type p = Paths.S.t
-type t = { namespace: p; name: Modname.t; file: string}
+type t = { namespace: p; name: Unitname.t}
 type namespaced = t
 val pp: t Pp.t
 val pp_as_filepath: t Pp.t
