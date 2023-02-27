@@ -97,19 +97,5 @@ let filepath_of_filename ?(nms=[]) filename =
 
 let module_name x = Unitname.modname x.name
 
-let extension a =
-  let ext = Support.extension a in
-  if not (ext = "") && ext.[0] = '.' then
-    String.sub ext 1 (String.length ext - 1)
-  else
-    ext
-
-let may_change_extension f a =
-  match extension a with
-  | "" -> a
-  | ext ->
-    let base = Filename.chop_extension a in
-    base ^ f ext
-
 let change_file_extension f p =
-  { p with file = may_change_extension f p.file }
+  { p with name = Unitname.change_file_extension f p.name }

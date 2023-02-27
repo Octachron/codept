@@ -36,6 +36,13 @@ let filename { filepath; _ } = Filename.basename filepath
 let filepath { filepath; _ } = filepath
 let compare_as_modnames a b = Modname.compare a.modname b.modname
 
+let change_file_extension f t =
+  match Support.extension t.filepath with
+  | "" -> t
+  | ext ->
+    let filepath = (Support.remove_extension t.filepath) ^ "." ^ (f ext) in
+    { t with filepath }
+
 module Map = Map.Make (struct
   type nonrec t = t
 

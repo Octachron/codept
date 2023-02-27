@@ -56,5 +56,20 @@ val compare_as_modnames : t -> t -> int
       - : int = 0
     ]} *)
 
+val change_file_extension : (string -> string) -> t -> t
+(** [change_file_extension f t] tries to replace the current extension of the
+    given [t] (the {i filename} view) by something else returned by [f]. If [t]
+    has no extension, we return it unchanged. Otherwise, we call [f] and give to
+    it the current extension.
+
+    {b NOTE}: The {i modname} view is {b unchanged} in any cases:
+    {[
+      # let v0 = Unitname.modulize "foo.ml" ;;
+      # let v1 = Unitname.change_file_extension (fun _ -> "mli") v0 ;;
+      # assert (Modname.compare (Unitname.modname v0) (Unitname.modname v1) = 0) ;;
+    ]}
+
+    However, [v0] and [v1] are not equal anymore. *)
+
 module Map : Map.S with type key = t
 module Set : Set.S with type elt = t
