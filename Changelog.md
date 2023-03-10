@@ -1,4 +1,8 @@
-# 0.12
+# 0.12.0
+
+## Updates
+
+   * Support 5.0.0 standard library in bundle
 
 ## Bug fixes
 

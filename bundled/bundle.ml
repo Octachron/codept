@@ -31,7 +31,10 @@ let weak =
 
 let ephemeron v =
   let fn name = mkfunctor name ["H"] in
-  let genhastable = submodule "GenHashTable" ~mds:[fn "MakeSeeded"] in
+  let genhastable = if v < (5,0) then
+      [submodule "GenHashTable" ~mds:[fn "MakeSeeded"]]
+    else []
+  in
   let ksub fn =
     let base = [fn "Make"; fn "MakeSeeded"] in
     if v < (4,14) then base else submodule "Bucket" :: base
@@ -42,7 +45,7 @@ let ephemeron v =
     submodule "K2" ~mds:(ksub fn)
   in
   root "Ephemeron"
-    ~mds:[genhastable; k "1"; k2; k "n"]
+    ~mds:(genhastable @ [k "1"; k2; k "n"])
     ~mts:[submodule "S"; submodule "SeededS"]
 
 
@@ -69,7 +72,7 @@ let array_labels version =
   if version >= (4,06) then chain "ArrayLabels" ["Floatarray"] else
     simple "ArrayLabels"
 
-let gc v = if v < (4,11) || v >= (5, 0) then simple "Gc" else chain "Gc" ["Memprof"]
+let gc v = if v < (4,11)  then simple "Gc" else chain "Gc" ["Memprof"]
 
 let chained version = [ gc version; array version; array_labels version; obj version; printexc; random;scanf ]
 
@@ -80,9 +83,9 @@ let simples =
       "CamlinternalOO"; "CamlinternalLazy"; "CamlinternalFormat";
       "CamlinternalFormatBasics"; "CamlinternalMod";
       "Char"; "Complex"; "Digest"; "Filename"; "Format";
-      "Genlex"; "Int32"; "Int64"; "Lazy"; "Lexing"; "List";
+       "Int32"; "Int64"; "Lazy"; "Lexing"; "List";
       "ListLabels"; "Marshal"; "Nativeint"; "Oo"; "Parsing"; "Printf"; "Queue";
-      "Stack"; "Stream"; "String"; "StringLabels"; "Uchar";
+      "Stack"; "String"; "StringLabels"; "Uchar";
       "LargeFile"
     ]
 
@@ -158,6 +161,11 @@ let float version = if version < (4,07) then simple "Float"
   else
     chain "Float" ["Array"; "ArrayLabels"]
 
+
+let effect = chain "Effect" ["Deep"; "Shallow"]
+let semaphore = chain "Semaphore" ["Binary"; "Counting"]
+let domain = chain "Domain" ["DLS"]
+
 let simple_stdlib v = Dict.of_list @@
     before v (4,07) [simple "CamlinternalBigarray"]
   @ before v (4,08) [pervasives; simple "Sort"]
@@ -167,8 +175,11 @@ let simple_stdlib v = Dict.of_list @@
   @ after v  (4,08)
     (List.map simple ["Fun";"Bool";"Option";"Int";"Result"; "Unit"])
   @ before v  (4,10) [simple "Sys"]
-  @ after v (4,12) [simple "Either"; simple "Atomic"; simple "CamlinternalAtomic"]
+  @ after v (4,12) [simple "Either"; simple "Atomic"]
+  @ in_between v (4,12) (5,0) [ simple "CamlinternalAtomic"]
   @ after v (4,14) [simple "In_channel"; simple "Out_channel"]
+  @ before v (5,0) (List.map simple ["Stream";"Genlex"])
+  @ after v (5,0) [semaphore; effect; domain; simple "Condition"; simple "Mutex"]
   @ complex v
   @ simples
 

@@ -1,3 +1,8 @@
+(** Compare the reference bundles computed
+ with `codept -no-alias-deps -export stdlib Stdlib.[<path_to_stdlib>]` (with the
+template folder removed and the the Stdlib and Std_exit module remove) and
+ the one computed by the bundled stdlib *)
+
 
 let dp1 f x ppf = Pp.fp ppf f x
 let dp4 f x y z w ppf  = Pp.fp ppf f x y z w
@@ -19,6 +24,7 @@ let refs =
   List.fold_left (fun m (mj,mn,lib) -> Vmap.add (mj,mn) lib m) Vmap.empty
     (let open Bundle_refs in
      [
+       5,  0, Stdlib_500.modules;
        4, 14, Stdlib_414.modules;
        4, 13, Stdlib_413.modules;
        4, 12, Stdlib_412.modules;
