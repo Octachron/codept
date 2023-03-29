@@ -42,8 +42,13 @@ type 'a printer = Format.formatter -> 'a -> unit
 val info: Paths.S.t  -> explanation  -> 'data printer -> 'data info
 
 type fault = Err: 'data tag * 'data -> fault
+type value = Fmt: 'data printer * 'data -> value
 type t = fault
 
+exception Fatal of value
+(** When an error is critic (see {!val:Level.critical}), we raise this exception
+    which contains the value that describes the critical problem which its
+    {i pretty-printer}. *)
 
 val emit: 'data info -> 'data -> t
 

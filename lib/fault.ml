@@ -44,6 +44,9 @@ let tag (type t) (): t tag =
 
 type 'a printer = Format.formatter -> 'a -> unit
 
+type value = Fmt : 'a printer * 'a -> value
+exception Fatal of value
+
 module Log = struct
 
   let msg lvl simple fatal critical printer ppf x=
@@ -75,7 +78,7 @@ let log i printer ppf x =
   else if i.level >= Level.critical then
     Log.critical printer ppf x
   else if i.level >= i.exit then
-    (fn x; exit 1)
+    (fn x; raise (Fatal (Fmt (printer, x))))
   else
     fn x
 
