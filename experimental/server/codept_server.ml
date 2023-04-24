@@ -79,12 +79,8 @@ let io = {
         Io.direct.writer.m2l fmt (kind,filename) ppf m2l
     end;
     sign = begin
-      fun fmt filename ppf sign ->
-        Sh.map (fun (cached:Cache.t) ->
-            let signatures = Name.Map.add filename sign cached.signatures in
-            { cached with signatures }
-          ) cache;
-        Io.direct.writer.sign fmt filename ppf sign
+      fun fmt ppf sign ->
+        Io.direct.writer.sign fmt  ppf sign
     end;
   }
 }
