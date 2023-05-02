@@ -68,7 +68,7 @@ let process_pkg info name =
 let pkg info pkg = { info with pkgs = pkg :: info.pkgs }
 let syntax info syntax = { info with syntaxes = syntax :: info.syntaxes }
 let ppxopt info opt =
-  match Support.split_on_char ',' opt with
+  match Support.cuts ~empty:false ~sep:"," opt with
   | [] | [_] -> info
   | a :: q ->
     let q = String.concat "," q in
@@ -80,7 +80,7 @@ let ppxopt info opt =
 let ppopt info opt = { info with ppopt = opt :: info.ppopt }
 
 let predicates info s =
-  let l = List.map String.trim @@ Support.split_on_char ',' s in
+  let l = List.map String.trim @@ Support.cuts ~empty:false ~sep:"," s in
   { info with predicates = l @ info.predicates }
 
 let empty =

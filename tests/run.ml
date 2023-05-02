@@ -268,7 +268,7 @@ let std =
 
 let d x =
   x,
-  let nms = List.map String.capitalize_ascii @@ Support.split_on_char '/' x in
+  let nms = List.map String.capitalize_ascii @@ Support.cuts ~empty:false ~sep:"/" x in
   let n = Namespaced.of_path nms in
   let name = Paths.S.(module_name @@ parse_filename n.name) in
   { n with name }

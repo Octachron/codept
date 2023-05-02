@@ -137,10 +137,10 @@ let print_vnum version ()= Format.printf "%.2f@." version
 let print_version version ()= Format.printf "codept, version %.2f@." version
 
 let fault param s =
-  match Support.split_on_char '=' s with
+  match Support.cuts ~empty:false ~sep:"=" s with
   | [] | [_]| _ :: _ :: _ :: _ -> ()
   | [a;b] ->
-    let path= List.map String.trim @@ Support.split_on_char '.' a in
+    let path= List.map String.trim @@ Support.cuts ~empty:false ~sep:"." a in
     let level = Fault.Level.of_string b in
     fmap param L.policy (Fault.Policy.set ~lvl:level path)
 
@@ -186,7 +186,7 @@ let pkg param findlib_query =
       fmap param L.precomputed_libs (Name.Set.add s)
     else
       findlib_query := Findlib.pkg !findlib_query s in
-  Cmd.String( fun s -> List.iter add @@ Support.split_on_char ',' s )
+  Cmd.String( fun s -> List.iter add @@ Support.cuts ~empty:false ~sep:"," s )
 
 let no_stdlib param =
   Cmd.Unit( fun () -> fmap param L.precomputed_libs @@ Name.Set.remove "stdlib" )

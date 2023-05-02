@@ -35,10 +35,10 @@ type unit_desc =
   { filename: string; prefix:Paths.S.t; explicit_path: Namespaced.t option }
 
 let parse_name name =
-  match Support.split_on_char ':' name with
+  match Support.cuts ~empty:false ~sep:":" name with
   | [_] -> { filename=name; prefix=[]; explicit_path=None }
   | [a;b] ->
-    { filename = a; prefix = []; explicit_path= Some (Namespaced.of_path @@ Support.split_on_char '.' b)}
+    { filename = a; prefix = []; explicit_path= Some (Namespaced.of_path @@ Support.cuts ~empty:false ~sep:"." b)}
   | _ ->
     raise (Invalid_file_group "Multiple module path associated to the same file")
 
@@ -50,7 +50,7 @@ let (--*) start stop = start -- (stop-1)
 
 let decorate m udesc =
   let nms = List.filter ((<>) "") @@
-    List.map String.capitalize_ascii @@ Support.split_on_char '.' m in
+    List.map String.capitalize_ascii @@ Support.cuts ~empty:false ~sep:"." m in
   { udesc with prefix =  nms @ udesc.prefix }
 
 let rec parse_top s pos =

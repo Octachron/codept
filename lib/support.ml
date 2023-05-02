@@ -28,22 +28,6 @@ let remove_extension name =
   if l = 0 then name else
   String.sub name 0 (String.length name - l)
 
-let split_on_char sep s =
-  let sub start stop =
-    String.sub s start (stop-start) in
-  let rec split l last pos =
-    if pos = 0 then
-      if s.[pos] = sep then
-        "" :: sub (pos+1) last :: l
-      else
-        sub pos last :: l
-    else if s.[pos] = sep then
-      split (sub (pos+1) last :: l) pos (pos-1)
-    else
-      split l last (pos-1) in
-  let n = String.length s in
-  split [] n (n-1)
-
 let opt conv s = try Some(conv s) with Failure _ -> None
 
 let filter_map f l =
@@ -52,3 +36,33 @@ let filter_map f l =
       | Some x -> x :: acc
       | None -> acc
     ) [] l
+
+(* Copyright (c) 2016 The astring programmers *)
+
+let add ~empty s ~start ~stop acc =
+  if start = stop then ( if not empty then acc else "" :: acc )
+  else String.sub s start (stop - start) :: acc
+
+let cuts ~empty ~sep s =
+  let sep_len = String.length sep in
+  if sep_len = 0 then invalid_arg "cuts: the separator is empty" ;
+  let s_len = String.length s in
+  let max_sep_idx = sep_len - 1 in
+  let max_s_idx = s_len - sep_len in
+  let rec check_sep start i k acc =
+    if k > max_sep_idx then
+      let new_start = i + sep_len in
+      scan new_start new_start (add ~empty s ~start ~stop:i acc)
+    else
+      if s.[i + k] = sep.[k]
+      then check_sep start i (k + 1) acc
+      else scan start (i + 1) acc
+  and scan start i acc =
+    if i > max_s_idx then
+      if start = 0 then ( if not empty && s_len = 0 then [] else [s])
+      else List.rev (add ~empty s ~start ~stop:s_len acc)
+    else
+      if s.[i] = sep.[0]
+      then check_sep start i 1 acc
+      else scan start (i + 1) acc in
+  scan 0 0 []
