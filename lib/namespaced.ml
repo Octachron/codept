@@ -28,6 +28,8 @@ let reflect  ppf n =
 let cons prefix n = { n with namespace = prefix @ n.namespace }
 
 let to_string = Format.asprintf "%a" pp
+let filepath r = Unitname.filepath r.name
+
 let make ?(nms=[]) file = { namespace = nms; name= Unitname.modulize file }
 let flatten n = n.namespace @ [Modname.to_string (Unitname.modname n.name)]
 let of_path l =

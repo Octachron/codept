@@ -410,6 +410,19 @@ end
 module Directed(Envt:Stage.envt)(Param:Stage.param)
     (Eval: Stage.outliner with type envt := Envt.t) =
 struct
+
+  module File_map = struct
+    include Map.Make(struct
+      type t = Namespaced.t
+      let compare x y =
+        let v = Namespaced.compare x y in
+        if v <> 0 then v
+        else Stdlib.compare (Namespaced.filepath x) (Namespaced.filepath y)
+    end)
+    let find_opt k m = match find k m with
+      | x -> Some x
+      | exception Not_found -> None
+  end
   open Unit
 
   type gen = Namespaced.t -> Unit.s option Unit.pair
@@ -419,7 +432,7 @@ struct
     resolved: Unit.r Pkg.map;
     learned: Namespaced.Set.t;
     not_ancestors: Namespaced.Set.t;
-    pending: Eval.on_going i list Namespaced.Map.t;
+    pending: Eval.on_going i list File_map.t;
     env: Envt.t;
     postponed: Unit.s list;
     roots: Namespaced.t list
@@ -427,29 +440,29 @@ struct
 
   let get name state =
     (* Invariant name ∈ state.pending, except when looking at a new seed *)
-    List.hd @@ Mp.find name state.pending
+    List.hd @@ File_map.find name state.pending
 
   let remove name pending =
-    match Mp.find name pending with
-    | _ :: (b :: _ as q) -> Some b, Mp.add name q pending
-    | [_]| [] -> None, Mp.remove name pending
+    match File_map.find name pending with
+    | _ :: (b :: _ as q) -> Some b, File_map.add name q pending
+    | [_]| [] -> None, File_map.remove name pending
     | exception Not_found ->
       (* happens when trying to remove itself due to
          a second round the same unit after encoutering an approximated module *)
       None, pending
 
   let add_pending i state =
-    let l = Option.default [] @@ Mp.find_opt i.input.path
-        state.pending in
+    let l = Option.default [] @@ File_map.find_opt i.input.path state.pending in
     { state with
-      pending = Mp.add i.input.path ( i :: l ) state.pending
+      pending = File_map.add i.input.path ( i :: l ) state.pending
     }
 
   let update_pending i state =
     let pending =
-    match Mp.find i.input.path state.pending with
-    | _ :: q -> Mp.add i.input.path (i::q) state.pending
-    | [] -> Mp.add i.input.path [i] state.pending in
+      match File_map.find i.input.path state.pending with
+      | _ :: q -> File_map.add i.input.path (i::q) state.pending
+      | [] -> File_map.add i.input.path [i] state.pending
+    in
     { state with pending }
 
   let compute state (i: _ i) =
@@ -552,10 +565,11 @@ struct
     let open Mresult.Ok in
     (eval_depth state i)
     >>=  (fun state ->
-        if Mp.cardinal state.pending = 0 then
+        if File_map.cardinal state.pending = 0 then
           Ok state
         else
-          state.pending |> Mp.choose |> snd |> List.hd |> eval state
+          let candidate = state.pending |> File_map.choose |> snd |> List.hd in
+          candidate |> eval state
       )
 
   let eval_post state =
@@ -581,7 +595,7 @@ struct
     eval_more true state
 
   let wip state =
-    List.flatten @@ List.map snd @@ Mp.bindings state.pending
+    List.flatten @@ List.map snd @@ File_map.bindings state.pending
 
   let end_result state =
     state.env, List.map snd @@ Pkg.Map.bindings state.resolved
@@ -593,9 +607,9 @@ struct
       g ++ (k.Read.kind, (k, x, n) ) in
     let add m ((_, _x, path ) as f) =
       let g = Option.default {Unit.ml = []; mli=[]}
-        @@ Mp.find_opt path m in
-      Mp.add path (add_g f g) m in
-    let m = List.fold_left add Mp.empty files in
+        @@ File_map.find_opt path m in
+      File_map.add path (add_g f g) m in
+    let m = List.fold_left add File_map.empty files in
     let convert k l =
       match l with
       | [] -> None
@@ -604,13 +618,12 @@ struct
         Fault.raise Param.policy Standard_faults.local_module_conflict
           (k, List.map (fun (_k,x,_n) -> Pkg.local x) l);
         Some a in
-    let convert_p (k, p) = k, Unit.unimap (convert k) p
-    in
-    let m = List.fold_left (fun acc (k,x) -> Mp.add k x acc)
-        Mp.empty
-      @@ List.map convert_p @@ Mp.bindings m in
+    let convert_p (k, p) = k, Unit.unimap (convert k) p in
+    let m = List.fold_left (fun acc (k,x) -> File_map.add k x acc)
+        File_map.empty
+      @@ List.map convert_p @@ File_map.bindings m in
     fun name ->
-      Mp.find_opt name m
+      File_map.find_opt name m
       |> Option.default {Unit.ml = None; mli = None}
       |> Unit.unimap (Option.fmap load_file)
 
@@ -622,7 +635,7 @@ struct
       resolved = Pkg.Map.empty ;
       learned = Namespaced.Set.empty;
       not_ancestors= Namespaced.Set.empty;
-      pending= Mp.empty;
+      pending= File_map.empty;
       env;
       postponed= [];
       roots
@@ -660,7 +673,7 @@ struct
     |> Failure.approx_and_try_harder
       Eval.recursive_patching Eval.block (alias_resolver state)
     |> List.fold_left (flip add_pending)
-      { state with pending = Mp.empty;
+      { state with pending = File_map.empty;
                    not_ancestors = Namespaced.Set.empty }
 
   let solve loader files core seeds =

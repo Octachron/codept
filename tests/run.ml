@@ -62,6 +62,16 @@ let start_env includes files =
     ~implicits:[["Stdlib"], Bundle.stdlib ]
     Module.Dict.empty
 
+let merge_test_result name y x = match x, y with
+  | Some _ as x, _ -> x
+  | None, true -> None
+  | None, false -> Some name
+
+let close_test_result ctx = function
+  | Some x -> Format.eprintf "In %s, %s@." ctx x; false
+  | None -> true
+
+
 module Branch(Param:Stage.param) = struct
 
   (*  module Engine=Outliner.Make(Envt.Core)(Param)*)
@@ -211,7 +221,10 @@ module Branch(Param:Stage.param) = struct
         in
         inner_test u.src expected (Unit.deps u)
       ) files in
-    exp =? u.ml && exp =? u.mli && Option.( u' >>| (=?) exp >< true )
+    None |> merge_test_result "ml files " (exp =? u.ml)
+    |> merge_test_result "mli files"  (exp =? u.mli)
+    |> merge_test_result "directed" Option.( u' >>| (=?) exp >< true )
+    |> close_test_result "gen_deps_test"
 
   let deps_test (roots,l) =
     gen_deps_test [] simple_dep_test
@@ -379,8 +392,7 @@ let result =
            "e.ml", []
          ]
      )
-  (* TODO(dinosaure): difficult to solve this error. *)
-  (* && (chdir "../aliases_and_map";
+   && (chdir "../aliases_and_map";
       both ["n__C"; "n__D"] @@ dl
         ["n__A.ml", l["m.ml"];
          "n__B.ml", l["m.ml"];
@@ -393,7 +405,7 @@ let result =
          "n__D.mli", l["m.mli"];
          "m.mli", [];
         ]
-     ) *)
+     )
 
   && (chdir "../alias_values";
       both ["C"] @@ dl

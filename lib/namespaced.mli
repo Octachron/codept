@@ -9,6 +9,8 @@ val reflect: t Pp.t
 
 val cons: p -> t -> t
 val to_string: t -> string
+val filepath: t -> string
+
 val make: ?nms:p -> Name.t -> t
 val flatten: t -> p
 val of_path: p -> t
