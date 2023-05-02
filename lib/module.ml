@@ -985,7 +985,7 @@ module Namespace = struct
   let rec from_module nms origin sign =
     match nms.Namespaced.namespace with
       | [] ->
-        Dict.of_list [Unitname.filename nms.name, Sig (create ~origin sign)]
+        Dict.of_list [Modname.to_string @@ Unitname.modname nms.name, Sig (create ~origin sign)]
       | a :: namespace ->
         let sign = Namespace (from_module { nms with namespace } origin sign) in
         Dict.of_list [a, sign]
