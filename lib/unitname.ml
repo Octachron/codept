@@ -15,7 +15,7 @@ let modulize filepath =
   then invalid_arg "Impossible to modulize %S (from %S)" name filename;
   let res = Bytes.create (String.length name) in
   for i = 0 to String.length name - 1 do
-    if Support.is_valid name.[i]
+    if Support.is_valid_module_char name.[i]
     then Bytes.set res i name.[i]
     else Bytes.set res i '_'
   done ;

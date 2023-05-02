@@ -61,7 +61,7 @@ let is_lower = function
   | 'a' .. 'z' -> true
   | _ -> false
 
-let is_valid = function
+let is_valid_module_char = function
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
