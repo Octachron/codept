@@ -7,7 +7,7 @@ let std = Format.std_formatter
 
 let io = Io.direct
 let out = Pp.std
-let () =
+let main () =
   Format_tags.enable Pp.err;
   Format_tags.enable Pp.std;
   let query = Args.process version Sys.argv in
@@ -21,3 +21,5 @@ let () =
       query.action.modes;
     List.iter (Args.iter_makefile out  query.params analyzed)
       query.action.makefiles
+
+let () = try main () with Fault.Fatal _ -> ()
