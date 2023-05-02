@@ -155,8 +155,10 @@ module Policy = struct
          }
     | a :: q, Map m ->
       let env' =
-        Option.default (Level {lvl=m.lvl; expl = m.expl})
-          (S.find_opt a m.map) in
+        match S.find a m.map with
+        | x -> x
+        | exception Not_found -> Level {lvl=m.lvl; expl = m.expl}
+      in
       let elt = set ?lvl ?expl q env' in
       let map = S.add a elt m.map in
       Map{m with map}
