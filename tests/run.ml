@@ -615,9 +615,9 @@ let result =
           "m2l.ml", (["Loc"; "Deps"; "Module"; "Name";
                       "Option";"Paths"; "Pp"; "Schematic"; "Schematic_indices" ],
                      ["List"],[]);
-          "fault.ml", (["Format_tags"; "Option"; "Name";"Paths"; "Pp"],
-                          ["Array"; "Format"; "Map"],[]);
-          "fault.mli", (["Paths"], ["Format"],[]);
+          "fault.ml", (["Format_tags"; "Option"; "Pp"],
+                          ["Array"; "Format"; "Map"; "String"],[]);
+          "fault.mli", ([], ["Format"],[]);
           "format_tags.mli", ([],["Format"],[]);
           "format_compat.mli", ([],["Format"],[]);
           "id.mli", ( ["Pkg";"Pp"; "Schematic"],

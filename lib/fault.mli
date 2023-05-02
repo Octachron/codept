@@ -32,14 +32,14 @@ type 'data tag
 
 type 'data info = {
   tag: 'data tag;
-  path : Paths.S.t (** hierarchical name for the fault *);
+  path : string list (** hierarchical name for the fault *);
   expl: explanation (** fault documentation *);
   printer: Format.formatter -> 'data -> unit;
 }
 
 type 'a printer = Format.formatter -> 'a -> unit
 
-val info: Paths.S.t  -> explanation  -> 'data printer -> 'data info
+val info: string list -> explanation  -> 'data printer -> 'data info
 
 type fault = Err: 'data tag * 'data -> fault
 type value = Fmt: 'data printer * 'data -> value
@@ -81,7 +81,7 @@ sig
 
   (** {2 Utility functions} *)
   val level : t -> fault -> Level.t
-  val set: ?lvl:Level.t -> ?expl:explanation -> Paths.S.t -> t -> t
+  val set: ?lvl:Level.t -> ?expl:explanation -> string list -> t -> t
   val register: ?lvl:Level.t -> 'a info -> t -> t
 
   val set_exit: Level.t -> t -> t

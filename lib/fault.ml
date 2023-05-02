@@ -1,4 +1,4 @@
-
+module S = Map.Make (String)
 module Level = struct
 type t = Format_tags.t
 let info = Format_tags.Info
@@ -86,7 +86,7 @@ type explanation = string
 
 type 'a info = {
   tag: 'a tag;
-  path: Paths.S.t;
+  path: string list;
   expl: explanation;
   printer: Format.formatter -> 'a -> unit
 }
@@ -109,7 +109,7 @@ module Policy = struct
 
   type map =
     | Level of {expl: explanation; lvl: Level.t option}
-    | Map of {expl:explanation; lvl:Level.t option; map: map Name.map}
+    | Map of {expl:explanation; lvl:Level.t option; map: map S.t}
 
   module Register = Map.Make(struct type t = dtag let compare=compare end)
   type t = {
@@ -134,7 +134,7 @@ module Policy = struct
     | Map m, a :: q  ->
       begin
         let h = with_default m.lvl in
-        try find_lvl h (Name.Map.find a m.map) q with
+        try find_lvl h (S.find a m.map) q with
           Not_found -> h
       end
     | Map m, [] -> with_default m.lvl
@@ -151,14 +151,14 @@ module Policy = struct
     | [], Map m -> Map { m with lvl; expl = Option.default m.expl expl }
     | a :: q, Level l ->
       Map{ lvl = None; expl = "";
-           map=Name.Map.singleton a @@ set ?lvl ?expl q @@ Level l
+           map=S.singleton a @@ set ?lvl ?expl q @@ Level l
          }
     | a :: q, Map m ->
       let env' =
         Option.default (Level {lvl=m.lvl; expl = m.expl})
-          (Name.Map.find_opt a m.map) in
+          (S.find_opt a m.map) in
       let elt = set ?lvl ?expl q env' in
-      let map = Name.Map.add a elt m.map in
+      let map = S.add a elt m.map in
       Map{m with map}
 
   let set ?lvl ?expl p pol = { pol with map = set ?lvl ?expl p pol.map }
@@ -185,7 +185,7 @@ module Policy = struct
         Format_tags.(tagged Title) name
         pp_lvl lvl
         expl
-        Pp.( list ~sep:(s "@;") @@ pp_map) (Name.Map.bindings map)
+        Pp.( list ~sep:(s "@;") @@ pp_map) (S.bindings map)
 
 
   let pp ppf pol = Pp.fp ppf "%a@." pp_map ("Policy",pol.map)
