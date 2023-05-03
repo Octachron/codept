@@ -42,13 +42,6 @@ let head = function
   | {namespace=a :: _ ; _ } -> a
   | {namespace=[]; name } -> name
 
-let _exact_sch =
-  let open Schematic in
-  let open Tuple in
-  custom [String; Array String]
-    (fun {name;namespace} -> [name;namespace])
-    (fun [name;namespace] -> {name;namespace})
-
 let sch =
   let open Schematic in
   custom (Array String)
