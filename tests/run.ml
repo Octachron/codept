@@ -607,7 +607,7 @@ let result =
           "cmi.mli", (["M2l"], [], []);
           "modname.ml", (["Support"; "Pp"], ["Format"; "Map"; "String"], []);
           "modname.mli", (["Pp"], ["Map"], []);
-          "unitname.ml", (["Modname"; "Pp"; "Support"], ["Bytes"; "Filename"; "Format"; "Map"; "Set"; "String"], []);
+          "unitname.ml", (["Modname"; "Pp"; "Support"], ["Filename"; "Format"; "Map"; "Set"; "String"], []);
           "unitname.mli", (["Modname"; "Pp"], ["Map"; "Set"], []);
 
           "deps.ml", (["Namespaced"; "Option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);

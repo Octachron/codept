@@ -13,13 +13,7 @@ let modulize filepath =
   then invalid_arg "Impossible to modulize an empty string";
   if not (Support.is_upper name.[0] || Support.is_lower name.[0])
   then invalid_arg "Impossible to modulize %S (from %S)" name filename;
-  let res = Bytes.create (String.length name) in
-  for i = 0 to String.length name - 1 do
-    if Support.is_valid_module_char name.[i]
-    then Bytes.set res i name.[i]
-    else Bytes.set res i '_'
-  done ;
-  let modname = String.capitalize_ascii (Bytes.unsafe_to_string res) in
+  let modname = String.capitalize_ascii name in
   let modname = Modname.v modname in
   { modname; filepath; }
 
