@@ -695,7 +695,7 @@ let result =
              "M2l"; "Modname"; "Unitname"; "Module"; "Mresult"; "Namespaced";
              "Option"; "Pp"; "Paths"; "Pkg"; "Read"; "Unit"; "Fault";
              "Standard_faults"; "Uloc"],
-            ["List";"Filename";"Map";"Format";"String"],[]);
+            ["List";"Map";"Format"],[]);
           "standard_faults.ml", (
             ["Fault"; "Format_tags"; "Module"; "Namespaced"; "Paths"; "Pp"
             ; "Pkg"; "Loc"; "Schematic"; "Uloc" ],

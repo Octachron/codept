@@ -376,8 +376,8 @@ struct
       match Envt.resolve_alias path env with
       | Some x -> x
       | None ->
-        let name = Unitname.modulize (String.concat Filename.dir_sep path) in
-        { name; namespace = [] }
+        let top_unit = Unitname.modulize (List.hd path) in
+        { name=top_unit; namespace = [] }
 
   let blocker = Eval.block
 
