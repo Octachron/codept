@@ -81,7 +81,7 @@ let export name _ _ ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
   let sign (u:Unit.r)= Unit.signature u in
   let md (unit:Unit.r) =
-    let uname = Unitname.filename unit.path.name in
+    let uname = Unitname.modname unit.path.name in
     let m = {
       Module.origin =
         Unit { source = { source=Pkg.Special name; file = unit.path };
@@ -90,7 +90,7 @@ let export name _ _ ppf _param {Unit.mli; _} =
     ; signature = sign unit
     }
     in
-    uname, Module.Sig m in
+    Modname.to_string uname, Module.Sig m in
   let s =
     List.fold_left (fun sg u -> Name.Map.union' sg @@ Module.Dict.of_list[md u])
       Module.Dict.empty mli
