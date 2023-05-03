@@ -48,18 +48,18 @@ let update_extension f p =
 let change_extension ext =
   update_extension ( fun _ -> ext )
 
-let cmo = change_extension ".cmo"
-let o = change_extension ".o"
-let cmi = change_extension ".cmi"
-let cmx = change_extension ".cmx"
-let cmxs = change_extension ".cmx"
+let cmo = change_extension "cmo"
+let o = change_extension "o"
+let cmi = change_extension "cmi"
+let cmx = change_extension "cmx"
+let cmxs = change_extension "cmx"
 
 let mk_dep all native = update_extension @@ function
-  | "mli" | "m2li" -> ".cmi"
-  | "ml" | "m2l" when all -> ".cmi"
+  | "mli" | "m2li" -> "cmi"
+  | "ml" | "m2l" when all -> "cmi"
   | "ml" | "m2l" ->
-    if native then ".cmx" else ".cmo"
-  | "cmi" -> ".cmi"
+    if native then "cmx" else "cmo"
+  | "cmi" -> "cmi"
   | s -> raise @@Invalid_argument ("Unknown extension " ^ s)
 
 let pp_source ppf = function
