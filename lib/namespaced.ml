@@ -48,7 +48,7 @@ let of_path l =
 
 let head = function
   | {namespace=a :: _ ; _ } -> a
-  | {namespace=[]; name; _ } -> Unitname.filename name
+  | {namespace=[]; name } -> Unitname.filename name
 
 let sch =
   let open Schematic in
