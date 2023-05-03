@@ -23,7 +23,7 @@ module Sch = struct open Schematic
         | _ -> .
       )
   let all =
-    custom [source; Namespaced.sch]
+    custom [source; Namespaced.fileview_sch]
       (fun {source;file} -> Tuple.[source;file])
       Tuple.(fun [source;file] ->  {source;file} )
 end let sch = Sch.all

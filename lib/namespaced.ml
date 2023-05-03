@@ -31,7 +31,11 @@ let to_string = Format.asprintf "%a" pp
 let filepath r = Unitname.filepath r.name
 
 let make ?(nms=[]) file = { namespace = nms; name= Unitname.modulize file }
+
 let flatten n = n.namespace @ [Modname.to_string (Unitname.modname n.name)]
+let serialize_flatten n = n.namespace @ [Unitname.filename n.name]
+
+
 let of_path l =
   let rec split l = function
     | [a] -> l, a
@@ -50,6 +54,12 @@ let sch =
   let open Schematic in
   custom (Array String)
     (fun x -> flatten x)
+    (fun x -> of_path x)
+
+let fileview_sch =
+  let open Schematic in
+  custom (Array String)
+    (fun x -> serialize_flatten x)
     (fun x -> of_path x)
 
 let compare a b =

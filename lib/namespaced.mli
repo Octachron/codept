@@ -19,6 +19,7 @@ val compare : t -> t -> int
 
 
 val sch: t Schematic.t
+val fileview_sch: t Schematic.t
 
 val module_path_of_filename: ?nms:p -> string -> t
 val filepath_of_filename: ?nms:p -> string -> t
