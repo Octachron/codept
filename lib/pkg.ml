@@ -29,13 +29,12 @@ module Sch = struct open Schematic
 end let sch = Sch.all
 
 let filename ?(sep=sep) p =
-  let flatten n = n.Namespaced.namespace @ [ Unitname.filename n.name ] in
   begin match p.source with
-    | Pkg n -> String.concat sep (flatten n) ^ sep
+    | Pkg n -> String.concat sep (Namespaced.fileview_flatten n) ^ sep
     | _ -> ""
   end
   ^
-  String.concat sep (flatten p.file)
+  String.concat sep (Namespaced.fileview_flatten p.file)
 
 let is_known = function
   | {source=Unknown; _ } -> false

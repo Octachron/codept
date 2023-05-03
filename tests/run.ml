@@ -751,7 +751,7 @@ let result =
             ["Deps"; "Id"; "M2l"; "Module"; "Name"; "Paths"; "Pp"; "Stage";
              "Summary"; "Transforms"; "Uloc"]
           ,[],[]);
-          "pkg.ml", (["Name"; "Unitname"; "Namespaced"; "Pp"; "Schematic"],["Filename"; "Map"; "Set"; "String"],[]);
+          "pkg.ml", (["Name"; "Namespaced"; "Pp"; "Schematic"],["Filename"; "Map"; "Set"; "String"],[]);
           "pkg.mli", (["Modname"; "Name"; "Namespaced"; "Paths"; "Schematic"],["Format"; "Map"; "Set"],[]);
         ])
       )

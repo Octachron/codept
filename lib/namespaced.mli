@@ -13,6 +13,7 @@ val filepath: t -> string
 
 val make: ?nms:p -> Name.t -> t
 val flatten: t -> p
+val fileview_flatten: t -> p
 val of_path: p -> t
 val head: t -> string
 val compare : t -> t -> int
