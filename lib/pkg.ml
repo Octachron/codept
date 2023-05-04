@@ -23,18 +23,18 @@ module Sch = struct open Schematic
         | _ -> .
       )
   let all =
-    custom [source; Namespaced.sch]
+    custom [source; Namespaced.fileview_sch]
       (fun {source;file} -> Tuple.[source;file])
       Tuple.(fun [source;file] ->  {source;file} )
 end let sch = Sch.all
 
 let filename ?(sep=sep) p =
   begin match p.source with
-    | Pkg n -> String.concat sep (Namespaced.flatten n) ^ sep
+    | Pkg n -> String.concat sep (Namespaced.fileview_flatten n) ^ sep
     | _ -> ""
   end
   ^
-  String.concat sep (Namespaced.flatten p.file)
+  String.concat sep (Namespaced.fileview_flatten p.file)
 
 let is_known = function
   | {source=Unknown; _ } -> false
@@ -48,18 +48,18 @@ let update_extension f p =
 let change_extension ext =
   update_extension ( fun _ -> ext )
 
-let cmo = change_extension ".cmo"
-let o = change_extension ".o"
-let cmi = change_extension ".cmi"
-let cmx = change_extension ".cmx"
-let cmxs = change_extension ".cmx"
+let cmo = change_extension "cmo"
+let o = change_extension "o"
+let cmi = change_extension "cmi"
+let cmx = change_extension "cmx"
+let cmxs = change_extension "cmx"
 
 let mk_dep all native = update_extension @@ function
-  | "mli" | "m2li" -> ".cmi"
-  | "ml" | "m2l" when all -> ".cmi"
+  | "mli" | "m2li" -> "cmi"
+  | "ml" | "m2l" when all -> "cmi"
   | "ml" | "m2l" ->
-    if native then ".cmx" else ".cmo"
-  | "cmi" -> ".cmi"
+    if native then "cmx" else "cmo"
+  | "cmi" -> "cmi"
   | s -> raise @@Invalid_argument ("Unknown extension " ^ s)
 
 let pp_source ppf = function

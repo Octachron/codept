@@ -15,7 +15,10 @@ let local = Pkg.local
 let root = if Array.length Sys.argv > 0 then Some (Sys.argv.(1)) else None
 
 let (%) f g x = f (g x)
-let (~:) = List.map Namespaced.make
+let (~:) = List.map (fun str ->
+  match List.rev (Support.split_on_char '.' str) with
+  | [] -> assert false
+  | name :: nms -> Namespaced.make ~nms:(List.rev nms) name)
 
 let classify filename =  match Support.extension filename with
   | "ml" -> { Read.format= Src; kind  = M2l.Structure }
@@ -58,6 +61,16 @@ let start_env includes files =
     ~namespace:files
     ~implicits:[["Stdlib"], Bundle.stdlib ]
     Module.Dict.empty
+
+let merge_test_result name y x = match x, y with
+  | Some _ as x, _ -> x
+  | None, true -> None
+  | None, false -> Some name
+
+let close_test_result ctx = function
+  | Some x -> Format.eprintf "In %s, %s@." ctx x; false
+  | None -> true
+
 
 module Branch(Param:Stage.param) = struct
 
@@ -171,9 +184,9 @@ module Branch(Param:Stage.param) = struct
           Pp.(list estring) y;
       r
     in
-    test "local" inner inner'
-    && test "lib" lib lib'
-    && test "unknown" unkw unkw'
+    test "local" inner (List.map Modname.to_string inner')
+    && test "lib" lib (List.map Modname.to_string lib')
+    && test "unknown" unkw (List.map Modname.to_string unkw')
 
   let add_info {Unit.ml; mli} ((f,p), info) =
     let k = classify f in
@@ -208,7 +221,10 @@ module Branch(Param:Stage.param) = struct
         in
         inner_test u.src expected (Unit.deps u)
       ) files in
-    exp =? u.ml && exp =? u.mli && Option.( u' >>| (=?) exp >< true )
+    None |> merge_test_result "ml files " (exp =? u.ml)
+    |> merge_test_result "mli files"  (exp =? u.mli)
+    |> merge_test_result "directed" Option.( u' >>| (=?) exp >< true )
+    |> close_test_result "gen_deps_test"
 
   let deps_test (roots,l) =
     gen_deps_test [] simple_dep_test
@@ -229,7 +245,8 @@ module Branch(Param:Stage.param) = struct
     let cycles = analyze_cycle files in
       let expected = List.map (List.sort compare) expected in
       let cycles = List.map (List.sort compare) (CSet.elements cycles) in
-      let r = cycles = expected in
+      let r = List.map2 (List.map2 Namespaced.compare) cycles expected in
+      let r = List.for_all (List.for_all ((=) 0)) r in
       if r then
         log "cycle:%s" name
       else
@@ -269,9 +286,7 @@ let std =
 let d x =
   x,
   let nms = List.map String.capitalize_ascii @@ Support.split_on_char '/' x in
-  let n = Namespaced.of_path nms in
-  let name = Paths.S.(module_name @@ parse_filename n.name) in
-  { n with name }
+  Namespaced.of_path nms
 
 let (/) p x =
   x, Namespaced.module_path_of_filename ~nms:[p] x
@@ -377,7 +392,7 @@ let result =
            "e.ml", []
          ]
      )
-  && (chdir "../aliases_and_map";
+   && (chdir "../aliases_and_map";
       both ["n__C"; "n__D"] @@ dl
         ["n__A.ml", l["m.ml"];
          "n__B.ml", l["m.ml"];
@@ -585,11 +600,15 @@ let result =
         (Some ~:["Solver"; "Standard_policies"])
         (dl[
           "ast_converter.mli", ( ["M2l"], ["Parsetree"], [] );
-          "approx_parser.mli", (["M2l"], [],[]);
+          "approx_parser.mli", (["M2l";"Unitname"], [],[]);
           "approx_parser.ml", (["Deps"; "Loc"; "Read";"M2l";"Paths"],
                                ["Lexer"; "Parser";"Lexing";"List"],[]);
-          "debug.ml", (["Pp"], ["Format"; "Sys"], []);
+          "debug.ml", (["Pp"], ["Format";"Sys";"Printexc"], []);
           "cmi.mli", (["M2l"], [], []);
+          "modname.ml", (["Support"; "Pp"], ["Format"; "Map"; "String"], []);
+          "modname.mli", (["Pp"], ["Map"], []);
+          "unitname.ml", (["Modname"; "Pp"; "Support"], ["Filename"; "Format"; "Map"; "Set"; "String"], []);
+          "unitname.mli", (["Modname"; "Pp"], ["Map"; "Set"], []);
 
           "deps.ml", (["Namespaced"; "Option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);
           "deps.mli", (["Namespaced"; "Pkg"; "Pp"; "Schematic"],["Format"],[]);
@@ -606,7 +625,7 @@ let result =
             [], []);
           "envt.ml", (
             ["Cmi"; "Debug"; "Deps"; "Summary"; "Transforms";
-             "Fault"; "Dep_zipper"; "Module"; "Name"; "Namespaced"; "Paths";
+             "Fault"; "Dep_zipper"; "Modname"; "Unitname"; "Module"; "Name"; "Namespaced"; "Paths";
              "Standard_faults";"Standard_policies";"Option"; "Pkg"; "Pp"; "Uloc"],
             ["Array"; "Filename";"List";"Sys"],
             []);
@@ -626,14 +645,14 @@ let result =
                           [], [] );
           "module.mli", ( ["Id"; "Paths"; "Pkg"; "Name";"Namespaced"; "Schematic"; "Uloc"],
                           ["Format"], [] );
-          "module.ml", ( ["Id"; "Loc";"Paths"; "Pkg"; "Name"; "Namespaced"; "Option"; "Pp"
+          "module.ml", ( ["Id"; "Loc";"Paths"; "Pkg"; "Modname"; "Unitname"; "Name"; "Namespaced"; "Option"; "Pp"
                          ; "Schematic"; "Schematic_indices"; "Uloc" ],
                          ["List"; "Format"; "Map"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"], ["Set";"Map";"List"], [] );
-          "namespaced.mli", ( ["Name";"Paths"; "Pp"; "Schematic"],
+          "namespaced.mli", ( ["Modname";"Unitname";"Name";"Paths"; "Pp"; "Schematic"],
                               ["Format"; "Set";"Map"], [] );
-          "namespaced.ml", ( ["Name"; "Paths"; "Pp"; "Schematic"; "Support"],
+          "namespaced.ml", ( ["Modname"; "Unitname"; "Paths"; "Pp"; "Schematic"; "Support"],
                              ["Filename"; "Format";"List";"Set";"Map"; "String"], [] );
           "loc.mli", ( ["Schematic"], ["Format"], []);
           "loc.ml", ( ["Pp";"Schematic"], ["List"], []);
@@ -648,11 +667,11 @@ let result =
                         "String"],[]);
           "pp.mli", ([], ["Format"],[]);
           "pp.ml", ([], ["Format"],[]);
-          "read.mli", (["M2l"; "Name"; "Schematic"],["Lexer";"Syntaxerr"],[]);
+          "read.mli", (["M2l"; "Unitname"; "Schematic"],["Lexer";"Syntaxerr"],[]);
           "read.ml", (["Ast_converter"; "Cmi"; "M2l"; "Pparse_compat";"Schema"
-                      ; "Schematic" ],
-                      ["Filename"; "Lexer"; "Lexing"; "List"; "Location";
-                       "Parse"; "Parsetree"; "Parsing"; "Pparse"; "String";
+                      ; "Unitname"; "Schematic"; ],
+                      ["Lexer"; "Lexing"; "List"; "Location";
+                       "Parse"; "Parsetree"; "Parsing"; "Pparse";
                        "Syntaxerr"],
                       ["Sparser";"Slex"]);
           "mresult.mli", ([],[],[]);
@@ -673,10 +692,10 @@ let result =
                          ["Format"],[]);
           "solver.ml", (
             ["Approx_parser"; "Debug"; "Deps"; "Summary"; "Stage"; "Loc";
-             "M2l"; "Module"; "Mresult"; "Namespaced";
+             "M2l"; "Modname"; "Unitname"; "Module"; "Mresult"; "Namespaced";
              "Option"; "Pp"; "Paths"; "Pkg"; "Read"; "Unit"; "Fault";
              "Standard_faults"; "Uloc"],
-            ["List"; "Map";"Format"],[]);
+            ["List";"Map";"Format"],[]);
           "standard_faults.ml", (
             ["Fault"; "Format_tags"; "Module"; "Namespaced"; "Paths"; "Pp"
             ; "Pkg"; "Loc"; "Schematic"; "Uloc" ],
@@ -733,7 +752,7 @@ let result =
              "Summary"; "Transforms"; "Uloc"]
           ,[],[]);
           "pkg.ml", (["Name"; "Namespaced"; "Pp"; "Schematic"],["Filename"; "Map"; "Set"; "String"],[]);
-          "pkg.mli", (["Name"; "Namespaced"; "Paths"; "Schematic"],["Format"; "Map"; "Set"],[]);
+          "pkg.mli", (["Modname"; "Name"; "Namespaced"; "Paths"; "Schematic"],["Format"; "Map"; "Set"],[]);
         ])
       )
     )

@@ -19,7 +19,6 @@ module Simple :
     type set = Set.t
     type 'a map = 'a Map.t
     val prefix : 'a list -> 'a
-    val module_name: t -> Name.t
 
       (** {2 Extension and parsing} *)
     val change_file_extension : (string -> string) -> t -> t

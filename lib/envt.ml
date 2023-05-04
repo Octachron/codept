@@ -253,7 +253,7 @@ module Core = struct
     debug "@[<v 2>Adding %a@; to %a@]@." Namespaced.pp nms pp_context
       env.current;
     if nms.namespace = [] then
-      add (nms.name, Link nms)
+      add (Modname.to_string (Unitname.modname nms.name), Link nms)
     else
       add (Module.namespace nms)
 
@@ -308,7 +308,8 @@ module Core = struct
       | Some m ->
         match m.main with
         | M.Namespace _ -> path
-        | M.Sig { origin = Unit {path=p; _ } ; _ } -> p.namespace @ p.name :: q
+        | M.Sig { origin = Unit {path=p; _ } ; _ } ->
+          p.namespace @ (Modname.to_string (Unitname.modname p.name)) :: q
         | M.Alias {path;_} -> Namespaced.flatten path @ q
         | _ -> path
 
@@ -336,7 +337,7 @@ module Libraries = struct
   type source = {
     origin: Paths.Simple.t;
     mutable resolved: Core.t;
-    cmis: Pkg.t Name.map
+    cmis: Pkg.t Modname.Map.t
   }
 
 
@@ -348,10 +349,10 @@ module Libraries = struct
           if Filename.check_suffix x ".cmi" then
             let p =
               {Pkg.source = Pkg.Pkg origin; file = Namespaced.filepath_of_filename x} in
-            Name.Map.add (Pkg.module_name p) p m
+            Modname.Map.add (Pkg.module_name p) p m
           else m
         )
-        Name.Map.empty files in
+        Modname.Map.empty files in
     { origin=Namespaced.flatten origin; resolved= Core.start M.Def.empty; cmis= cmis_map }
 
   let create includes =  List.map read_dir includes
@@ -377,7 +378,7 @@ module Libraries = struct
           | None -> assert false
           | Some { data = _y, bl_path ; _ } ->
             let name' = List.hd bl_path in
-            let path' = Name.Map.find name' source.cmis in
+            let path' = Modname.Map.find (Modname.v name') source.cmis in
             let code' = I.initial (Cmi.m2l @@ Pkg.filename path') in
             let stack =
               (name', path', code') :: (name, path, code) :: q  in
@@ -396,7 +397,8 @@ module Libraries = struct
   let rec pkg_find name source =
     match Core.find_name noloc M.Module name source.resolved.current with
     | None ->
-      let path = Name.Map.find name source.cmis in
+      let path = Modname.Map.find (Modname.v name) source.cmis in
+      debug "pkg_find %S => %a." name Pkg.pp path;
       track source [name, path, I.initial (Cmi.m2l @@ Pkg.filename path) ];
       pkg_find name source
     | Some m -> let main = m.T.main in

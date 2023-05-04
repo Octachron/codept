@@ -1,7 +1,7 @@
 (** Namespaced name, useful for packed module *)
 
 type p = Paths.S.t
-type t = { namespace: p; name: Name.t }
+type t = { namespace: p; name: Unitname.t}
 type namespaced = t
 val pp: t Pp.t
 val pp_as_filepath: t Pp.t
@@ -9,13 +9,18 @@ val reflect: t Pp.t
 
 val cons: p -> t -> t
 val to_string: t -> string
+val filepath: t -> string
+
 val make: ?nms:p -> Name.t -> t
 val flatten: t -> p
+val fileview_flatten: t -> p
 val of_path: p -> t
-val head: t -> Name.t
+val head: t -> string
+val compare : t -> t -> int
 
 
 val sch: t Schematic.t
+val fileview_sch: t Schematic.t
 
 val module_path_of_filename: ?nms:p -> string -> t
 val filepath_of_filename: ?nms:p -> string -> t
@@ -36,5 +41,4 @@ type set = Set.t
 
 (** {2 Extension and parsing} *)
 val change_file_extension : (string -> string) -> t -> t
-val chop_extension: t -> t
-val module_name: t -> Name.t
+val module_name: t -> Modname.t

@@ -52,3 +52,21 @@ let filter_map f l =
       | Some x -> x :: acc
       | None -> acc
     ) [] l
+
+let is_upper = function
+  | 'A' .. 'Z' -> true
+  | _ -> false
+
+let is_lower = function
+  | 'a' .. 'z' -> true
+  | _ -> false
+
+let is_valid_module_char = function
+  | 'a' .. 'z'
+  | 'A' .. 'Z'
+  | '0' .. '9'
+  | '_' | '\'' -> true
+  | '-' -> true
+    (* XXX(dinosaure): an example exists: [First-class-modules].
+       [ocamlopt] can compile it but it emits an warning. *)
+  | _ -> false
