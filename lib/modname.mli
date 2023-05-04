@@ -40,4 +40,4 @@ val to_string : t -> string
 val compare : t -> t -> int
 val reflect : t Pp.t
 
-module Map : Map.S with type key = t
+module Map : Support.Map.S with type key = t

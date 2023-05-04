@@ -710,13 +710,7 @@ let rec extend: type any. any ty -> extended ty = function
 
 module Subst = struct
 
-  module Tbl = struct
-    include Map.Make(Id)
-    let find_opt k m =
-      match find k m with
-      | x -> Some x
-      | exception Not_found -> None
-  end
+  module Tbl = Support.Map.Make(Id)
   type 'x t = 'x ty Tbl.t
   type 'x subst = 'x t
 

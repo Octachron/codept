@@ -72,10 +72,7 @@ module Ordered = struct
   let compare = compare
 end
 
-module Map= struct
-  include Map.Make(Ordered)
-  let find_opt x m = try Some(find x m) with Not_found -> None
-end
+module Map = Support.Map.Make(Ordered)
 type 'a map = 'a Map.t
 
 module Set = struct

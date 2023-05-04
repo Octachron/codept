@@ -70,3 +70,16 @@ let is_valid_module_char = function
     (* XXX(dinosaure): an example exists: [First-class-modules].
        [ocamlopt] can compile it but it emits an warning. *)
   | _ -> false
+
+module Map = struct
+  module type S = sig
+     include Map.S
+      val find_opt: key -> 'a t -> 'a option
+  end
+  module Make(X:Map.OrderedType) = struct
+    include Map.Make(X)
+    let find_opt k m = match find k m with
+      | exception Not_found -> None
+      | x -> Some x
+  end
+end

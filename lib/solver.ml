@@ -411,18 +411,13 @@ module Directed(Envt:Stage.envt)(Param:Stage.param)
     (Eval: Stage.outliner with type envt := Envt.t) =
 struct
 
-  module File_map = struct
-    include Map.Make(struct
+  module File_map = Support.Map.Make(struct
       type t = Namespaced.t
       let compare x y =
         let v = Namespaced.compare x y in
         if v <> 0 then v
         else Stdlib.compare (Namespaced.filepath x) (Namespaced.filepath y)
     end)
-    let find_opt k m = match find k m with
-      | x -> Some x
-      | exception Not_found -> None
-  end
   open Unit
 
   type gen = Namespaced.t -> Unit.s option Unit.pair

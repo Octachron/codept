@@ -28,3 +28,11 @@ val filter_map: ('a -> 'b option) -> 'a list -> 'b list
 val is_upper : char -> bool
 val is_lower : char -> bool
 val is_valid_module_char : char -> bool
+
+module Map: sig
+  module type S = sig
+     include Map.S
+      val find_opt: key -> 'a t -> 'a option
+  end
+  module Make(X:Map.OrderedType): S with type key = X.t
+end

@@ -24,4 +24,4 @@ let reflect ppf t = Pp.fp ppf "(Modname.v %S)" t
 let to_string v = v
 let compare = String.compare
 
-module Map = Map.Make (String)
+module Map = Support.Map.Make(String)

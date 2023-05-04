@@ -103,10 +103,7 @@ module Set = struct
   include Set.Make(struct type t = path let compare = compare end)
   let pp ppf s = Pp.(clist pp) ppf (elements s)
 end
-module Map = struct
-  include Map.Make(struct type t = path let compare = compare end)
-  let find_opt k m = try Some(find k m) with Not_found -> None
-end
+module Map = Support.Map.Make(struct type t = path let compare = compare end)
 type set = Set.t
 type 'a map = 'a Map.t
 
