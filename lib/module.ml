@@ -1,6 +1,3 @@
-
-let debug fmt = Format.ifprintf Pp.err ("Debug:" ^^ fmt ^^"@.")
-
 module Arg = struct
   type 'a t = { name:Name.t option; signature:'a }
   type 'a arg = 'a t
@@ -884,9 +881,9 @@ module Partial = struct
   let refresh = Subst.refresh
   let apply ~arg ~param ~body =
     let subst = Subst.compute_constraints ~arg ~param in
-    debug "Constraint from typing:%a@." Subst.pp subst;
+    Debug.debug "Constraint from typing:%a@." Subst.pp subst;
     let res = Subst.apply subst body in
-    debug "Result:@ %a ⇒@ %a@." pp body pp res;
+    Debug.debug "Result:@ %a ⇒@ %a@." pp body pp res;
     res
 
 
