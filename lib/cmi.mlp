@@ -45,6 +45,10 @@ let rec path_to_lid  = function
     | P.Pdot (p,s) -> L.Ldot(path_to_lid p,s)
 #end
     | P.Papply (f,x) -> L.Lapply (path_to_lid f, path_to_lid x)
+# 5.1, oo
+    | P.Pextra_ty (ty, _extra) -> path_to_lid ty
+#end
+
 let from_path x = Longident_converter.from_lid (path_to_lid x)
 
 

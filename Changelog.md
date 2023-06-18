@@ -3,10 +3,15 @@
 ## Updates
 
    * Support 5.0.0 standard library in bundle
+   * Support 5.1
 
 ## Bug fixes
 
    * Restore "-sort"
+
+## Internal
+
+  * cleaner library interfaces
 
 # 0.11.1 (22 June 2021)
 

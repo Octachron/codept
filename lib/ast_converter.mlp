@@ -208,7 +208,7 @@ and structure_item item =
            let rec P1 = E1 and ... and Pn = EN   (flag = Recursive)
     *) ->
     minor @@ data @@
-    Annot.union_map (Pattern.to_annot % val_binding % vb_pair) vals
+    Annot.union_map (Pattern.to_annot % val_binding % vb_triple) vals
   | Pstr_primitive desc
     (*  val x: T
         external x: T = "s1" ... "sn" *)
@@ -377,7 +377,7 @@ and expr exp =
       Annot.ext @@ with_loc loc @@ extension_core ext
 # 4.08,oo
   | Pexp_letop b ->
-     val_bindings (fun bop -> bop.pbop_pat, bop.pbop_exp)
+     val_bindings (fun bop -> bop.pbop_pat, [], bop.pbop_exp)
        (b.let_ :: b.ands)
        (expr b.body)
 #end
@@ -624,6 +624,10 @@ and module_expr mexpr : M2l.module_expr =
 #end
   | Pmod_apply (f,x)  (* ME1(ME2) *) ->
     Apply {f = module_expr f; x = module_expr x }
+# 5.1, oo
+  | Pmod_apply_unit f (* F()  *) ->
+    Apply { f = module_expr f; x = Abstract  }
+#end
   | Pmod_constraint (me,mt) ->
     Constraint(module_expr me, module_type mt)
   | Pmod_unpack { pexp_desc = Pexp_constraint
@@ -635,10 +639,11 @@ and module_expr mexpr : M2l.module_expr =
   | Pmod_extension ext ->
     Extension_node(extension_core ext)
 (* [%id] *)
-and val_binding (patt,expr): Pattern.t =
+and val_binding (patt,type_constraints,expr): Pattern.t =
   let p, e = matched_patt_expr patt expr in
-  Pattern.( p ++ of_annot e )
-and val_bindings: 'a. ('a -> pattern * Parsetree.expression) -> 'a list -> _  =
+  let with_tyc = List.fold_left (fun annot x -> annot ++ core_type x) e type_constraints in
+  Pattern.( p ++ of_annot with_tyc)
+and val_bindings: 'a. ('a -> pattern * core_type list * Parsetree.expression) -> 'a list -> _  =
   fun proj vbs expr ->
   let p = Pattern.union_map (val_binding % proj) vbs in
   let v =
@@ -646,8 +651,20 @@ and val_bindings: 'a. ('a -> pattern * Parsetree.expression) -> 'a list -> _  =
     List.fold_left binder expr.Loc.data p.binds
   in
   Pattern.to_annot p ++ Loc.create expr.Loc.loc v
-and vb_pair x = x.pvb_pat, x.pvb_expr
-and value_bindings x = val_bindings vb_pair x
+and vb_triple x =
+    let constraints =
+# oo, 5.1
+       []
+# 5.1, oo
+    match x.pvb_constraint with
+    | None -> []
+    | Some (Pvc_constraint { locally_abstract_univars=_; typ=t }
+           | Pvc_coercion {ground=None; coercion=t})-> [t]
+    | Some (Pvc_coercion { ground = Some g; coercion }) -> [g;coercion]
+#end
+   in
+    x.pvb_pat, constraints, x.pvb_expr
+and value_bindings x = val_bindings vb_triple x
 
 and module_binding_raw mb =
   module_binding (mb.pmb_name, mb.pmb_expr)
