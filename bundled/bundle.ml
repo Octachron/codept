@@ -180,6 +180,7 @@ let simple_stdlib v = Dict.of_list @@
   @ after v (4,14) [simple "In_channel"; simple "Out_channel"]
   @ before v (5,0) (List.map simple ["Stream";"Genlex"])
   @ after v (5,0) [semaphore; effect; domain; simple "Condition"; simple "Mutex"]
+  @ after v (5,1) [chain "Type" ["Id"]]
   @ complex v
   @ simples
 
