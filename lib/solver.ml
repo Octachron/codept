@@ -416,7 +416,7 @@ struct
       let compare x y =
         let v = Namespaced.compare x y in
         if v <> 0 then v
-        else Stdlib.compare (Namespaced.filepath x) (Namespaced.filepath y)
+        else compare (Namespaced.filepath x) (Namespaced.filepath y)
     end)
   open Unit
 
