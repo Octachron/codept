@@ -391,12 +391,12 @@ let rec reflect ppf = function
 and reflect_named ppf (n,m) = Pp.fp ppf "(%S,%a)" n reflect m
 and reflect_namespaced ppf nd =
   if nd.namespace = [] then
-    Pp.fp ppf "Namespaced.make (%a)"
-      Unitname.reflect nd.name
+    Pp.fp ppf {|Namespaced.make "%a"|}
+      Unitname.pp_as_modname nd.name
   else
-    Pp.fp ppf "Namespaced.make ~nms:[%a] (%a)"
+    Pp.fp ppf {|Namespaced.make ~nms:[%a] "%a"|}
       Pp.(list ~sep:(s";@ ") @@ estring) nd.namespace
-      Unitname.reflect nd.name
+      Unitname.pp_as_modname nd.name
 and reflect_m ppf {origin;signature} =
   Pp.fp ppf {|@[<hov>{origin=%a; signature=%a}@]|}
     Origin.reflect origin
