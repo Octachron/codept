@@ -251,6 +251,7 @@ and expr exp =
     *)
     ->
     with_loc loc @@ data @@ value_bindings vbs @@ expr exp
+# oo, 5.2
   | Pexp_function cases (* function P1 -> E1 | ... | Pn -> En *) ->
     Annot.union_map case cases
   | Pexp_fun ( _arg_label, expr_opt, pat, expression)
@@ -266,6 +267,13 @@ and expr exp =
     ->
     Annot.opt expr expr_opt
     ++ Pattern.bind_fmod (pattern pat) (expr expression)
+# 5.2, oo
+  | Pexp_function (params, cty, body) (* function P1 -> E1 | ... | Pn -> En *) ->
+      Annot.opt fconstraint cty
+      ++ Pattern.bind_fmod
+          (Pattern.union_map fparam params)
+          (fbody body)
+#end
   | Pexp_apply (expression, args)
     (* E0 ~l1:E1 ... ~ln:En
        li can be empty (non labeled argument) or start with '?'
@@ -381,6 +389,20 @@ and expr exp =
        (b.let_ :: b.ands)
        (expr b.body)
 #end
+# 5.2,oo
+and fconstraint = function
+    | Pconstraint cty -> core_type cty
+    | Pcoerce (base, cty) -> Annot.opt core_type base ++ core_type cty
+and fparam x =
+    match x.pparam_desc with
+    | Pparam_newtype _ -> Pattern.empty
+    | Pparam_val (_,e,p) ->
+      let default = Pattern.of_annot (Annot.opt expr e) in
+      Pattern.merge default (pattern p)
+and fbody = function
+  | Pfunction_body e -> expr e
+  | Pfunction_cases (cases,_,_) -> Annot.union_map case cases
+#end
 and pattern pat =
   let loc = pat.ppat_loc in
   match pat.ppat_desc with
@@ -495,6 +517,13 @@ and core_type ct : M2l.Annot.t =
     Annot.union_map row_field row_fields
   | Ptyp_package s (* (module S) *) ->
     package_type s
+# 5.2, oo
+  | Ptyp_open (l,ty) ->
+      Annot.local_open
+        (from_loc l.loc)
+        (Ident (npath l))
+        (core_type ty)
+#end
 and row_field x = Annot.union_map core_type (row_field_core x)
 and package_type (s,constraints) =
   Annot.merge
