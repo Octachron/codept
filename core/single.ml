@@ -19,16 +19,16 @@ let to_m2l policy sig_only (k,f,_n) =
   match Common.classic k with
   | None -> None
   | Some k ->
-    match Read.file k f with
-    | _name, Ok x ->
+    match Read.file_raw k f with
+    | Ok x ->
       if sig_only then Some (k, M2l.Sig_only.filter x) else Some (k,x)
-    | _, Error (Ocaml (Syntax msg)) ->
+    | Error (Ocaml (Syntax msg)) ->
       Fault.raise policy Standard_faults.syntaxerr msg;
       Some(k, approx f)
-    | _, Error (Ocaml (Lexer msg)) ->
+    | Error (Ocaml (Lexer msg)) ->
       Fault.raise policy Standard_faults.lexerr (!Location.input_name,msg);
       Some(k, approx f)
-    | _, Error (Serialized e) ->
+    | Error (Serialized e) ->
       Standard_faults.schematic_errors policy (f,"m2l",e); None
 
 let approx_file _ _ ppf _param (_,f,_) =

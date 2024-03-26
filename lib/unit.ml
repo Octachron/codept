@@ -46,7 +46,7 @@ let proj u = { u with more = () }
 
 
 let read_file policy kind filename path : s =
-  let _name, code = Read.file kind filename in
+  let code = Read.file_raw kind filename in
   let precision, code = match code with
     | Ok c -> Exact, c
     | Error (Serialized e) ->
