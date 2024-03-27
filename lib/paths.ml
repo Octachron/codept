@@ -52,7 +52,7 @@ struct
     | a :: q -> a :: chop_extension q
 
   let parse_filename name =
-    let l = Support.split_on_char (String.get (Filename.dir_sep) 0) name in
+    let l = Support.split_on_dirs name in
     match List.rev l with
     | "" :: q -> List.rev q
     | l -> List.rev l
