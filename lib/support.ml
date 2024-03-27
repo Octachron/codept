@@ -44,6 +44,26 @@ let split_on_char sep s =
   let n = String.length s in
   split [] n (n-1)
 
+let split_on_dirs s =
+  let sep = Filename.dir_sep.[0] in
+  if sep = '/' then
+    split_on_char '/' s
+  else
+    let sub start stop =
+      String.sub s start (stop-start) in
+    let rec split l last pos =
+      if pos = 0 then      
+        if s.[pos] = sep || s.[pos] = '/' then
+          "" :: sub (pos+1) last :: l
+        else
+          sub pos last :: l
+      else if s.[pos] = sep || s.[pos] = '/' then
+        split (sub (pos+1) last :: l) pos (pos-1)
+      else
+        split l last (pos-1) in
+    let n = String.length s in
+    split [] n (n-1)
+
 let opt conv s = try Some(conv s) with Failure _ -> None
 
 let filter_map f l =

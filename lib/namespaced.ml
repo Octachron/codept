@@ -88,7 +88,7 @@ type set = Set.t
 
 let module_path_of_filename ?(nms=[]) filename =
   let name = Unitname.modulize filename in
-  match List.rev (Support.split_on_char Filename.dir_sep.[0] filename) with
+  match List.rev (Support.split_on_dirs filename) with
   | [] -> raise @@ Invalid_argument "Invalid name for a compilation unit"
   | _ ->
     { namespace = nms ;
@@ -97,7 +97,7 @@ let module_path_of_filename ?(nms=[]) filename =
 
 let filepath_of_filename ?(nms=[]) filename =
   let name = Unitname.modulize filename in
-  match List.rev (Support.split_on_char Filename.dir_sep.[0] filename) with
+  match List.rev (Support.split_on_dirs filename) with
   | [] -> raise @@ Invalid_argument "Invalid name for a compilation unit"
   | _filename :: r ->
     { namespace = nms @ List.rev r ;
