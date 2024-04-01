@@ -28,41 +28,54 @@ let remove_extension name =
   if l = 0 then name else
   String.sub name 0 (String.length name - l)
 
+let substring s start stop = String.sub s start (stop-start)
+
 let split_on_char sep s =
-  let sub start stop =
-    String.sub s start (stop-start) in
   let rec split l last pos =
     if pos = 0 then
       if s.[pos] = sep then
-        "" :: sub (pos+1) last :: l
+        "" :: substring  s (pos+1) last :: l
       else
-        sub pos last :: l
+        substring s pos last :: l
     else if s.[pos] = sep then
-      split (sub (pos+1) last :: l) pos (pos-1)
+      split (substring s (pos+1) last :: l) pos (pos-1)
     else
       split l last (pos-1) in
   let n = String.length s in
   split [] n (n-1)
 
+type matcher =
+  | Match of int
+  | Reject of int
+
+let split_on_matches sep s =
+  let rec split on_match l last pos =
+    if pos < 0 then
+      (if on_match then ""::l else substring s 0 last :: l)
+    else
+      match sep s pos with
+      | Match k -> split true (substring s (pos+1) last :: l) (1+pos-k) (pos-k)
+      | Reject k -> split false l last (pos-k)
+  in
+  let n = String.length s in
+  split false [] n (n-1)
+
+let simple_matcher scheme s pos  =
+  let ns = String.length scheme in
+  if pos + 1 - ns < 0 then Reject ns
+  else if substring s (pos+1-ns) (pos+1) = scheme then Match ns
+  else Reject 1
+
+let windows_and_unix s pos =
+  if s.[pos] = '\\' || s.[pos] = '/' then Match 1 else Reject 1
+
 let split_on_dirs s =
-  let sep = Filename.dir_sep.[0] in
-  if sep = '/' then
+  let sep = Filename.dir_sep in
+  if sep = "/" then
     split_on_char '/' s
-  else
-    let sub start stop =
-      String.sub s start (stop-start) in
-    let rec split l last pos =
-      if pos = 0 then      
-        if s.[pos] = sep || s.[pos] = '/' then
-          "" :: sub (pos+1) last :: l
-        else
-          sub pos last :: l
-      else if s.[pos] = sep || s.[pos] = '/' then
-        split (sub (pos+1) last :: l) pos (pos-1)
-      else
-        split l last (pos-1) in
-    let n = String.length s in
-    split [] n (n-1)
+  else if sep = "\\" then
+    split_on_matches windows_and_unix s
+  else split_on_matches (simple_matcher sep) s
 
 let opt conv s = try Some(conv s) with Failure _ -> None
 
