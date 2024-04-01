@@ -21,6 +21,15 @@ val remove_extension: string -> string
 *)
 
 val split_on_char: char -> string -> string list
+
+val split_on_dirs: string -> string list
+(** [split_on_dirs path] splits the file path [path] on the platform's
+    directory seperator and on forward slashes ([/]).
+    
+    Forward slashes are always included as a split character because on
+    Windows the predominant means of accessing OCaml is through a Unix
+    emulation shell (Cygwin or MSYS2). *)
+
 val opt: ('a -> 'b) -> 'a -> 'b option
 val filter_map: ('a -> 'b option) -> 'a list -> 'b list
 
