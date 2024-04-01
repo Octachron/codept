@@ -653,7 +653,7 @@ let result =
           "namespaced.mli", ( ["Modname";"Unitname";"Name";"Paths"; "Pp"; "Schematic"],
                               ["Format"; "Set";"Map"], [] );
           "namespaced.ml", ( ["Modname"; "Unitname"; "Paths"; "Pp"; "Schematic"; "Support"],
-                             ["Filename"; "Format";"List";"Set"; "String"], [] );
+                             ["Filename"; "Format";"List";"Set"], [] );
           "loc.mli", ( ["Schematic"], ["Format"], []);
           "loc.ml", ( ["Pp";"Schematic"], ["List"], []);
           "uloc.mli", ( ["Loc"; "Pkg"; "Pp"], [], []);
@@ -714,7 +714,7 @@ let result =
              "Standard_faults"],
             [ "List"; "Location"; "Set"],
             []);
-          "support.ml", ([],["String"; "List"; "Map"; "Sys"],[]);
+          "support.ml", ([],["Filename"; "String"; "List"; "Map"; "Sys"],[]);
           "support.mli", ([],["Map"],[]);
           "with_deps.ml", (["Deps"],[],[]);
           "with_deps.mli", (["Deps"],[],[]);
