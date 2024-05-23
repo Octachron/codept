@@ -120,7 +120,7 @@ and module_type =
 and with_constraint = { lhs: Paths.S.t; delete:bool; rhs: with_rhs }
 and with_rhs =
   | Type of minor list
-  (** [S with type t =/:= ... *)
+  (** [S with type t =/:= ...] *)
   | Module of Paths.S.t Loc.ext
   (** [S with module N.M := …]
       we need to track abstract module type strenghthening.

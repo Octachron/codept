@@ -25,7 +25,7 @@ module Arg :
 
 (** Every time a module with an unknown signature is opened,
     it can possibly shadows all modules present in the current,
-    or none. The {!Divergence} module is use to store information
+    or none. The {!module:Divergence} module is use to store information
     about such divergence point, in order to be able to pinpoint
     to the user the exact moment where dependency computation might have
     gone awry. *)
@@ -99,17 +99,17 @@ and _ ty =
         phantom: Divergence.t option;
         (** Track potential delayed dependencies
             after divergent accident:
-            [
+            {[
               module M = A  (* Alias { name = M; path = [A] } *)
               open Unknownable (* <- divergence *)
               open M (* Alias{ phantom = Some divergence } *)
-            ]
+            ]}
             In the example above, [M] could be the local module
             [.M], triggering the delayed alias dependency [A]. Or it could
-            be a submodule [Unknownable.M] . Without sufficient information,
+            be a submodule [Unknownable.M]. Without sufficient information,
             codept defaults to computing an upper bound of dependencies,
             and therefore considers that [M] is [.M], and the inferred
-            dependencies for the above code snipet is {A,Unknowable} .
+            dependencies for the above code snipet is [{A,Unknowable}] .
         *)
       } -> extended ty
 

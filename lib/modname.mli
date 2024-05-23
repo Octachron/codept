@@ -16,7 +16,7 @@
     {b NOTE}: The name of a {i module type} can start with a non-capital
     letter:
 
-    [{
+    {[
       module type foo = sig end
     ]} *)
 
