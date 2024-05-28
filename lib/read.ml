@@ -45,9 +45,7 @@ let source_file kind filename =
   Pparse.remove_preprocessed input_file;
   code
 
-let file {format;kind} filename =
-  let name = name filename in
-  name,
+let file_raw {format;kind} filename =
   match format with
   | Src | Parsetree -> source_file kind filename
   | M2l ->
@@ -62,3 +60,7 @@ let file {format;kind} filename =
         Error (Serialized Schematic.Ext.Unknown_format)
     end
   | Cmi  -> ok @@ Cmi.m2l filename
+
+let file {format;kind} filename =
+  let name = name filename in
+  name, file_raw {format;kind} filename
