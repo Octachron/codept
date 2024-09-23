@@ -162,7 +162,7 @@ let float version = if version < (4,07) then simple "Float"
     chain "Float" ["Array"; "ArrayLabels"]
 
 
-let effect = chain "Effect" ["Deep"; "Shallow"]
+let effekt = chain "Effect" ["Deep"; "Shallow"]
 let semaphore = chain "Semaphore" ["Binary"; "Counting"]
 let domain = chain "Domain" ["DLS"]
 
@@ -179,7 +179,7 @@ let simple_stdlib v = Dict.of_list @@
   @ in_between v (4,12) (5,0) [ simple "CamlinternalAtomic"]
   @ after v (4,14) [simple "In_channel"; simple "Out_channel"]
   @ before v (5,0) (List.map simple ["Stream";"Genlex"])
-  @ after v (5,0) [semaphore; effect; domain; simple "Condition"; simple "Mutex"]
+  @ after v (5,0) [semaphore; effekt; domain; simple "Condition"; simple "Mutex"]
   @ after v (5,1) [chain "Type" ["Id"]]
   @ complex v
   @ simples

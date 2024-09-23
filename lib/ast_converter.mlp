@@ -469,6 +469,10 @@ and pattern pat =
 | Ppat_open (m,p) (* M.(P) *) ->
     Pattern.open_ (with_loc m.loc @@ H.npath m) @@ pattern p
 #end
+# 5.3, oo
+| Ppat_effect (e, k) (* effect P, k *) ->
+   Pattern.( pattern e ++ pattern k)
+#end
 
 and type_declaration td: M2l.Annot.t  =
   Annot.union_map (fun (_,t,_) -> core_type t) td.ptype_cstrs
