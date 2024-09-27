@@ -1,0 +1,12 @@
+[functor_with_named_open]: args:None
+[[1m[36mNotification[0m]: [functor_with_named_open/a.mli:l1.0−39[0m,
+a non-resolvable module, [1mOne[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [functor_with_named_open/a.mli:l1.0−39[0m,
+a non-resolvable module, [1mTwo[0m, has been replaced by an approximation
+{
+"version" : [0, 11, 0],
+"dependencies" :
+  [{ "file" : "functor_with_named_open/a.mli", "deps" : [["Two"], ["One"]] }],
+"local" : [{ "module" : ["A"], "mli" : "functor_with_named_open/a.mli" }],
+"unknown" : [["One"], ["Two"]]
+}
