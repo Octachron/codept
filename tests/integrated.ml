@@ -83,6 +83,8 @@ let diff ppf (x,y) =
 
 (* Ignore location difference corresponding to the "??" pattern in
    l1.??−end *)
+(* Consider that "/" = {|\\|} to handle Windows/Unix path *)
+let normalize_sep = function | '\\' -> '/' | c -> c
 let (%=%) x y =
   let lsx = String.length x in
   let lsy = String.length y in
@@ -90,7 +92,7 @@ let (%=%) x y =
     posx = lsx && posy = lsy
     || not (posx = lsx || posy = lsy )
        && (
-         if x.[posx] = y.[posy] then
+         if normalize_sep x.[posx] = normalize_sep y.[posy] then
            check x (posx+1) y (posy+1)
          else
            let posx' = skip_num posx x in
