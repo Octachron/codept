@@ -155,7 +155,7 @@ let refname name =
 
 let reference name =
   if Sys.file_exists name then
-    let inc = open_in name in
+    let inc = open_in_bin name in
     really_input_string inc (in_channel_length inc)
   else
     ""
