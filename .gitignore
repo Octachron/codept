@@ -1,6 +1,7 @@
 *~
 **/_build/**
 **/.merlin
+**/_opam/**
 tests/generated/star/m*.mli
 *.cm[ioax]
 *.cmxa

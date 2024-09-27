@@ -237,7 +237,7 @@ let extract_attribute x =
   let f = open_in x in
   let rec loop l =
     try
-      let nl = input_line f in
+      let nl = Win32_compat.dos2unix (input_line f) in
       try
         let att = Scanf.sscanf nl "[%@%@%@%s@]" (fun x -> x) in
         loop (att :: l)
