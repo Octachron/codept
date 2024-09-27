@@ -66,7 +66,7 @@ let client socket =
     output_value ch query;
     flush ch;
     let rec read () =
-      match input_line inchan with
+      match Win32_compat.dos2unix (input_line inchan) with
       | exception End_of_file -> ()
       | s -> print_endline s; read () in
     read ()

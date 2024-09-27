@@ -26,7 +26,7 @@ type task =
 let compiler_dir =
   lazy (
     let ch = Unix.open_process_in "ocamlc -where" in
-    let s= input_line ch in
+    let s= Win32_compat.dos2unix (input_line ch) in
     close_in ch;
     s ^ "/"
   )

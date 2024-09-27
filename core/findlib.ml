@@ -18,7 +18,7 @@ let run cmd =
   let cin = Unix.open_process_in cmd in
   let rec read l =
   try
-    match input_line cin with
+    match Win32_compat.dos2unix (input_line cin) with
     | "" -> read l
     | s -> read (s::l)
   with

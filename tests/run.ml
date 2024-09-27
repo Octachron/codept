@@ -236,7 +236,7 @@ module Branch(Param:Stage.param) = struct
     let cmd = "ocamlc -where " in
     let cin = Unix.open_process_in cmd in
     try
-      [Filename.concat (input_line cin) "compiler-libs" ]
+      [Filename.concat (Win32_compat.dos2unix (input_line cin)) "compiler-libs" ]
     with
       End_of_file -> []
 
