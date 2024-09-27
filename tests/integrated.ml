@@ -7,6 +7,7 @@
    Complex cases can add a version constraint with a "%/guard" file.
 *)
 
+let () = Printexc.record_backtrace true
 module Version = struct
 
   type t = {major:int; minor:int}
