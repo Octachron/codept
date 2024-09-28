@@ -1,6 +1,11 @@
 # 0.12.1
 
    * Support 5.2
+   * Support 5.3
+
+## Bug fixes
+
+   * handle open F(X).Y 
 
 # 0.12.0
 
