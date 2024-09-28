@@ -1,5 +1,5 @@
+[@@@if 4.08]
 module X = struct end
-
 module type T = sig
   open One.Make(Two).Sub
   open Three

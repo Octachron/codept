@@ -57,7 +57,7 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
         )
     | Path_expr Proj (_app,_proj) :: rest ->
       path_expr (rest:Paths.Expr.t t) x
-    | Me Proj_right _  :: rest -> me rest x
+    | Me Proj_right _  :: rest -> me (rest:M2l.module_expr t) x
     | With_constraint With_module {body;lhs; delete} :: rest ->
       with_constraint (rest: M2l.with_constraint t)
         (fp4 "%t with module %t %t %t"

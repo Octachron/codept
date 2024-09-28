@@ -871,7 +871,7 @@ and matched_patt_expr x y =
   | _, _ -> pattern x, expr y
 # oo, 4.08
 and local_open_arg o = Ident (npath o)
-and ident_open o = do_open o.popen_loc (me_from_lid o.popen_lid))
+and ident_open o = do_open o.popen_loc (me_from_lid o.popen_lid)
 and simple_open o = ident_open o
 # 4.08, oo
 and local_open_arg o = module_expr o.popen_expr
