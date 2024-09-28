@@ -16,7 +16,7 @@ let me_from_lid x =
   let open M2l in
   let rec pathlike acc l : module_expr =
     match l with
-    | L.Lident s -> Ident (List.rev (s::acc))
+    | L.Lident s -> Ident (s::acc)
     | L.Ldot (lid,s) -> pathlike (s::acc) lid
     | L.Lapply (f,x) ->
       let app =  Apply {f=pathlike [] f; x=pathlike [] x} in

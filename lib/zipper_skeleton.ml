@@ -90,7 +90,6 @@ let str = P.simple
 
 let included param loc lvl e = T.gen_include param.T.policy loc lvl e
 
-
 let m_with dels mt = match mt.P.mty with
   | Module.Abstract _ | Module.Fun _ -> mt
   | Module.Sig s ->
@@ -181,7 +180,6 @@ module State(Env:Stage.envt) = struct
       debug "@[<hv>State: %a@ @[<hv 2>Resolving@ %a@ to@ %a@]@]@."
         Env.pp state.current Paths.S.pp path T.pp_answer x.main;
       Ok x
-
 
 end
 

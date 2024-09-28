@@ -67,7 +67,10 @@ module type fold = sig
     module_type Arg.t option -> module_expr -> module_expr
   val me_ident : path -> module_expr
   val me_val : minors -> module_expr
+  val me_proj: module_expr -> Paths.S.t -> path -> module_expr
+
   val minor : minors -> expr
+
 
   val mt_ext : loc:Uloc.t -> string -> ext -> module_type
   val mt_fun :
@@ -173,6 +176,7 @@ module type s = sig
     | Apply_left: M2l.module_expr -> M2l.module_expr me
     | Apply_right: module_expr -> M2l.module_expr me
     | Proj_left: Paths.Simple.t -> M2l.module_expr me
+    | Proj_right: module_expr * Paths.S.t -> path_in_context me
     | Fun_left: {name:Name.t option; diff:state_diff; body:M2l.module_expr} -> M2l.module_type me
     | Fun_right:
         (module_type Arg.t * state_diff ) option

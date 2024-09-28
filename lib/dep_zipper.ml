@@ -52,6 +52,7 @@ module Pre = struct
   let me_ext ~loc:_ _ = id
   let me_ident = id
   let me_val = id
+  let me_proj me _proj res = me + res
   let minor = id
   let mt_ext ~loc:_ _ = id
   let mt_fun arg y = match arg with

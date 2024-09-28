@@ -1,0 +1,20 @@
+[[1m[36mNotification[0m]: [1mcases/open_functor.ml:l4.2−24[0m,
+a non-resolvable module, [1mOne[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [1mcases/open_functor.ml:l4.2−24[0m,
+a non-resolvable module, [1mTwo[0m, has been replaced by an approximation
+[[1m[36mNotification[0m]: [1mcases/open_functor.ml:l5.2−12[0m,
+a non-resolvable module, [1mThree[0m, has been replaced by an approximation
+[[1m[35mWarning[0m]: [1mcases/open_functor.ml:l7.2−15[0m, name resolution for [1mX[0m was
+ambiguous, due to the opening of the external module [1mThree[0m, at
+location [1ml5.2−12[0m. Spurious dependencies might be inferred due to this
+ambiguity.
+{
+"version" : [0, 11, 0],
+"dependencies" :
+  [{
+   "file" : "cases/open_functor.ml",
+   "deps" : [["Two"], ["Three"], ["One"]]
+   }],
+"local" : [{ "module" : ["Open_functor"], "ml" : "cases/open_functor.ml" }],
+"unknown" : [["One"], ["Three"], ["Two"]]
+}

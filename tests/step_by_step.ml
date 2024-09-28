@@ -56,7 +56,8 @@ let () =
     Read.file {Read.format=Read.Src; kind=M2l.Structure} file in
   let m2l =
     match res with
-    | Error _ -> Format.eprintf "Error at parsing.@."; exit 2
+    | Error (Ocaml _) -> Format.eprintf "Error when parsing source %a.@." Unitname.pp name; exit 2
+    | Error (Serialized _) -> Format.eprintf "Error when parsing m2l %a.@." Unitname.pp name; exit 2
     | Ok x -> x in
   let env =   Envt.start ~open_approximation:true
     ~libs:[]

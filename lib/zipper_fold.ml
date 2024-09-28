@@ -60,7 +60,6 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
   let pack = user F.pack
   let expr_ext name = user_ml (F.expr_ext name)
   let me_ident = both Sk.ident F.me_ident
-  let me_proj _proj _me = assert false
   let apply param loc f =
     both2 (fun f x -> Sk.apply param loc ~f ~x) (F.apply loc) f
   let me_fun_none =  both (fun f -> Sk.fn ~f ~x:None) (F.me_fun None)
@@ -93,6 +92,13 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
       backbone = Sk.ident proj_res.backbone;
       user = F.path_expr_proj app_res.user proj proj_res.user
     }
+
+  let me_proj app_res proj proj_res =
+    {
+      backbone = Sk.ident proj_res.backbone;
+      user = F.me_proj app_res.user proj proj_res.user
+    }
+
 
   let with_type with_cstr cstrs =
     { backbone = cstrs.backbone; user = F.with_type with_cstr cstrs.user }
@@ -199,7 +205,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       D.apply param ctx.uloc f
     | Proj {me=mep;proj} ->
       me (Me (Proj_left proj)::path) ~param ~ctx ~state mep >>=
-      D.me_proj proj
+      me_proj ~state path ~param ~ctx proj
     | Fun {arg = None; body } ->
       me (Me (Fun_right None) :: path) ~param ~ctx ~state body
       >>| D.me_fun_none
@@ -332,6 +338,11 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         resolve path ?within:(Sk.signature res.backbone) ~state ~level ~ctx
           ~edge ~param proj
         >>| D.path_expr_proj res proj
+  and me_proj ~state path ~param ~ctx proj me =
+      let path = Me (Proj_right (me,proj)) :: path in
+      resolve path ?within:(Sk.signature me.backbone) ~state ~level:Module ~ctx
+        ~param proj
+      >>| D.me_proj me proj
   and path_expr ?edge ~level path ~ctx ~param ~state x = path_expr_gen
       ?edge ~level path ~ctx ~param ~state x
   and gen_minors path ~param ~ctx ~state left =
@@ -420,6 +431,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         restart_path_expr ~param ~ctx ~state (path:Paths.Expr.t path) (D.path_expr_pure x)
      | Path_expr (Proj (app_res,proj)) :: path ->
         restart_path_expr ~param ~ctx ~state (path:Paths.Expr.t path) (D.path_expr_proj app_res proj x)
+      | Me (Proj_right (me,proj)) :: path ->
+        restart_me ~param ~ctx ~state (path:module_expr path) (D.me_proj me proj x)
      | With_constraint With_module {body;lhs; delete} :: path ->
        restart_with (path: M2l.with_constraint path) ~param ~state ~ctx
          (D.with_module ~delete ~lhs (D.me_ident x) body)
@@ -443,7 +456,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Me(Apply_right fn) :: path ->
       restart_me path ~ctx ~param ~state (D.apply param ctx.uloc fn x)
     | Me (Proj_left proj) :: path ->
-      restart_me path ~ctx ~param ~state (D.me_proj proj x)
+      me_proj ~state path ~param ~ctx proj x >>=
+      restart_me path ~ctx ~param ~state
     | Me(Fun_right None) :: path ->
       restart_me path ~state ~ctx ~param (D.me_fun_none x)
     | Me(Fun_right Some (r,diff)) :: path ->
