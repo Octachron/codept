@@ -172,6 +172,7 @@ module type s = sig
     | Ident: path_in_context me
     | Apply_left: M2l.module_expr -> M2l.module_expr me
     | Apply_right: module_expr -> M2l.module_expr me
+    | Proj_left: Paths.Simple.t -> M2l.module_expr me
     | Fun_left: {name:Name.t option; diff:state_diff; body:M2l.module_expr} -> M2l.module_type me
     | Fun_right:
         (module_type Arg.t * state_diff ) option

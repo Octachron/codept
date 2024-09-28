@@ -96,6 +96,8 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Me (Apply_left right) :: rest ->
       me rest (fun ppf -> Pp.fp ppf "%t(%a)" sub M2l.pp_me right)
     | Me Apply_right left :: rest -> me rest (fp2 "%t(%t)" (R.pp_me left.user) sub)
+    | Me (Proj_left right) :: rest ->
+      me rest (fun ppf -> Pp.fp ppf "%t.%a" sub Paths.Simple.pp right)
     | Me Fun_right left :: rest -> me rest (fp2 "functor (%t) ->%t" (r_arg left) sub)
     | Me Constraint_left mt :: rest ->
       me rest (fun ppf -> Pp.fp ppf "(%t:%a)" sub M2l.pp_mt mt)

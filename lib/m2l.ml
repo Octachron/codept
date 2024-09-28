@@ -68,6 +68,10 @@ and module_expr =
       Note: This construction does not exist (yet?) in OCaml proper.
       It is used here to simplify the interaction between
       pattern open and first class module.*)
+  | Proj of {me:module_expr; proj:Paths.Simple.t}
+   (** [F(X).Y]: this construction only exists in [open F(X).Y] currently *)
+
+
 and module_type =
   | Alias of Paths.Simple.t (** [module m = A…]  *)
   | Ident of Paths.Expr.t
@@ -153,7 +157,8 @@ module Sch = struct
           "Extension_node", Mu.extension;
           "Abstract",Void;
           "Unpacked", Void;
-          "Open_me",[Array (reopen path_loc); Mu.module_expr]
+          "Open_me",[Array (reopen path_loc); Mu.module_expr];
+          "Proj", [Mu.module_expr;  reopen Paths.S.sch]
         ]
 
   let with_sch_rhs =
@@ -232,7 +237,8 @@ module Sch = struct
     | Extension_node x -> C(S(S(S(S(S(S(Z x)))))))
     | Abstract -> C(S(S(S(S(S(S(S E)))))))
     | Unpacked -> C(S(S(S(S(S(S(S(S E))))))))
-    | Open_me r -> C(S(S(S(S(S(S(S(S(S(Z [r.opens;r.expr]))))))))))
+    | Open_me r ->      C(S(S(S(S(S(S(S(S(S(Z [r.opens;r.expr]))))))))))
+    | Proj {me;proj} -> C(S(S(S(S(S(S(S(S(S(S(Z [me;proj])))))))))))
   and me_rev = let open Tuple in
     function
     | C Z x -> Ident x
@@ -246,6 +252,7 @@ module Sch = struct
     | C S S S S S S S S E -> Unpacked
     | C S S S S S S S S S Z [opens;expr] ->
       Open_me {opens;expr}
+    | C S S S S S S S S S S Z [me;proj] -> Proj {me;proj}
     | _ -> .
 
 
@@ -502,6 +509,7 @@ and pp_me ppf = function
   | Ident np -> Paths.Simple.pp ppf np
   | Str m2l -> Pp.fp ppf "@,struct@, %a end" pp m2l
   | Apply {f;x} -> Pp.fp ppf "%a(@,%a@,)" pp_me f pp_me x
+  | Proj {me;proj} -> Pp.fp ppf "%a.%a" pp_me me Paths.Simple.pp proj
   | Fun { arg; body } -> Pp.fp ppf "%a@,→%a" (Arg.pp pp_mt) arg pp_me body
   | Constraint (me,mt) -> Pp.fp ppf "%a: @,%a" pp_me me pp_mt mt
   | Val annot -> Pp.fp ppf "⟨val %a⟩" pp_annot annot
@@ -574,7 +582,7 @@ module Sig_only = struct
   and main l = map List.rev (rev false @@ List.rev l)
   and mex = function
     | ( Val _ | Abstract | Unpacked )  as a-> false, a
-    | (Ident _ | Apply _ | Extension_node _ ) as a -> true, a
+    | (Ident _ | Apply _ | Extension_node _ | Proj _) as a -> true, a
     | Fun {arg;body} ->
       let b, arg = sig_arg mty arg in
       let b', body = mex body in

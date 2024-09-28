@@ -60,6 +60,7 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
   let pack = user F.pack
   let expr_ext name = user_ml (F.expr_ext name)
   let me_ident = both Sk.ident F.me_ident
+  let me_proj _proj _me = assert false
   let apply param loc f =
     both2 (fun f x -> Sk.apply param loc ~f ~x) (F.apply loc) f
   let me_fun_none =  both (fun f -> Sk.fn ~f ~x:None) (F.me_fun None)
@@ -196,6 +197,9 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       me (Me (Apply_left x)::path) ~param ~ctx ~state f >>= fun f ->
       me (Me (Apply_right f)::path) ~param ~ctx ~state x >>|
       D.apply param ctx.uloc f
+    | Proj {me=mep;proj} ->
+      me (Me (Proj_left proj)::path) ~param ~ctx ~state mep >>=
+      D.me_proj proj
     | Fun {arg = None; body } ->
       me (Me (Fun_right None) :: path) ~param ~ctx ~state body
       >>| D.me_fun_none
@@ -438,6 +442,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Mt Of :: path -> restart_mt ~ctx ~state ~param path (D.mt_of x)
     | Me(Apply_right fn) :: path ->
       restart_me path ~ctx ~param ~state (D.apply param ctx.uloc fn x)
+    | Me (Proj_left proj) :: path ->
+      restart_me path ~ctx ~param ~state (D.me_proj proj x)
     | Me(Fun_right None) :: path ->
       restart_me path ~state ~ctx ~param (D.me_fun_none x)
     | Me(Fun_right Some (r,diff)) :: path ->

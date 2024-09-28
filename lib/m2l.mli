@@ -92,11 +92,13 @@ and module_expr =
       In particular, it is useful for constraining first class module unpacking
       as [Constraint(Abstract, signature)]. *)
   | Unpacked (** [(module M)] *)
+
   | Open_me of { opens:Paths.Simple.t Loc.ext list; expr:module_expr}
   (** [M.(…N.( module_expr)…)]
       Note: This construction does not exist (yet?) in OCaml proper.
       It is used here to simplify the interaction between
       pattern open and first class module.*)
+  | Proj of {me:module_expr; proj:Paths.Simple.t }
 
 (** Module type level representation *)
 and module_type =
