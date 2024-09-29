@@ -1,9 +1,16 @@
 {
-"version" : [0, 11, 0],
-"dependencies" : [{ "file" : "cases/with_and_abstract_module_type.ml" }],
-"local" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "module" : ["With_and_abstract_module_type"],
-   "ml" : "cases/with_and_abstract_module_type.ml"
+   "file":
+     "cases/with_and_abstract_module_type.ml"
+   }],
+"local":
+  [{
+   "module":
+     ["With_and_abstract_module_type"],
+   "ml":
+     "cases/with_and_abstract_module_type.ml"
    }]
 }

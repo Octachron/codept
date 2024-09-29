@@ -3,16 +3,24 @@ a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/destructive_substitutions_path.ml:l23.18−27[0m,
 a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "file" : "cases/destructive_substitutions_path.ml",
-   "deps" : [["Ext2"], ["Ext"]]
+   "file":
+     "cases/destructive_substitutions_path.ml",
+   "deps":
+     [["Ext2"],
+     ["Ext"]]
    }],
-"local" :
+"local":
   [{
-   "module" : ["Destructive_substitutions_path"],
-   "ml" : "cases/destructive_substitutions_path.ml"
+   "module":
+     ["Destructive_substitutions_path"],
+   "ml":
+     "cases/destructive_substitutions_path.ml"
    }],
-"unknown" : [["Ext"], ["Ext2"]]
+"unknown":
+  [["Ext"],
+  ["Ext2"]]
 }

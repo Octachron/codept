@@ -117,7 +117,7 @@ type variant = {
 let full_variant =
   let cmd arg x =
     let cmd = match arg with
-      | None -> [| "codept"; "-nested"; "-expand-deps"; "-no-alias-deps"; "-deps"; "-k"; x |]
+      | None -> [| "codept"; "-nested"; "-expand-deps"; "-no-alias-deps"; "-deps"; "-format"; "simple-json"; "-k"; x |]
       | Some a -> Array.concat [ [| "codept"|] ; a ] in
     codept, cmd  in
    { name = "full_variant"; cmd; filter = (fun _ -> true) }

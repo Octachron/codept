@@ -1,34 +1,188 @@
 {
-"version" : [0, 11, 0],
-"dependencies" :
-  [{ "file" : "stops/a.ml", "deps" : [["F"], ["E"], ["D"], ["C"], ["B"]] },
-  { "file" : "stops/b.ml", "deps" : [["Z"]] },
-  { "file" : "stops/c.ml", "deps" : [["Y"]] },
-  { "file" : "stops/d.ml", "deps" : [["X"]] },
-  { "file" : "stops/e.ml", "deps" : [["W"]] },
-  { "file" : "stops/f.ml", "deps" : [["V"]] },
-  { "file" : "stops/g.ml", "deps" : [["F"]] },
-  { "file" : "stops/h.ml", "deps" : [["G"]] },
-  { "file" : "stops/i.ml", "deps" : [["H"]] },
-  { "file" : "stops/j.ml", "deps" : [["I"]] },
-  { "file" : "stops/v.ml", "deps" : [["E"]] },
-  { "file" : "stops/w.ml", "deps" : [["D"]] },
-  { "file" : "stops/x.ml", "deps" : [["C"]] },
-  { "file" : "stops/y.ml", "deps" : [["B"]] }, { "file" : "stops/z.ml" }],
-"local" :
-  [{ "module" : ["A"], "ml" : "stops/a.ml" },
-  { "module" : ["B"], "ml" : "stops/b.ml" },
-  { "module" : ["C"], "ml" : "stops/c.ml" },
-  { "module" : ["D"], "ml" : "stops/d.ml" },
-  { "module" : ["E"], "ml" : "stops/e.ml" },
-  { "module" : ["F"], "ml" : "stops/f.ml" },
-  { "module" : ["G"], "ml" : "stops/g.ml" },
-  { "module" : ["H"], "ml" : "stops/h.ml" },
-  { "module" : ["I"], "ml" : "stops/i.ml" },
-  { "module" : ["J"], "ml" : "stops/j.ml" },
-  { "module" : ["V"], "ml" : "stops/v.ml" },
-  { "module" : ["W"], "ml" : "stops/w.ml" },
-  { "module" : ["X"], "ml" : "stops/x.ml" },
-  { "module" : ["Y"], "ml" : "stops/y.ml" },
-  { "module" : ["Z"], "ml" : "stops/z.ml" }]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "stops/a.ml",
+   "deps":
+     [["F"],
+     ["E"],
+     ["D"],
+     ["C"],
+     ["B"]]
+   },
+  {
+  "file":
+    "stops/b.ml",
+  "deps":
+    [["Z"]]
+  },
+  {
+  "file":
+    "stops/c.ml",
+  "deps":
+    [["Y"]]
+  },
+  {
+  "file":
+    "stops/d.ml",
+  "deps":
+    [["X"]]
+  },
+  {
+  "file":
+    "stops/e.ml",
+  "deps":
+    [["W"]]
+  },
+  {
+  "file":
+    "stops/f.ml",
+  "deps":
+    [["V"]]
+  },
+  {
+  "file":
+    "stops/g.ml",
+  "deps":
+    [["F"]]
+  },
+  {
+  "file":
+    "stops/h.ml",
+  "deps":
+    [["G"]]
+  },
+  {
+  "file":
+    "stops/i.ml",
+  "deps":
+    [["H"]]
+  },
+  {
+  "file":
+    "stops/j.ml",
+  "deps":
+    [["I"]]
+  },
+  {
+  "file":
+    "stops/v.ml",
+  "deps":
+    [["E"]]
+  },
+  {
+  "file":
+    "stops/w.ml",
+  "deps":
+    [["D"]]
+  },
+  {
+  "file":
+    "stops/x.ml",
+  "deps":
+    [["C"]]
+  },
+  {
+  "file":
+    "stops/y.ml",
+  "deps":
+    [["B"]]
+  },
+  {
+  "file":
+    "stops/z.ml"
+  }],
+"local":
+  [{
+   "module":
+     ["A"],
+   "ml":
+     "stops/a.ml"
+   },
+  {
+  "module":
+    ["B"],
+  "ml":
+    "stops/b.ml"
+  },
+  {
+  "module":
+    ["C"],
+  "ml":
+    "stops/c.ml"
+  },
+  {
+  "module":
+    ["D"],
+  "ml":
+    "stops/d.ml"
+  },
+  {
+  "module":
+    ["E"],
+  "ml":
+    "stops/e.ml"
+  },
+  {
+  "module":
+    ["F"],
+  "ml":
+    "stops/f.ml"
+  },
+  {
+  "module":
+    ["G"],
+  "ml":
+    "stops/g.ml"
+  },
+  {
+  "module":
+    ["H"],
+  "ml":
+    "stops/h.ml"
+  },
+  {
+  "module":
+    ["I"],
+  "ml":
+    "stops/i.ml"
+  },
+  {
+  "module":
+    ["J"],
+  "ml":
+    "stops/j.ml"
+  },
+  {
+  "module":
+    ["V"],
+  "ml":
+    "stops/v.ml"
+  },
+  {
+  "module":
+    ["W"],
+  "ml":
+    "stops/w.ml"
+  },
+  {
+  "module":
+    ["X"],
+  "ml":
+    "stops/x.ml"
+  },
+  {
+  "module":
+    ["Y"],
+  "ml":
+    "stops/y.ml"
+  },
+  {
+  "module":
+    ["Z"],
+  "ml":
+    "stops/z.ml"
+  }]
 }

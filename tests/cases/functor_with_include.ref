@@ -1,9 +1,16 @@
 {
-"version" : [0, 11, 0],
-"dependencies" : [{ "file" : "cases/functor_with_include.ml" }],
-"local" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "module" : ["Functor_with_include"],
-   "ml" : "cases/functor_with_include.ml"
+   "file":
+     "cases/functor_with_include.ml"
+   }],
+"local":
+  [{
+   "module":
+     ["Functor_with_include"],
+   "ml":
+     "cases/functor_with_include.ml"
    }]
 }

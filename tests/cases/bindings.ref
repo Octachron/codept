@@ -1,5 +1,16 @@
 {
-"version" : [0, 11, 0],
-"dependencies" : [{ "file" : "cases/bindings.ml" }],
-"local" : [{ "module" : ["Bindings"], "ml" : "cases/bindings.ml" }]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "cases/bindings.ml"
+   }],
+"local":
+  [{
+   "module":
+     ["Bindings"],
+   "ml":
+     "cases/bindings.ml"
+   }]
 }

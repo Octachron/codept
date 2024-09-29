@@ -1,8 +1,22 @@
 [[1m[36mNotification[0m]: [1mcases/with.ml:l1.20−33[0m,
 a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" : [{ "file" : "cases/with.ml", "deps" : [["Ext"]] }],
-"local" : [{ "module" : ["With"], "ml" : "cases/with.ml" }],
-"unknown" : [["Ext"]]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "cases/with.ml",
+   "deps":
+     [["Ext"]]
+   }],
+"local":
+  [{
+   "module":
+     ["With"],
+   "ml":
+     "cases/with.ml"
+   }],
+"unknown":
+  [["Ext"]]
 }

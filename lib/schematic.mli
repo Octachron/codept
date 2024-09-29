@@ -99,7 +99,9 @@ module Version: sig
 end
 
 
-val json: 'a t -> Format.formatter -> 'a -> unit
+val pretty_json: 'a t -> Format.formatter -> 'a -> unit
+val simple_json: 'a t -> Format.formatter -> 'a -> unit
+
 val sexp: 'a t  -> Format.formatter -> 'a -> unit
 
 val ($=): 'a label -> 'b -> ('a label * 'b)
@@ -146,7 +148,8 @@ type error =
   | Parse_error
 
 
-val json: ('lbl,'a) t -> Format.formatter -> 'a -> unit
+val pretty_json: ('lbl,'a) t -> Format.formatter -> 'a -> unit
+val simple_json: ('lbl,'a) t -> Format.formatter -> 'a -> unit
 val sexp: ('lbl,'a) t  -> Format.formatter -> 'a -> unit
 val json_schema:  Format.formatter -> ('lbl, 'a) t -> unit
 

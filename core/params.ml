@@ -6,6 +6,7 @@ type t =
     no_include:bool;
     may_approx:bool;
     nested: bool;
+    pretty_format:bool;
     internal_format: Schematic.format;
     external_format: Schematic.format
   }
@@ -40,6 +41,11 @@ module L = struct
   let nested = create (fun x -> x.nested) (fun x y -> { x with nested = y })
   let may_approx =
     create (fun x -> x.may_approx) (fun x y -> { x with may_approx = y})
+
+  let pretty_fmt =
+    create
+      (fun x -> x.pretty_format)
+      (fun x y -> { x with pretty_format=y })
 
   let inner_fmt =
     create

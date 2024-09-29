@@ -1,6 +1,16 @@
 {
-"version" : [0, 11, 0],
-"dependencies" : [{ "file" : "cases/first_class_more.ml" }],
-"local" :
-  [{ "module" : ["First_class_more"], "ml" : "cases/first_class_more.ml" }]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "cases/first_class_more.ml"
+   }],
+"local":
+  [{
+   "module":
+     ["First_class_more"],
+   "ml":
+     "cases/first_class_more.ml"
+   }]
 }

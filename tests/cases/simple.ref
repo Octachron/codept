@@ -29,12 +29,38 @@ Spurious dependencies might be inferred due to this ambiguity.
 [[1m[36mNotification[0m]: [1mcases/simple.ml:l12.0−8[0m,
 a non-resolvable module, [1mY[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "file" : "cases/simple.ml",
-   "deps" : [["Y"], ["W"], ["I"], ["G"], ["Ext"], ["E"], ["C"], ["B"], ["A"]]
+   "file":
+     "cases/simple.ml",
+   "deps":
+     [["Y"],
+     ["W"],
+     ["I"],
+     ["G"],
+     ["Ext"],
+     ["E"],
+     ["C"],
+     ["B"],
+     ["A"]]
    }],
-"local" : [{ "module" : ["Simple"], "ml" : "cases/simple.ml" }],
-"unknown" : [["A"], ["B"], ["C"], ["E"], ["Ext"], ["G"], ["I"], ["W"], ["Y"]]
+"local":
+  [{
+   "module":
+     ["Simple"],
+   "ml":
+     "cases/simple.ml"
+   }],
+"unknown":
+  [["A"],
+  ["B"],
+  ["C"],
+  ["E"],
+  ["Ext"],
+  ["G"],
+  ["I"],
+  ["W"],
+  ["Y"]]
 }

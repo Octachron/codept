@@ -8,19 +8,37 @@ ambiguity.
 ambiguous, due to the opening of the external module [1mE1[0m, at
 location [1ml13.7−9[0m. Spurious dependencies might be inferred due to this
 ambiguity.
-[[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l16.11−13[0m,
+[[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l16.6−13[0m,
 a non-resolvable module, [1mE4[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l21.4−6[0m,
 a non-resolvable module, [1mE2[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/pattern_open.ml:l22.8−10[0m,
 a non-resolvable module, [1mE3[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "file" : "cases/pattern_open.ml",
-   "deps" : [["E4"], ["E3"], ["E2"], ["E1"], ["A'"]]
+   "file":
+     "cases/pattern_open.ml",
+   "deps":
+     [["E4"],
+     ["E3"],
+     ["E2"],
+     ["E1"],
+     ["A'"]]
    }],
-"local" : [{ "module" : ["Pattern_open"], "ml" : "cases/pattern_open.ml" }],
-"unknown" : [["A'"], ["E1"], ["E2"], ["E3"], ["E4"]]
+"local":
+  [{
+   "module":
+     ["Pattern_open"],
+   "ml":
+     "cases/pattern_open.ml"
+   }],
+"unknown":
+  [["A'"],
+  ["E1"],
+  ["E2"],
+  ["E3"],
+  ["E4"]]
 }

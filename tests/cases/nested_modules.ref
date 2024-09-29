@@ -1,6 +1,16 @@
 {
-"version" : [0, 11, 0],
-"dependencies" : [{ "file" : "cases/nested_modules.ml" }],
-"local" :
-  [{ "module" : ["Nested_modules"], "ml" : "cases/nested_modules.ml" }]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "cases/nested_modules.ml"
+   }],
+"local":
+  [{
+   "module":
+     ["Nested_modules"],
+   "ml":
+     "cases/nested_modules.ml"
+   }]
 }

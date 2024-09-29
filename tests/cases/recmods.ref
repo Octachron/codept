@@ -9,12 +9,28 @@ a non-resolvable module, [1mXeno2[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/recmods.ml:l30.2−12[0m,
 a non-resolvable module, [1mXeno3[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "file" : "cases/recmods.ml",
-   "deps" : [["Xeno3"], ["Xeno2"], ["Xeno"], ["Ext"]]
+   "file":
+     "cases/recmods.ml",
+   "deps":
+     [["Xeno3"],
+     ["Xeno2"],
+     ["Xeno"],
+     ["Ext"]]
    }],
-"local" : [{ "module" : ["Recmods"], "ml" : "cases/recmods.ml" }],
-"unknown" : [["Ext"], ["Xeno"], ["Xeno2"], ["Xeno3"]]
+"local":
+  [{
+   "module":
+     ["Recmods"],
+   "ml":
+     "cases/recmods.ml"
+   }],
+"unknown":
+  [["Ext"],
+  ["Xeno"],
+  ["Xeno2"],
+  ["Xeno3"]]
 }

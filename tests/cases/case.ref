@@ -9,9 +9,30 @@ a non-resolvable module, [1mD[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/case.ml:l5.2−3[0m,
 a non-resolvable module, [1mF[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
-  [{ "file" : "cases/case.ml", "deps" : [["F"], ["D"], ["C"], ["B"], ["A"]] }],
-"local" : [{ "module" : ["Case"], "ml" : "cases/case.ml" }],
-"unknown" : [["A"], ["B"], ["C"], ["D"], ["F"]]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "cases/case.ml",
+   "deps":
+     [["F"],
+     ["D"],
+     ["C"],
+     ["B"],
+     ["A"]]
+   }],
+"local":
+  [{
+   "module":
+     ["Case"],
+   "ml":
+     "cases/case.ml"
+   }],
+"unknown":
+  [["A"],
+  ["B"],
+  ["C"],
+  ["D"],
+  ["F"]]
 }

@@ -5,14 +5,32 @@ a non-resolvable module, [1mSig_lex[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/sig_reader.ml:l5.19−40[0m,
 a non-resolvable module, [1mSig_parse[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "file" : "cases/sig_reader.ml",
-   "deps" :
-     [["Stdlib", "List"], ["Stdlib", "Lexing"], ["Stdlib", "Format"],
-     ["Sig_parse"], ["Sig_lex"], ["Module"]]
+   "file":
+     "cases/sig_reader.ml",
+   "deps":
+     [["Stdlib",
+      "List"],
+     ["Stdlib",
+     "Lexing"],
+     ["Stdlib",
+     "Format"],
+     ["Sig_parse"],
+     ["Sig_lex"],
+     ["Module"]]
    }],
-"local" : [{ "module" : ["Sig_reader"], "ml" : "cases/sig_reader.ml" }],
-"unknown" : [["Module"], ["Sig_lex"], ["Sig_parse"]]
+"local":
+  [{
+   "module":
+     ["Sig_reader"],
+   "ml":
+     "cases/sig_reader.ml"
+   }],
+"unknown":
+  [["Module"],
+  ["Sig_lex"],
+  ["Sig_parse"]]
 }

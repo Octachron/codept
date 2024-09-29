@@ -1,10 +1,41 @@
 {
-"version" : [0, 11, 0],
-"dependencies" :
-  [{ "file" : "5624/a.mli" }, { "file" : "5624/b.mli", "deps" : [["A"]] },
-  { "file" : "5624/c.ml", "deps" : [["B"], ["A"]] }],
-"local" :
-  [{ "module" : ["A"], "mli" : "5624/a.mli" },
-  { "module" : ["B"], "mli" : "5624/b.mli" },
-  { "module" : ["C"], "ml" : "5624/c.ml" }]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "5624/a.mli"
+   },
+  {
+  "file":
+    "5624/b.mli",
+  "deps":
+    [["A"]]
+  },
+  {
+  "file":
+    "5624/c.ml",
+  "deps":
+    [["B"],
+    ["A"]]
+  }],
+"local":
+  [{
+   "module":
+     ["A"],
+   "mli":
+     "5624/a.mli"
+   },
+  {
+  "module":
+    ["B"],
+  "mli":
+    "5624/b.mli"
+  },
+  {
+  "module":
+    ["C"],
+  "ml":
+    "5624/c.ml"
+  }]
 }

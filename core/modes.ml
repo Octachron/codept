@@ -63,7 +63,10 @@ let structured fmt _ _ ppf param units =
   let fmt = Option.default param.external_format fmt in
   let all = units.Unit.mli @ units.ml in
   let pp = let open Schematic in
-    match fmt with Json -> Ext.json Schema.x | Sexp -> Ext.sexp Schema.x in
+    match fmt, param.pretty_format with
+    | Json, true -> Ext.pretty_json Schema.x
+    | Json, false -> Ext.simple_json Schema.x
+    | Sexp, _ -> Ext.sexp Schema.x in
   let lib, unknown =
     List.fold_left build_atlas (LibSet.empty, Namespaced.Set.empty) all in
   let groups = Unit.Group.group units in

@@ -1,12 +1,34 @@
 [[1m[36mNotification[0m]: [1mpair/b.ml:l1.0−11[0m,
 a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
-  [{ "file" : "pair/a.ml", "deps" : [["B"]] },
-  { "file" : "pair/b.ml", "deps" : [["Extern"]] }],
-"local" :
-  [{ "module" : ["A"], "ml" : "pair/a.ml" },
-  { "module" : ["B"], "ml" : "pair/b.ml" }],
-"unknown" : [["Extern"]]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "pair/a.ml",
+   "deps":
+     [["B"]]
+   },
+  {
+  "file":
+    "pair/b.ml",
+  "deps":
+    [["Extern"]]
+  }],
+"local":
+  [{
+   "module":
+     ["A"],
+   "ml":
+     "pair/a.ml"
+   },
+  {
+  "module":
+    ["B"],
+  "ml":
+    "pair/b.ml"
+  }],
+"unknown":
+  [["Extern"]]
 }

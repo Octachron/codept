@@ -13,23 +13,105 @@
       G −([1m8-cycles/g.ml:l8.0−6[0m)⟶ F −([1m8-cycles/f.ml:l7.0−6[0m)⟶
       E −([1m8-cycles/e.ml:l6.0−6[0m)⟶ A
 {
-"version" : [0, 11, 0],
-"dependencies" :
-  [{ "file" : "8-cycles/a.ml", "deps" : [["H"], ["B"]] },
-  { "file" : "8-cycles/b.ml", "deps" : [["C"]] },
-  { "file" : "8-cycles/c.ml", "deps" : [["D"]] },
-  { "file" : "8-cycles/d.ml", "deps" : [["A"]] },
-  { "file" : "8-cycles/e.ml", "deps" : [["A"]] },
-  { "file" : "8-cycles/f.ml", "deps" : [["E"]] },
-  { "file" : "8-cycles/g.ml", "deps" : [["F"]] },
-  { "file" : "8-cycles/h.ml", "deps" : [["G"]] }],
-"local" :
-  [{ "module" : ["A"], "ml" : "8-cycles/a.ml" },
-  { "module" : ["B"], "ml" : "8-cycles/b.ml" },
-  { "module" : ["C"], "ml" : "8-cycles/c.ml" },
-  { "module" : ["D"], "ml" : "8-cycles/d.ml" },
-  { "module" : ["E"], "ml" : "8-cycles/e.ml" },
-  { "module" : ["F"], "ml" : "8-cycles/f.ml" },
-  { "module" : ["G"], "ml" : "8-cycles/g.ml" },
-  { "module" : ["H"], "ml" : "8-cycles/h.ml" }]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "8-cycles/a.ml",
+   "deps":
+     [["H"],
+     ["B"]]
+   },
+  {
+  "file":
+    "8-cycles/b.ml",
+  "deps":
+    [["C"]]
+  },
+  {
+  "file":
+    "8-cycles/c.ml",
+  "deps":
+    [["D"]]
+  },
+  {
+  "file":
+    "8-cycles/d.ml",
+  "deps":
+    [["A"]]
+  },
+  {
+  "file":
+    "8-cycles/e.ml",
+  "deps":
+    [["A"]]
+  },
+  {
+  "file":
+    "8-cycles/f.ml",
+  "deps":
+    [["E"]]
+  },
+  {
+  "file":
+    "8-cycles/g.ml",
+  "deps":
+    [["F"]]
+  },
+  {
+  "file":
+    "8-cycles/h.ml",
+  "deps":
+    [["G"]]
+  }],
+"local":
+  [{
+   "module":
+     ["A"],
+   "ml":
+     "8-cycles/a.ml"
+   },
+  {
+  "module":
+    ["B"],
+  "ml":
+    "8-cycles/b.ml"
+  },
+  {
+  "module":
+    ["C"],
+  "ml":
+    "8-cycles/c.ml"
+  },
+  {
+  "module":
+    ["D"],
+  "ml":
+    "8-cycles/d.ml"
+  },
+  {
+  "module":
+    ["E"],
+  "ml":
+    "8-cycles/e.ml"
+  },
+  {
+  "module":
+    ["F"],
+  "ml":
+    "8-cycles/f.ml"
+  },
+  {
+  "module":
+    ["G"],
+  "ml":
+    "8-cycles/g.ml"
+  },
+  {
+  "module":
+    ["H"],
+  "ml":
+    "8-cycles/h.ml"
+  }]
 }

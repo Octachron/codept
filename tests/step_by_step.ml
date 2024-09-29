@@ -43,7 +43,7 @@ let build_atlas (lib,unknow) deps  =
 
 let pp file name deps =
   let lib, unknown = build_atlas (LibSet.empty, Namespaced.Set.empty) deps in
-  let pp = Schematic.Ext.json Schema.x in
+  let pp = Schematic.Ext.simple_json Schema.x in
   let dependencies = [{ Schema.file; deps= Deps.paths deps }] in
   let local = [{Schema.path=Namespaced.make name; ml=Some file; mli=None}] in
   let library = LibSet.elements lib in

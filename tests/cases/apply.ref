@@ -3,8 +3,24 @@ a non-resolvable module, [1mF[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/apply.ml:l1.0−15[0m,
 a non-resolvable module, [1mX[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" : [{ "file" : "cases/apply.ml", "deps" : [["X"], ["F"]] }],
-"local" : [{ "module" : ["Apply"], "ml" : "cases/apply.ml" }],
-"unknown" : [["F"], ["X"]]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "cases/apply.ml",
+   "deps":
+     [["X"],
+     ["F"]]
+   }],
+"local":
+  [{
+   "module":
+     ["Apply"],
+   "ml":
+     "cases/apply.ml"
+   }],
+"unknown":
+  [["F"],
+  ["X"]]
 }

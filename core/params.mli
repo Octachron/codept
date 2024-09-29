@@ -7,6 +7,7 @@ type t = {
   no_include : bool;
   may_approx : bool;
   nested:bool;
+  pretty_format:bool;
   internal_format: Schematic.format;
   external_format: Schematic.format;
 }
@@ -54,4 +55,5 @@ module L :
     val nested : (t,bool) l
     val inner_fmt : (t, Schematic.format) l
     val ext_fmt : (t,Schematic.format) l
+    val pretty_fmt: (t,bool) l
   end

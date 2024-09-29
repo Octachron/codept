@@ -29,12 +29,34 @@ ambiguity.
 [[1m[36mNotification[0m]: [1mcases/phantom_maze.ml:l18.0−6[0m,
 a non-resolvable module, [1mY[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "file" : "cases/phantom_maze.ml",
-   "deps" : [["Y"], ["X"], ["External"], ["E"], ["D"], ["C"], ["B"]]
+   "file":
+     "cases/phantom_maze.ml",
+   "deps":
+     [["Y"],
+     ["X"],
+     ["External"],
+     ["E"],
+     ["D"],
+     ["C"],
+     ["B"]]
    }],
-"local" : [{ "module" : ["Phantom_maze"], "ml" : "cases/phantom_maze.ml" }],
-"unknown" : [["B"], ["C"], ["D"], ["E"], ["External"], ["X"], ["Y"]]
+"local":
+  [{
+   "module":
+     ["Phantom_maze"],
+   "ml":
+     "cases/phantom_maze.ml"
+   }],
+"unknown":
+  [["B"],
+  ["C"],
+  ["D"],
+  ["E"],
+  ["External"],
+  ["X"],
+  ["Y"]]
 }

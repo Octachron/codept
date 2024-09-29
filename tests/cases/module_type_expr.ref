@@ -5,13 +5,26 @@ a non-resolvable module, [1mTwo[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/module_type_expr.ml:l5.2−12[0m,
 a non-resolvable module, [1mThree[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "file" : "cases/module_type_expr.ml",
-   "deps" : [["Two"], ["Three"], ["One"]]
+   "file":
+     "cases/module_type_expr.ml",
+   "deps":
+     [["Two"],
+     ["Three"],
+     ["One"]]
    }],
-"local" :
-  [{ "module" : ["Module_type_expr"], "ml" : "cases/module_type_expr.ml" }],
-"unknown" : [["One"], ["Three"], ["Two"]]
+"local":
+  [{
+   "module":
+     ["Module_type_expr"],
+   "ml":
+     "cases/module_type_expr.ml"
+   }],
+"unknown":
+  [["One"],
+  ["Three"],
+  ["Two"]]
 }

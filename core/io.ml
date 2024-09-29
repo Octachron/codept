@@ -60,7 +60,7 @@ let direct = {
   writer = {
     m2l =  (fun format _filename ppf m2l ->
         match format with
-        | Json -> Schematic.minify ppf "%a@.\n" (Schematic.Ext.json Schema.m2l) m2l
+        | Json -> Schematic.minify ppf "%a@.\n" (Schematic.Ext.simple_json Schema.m2l) m2l
         | Sexp ->  Schematic.minify ppf "%a@.\n" (Schematic.Ext.sexp Schema.m2l) m2l
 
       );
@@ -70,7 +70,7 @@ let direct = {
          | Sexp ->  Schematic.minify ppf "%a@.\n"
                       (Schematic.Ext.sexp Schema.namespace) mds
          | Json ->  Schematic.minify ppf "%a@.\n"
-                      (Schematic.Ext.json Schema.namespace) mds
+                      (Schematic.Ext.simple_json Schema.namespace) mds
       )
   }
 }

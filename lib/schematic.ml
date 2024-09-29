@@ -386,66 +386,134 @@ let json_definitions epaths ppf map =
   and json_defs ppf m = ignore (Name.Map.fold (json_def ppf) m false) in
   json_defs ppf map
 
-let rec json: type a f. f pending_rec_def -> (a,f) s -> Format.formatter -> a -> unit =
-  fun defs sch ppf x -> match sch, x with
-    | Int, n -> Pp.fp ppf "%d" n
-    | Float, f -> Pp.fp ppf "%f" f
-    | String, s -> Pp.estring ppf s
-    | Bool, b -> Pp.fp ppf "%b" b
-    | Void, _ -> .
-    | Array k, l ->
-      Pp.fp ppf "@[<hov>[%a]@]"
-        (Pp.list ~sep:(Pp.s ",@ ") @@ json defs k) l
-    | [], [] -> ()
-    | _ :: _ as sch , l -> Pp.fp ppf "@[<hov>[%a]@]" (json_tuple defs sch) l
-    | Obj sch, x -> Pp.fp ppf "@[<hv>{@ %a@ }@]" (json_obj false defs sch) x
-    | Custom c, x -> json defs c.sch ppf (c.fwd x)
-    | Sum q, x -> json_sum 0 defs q ppf x
-    | Description(_,sch), x -> json defs sch ppf x
-    | Var n, x ->
-      let Pending p = defs in
-      json defs (get p.defs n) ppf x
-    | Rec { defs; id; proj; _ }, x -> json (Pending {defs; id}) (get defs proj) ppf x
-and json_sum: type all x. int -> all pending_rec_def -> (x,all) sum_decl  ->
-  Format.formatter -> x sum -> unit =
-  fun n defs sch ppf x -> match sch, x with
-    | (n,a) :: _ , C Z x ->
-      let module N = Label(struct let l=n end) in
-      json defs (Obj [Req, N.l, a]) ppf (Record.[N.l, x])
-    | (n,_) :: _ , C E ->
-      json defs String ppf n
-    | _ :: q, C S c -> json_sum (n+1) defs q ppf (C c)
-    | [], _ -> .
+module Pretty_json = struct
 
-and json_tuple: type a f. f pending_rec_def -> (a tuple,f) s -> Format.formatter -> a tuple -> unit =
-  fun defs sch ppf x -> match sch, x with
-    | [], [] -> ()
-    | [a], [x] -> json defs a ppf x
-    | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json defs a) x (json_tuple defs q) xs
-    | Custom _, _ -> assert false
-    | Description _, _ -> assert false
-    | Rec { defs; proj; id; _ }, x -> json_tuple (Pending {id;defs}) (get defs proj) ppf x
-    | Var proj, x ->
-      let Pending p =  defs in
-      json_tuple defs (get p.defs proj) ppf x
+  let rec json: type a f. f pending_rec_def -> (a,f) s -> Format.formatter -> a -> unit =
+    fun defs sch ppf x -> match sch, x with
+      | Int, n -> Pp.fp ppf "%d" n
+      | Float, f -> Pp.fp ppf "%f" f
+      | String, s -> Pp.estring ppf s
+      | Bool, b -> Pp.fp ppf "%b" b
+      | Void, _ -> .
+      | Array k, l ->
+        Pp.fp ppf "@[<hov>[%a]@]"
+          (Pp.list ~sep:(Pp.s ",@ ") @@ json defs k) l
+      | [], [] -> ()
+      | _ :: _ as sch , l -> Pp.fp ppf "@[<hov>[%a]@]" (json_tuple defs sch) l
+      | Obj sch, x -> Pp.fp ppf "@[<hv>{@ %a@ }@]" (json_obj false defs sch) x
+      | Custom c, x -> json defs c.sch ppf (c.fwd x)
+      | Sum q, x -> json_sum 0 defs q ppf x
+      | Description(_,sch), x -> json defs sch ppf x
+      | Var n, x ->
+        let Pending p = defs in
+        json defs (get p.defs n) ppf x
+      | Rec { defs; id; proj; _ }, x -> json (Pending {defs; id}) (get defs proj) ppf x
+  and json_sum: type all x. int -> all pending_rec_def -> (x,all) sum_decl  ->
+    Format.formatter -> x sum -> unit =
+    fun n defs sch ppf x -> match sch, x with
+      | (n,a) :: _ , C Z x ->
+        let module N = Label(struct let l=n end) in
+        json defs (Obj [Req, N.l, a]) ppf (Record.[N.l, x])
+      | (n,_) :: _ , C E ->
+        json defs String ppf n
+      | _ :: q, C S c -> json_sum (n+1) defs q ppf (C c)
+      | [], _ -> .
 
-and json_obj: type a r.
-  bool -> r pending_rec_def -> (a,r) record_declaration -> Format.formatter -> a record -> unit =
-  fun not_first defs sch ppf x -> match sch, x with
-    | [], [] -> ()
-    | (Req, name,sch) :: q ,   (_, x) :: xs ->
-      if not_first then Pp.fp ppf ",@ ";
-      Pp.fp ppf {|@[<hov 2>"%s"@ :@ %a@]|} (show name) (json defs sch) x;
-      Pp.fp ppf "%a" (json_obj true defs q) xs
-    | (Opt,name,sch) :: q, (_,Some x) :: xs ->
-      if not_first then Pp.fp ppf ",@ ";
-      Pp.fp ppf {|@[<hov 2>"%s"@ :@ %a@]|} (show name) (json defs sch) x;
-      Pp.fp ppf "%a" (json_obj true defs q) xs
-    | (Opt,_,_) :: q, (_, None ) :: xs ->
-      json_obj not_first defs q ppf xs
+  and json_tuple: type a f. f pending_rec_def -> (a tuple,f) s -> Format.formatter -> a tuple -> unit =
+    fun defs sch ppf x -> match sch, x with
+      | [], [] -> ()
+      | [a], [x] -> json defs a ppf x
+      | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json defs a) x (json_tuple defs q) xs
+      | Custom _, _ -> assert false
+      | Description _, _ -> assert false
+      | Rec { defs; proj; id; _ }, x -> json_tuple (Pending {id;defs}) (get defs proj) ppf x
+      | Var proj, x ->
+        let Pending p =  defs in
+        json_tuple defs (get p.defs proj) ppf x
+
+  and json_obj: type a r.
+    bool -> r pending_rec_def -> (a,r) record_declaration -> Format.formatter -> a record -> unit =
+    fun not_first defs sch ppf x -> match sch, x with
+      | [], [] -> ()
+      | (Req, name,sch) :: q ,   (_, x) :: xs ->
+        if not_first then Pp.fp ppf ",@ ";
+        Pp.fp ppf {|@[<hov 2>"%s"@ :@ %a@]|} (show name) (json defs sch) x;
+        Pp.fp ppf "%a" (json_obj true defs q) xs
+      | (Opt,name,sch) :: q, (_,Some x) :: xs ->
+        if not_first then Pp.fp ppf ",@ ";
+        Pp.fp ppf {|@[<hov 2>"%s"@ :@ %a@]|} (show name) (json defs sch) x;
+        Pp.fp ppf "%a" (json_obj true defs q) xs
+      | (Opt,_,_) :: q, (_, None ) :: xs ->
+        json_obj not_first defs q ppf xs
+end
+
+let pretty_json x = Pretty_json.json Closed x
+
+module Simple_json = struct
+
+  let rec json: type a f. f pending_rec_def -> (a,f) s -> Format.formatter -> a -> unit =
+    fun defs sch ppf x -> match sch, x with
+      | Int, n -> Pp.fp ppf "%d" n
+      | Float, f -> Pp.fp ppf "%f" f
+      | String, s -> Pp.estring ppf s
+      | Bool, b -> Pp.fp ppf "%b" b
+      | Void, _ -> .
+      | Array k, l ->
+        Pp.fp ppf "@[<v>[%a]@]"
+          (Pp.list ~sep:(Pp.s ",@ ") @@ json defs k) l
+      | [], [] -> ()
+      | _ :: _ as sch , l -> Pp.fp ppf "@[<h>[%a]@]" (tuple defs sch) l
+      | Obj sch, x -> Pp.fp ppf "@[<v>{@ %a@ }@]" (obj false defs sch) x
+      | Custom c, x -> json defs c.sch ppf (c.fwd x)
+      | Sum q, x -> sum 0 defs q ppf x
+      | Description(_,sch), x -> json defs sch ppf x
+      | Var n, x ->
+        let Pending p = defs in
+        json defs (get p.defs n) ppf x
+      | Rec { defs; id; proj; _ }, x -> json (Pending {defs; id}) (get defs proj) ppf x
+  and sum: type all x. int -> all pending_rec_def -> (x,all) sum_decl  ->
+    Format.formatter -> x sum -> unit =
+    fun n defs sch ppf x -> match sch, x with
+      | (n,a) :: _ , C Z x ->
+        let module N = Label(struct let l=n end) in
+        json defs (Obj [Req, N.l, a]) ppf (Record.[N.l, x])
+      | (n,_) :: _ , C E ->
+        json defs String ppf n
+      | _ :: q, C S c -> sum (n+1) defs q ppf (C c)
+      | [], _ -> .
+
+  and tuple: type a f. f pending_rec_def -> (a tuple,f) s -> Format.formatter -> a tuple -> unit =
+    fun defs sch ppf x -> match sch, x with
+      | [], [] -> ()
+      | [a], [x] -> json defs a ppf x
+      | a :: q, x :: xs -> Pp.fp ppf "%a,@ %a" (json defs a) x (tuple defs q) xs
+      | Custom _, _ -> assert false
+      | Description _, _ -> assert false
+      | Rec { defs; proj; id; _ }, x -> tuple (Pending {id;defs}) (get defs proj) ppf x
+      | Var proj, x ->
+        let Pending p =  defs in
+        tuple defs (get p.defs proj) ppf x
+
+  and obj: type a r.
+    bool -> r pending_rec_def -> (a,r) record_declaration -> Format.formatter -> a record -> unit =
+    fun not_first defs sch ppf x -> match sch, x with
+      | [], [] -> ()
+      | (Req, name,sch) :: q ,   (_, x) :: xs ->
+        if not_first then Pp.fp ppf ",@ ";
+        Pp.fp ppf {|@[<v 2>"%s":@ %a@]|} (show name) (json defs sch) x;
+        Pp.fp ppf "%a" (obj true defs q) xs
+      | (Opt,name,sch) :: q, (_,Some x) :: xs ->
+        if not_first then Pp.fp ppf ",@ ";
+        Pp.fp ppf {|@[<v 2>"%s":@ %a@]|} (show name) (json defs sch) x;
+        Pp.fp ppf "%a" (obj true defs q) xs
+      | (Opt,_,_) :: q, (_, None ) :: xs ->
+        obj not_first defs q ppf xs
+
+end
 
 
-let json x = json Closed x
+
+let simple_json x = Simple_json.json Closed x
 
 let cstring ppf s =
   begin try
@@ -703,9 +771,14 @@ module Ext = struct
 
 
 
-  let json s ppf x =
+  let pretty_json s ppf x =
     let B (sch, x) = extend s x in
-    json sch ppf x
+    pretty_json sch ppf x
+
+  let simple_json s ppf x =
+    let B (sch, x) = extend s x in
+    simple_json sch ppf x
+
 
   let json_schema ppf s =
     let Dyn (rctx,sch) = schema s in

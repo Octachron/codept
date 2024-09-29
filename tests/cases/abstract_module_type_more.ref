@@ -1,11 +1,18 @@
 [[1m[35mWarning[0m]: [1mcases/abstract_module_type_more.ml:l25.0−11[0m,
 module [1mB.R[0m does not contain any submodule [1mXI[0m
 {
-"version" : [0, 11, 0],
-"dependencies" : [{ "file" : "cases/abstract_module_type_more.ml" }],
-"local" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "module" : ["Abstract_module_type_more"],
-   "ml" : "cases/abstract_module_type_more.ml"
+   "file":
+     "cases/abstract_module_type_more.ml"
+   }],
+"local":
+  [{
+   "module":
+     ["Abstract_module_type_more"],
+   "ml":
+     "cases/abstract_module_type_more.ml"
    }]
 }

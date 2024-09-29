@@ -50,6 +50,7 @@ let param0 = {
     no_include = false;
     may_approx = false;
     nested = false;
+    pretty_format = true;
     internal_format = Sexp;
     external_format = Json
   }
@@ -116,6 +117,7 @@ let format param x =
   match x with
     | "sexp" -> update Schematic.Sexp
     | "json" -> update Schematic.Json
+    | "simple-json" -> param#<-(L.pretty_fmt,false); update Schematic.Json
     | _ -> ()
 
 

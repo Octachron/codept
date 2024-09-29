@@ -1,13 +1,22 @@
 [[1m[36mNotification[0m]: [1mcases/projected_abstract_module_type.ml:l8.9−21[0m,
 a non-resolvable module, [1mExt[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
-  [{ "file" : "cases/projected_abstract_module_type.ml", "deps" : [["Ext"]] }],
-"local" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "module" : ["Projected_abstract_module_type"],
-   "ml" : "cases/projected_abstract_module_type.ml"
+   "file":
+     "cases/projected_abstract_module_type.ml",
+   "deps":
+     [["Ext"]]
    }],
-"unknown" : [["Ext"]]
+"local":
+  [{
+   "module":
+     ["Projected_abstract_module_type"],
+   "ml":
+     "cases/projected_abstract_module_type.ml"
+   }],
+"unknown":
+  [["Ext"]]
 }

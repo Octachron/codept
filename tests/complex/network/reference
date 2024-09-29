@@ -4,13 +4,45 @@ a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
 to the opening of the external module [1mExtern[0m, at location [1ml2.0−11[0m. Spurious
 dependencies might be inferred due to this ambiguity.
 {
-"version" : [0, 11, 0],
-"dependencies" :
-  [{ "file" : "network/a.ml", "deps" : [["Extern"], ["B"]] },
-  { "file" : "network/b.ml" }, { "file" : "network/c.ml", "deps" : [["A"]] }],
-"local" :
-  [{ "module" : ["A"], "ml" : "network/a.ml" },
-  { "module" : ["B"], "ml" : "network/b.ml" },
-  { "module" : ["C"], "ml" : "network/c.ml" }],
-"unknown" : [["Extern"]]
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "network/a.ml",
+   "deps":
+     [["Extern"],
+     ["B"]]
+   },
+  {
+  "file":
+    "network/b.ml"
+  },
+  {
+  "file":
+    "network/c.ml",
+  "deps":
+    [["A"]]
+  }],
+"local":
+  [{
+   "module":
+     ["A"],
+   "ml":
+     "network/a.ml"
+   },
+  {
+  "module":
+    ["B"],
+  "ml":
+    "network/b.ml"
+  },
+  {
+  "module":
+    ["C"],
+  "ml":
+    "network/c.ml"
+  }],
+"unknown":
+  [["Extern"]]
 }

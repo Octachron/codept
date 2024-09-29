@@ -5,12 +5,26 @@ a non-resolvable module, [1mExt3[0m, has been replaced by an approximation
 [[1m[36mNotification[0m]: [1mcases/option_monad.ml:l20.22−26[0m,
 a non-resolvable module, [1mExt4[0m, has been replaced by an approximation
 {
-"version" : [0, 11, 0],
-"dependencies" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "file" : "cases/option_monad.ml",
-   "deps" : [["Ext4"], ["Ext3"], ["Ext"]]
+   "file":
+     "cases/option_monad.ml",
+   "deps":
+     [["Ext4"],
+     ["Ext3"],
+     ["Ext"]]
    }],
-"local" : [{ "module" : ["Option_monad"], "ml" : "cases/option_monad.ml" }],
-"unknown" : [["Ext"], ["Ext3"], ["Ext4"]]
+"local":
+  [{
+   "module":
+     ["Option_monad"],
+   "ml":
+     "cases/option_monad.ml"
+   }],
+"unknown":
+  [["Ext"],
+  ["Ext3"],
+  ["Ext4"]]
 }

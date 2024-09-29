@@ -1,40 +1,104 @@
 {
-"version" : [0, 11, 0],
-"dependencies" :
-  [{ "file" : "aliases_and_map/m.mli" },
-  { "file" : "aliases_and_map/n__A.mli", "deps" : [["M"]] },
-  { "file" : "aliases_and_map/n__B.mli", "deps" : [["M"]] },
-  { "file" : "aliases_and_map/n__C.mli", "deps" : [["M"]] },
-  { "file" : "aliases_and_map/n__D.mli", "deps" : [["M"]] },
-  { "file" : "aliases_and_map/m.ml" },
-  { "file" : "aliases_and_map/n__A.ml", "deps" : [["M"]] },
-  { "file" : "aliases_and_map/n__B.ml", "deps" : [["M"]] },
-  { "file" : "aliases_and_map/n__C.ml", "deps" : [["N__A"], ["M"]] },
-  { "file" : "aliases_and_map/n__D.ml", "deps" : [["N__B"], ["M"]] }],
-"local" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "module" : ["M"],
-   "ml" : "aliases_and_map/m.ml",
-   "mli" : "aliases_and_map/m.mli"
+   "file":
+     "aliases_and_map/m.mli"
    },
   {
-  "module" : ["N__A"],
-  "ml" : "aliases_and_map/n__A.ml",
-  "mli" : "aliases_and_map/n__A.mli"
+  "file":
+    "aliases_and_map/n__A.mli",
+  "deps":
+    [["M"]]
   },
   {
-  "module" : ["N__B"],
-  "ml" : "aliases_and_map/n__B.ml",
-  "mli" : "aliases_and_map/n__B.mli"
+  "file":
+    "aliases_and_map/n__B.mli",
+  "deps":
+    [["M"]]
   },
   {
-  "module" : ["N__C"],
-  "ml" : "aliases_and_map/n__C.ml",
-  "mli" : "aliases_and_map/n__C.mli"
+  "file":
+    "aliases_and_map/n__C.mli",
+  "deps":
+    [["M"]]
   },
   {
-  "module" : ["N__D"],
-  "ml" : "aliases_and_map/n__D.ml",
-  "mli" : "aliases_and_map/n__D.mli"
+  "file":
+    "aliases_and_map/n__D.mli",
+  "deps":
+    [["M"]]
+  },
+  {
+  "file":
+    "aliases_and_map/m.ml"
+  },
+  {
+  "file":
+    "aliases_and_map/n__A.ml",
+  "deps":
+    [["M"]]
+  },
+  {
+  "file":
+    "aliases_and_map/n__B.ml",
+  "deps":
+    [["M"]]
+  },
+  {
+  "file":
+    "aliases_and_map/n__C.ml",
+  "deps":
+    [["N__A"],
+    ["M"]]
+  },
+  {
+  "file":
+    "aliases_and_map/n__D.ml",
+  "deps":
+    [["N__B"],
+    ["M"]]
+  }],
+"local":
+  [{
+   "module":
+     ["M"],
+   "ml":
+     "aliases_and_map/m.ml",
+   "mli":
+     "aliases_and_map/m.mli"
+   },
+  {
+  "module":
+    ["N__A"],
+  "ml":
+    "aliases_and_map/n__A.ml",
+  "mli":
+    "aliases_and_map/n__A.mli"
+  },
+  {
+  "module":
+    ["N__B"],
+  "ml":
+    "aliases_and_map/n__B.ml",
+  "mli":
+    "aliases_and_map/n__B.mli"
+  },
+  {
+  "module":
+    ["N__C"],
+  "ml":
+    "aliases_and_map/n__C.ml",
+  "mli":
+    "aliases_and_map/n__C.mli"
+  },
+  {
+  "module":
+    ["N__D"],
+  "ml":
+    "aliases_and_map/n__D.ml",
+  "mli":
+    "aliases_and_map/n__D.mli"
   }]
 }
