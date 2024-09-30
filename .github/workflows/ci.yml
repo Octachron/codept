@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
       fail-fast: false
-      rmatrix:
+      matrix:
         os:
           - ubuntu-latest
           - macos-latest
