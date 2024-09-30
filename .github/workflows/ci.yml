@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
       fail-fast: false
-      matrix:
+      rmatrix:
         os:
           - ubuntu-latest
           - macos-latest
@@ -18,7 +18,11 @@ jobs:
         ocaml-compiler:
           - 5.2.0
           - 4.14.2
-          - 4.04.2
+        include:
+          - os:linux
+            ocaml-compiler:4.03.0
+          - os:linux
+            ocaml-compiler 4.08.0
 
     runs-on: ${{ matrix.os }}
 
