@@ -19,9 +19,9 @@ jobs:
           - 5.2.0
           - 4.14.2
         include:
-          - os:linux
+          - os:linux,
             ocaml-compiler:4.03.0
-          - os:linux
+          - os:linux,
             ocaml-compiler 4.08.0
 
     runs-on: ${{ matrix.os }}
