@@ -21,3 +21,7 @@ val name: string -> Unitname.t
 
 val file: kind -> string ->
   Unitname.t * (M2l.t, error) result
+
+val file_raw: kind -> string -> (M2l.t, error) result
+(** [file_raw kind filename] reads the file [filename] in a format
+    specific to the file's [kind]. *)
