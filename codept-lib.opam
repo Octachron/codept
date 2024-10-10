@@ -15,13 +15,12 @@ Codept intends to be a dependency solver for OCaml project and an alternative to
 Both ocamldep and codept computes an over-approximation of the dependencies graph of OCaml project. However, codept uses whole project analysis to reduce the number of fictitious dependencies inferred at the project scale, whereas ocamldep is, by design, limited to local file analysis."""
 maintainer: ["Florian Angeletti <octa@polychoron.fr>"]
 authors: ["Florian Angeletti <octa@polychoron.fr>"]
-license: "GPL-3.0-or-later"
+license: "OCaml-LGPL-linking-exception"
 homepage: "https://github.com/Octachron/codept"
 bug-reports: "https://github.com/Octachron/codept/issues"
 depends: [
   "dune"
-  "codept-lib" {= version}
-  "codept-bundled" {= version}
+  "menhir" {>= "20180523"}
 ]
 build: [
   ["dune" "subst"] {pinned}

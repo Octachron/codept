@@ -1,6 +1,7 @@
 (library
   (name bundled)
   (libraries codept_lib)
+  (public_name codept-bundled)
   (flags (:standard -w -33))
   (wrapped false)
 )
