@@ -31,7 +31,7 @@ Both ocamldep and codept computes an over-approximation of the dependencies grap
 
 (package
   (name codept-lib)
-  (license OCaml-LGPL-linking-exception)
+  (license "LGPL-2.1-only WITH OCaml-LGPL-linking-exception")
   (synopsis "Alternative ocaml dependency analyzer")
   (depends dune (menhir (>= 20180523)))
   (description "Codept intends to be a dependency solver for OCaml project and an alternative to ocamldep. Compared to ocamldep, codept major features are:
