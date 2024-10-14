@@ -51,20 +51,21 @@ let pp file name deps =
   Format.printf "%a@." pp {dependencies;local; library; unknown}
 
 let () =
-  let file = Sys.argv.(1) in
-  let name, res =
-    Read.file {Read.format=Read.Src; kind=M2l.Structure} file in
+  let filename = Sys.argv.(1) in
+  let modname = Read.name filename in
+  let res =
+    Read.file {Read.format=Read.Src; kind=M2l.Structure} filename in
   let m2l =
     match res with
-    | Error (Ocaml _) -> Format.eprintf "Error when parsing source %a.@." Unitname.pp name; exit 2
-    | Error (Serialized _) -> Format.eprintf "Error when parsing m2l %a.@." Unitname.pp name; exit 2
+    | Error (Ocaml _) -> Format.eprintf "Error when parsing source %a.@." Unitname.pp modname; exit 2
+    | Error (Serialized _) -> Format.eprintf "Error when parsing m2l %a.@." Unitname.pp modname; exit 2
     | Ok x -> x in
   let env =   Envt.start ~open_approximation:true
     ~libs:[]
     ~namespace:[]
     ~implicits:[["Stdlib"], Bundle.stdlib ]
     Module.Dict.empty in
-  let pkg = (Pkg.local file) in
+  let pkg = (Pkg.local filename) in
   let rec loop guard res = match O.next env res ~pkg with
     | Error zipper ->
       if guard = 0 then
@@ -73,4 +74,4 @@ let () =
         loop (guard-1) zipper
     | Ok (_sig, deps) -> deps in
   let deps = loop 1_000_000 (O.initial m2l) in
-  pp file (Modname.to_string (Unitname.modname name)) deps
+  pp filename (Modname.to_string (Unitname.modname modname)) deps

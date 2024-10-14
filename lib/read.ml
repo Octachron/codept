@@ -46,8 +46,6 @@ let source_file kind filename =
   code
 
 let file {format;kind} filename =
-  let name = name filename in
-  name,
   match format with
   | Src | Parsetree -> source_file kind filename
   | M2l ->

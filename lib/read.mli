@@ -19,5 +19,4 @@ type error = Ocaml of ocaml_parsing_error | Serialized of Schematic.Ext.error
 val name: string -> Unitname.t
 (** [name filename] gives the module name corresponding to filename *)
 
-val file: kind -> string ->
-  Unitname.t * (M2l.t, error) result
+val file: kind -> string -> (M2l.t, error) result
