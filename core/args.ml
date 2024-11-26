@@ -44,7 +44,10 @@ let param0 = {
       precomputed_libs = Name.Set.singleton "stdlib";
       closed_world = false;
       sig_only = false;
-      policy = Codept_policies.policy;
+      fault_handler = {
+        Fault.policy = Codept_policies.policy;
+        err_formatter = Format.err_formatter
+      }
     };
 
     no_include = false;
@@ -80,7 +83,7 @@ let with_output out s f=
 
 let iter_makefile out param interm s =
   with_output out s (fun ppf ->
-      Makefile.main L.(param#.policy) ppf param.synonyms param.makefile interm
+      Makefile.main L.(param#.fault_handler) ppf param.synonyms param.makefile interm
     )
 
 (** {2 Option implementations } *)

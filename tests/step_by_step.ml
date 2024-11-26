@@ -14,10 +14,13 @@ module Failing_env = struct
 end
 
 module Param = struct
-let policy = Standard_policies.default
-let epsilon_dependencies = false
-let transparent_extension_nodes = false
-let transparent_aliases = true
+  let fault_handler = {
+    Fault.policy = Standard_policies.default;
+    err_formatter = Format.err_formatter
+  }
+  let epsilon_dependencies = false
+  let transparent_extension_nodes = false
+  let transparent_aliases = true
 end
 
 module O = Dep_zipper.Make(Failing_env)(Param)

@@ -39,18 +39,20 @@ module Version = struct
 end
 
 
-let policy =
-  Standard_policies.quiet
+let fault_handler =
+  { Fault.policy = Standard_policies.quiet;
+    err_formatter = Format.err_formatter
+  }
 
-let read policy (info,f,path) =
-  Unit.read_file policy info f path
+let read fault_handler (info,f,path) =
+  Unit.read_file fault_handler info f path
 
-let read_simple policy (info,f) =
-  read policy (info, f, Namespaced.filepath_of_filename f)
+let read_simple fault_handler (info,f) =
+  read fault_handler (info, f, Namespaced.filepath_of_filename f)
 
-let organize policy files =
+let organize fault_handler files =
   files
-  |> Unit.unimap (List.map @@ read policy)
+  |> Unit.unimap (List.map @@ read fault_handler)
   |> Unit.Group.(fst % split % group)
 
 let version = Sys.ocaml_version
@@ -80,14 +82,14 @@ module Branch(Param:Stage.param) = struct
   module D = Solver.Directed(Envt.Core)(Param)(Engine)
 
   let organize pkgs files =
-    let units: _  Unit.pair = organize policy files in
+    let units: _  Unit.pair = organize fault_handler files in
     let fileset = List.map (fun (u:Unit.s) -> u.path) units.mli in
     let env = start_env pkgs fileset in
     env, units
 
   let analyze_k pkgs files roots =
     let core, units = organize pkgs files in
-    let loader, files = read policy, files.ml @ files.mli in
+    let loader, files = read fault_handler, files.ml @ files.mli in
     S.solve core units,
     Option.fmap (fun roots -> snd @@ D.solve loader files core roots) roots
 
@@ -259,14 +261,14 @@ module Branch(Param:Stage.param) = struct
 end
 
 module Std = Branch(struct
-  let policy = policy
+  let fault_handler = fault_handler
   let epsilon_dependencies = false
   let transparent_aliases = true
   let transparent_extension_nodes = true
   end)
 
 module Eps = Branch(struct
-  let policy = policy
+  let fault_handler = fault_handler
   let epsilon_dependencies = true
   let transparent_aliases = true
   let transparent_extension_nodes = true
@@ -627,7 +629,7 @@ let result =
             ["Cmi"; "Debug"; "Deps"; "Summary"; "Transforms";
              "Fault"; "Dep_zipper"; "Modname"; "Unitname"; "Module"; "Name"; "Namespaced"; "Paths";
              "Standard_faults";"Standard_policies";"Option"; "Pkg"; "Pp"; "Uloc"],
-            ["Array"; "Filename";"List";"Sys"],
+            ["Array"; "Buffer"; "Filename"; "Format"; "List";"Sys"],
             []);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Paths"; "Pp"; "Schematic" ],
                       ["Format"],[]);

@@ -6,7 +6,7 @@ module F = Standard_faults
 
 
 type param = {
-  policy: Fault.Policy.t;
+  fault_handler: Fault.handler;
   epsilon_dependencies: bool;
   transparent_extension_nodes: bool;
   transparent_aliases: bool

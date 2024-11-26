@@ -197,18 +197,18 @@ module Policy = struct
 
   end
 
+type handler = { policy:Policy.t; err_formatter:Format.formatter }
 let register = Policy.register
-let handle policy (Err(tag,e)) =
+let handle {policy;err_formatter} (Err(tag,e)) =
   let info = Policy.find_info tag policy in
   let log_info = {
     level = Policy.level_info policy info;
     silent = policy.silent;
     exit = policy.exit;
   } in
-  let ppf = Format.err_formatter in
-  Option.iter (fun info -> log log_info info.printer ppf e) (check tag info)
+  Option.iter (fun info -> log log_info info.printer err_formatter e) (check tag info)
 
-let raise policy info x = handle policy (emit info x)
+let raise h info x = handle h (emit info x)
 
 let is_silent policy info =
   Policy.level_info policy (Info info) <= policy.silent

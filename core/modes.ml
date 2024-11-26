@@ -207,12 +207,12 @@ let pp_cycle ppf path =
 let cycle_in_sort =
   Fault.info ["codept"; "sort"] "Cycle detected when sorting modules" pp_cycle
 
-let mode_policy p  =
-  Fault.register ~lvl:Fault.Level.critical cycle_in_sort p
-
+let mode_fault_handler fh  =
+  let policy = Fault.register ~lvl:Fault.Level.critical cycle_in_sort fh.Fault.policy in
+  { fh with Fault.policy }
 
 let sort _ _ ppf param (units: _ Unit.pair) =
-  let policy = mode_policy param.analyzer.policy in
+  let fault_handler = mode_fault_handler param.analyzer.fault_handler in
   let module G = Unit.Group in
   let gs = G.group units in
   let flat g = fst @@ G.flatten g
@@ -236,7 +236,7 @@ let sort _ _ ppf param (units: _ Unit.pair) =
   let sorted = Sorting.full_topological_sort ~key:fst deps paths in
   match sorted with
   | Error path ->
-    Fault.raise policy cycle_in_sort path
+    Fault.raise fault_handler cycle_in_sort path
   | Ok sorted ->
     Pp.fp ppf "%a"
      (Pp.list ~sep:Pp.(s" ") ~post:Pp.(s"\n") Pkg.pp)

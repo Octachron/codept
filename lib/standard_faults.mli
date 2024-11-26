@@ -47,4 +47,4 @@ val wrong_file_kind : ( string * string * string ) Fault.info
 val parsing_error : ( string * string ) Fault.info
 
 val schematic_errors:
-  Fault.Policy.t -> string * Name.t * Schematic.Ext.error -> unit
+  Fault.handler -> string * Name.t * Schematic.Ext.error -> unit

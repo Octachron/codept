@@ -2,6 +2,8 @@
 
    * Support 5.2
    * Support 5.3
+   * Expose LGPL library
+   * Make the error formatter a parameter
 
 ## Bug fixes
 

@@ -27,7 +27,7 @@ end
 (** Parameter for outliner *)
 module type param =
 sig
-  val policy: Fault.Policy.t
+  val fault_handler: Fault.handler
   val epsilon_dependencies: bool
   val transparent_extension_nodes : bool
   val transparent_aliases : bool

@@ -86,7 +86,7 @@ module Make(Env:Stage.envt)(Param:Stage.param):
   Stage.outliner with type envt := Env.t =
 struct
   let param = let open Param in
-    { Transforms.transparent_aliases; policy;
+    { Transforms.transparent_aliases; fault_handler;
       epsilon_dependencies; transparent_extension_nodes
     }
   include Outline(Env)

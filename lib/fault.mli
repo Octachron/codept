@@ -89,8 +89,10 @@ sig
 
 end
 
+type handler = { policy: Policy.t; err_formatter:Format.formatter }
+
 (** {2 Fault handling with policy} *)
 val register : ?lvl:Level.t -> 'a info -> Policy.t -> Policy.t
-val handle : Policy.t -> fault -> unit
-val raise : Policy.t -> 'a info -> 'a -> unit
+val handle : handler -> fault -> unit
+val raise : handler -> 'a info -> 'a -> unit
 val is_silent: Policy.t -> 'a info -> bool

@@ -42,7 +42,7 @@ let implicit_dep synonyms path =
 
 
 
-let expand_includes policy synonyms includes =
+let expand_includes fault_handler synonyms includes =
   let read_dir expanded dir =
     let dir = Common.expand_dir dir in
     if Sys.file_exists dir && Sys.is_directory dir then
@@ -52,8 +52,9 @@ let expand_includes policy synonyms includes =
           let policy =
             let open Fault in
             Policy.register ~lvl:Level.info
-              Codept_policies.unknown_extension policy in
-          match Common.classify policy synonyms x with
+              Codept_policies.unknown_extension fault_handler.Fault.policy in
+          let fault_handler = Fault.{ fault_handler with policy } in
+          match Common.classify fault_handler synonyms x with
           | None | Some { Common.kind = Signature; _ } -> m
           | Some { Common.kind = Interface | Implementation ; _ } ->
             Modname.Map.add (Unitname.modname (Read.name x))
@@ -121,19 +122,19 @@ let cmo_or_cmi synonyms path =
   | { Unit.mli = true; ml = _ } -> Pkg.cmi path
   |  _ -> Pkg.cmo path
 
-let collision_error policy = function
+let collision_error fault_handler = function
   | a :: _ as l ->
-    Fault.raise policy Standard_faults.local_module_conflict
+    Fault.raise fault_handler Standard_faults.local_module_conflict
       (a.Unit.path, List.map (fun u -> u.Unit.src) l)
   | [] -> ()
 
-let unit_main policy param synonyms printer g =
+let unit_main fault_handler param synonyms printer g =
   let cmo_or_cmi = cmo_or_cmi synonyms and cmi_or = cmi_or synonyms in
   let open Unit in
   let all = param.all in
   let if_all l = if all then l else [] in
   let g, err = Unit.Group.flatten g in
-  List.iter (collision_error policy) [err.ml; err.mli];
+  List.iter (collision_error fault_handler) [err.ml; err.mli];
   match g with
   | { ml= Some impl ; mli = Some intf } ->
     let cmi = Pkg.cmi impl.src in
@@ -167,8 +168,8 @@ let unit_main policy param synonyms printer g =
   | { ml = None; mli = None } -> ()
 
 
-let main policy ppf synonyms param units =
-  let includes = expand_includes policy synonyms param.includes in
+let main fault_handler ppf synonyms param units =
+  let includes = expand_includes fault_handler synonyms param.includes in
   let print_deps x y = print_deps includes param x y ppf in
   let m =regroup units in
-  Unit.Group.Map.iter (unit_main policy param synonyms print_deps) m
+  Unit.Group.Map.iter (unit_main fault_handler param synonyms print_deps) m

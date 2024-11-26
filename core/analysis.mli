@@ -4,7 +4,7 @@ type param = {
   epsilon_dependencies: bool;
   transparent_aliases: bool;
   transparent_extension_nodes: bool;
-  policy: Fault.Policy.t;
+  fault_handler: Fault.handler;
   precomputed_libs: Name.set  ;
   closed_world: bool;
   sig_only:bool;

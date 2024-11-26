@@ -38,4 +38,4 @@ val is_stdlib_pkg: Name.t -> bool
 
 (** [classify policy synonyms filename] classifies file type
     according to the dictionary [synonyms] *)
-val classify: Fault.Policy.t -> info Name.map -> string -> info option
+val classify: Fault.handler -> info Name.map -> string -> info option

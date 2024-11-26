@@ -50,9 +50,9 @@ let is_stdlib_pkg = function
   | _ -> false
 
 
-let classify policy synonyms f =
+let classify fault_handler synonyms f =
   let ext = Support.extension f in
   match Name.Map.find ext synonyms with
   | x -> Some x
   | exception Not_found ->
-    Fault.raise policy Codept_policies.unknown_extension ext; None
+    Fault.raise fault_handler Codept_policies.unknown_extension ext; None

@@ -358,8 +358,15 @@ module Libraries = struct
   let create includes =  List.map read_dir includes
 
   module I = Dep_zipper.Outline(Core)
-  let param = {
-    Transforms.policy = Standard_policies.quiet;
+  let param =
+    let silent = Format.formatter_of_buffer (Buffer.create 16) in
+    let fault_handler = {
+      Fault.policy = Standard_policies.quiet;
+      err_formatter=silent
+    }
+    in
+    {
+    Transforms.fault_handler;
     transparent_aliases = true;
     (* we are not recording anything *)
     transparent_extension_nodes = false;

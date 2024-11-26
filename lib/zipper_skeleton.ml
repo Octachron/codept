@@ -8,7 +8,7 @@ module Arg = M.Arg
 module S = M.Sig
 module T = Transforms
 
-let fault param x = Fault.handle param.T.policy x
+let fault param x = Fault.handle param.T.fault_handler x
 let raisef param f t = fault param (Fault.emit f t)
 
 open Debug
@@ -49,7 +49,7 @@ let path x = x.T.main
 let empty = P.empty
 
 let abstract seed = P.{name=None; mty=Abstract (Id.create seed)}
-let apply param loc ~f ~x = T.apply_arg param.T.policy loc ~arg:x ~f
+let apply param loc ~f ~x = T.apply_arg param.T.fault_handler loc ~arg:x ~f
 
 let replace_at ~level ~delete ~path ~replacement (p:P.t) =
   let mty = P.of_extended_mty @@ P.replace_at ~delete ~level ~path
@@ -88,7 +88,7 @@ let m2l_init = S.empty
 
 let str = P.simple
 
-let included param loc lvl e = T.gen_include param.T.policy loc lvl e
+let included param loc lvl e = T.gen_include param.T.fault_handler loc lvl e
 
 let m_with dels mt = match mt.P.mty with
   | Module.Abstract _ | Module.Fun _ -> mt
@@ -106,7 +106,7 @@ let bind_sig name m = match name with
 let bind_rec_add name expr y =
   Y.merge y @@ Option.either (fun name -> (T.bind_summary Module name expr)) Y.empty name
 let bind_rec_init = Y.empty
-let opened param ~loc m = T.open_ param.T.policy loc m
+let opened param ~loc m = T.open_ param.T.fault_handler loc m
 let empty_diff = Y.empty
 
 let final x = x
@@ -146,7 +146,7 @@ module State(Env:Stage.envt) = struct
   let diff s = s.diff
 
   let open_path ~param ~loc state path =
-    merge state (T.open_diverge param.T.policy loc path)
+    merge state (T.open_diverge param.T.fault_handler loc path)
 
   let from_env ?(diff=Summary.empty) env =
     { initial = env; diff; current= Env.extend env diff }

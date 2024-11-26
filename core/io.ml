@@ -1,7 +1,7 @@
 
 type reader = {
   sign:  string -> (Module.Namespace.t, Schematic.Ext.error) result;
-  m2l: Fault.Policy.t -> Read.kind -> string
+  m2l: Fault.handler -> Read.kind -> string
     -> Namespaced.t -> Unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
   env: Module.dict

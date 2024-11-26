@@ -51,7 +51,8 @@ module L :
     val precomputed_libs : (t, Name.set) l
     val closed_world : (t, bool) l
     val sig_only : (t, bool) l
-    val policy : (t, Fault.Policy.t) l
+    val fault_handler : (t, Fault.handler) l
+    val policy: (t,Fault.Policy.t) l
     val nested : (t,bool) l
     val inner_fmt : (t, Schematic.format) l
     val ext_fmt : (t,Schematic.format) l

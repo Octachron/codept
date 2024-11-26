@@ -335,7 +335,7 @@ struct
       { state with pending = unit :: state.pending }
 
   let eval_bounded core =
-    eval_bounded Param.policy
+    eval_bounded Param.fault_handler
       (fun unit -> compute_more core @@ make Eval.initial unit)
 
   let resolve_dependencies_main ?(learn=true) state =
@@ -395,7 +395,7 @@ struct
       match resolve_dependencies ~learn:true state with
       | Ok (e,l) -> e, l
       | Error state ->
-        Fault.raise Param.policy fault
+        Fault.raise Param.fault_handler fault
           (Bind(Eval.block,state.pending), alias_resolver state);
         solve_harder (state :: ancestors)
         @@ approx_and_try_harder state in
@@ -577,7 +577,7 @@ struct
           { (add_pending (make Eval.initial u) state) with postponed } in
       match u.precision with
       | Approx ->
-        let r = eval_bounded Param.policy compute u in
+        let r = eval_bounded Param.fault_handler compute u in
         status, { state with
           resolved = expand_and_add state.resolved r
         }
@@ -610,7 +610,7 @@ struct
       | [] -> None
       | [a] -> Some a
       | a :: _  ->
-        Fault.raise Param.policy Standard_faults.local_module_conflict
+        Fault.raise Param.fault_handler Standard_faults.local_module_conflict
           (k, List.map (fun (_k,x,_n) -> Pkg.local x) l);
         Some a in
     let convert_p (k, p) = k, Unit.unimap (convert k) p in
@@ -679,7 +679,7 @@ struct
       match solve_once state with
       | Ok (e,l) -> e, l
       | Error s ->
-        Fault.raise Param.policy fault
+        Fault.raise Param.fault_handler fault
           (Bind(Eval.block, wip s), alias_resolver s);
         solve_harder (s :: ancestors) @@ approx_and_try_harder s in
     solve_harder [] @@ start loader files core seeds

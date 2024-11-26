@@ -5,7 +5,7 @@ type param = {
   epsilon_dependencies:bool;
   transparent_aliases: bool;
   transparent_extension_nodes: bool;
-  policy: Fault.Policy.t;
+  fault_handler: Fault.handler;
   precomputed_libs: Name.set;
   closed_world: bool;
   sig_only:bool;
@@ -59,38 +59,38 @@ let pair_split l =
   List.fold_left folder {ml=[];mli=[]} l
 
 (** organisation **)
-let signature_error policy = function
+let signature_error fault_handler = function
   | Ok x, _ -> Some x
   | Error e, filename ->
-    Standard_faults.schematic_errors policy (filename,"sig",e);
+    Standard_faults.schematic_errors fault_handler (filename,"sig",e);
     None
 
-let pre_organize policy io files =
+let pre_organize fault_handler io files =
   let units, signatures = split (info_split io) files in
   let signatures =
     Module.Namespace.merge_all @@ Option.List'.filter
-    @@ List.map (signature_error policy) signatures in
+    @@ List.map (signature_error fault_handler) signatures in
   units, signatures
 
-let load_file (io:Io.reader) policy sig_only opens (info,file,n) =
+let load_file (io:Io.reader) fault_handler sig_only opens (info,file,n) =
   let filter_m2l (u: Unit.s) = if sig_only then
       { u with Unit.code = M2l.Sig_only.filter u.code }
     else
       u in
-  io.m2l policy info file n
+  io.m2l fault_handler info file n
   |> filter_m2l
   |> open_within opens
 
 
-let log_conflict policy proj (path, units) =
-  Fault.raise policy Standard_faults.local_module_conflict
+let log_conflict fault_handler proj (path, units) =
+  Fault.raise fault_handler Standard_faults.local_module_conflict
     (path,  List.map proj units)
 
-let organize io policy sig_only opens files =
-  let units, signatures = pre_organize policy io files in
-  let units = List.map (load_file io policy sig_only opens) units in
+let organize io fault_handler sig_only opens files =
+  let units, signatures = pre_organize fault_handler io files in
+  let units = List.map (load_file io fault_handler sig_only opens) units in
   let units, errs = Unit.Group.(split % group) @@ pair_split units in
-  List.iter (log_conflict policy @@ fun (u:Unit.s) -> u.src ) errs;
+  List.iter (log_conflict fault_handler @@ fun (u:Unit.s) -> u.src ) errs;
   units, signatures
 
 
@@ -140,7 +140,7 @@ let start_env io param libs signatures fileset =
 
 let lift p =
   (module struct
-    let policy = p.policy
+    let fault_handler = p.fault_handler
     let epsilon_dependencies = p.epsilon_dependencies
     let transparent_extension_nodes = p.transparent_extension_nodes
     let transparent_aliases = p.transparent_aliases
@@ -206,9 +206,9 @@ module Collisions = struct
       ) m units
 
   (** Print error message for a given collision map *)
-  let handle policy fault collisions =
+  let handle fault_handler fault collisions =
     let err name paths () =
-      Fault.raise policy fault (name,Pkg.Set.elements paths) in
+      Fault.raise fault_handler fault (name,Pkg.Set.elements paths) in
     Nms.Map.fold err collisions ()
 
   (** Compute local/local collisions *)
@@ -229,16 +229,17 @@ end
 (** Analysis step *)
 let main_std io param (task:Common.task) =
   let module F = Standard_faults in
+  let is_silent f = Fault.is_silent param.fault_handler.policy f in
   let units, signatures =
-    organize io param.policy param.sig_only task.opens task.files in
-  if not @@ Fault.is_silent param.policy F.module_conflict then
+    organize io param.fault_handler param.sig_only task.opens task.files in
+  if not (is_silent F.module_conflict) then
     Collisions.libs task units.mli
-    |> Collisions.handle param.policy F.module_conflict;
+    |> Collisions.handle param.fault_handler F.module_conflict;
   let collisions = Collisions.local units.mli in
   let namespace = List.map (fun (u:Unit.s) -> u.path) units.mli in
   let () =
-    if not @@ Fault.is_silent param.policy F.local_module_conflict then
-      Collisions.handle param.policy F.local_module_conflict collisions in
+    if not (is_silent F.local_module_conflict) then
+      Collisions.handle param.fault_handler F.local_module_conflict collisions in
   let e = start_env io param task.libs signatures namespace in
   let {Unit.ml; mli} = solve param e units in
   let ml = remove_units task.invisibles ml in
@@ -248,9 +249,9 @@ let main_std io param (task:Common.task) =
 (** Analysis step *)
 let main_seed io param (task:Common.task) =
   let units, signatures =
-    pre_organize param.policy io task.files in
+    pre_organize param.fault_handler io task.files in
   let file_list = List.map (fun (_k,_x,p) -> p) units in
-  let load_file = load_file io param.policy param.sig_only task.opens in
+  let load_file = load_file io param.fault_handler param.sig_only task.opens in
   let e = start_env io param task.libs signatures file_list in
   let units = solve_from_seeds task.seeds load_file units param e in
   let units = remove_units task.invisibles units in
@@ -261,7 +262,7 @@ let main_seed io param (task:Common.task) =
     ) { ml=[]; mli=[]} units in
   let g, errs = Unit.Group.(split % group) units in
   List.iter
-    (log_conflict param.policy @@ fun (u:Unit.r) -> u.src) errs;
+    (log_conflict param.fault_handler @@ fun (u:Unit.r) -> u.src) errs;
   g
 
 let main io param (task:Common.task) =

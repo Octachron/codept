@@ -40,7 +40,7 @@ val proj: u -> s
 
 
 val read_file :
-     Fault.Policy.t
+    Fault.handler
   -> Read.kind
   -> string
   -> Namespaced.t

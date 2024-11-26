@@ -1,6 +1,6 @@
 
 type param = {
-  policy: Fault.Policy.t;
+  fault_handler: Fault.handler;
   epsilon_dependencies: bool;
   transparent_extension_nodes: bool;
   transparent_aliases: bool
@@ -17,18 +17,18 @@ val pp_answer: answer Pp.t
 type 'a query_result =
   { main:'a; deps: Deps.t; msgs: Fault.t list }
 
-val gen_include: Fault.Policy.t -> Uloc.t ->
+val gen_include: Fault.handler -> Uloc.t ->
   Id.seed -> Module.level -> Module.Partial.t -> Summary.t
 
-val open_: Fault.Policy.t -> Uloc.t ->
+val open_: Fault.handler -> Uloc.t ->
   Module.Partial.t -> Summary.t
 
 
-val open_diverge: Fault.Policy.t -> Uloc.t ->
+val open_diverge: Fault.handler -> Uloc.t ->
   answer -> Summary.t
 
 
-val apply_arg: Fault.Policy.t -> Uloc.t ->
+val apply_arg: Fault.handler -> Uloc.t ->
   f:Module.Partial.t -> arg:Module.Partial.t
   -> Module.Partial.t
 

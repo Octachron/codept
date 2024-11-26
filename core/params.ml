@@ -100,6 +100,9 @@ module L = struct
       (fun x y -> { x with closed_world = y })
   let sig_only =
     analyzer % create (fun x-> x.sig_only) (fun x y -> { x with sig_only = y })
+  let fault_handler =
+    analyzer % create (fun x -> x.fault_handler) (fun r x -> { r with fault_handler = x })
   let policy =
-    analyzer % create (fun x-> x.policy) (fun x y -> { x with policy = y })
+    fault_handler % create (fun x-> x.Fault.policy) (fun x y -> { x with policy = y })
+
 end
