@@ -55,7 +55,7 @@ let chain name sub = root name ~mds:(List.map submodule sub)
 let pervasives =  chain "Pervasives" ["LargeFile"]
 
 let obj v =
-  if v >= (4, 12) then
+  if v >= (4, 12) && v < (5,2)  then
     chain "Obj" ["Closure"; "Ephemeron"; "Extension_constructor"]
   else if v >= (4, 8) then
     chain "Obj" ["Ephemeron"; "Extension_constructor"]
@@ -82,7 +82,7 @@ let simples =
       "Callback";
       "CamlinternalOO"; "CamlinternalLazy"; "CamlinternalFormat";
       "CamlinternalFormatBasics"; "CamlinternalMod";
-      "Char"; "Complex"; "Digest"; "Filename"; "Format";
+      "Char"; "Complex"; "Filename"; "Format";
        "Int32"; "Int64"; "Lazy"; "Lexing"; "List";
       "ListLabels"; "Marshal"; "Nativeint"; "Oo"; "Parsing"; "Printf"; "Queue";
       "Stack"; "String"; "StringLabels"; "Uchar";
@@ -151,8 +151,16 @@ let bigarray ?special ?nms () =
       submodule "Genarray";
     ]
 
+let digest v =
+  if v < (5,2) then simple "Digest"
+  else
+    root "Digest"
+      ~mds:(List.map submodule ["BLAKE128"; "BLAKE256"; "BLAKE512"; "MD5"])
+      ~mts:(List.map submodule ["S"])
+
+
 let complex v =
-  after v (4,10) [sys] @ weak :: hms @ more_labels :: stdlabels v :: chained v
+  after v (4,10) [sys] @ digest v :: weak :: hms @ more_labels :: stdlabels v :: chained v
 
 
 let float version = if version < (4,07) then simple "Float"
@@ -160,6 +168,7 @@ let float version = if version < (4,07) then simple "Float"
     chain "Float" ["Array"]
   else
     chain "Float" ["Array"; "ArrayLabels"]
+
 
 
 let effekt = chain "Effect" ["Deep"; "Shallow"]
@@ -181,6 +190,7 @@ let simple_stdlib v = Dict.of_list @@
   @ before v (5,0) (List.map simple ["Stream";"Genlex"])
   @ after v (5,0) [semaphore; effekt; domain; simple "Condition"; simple "Mutex"]
   @ after v (5,1) [chain "Type" ["Id"]]
+  @ after v (5,2) [simple "Dynarray"]
   @ complex v
   @ simples
 
