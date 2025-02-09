@@ -221,9 +221,24 @@ end
 
 (** Equalities *)
 module Equal: sig
-  val eq: _ ty -> _ ty -> bool
-  val dict: Dict.t -> Dict.t -> bool
-  val signature: signature -> signature -> bool
+
+  type error_kind =
+    | Kind
+    | Alias of Namespaced.t * Namespaced.t
+    | Alias_phantom
+    | Abstract
+    | Link of Namespaced.t * Namespaced.t
+    | Origin of Origin.t * Origin.t
+    | Divergence of Divergence.t * Divergence.t
+    | Arg_name of string option * string option
+    | Arg_kind
+    | Signature_kind
+    | Missing_item of Name.t
+  val pp: Format.formatter -> error_kind -> unit
+
+  val eq: _ ty -> _ ty -> (unit, error_kind) result
+  val dict: Dict.t -> Dict.t -> (unit, error_kind) result
+  val signature: signature -> signature -> (unit,error_kind) result
 end
 
 

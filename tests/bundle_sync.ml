@@ -6,6 +6,8 @@ template folder removed and the the Stdlib and Std_exit module remove) and
 
 let dp1 f x ppf = Pp.fp ppf f x
 let dp4 f x y z w ppf  = Pp.fp ppf f x y z w
+let dp6 f x y z w a b ppf  = Pp.fp ppf f x y z w a b
+
 
 let mk ?(special="stdlib") ?(nms=["Stdlib"])  ?(mds=[]) ?(mts=[]) name =
   let path = Namespaced.make ~nms name in
@@ -24,6 +26,8 @@ let refs =
   List.fold_left (fun m (mj,mn,lib) -> Vmap.add (mj,mn) lib m) Vmap.empty
     (let open Bundle_refs in
      [
+       5,  3, Stdlib_503.modules;
+       5,  2, Stdlib_502.modules;
        5,  1, Stdlib_501.modules;
        5,  0, Stdlib_500.modules;
        4, 14, Stdlib_414.modules;
@@ -62,18 +66,19 @@ let compare v ref =
     | None, Some _ -> Some (Error (dp1 "Wrong additional module %s" k))
     | None, None -> None
     | Some x, Some y ->
-      if Module.Equal.eq x y then
-        Some (Ok k)
-      else
+      match Module.Equal.eq x y with
+      | Ok () -> Some (Ok k)
+      | Error e ->
         Some(
           Error
-            ( dp4 "@[<v>ref:@,%a@,computed:@,%a@]@."
+            ( dp6 "@[<v>ref:@,%a@,computed:@,%a@,error:%a@]@."
                Module.pp x
                Module.pp y
+               Module.Equal.pp e
             )
         )
   in
-  Module.Equal.dict computed ref ||
+  Module.Equal.dict computed ref = Ok () ||
   begin
     let diff = Name.Map.merge diff ref computed in
     Name.Map.iter (fun k r -> match r with

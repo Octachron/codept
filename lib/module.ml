@@ -107,12 +107,14 @@ module Origin = struct
     (** Ambiguous module, that could be an external module *)
 
   let pp ppf = function
-    | Unit s ->
-      begin match s.source.Pkg.source with
-        | Pkg.Local-> Pp.fp ppf "#"
-        | Pkg x -> Pp.fp ppf "#[%a]" Namespaced.pp x
-        | Unknown -> Pp.fp ppf "#!"
-        | Special n -> Pp.fp ppf "*(%s)" n
+    | Unit {source; path} ->
+      begin match source.Pkg.source with
+        | Pkg.Local-> Pp.fp ppf "#%a" Namespaced.pp path
+        | Pkg x ->
+          Pp.fp ppf "#[%a]%a"
+            Namespaced.pp x Namespaced.pp path
+        | Unknown -> Pp.fp ppf "#!%a" Namespaced.pp path
+        | Special n -> Pp.fp ppf "*(%s)%a" n Namespaced.pp path
       end
     | Submodule -> Pp.fp ppf "."
     | Namespace -> Pp.fp ppf "(nms)"
@@ -820,34 +822,101 @@ module Subst = struct
 end
 
 module Equal = struct
-  let rec eq: type a b. a ty -> b ty -> bool = fun x y ->
+
+  type error_kind =
+    | Kind
+    | Alias of Namespaced.t * Namespaced.t
+    | Alias_phantom
+    | Abstract
+    | Link of Namespaced.t * Namespaced.t
+    | Origin of Origin.t * Origin.t
+    | Divergence of Divergence.t * Divergence.t
+    | Arg_name of string option * string option
+    | Arg_kind
+    | Signature_kind
+    | Missing_item of Name.t
+
+  let pp ppf = function
+    | Kind -> Format.fprintf ppf "Mismatched kind"
+    | Alias (x,y) ->
+      Format.fprintf ppf "Mismatched alias: %a ≠ %a"
+        Namespaced.pp x Namespaced.pp y
+    | Alias_phantom ->
+      Format.fprintf ppf "Mismatched alias: divergence point"
+    | Link (x,y) ->
+      Format.fprintf ppf "Mismatched link: %a ≠ %a"
+        Namespaced.pp x Namespaced.pp y
+    | Origin (x,y) ->
+      Format.fprintf ppf "Mismatched origin: %a ≠ %a"
+        Origin.pp x Origin.pp y
+    | Arg_name (Some x, Some y) ->
+      Format.fprintf ppf "Mismatched arg names: %s ≠ %s" x y
+    | Arg_name (_,_) ->
+      Format.fprintf ppf "Mismatched arg names: anonymous name"
+    | Arg_kind -> Format.fprintf ppf "Mismatched generative functor arg"
+    | Signature_kind -> Format.fprintf ppf "Mismatched signature kind"
+    | Missing_item s -> Format.fprintf ppf "Missing item %s" s
+    | Abstract -> Format.fprintf ppf "Mismatched abstract module types"
+    | Divergence (x,y) ->
+      Format.fprintf ppf "Mismatched divergence point: %a ≠ %a"
+      Divergence.pp x
+      Divergence.pp y
+
+
+  let ok = Ok ()
+
+   let (&&&) x y = match x, y with
+     | Ok (), Ok () -> ok
+     | Error _ as e, _ | _, (Error _ as e) -> e
+
+  let rec eq: type a b. a ty -> b ty -> (unit,error_kind) result = fun x y ->
     match x, y with
     | Sig x, Sig y -> tsig x y
-    | Alias _, Alias _ -> x = y
-    | Abstract x, Abstract y -> x = y
-    | Fun (xa,xb), Fun (ya,yb) -> arg_opt xa ya && eq xb yb
-    | Link _ as x, (Link _ as y) -> x = y
+    | Alias x, Alias y ->
+      if x.path = y.path then
+        if x.phantom = y.phantom then ok
+        else Error Alias_phantom
+      else Error (Alias (x.path, y.path))
+    | Abstract x, Abstract y ->
+      if x = y then ok else Error Abstract
+    | Fun (xa,xb), Fun (ya,yb) -> arg_opt xa ya &&& eq xb yb
+    | Link x, (Link y) -> if x = y then ok else Error (Link (x,y))
     | Namespace x, Namespace y -> dict x y
-    | _ -> false
+    | _ -> Error Kind
   and tsig x y =
-    x.origin = y.origin && signature x.signature y.signature
+    (if x.origin = y.origin then ok else Error (Origin (x.origin,y.origin)))
+    &&& signature x.signature y.signature
   and signature x y =
     match x, y with
-    | Blank, Blank -> true
+    | Blank, Blank -> ok
     | Exact x, Exact y -> def x y
     | Divergence x, Divergence y ->
-      x.point = y.point
-      && def x.after y.after
-      && signature x.before y.before
-    | _ -> false
+      (if x.point = y.point then ok else Error (Divergence (x.point,y.point)))
+      &&& def x.after y.after
+      &&& signature x.before y.before
+    | _ -> Error Signature_kind
   and def x y =
-    dict x.modules y.modules && dict x.module_types y.module_types
-  and dict x y = Name.Map.equal eq x y
-  and arg_opt: type a b. a ty Arg.t option -> b ty Arg.t option -> bool =
+    dict x.modules y.modules &&& dict x.module_types y.module_types
+  and dict x y =
+    let exception First of error_kind in
+    match Name.Map.merge (fun k x y ->
+        match x, y with
+        | None, None -> None
+        | Some _, None | None, Some _ -> raise (First (Missing_item k))
+        | Some x, Some y ->
+          match eq x y with
+          | Ok () -> None
+          | Error e -> raise (First e)
+      ) x y
+    with
+    | _ -> ok
+    | exception First e -> Error e
+  and arg_opt: type a b. a ty Arg.t option -> b ty Arg.t option -> (unit,error_kind) result =
     fun x y -> match x, y with
-      | Some x, Some y -> x.name = y.name && eq x.signature y.signature
-      | None, None -> true
-      | _ -> false
+      | Some x, Some y ->
+        (if x.name = y.name then ok else Error (Arg_name (x.name, y.name))) &&& eq x.signature y.signature
+      | None, None -> ok
+      | _ -> Error Arg_kind
 end
 
 module Partial = struct
