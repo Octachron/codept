@@ -87,7 +87,7 @@ let export name _ _ ppf _param {Unit.mli; _} =
     let uname = Unitname.modname unit.path.name in
     let m = {
       Module.origin =
-        Unit { source = { source=Pkg.Special name; file = unit.path };
+        Unit { source = { source=Pkg.Special name; file = unit.src.file };
                path = unit.path
              }
     ; signature = sign unit
