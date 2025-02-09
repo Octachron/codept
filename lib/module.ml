@@ -109,12 +109,14 @@ module Origin = struct
   let pp ppf = function
     | Unit {source; path} ->
       begin match source.Pkg.source with
-        | Pkg.Local-> Pp.fp ppf "#%a" Namespaced.pp path
+        | Pkg.Local-> Pp.fp ppf "#%a" Namespaced.pp_as_filepath path
         | Pkg x ->
           Pp.fp ppf "#[%a]%a"
-            Namespaced.pp x Namespaced.pp path
-        | Unknown -> Pp.fp ppf "#!%a" Namespaced.pp path
-        | Special n -> Pp.fp ppf "*(%s)%a" n Namespaced.pp path
+            Namespaced.pp x Namespaced.pp_as_filepath path
+        | Unknown -> Pp.fp ppf "#!%a" Namespaced.pp_as_filepath path
+        | Special n -> Pp.fp ppf "*(%s)%a[%a]" n
+                         Namespaced.pp path
+                         Namespaced.pp_as_filepath path
       end
     | Submodule -> Pp.fp ppf "."
     | Namespace -> Pp.fp ppf "(nms)"
@@ -829,7 +831,9 @@ module Equal = struct
     | Alias_phantom
     | Abstract
     | Link of Namespaced.t * Namespaced.t
-    | Origin of Origin.t * Origin.t
+    | Origin_pkg of Pkg.t * Pkg.t
+    | Origin_path of Namespaced.t * Namespaced.t
+    | Origin_kind
     | Divergence of Divergence.t * Divergence.t
     | Arg_name of string option * string option
     | Arg_kind
@@ -845,10 +849,16 @@ module Equal = struct
       Format.fprintf ppf "Mismatched alias: divergence point"
     | Link (x,y) ->
       Format.fprintf ppf "Mismatched link: %a ≠ %a"
+        Namespaced.pp x
+        Namespaced.pp y
+    | Origin_pkg (x,y) ->
+      Format.fprintf ppf "Mismatched origin package: %a ≠ %a"
+        Pkg.pp x Pkg.pp y
+    | Origin_path (x,y) ->
+      Format.fprintf ppf "Mismatched origin path: %a ≠ %a"
         Namespaced.pp x Namespaced.pp y
-    | Origin (x,y) ->
-      Format.fprintf ppf "Mismatched origin: %a ≠ %a"
-        Origin.pp x Origin.pp y
+    | Origin_kind ->
+      Format.fprintf ppf "Mismatched origin kind"
     | Arg_name (Some x, Some y) ->
       Format.fprintf ppf "Mismatched arg names: %s ≠ %s" x y
     | Arg_name (_,_) ->
@@ -884,8 +894,15 @@ module Equal = struct
     | Namespace x, Namespace y -> dict x y
     | _ -> Error Kind
   and tsig x y =
-    (if x.origin = y.origin then ok else Error (Origin (x.origin,y.origin)))
+    eq_origin x.origin y.origin
     &&& signature x.signature y.signature
+  and eq_origin x y = match x, y with
+    | Unit x, Unit y ->
+      if x.path = y.path then
+        if x.source = y.source then ok
+        else Error (Origin_pkg (x.source,y.source))
+      else Error (Origin_path (x.path, y.path))
+    | _  -> if x = y then ok else Error Origin_kind
   and signature x y =
     match x, y with
     | Blank, Blank -> ok

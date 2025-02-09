@@ -228,7 +228,9 @@ module Equal: sig
     | Alias_phantom
     | Abstract
     | Link of Namespaced.t * Namespaced.t
-    | Origin of Origin.t * Origin.t
+    | Origin_pkg of Pkg.t * Pkg.t
+    | Origin_path of Namespaced.t * Namespaced.t
+    | Origin_kind
     | Divergence of Divergence.t * Divergence.t
     | Arg_name of string option * string option
     | Arg_kind
