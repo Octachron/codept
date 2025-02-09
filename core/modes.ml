@@ -83,7 +83,7 @@ let structured fmt _ _ ppf param units =
 let export name _ _ ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
   let prefix (nm:Namespaced.t) =
-      let lname = Modname.(to_string @@ v name) in
+      let lname = Modname.normalize name in
       { nm with Namespaced.namespace = lname :: nm.namespace }
   in
   let sign (u:Unit.r)= Unit.signature u in

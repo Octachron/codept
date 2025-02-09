@@ -27,6 +27,9 @@ val of_string : string -> (t, [> `Msg of string ]) result
 (** [of_string str] validates the given [str] as a module name or return an
     error with an explanation. *)
 
+val normalize: string -> string
+(** Capitalize string *)
+
 val v : string -> t
 (** [v str] calls {!val:of_string}. It raises an [Invalid_argument] instead of
     returning an error. *)

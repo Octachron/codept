@@ -9,6 +9,9 @@ let for_all f str =
     else acc in
   go true 0
 
+
+let normalize x = String.capitalize_ascii x
+
 let of_string str =
   if String.length str < 1
   then Error (msgf "Invalid empty module name")
