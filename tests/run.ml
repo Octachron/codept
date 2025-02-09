@@ -649,7 +649,7 @@ let result =
                           ["Format"], [] );
           "module.ml", ( ["Debug"; "Id"; "Loc";"Paths"; "Pkg"; "Modname"; "Unitname"; "Name"; "Namespaced"; "Option"; "Pp"
                          ; "Schematic"; "Schematic_indices"; "Support"; "Uloc" ],
-                         ["List"], [] );
+                         ["Format";  "List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
           "name.ml", ( ["Pp"; "Support"], ["Set";"List"], [] );
           "namespaced.mli", ( ["Modname";"Unitname";"Name";"Paths"; "Pp"; "Schematic"],
