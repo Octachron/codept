@@ -22,10 +22,12 @@ let pp ppf { modname; filepath; } =
 let pp_as_modname ppf { modname; _ } = Modname.pp ppf modname
 let pp_as_filepath ppf { filepath; _ } = Format.pp_print_string ppf filepath
 
-let reflect ppf t =
-  Pp.fp ppf "(Unitname.modulize %S)" t.filepath
 
 let modname { modname; _ } = modname
+
+let reflect ppf t =
+  Pp.fp ppf "(Unitname.modulize %S)" (Modname.to_string @@ modname @@ modulize t.filepath)
+
 let filename { filepath; _ } = Filename.basename filepath
 let filepath { filepath; _ } = filepath
 let compare_as_modnames a b = Modname.compare a.modname b.modname
