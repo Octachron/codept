@@ -915,7 +915,7 @@ module Equal = struct
   and def x y =
     dict x.modules y.modules &&& dict x.module_types y.module_types
   and dict x y =
-    let exception First of error_kind in
+    let module E = struct exception First of error_kind end in let open E in
     match Name.Map.merge (fun k x y ->
         match x, y with
         | None, None -> None
