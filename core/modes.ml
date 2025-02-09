@@ -82,13 +82,17 @@ let structured fmt _ _ ppf param units =
 
 let export name _ _ ppf _param {Unit.mli; _} =
   (* TODO: prefixed unit *)
+  let prefix (nm:Namespaced.t) =
+      let lname = Modname.(to_string @@ v name) in
+      { nm with Namespaced.namespace = lname :: nm.namespace }
+  in
   let sign (u:Unit.r)= Unit.signature u in
   let md (unit:Unit.r) =
     let uname = Unitname.modname unit.path.name in
     let m = {
       Module.origin =
         Unit { source = { source=Pkg.Special name; file = unit.src.file };
-               path = unit.path
+               path = prefix unit.path
              }
     ; signature = sign unit
     }
