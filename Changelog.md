@@ -2,12 +2,25 @@
 
    * Support 5.2
    * Support 5.3
+
+## packaging changes
+
    * Expose LGPL library
+   * maintainance intents
+
+## Library changes
+
    * Make the error formatter a parameter
+   * Better inequality explanation for modules
 
 ## Bug fixes
 
-   * handle open F(X).Y 
+   * fix `-export` bugs
+   * handle open `F(X).Y`
+
+## Internal
+
+    * Improve test stability on Windows
 
 # 0.12.0
 
