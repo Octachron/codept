@@ -157,11 +157,11 @@ let refname name =
   Filename.chop_extension name ^ ".ref"
 
 let reference name =
-  if Sys.file_exists name then
+  if not (Sys.file_exists name) then "" else
     let inc = open_in_bin name in
-    really_input_string inc (in_channel_length inc)
-  else
-    ""
+    let s = really_input_string inc (in_channel_length inc) in
+    close_in inc;
+    s
 
 let guard ~failure f x =
   let guard = x  ^ "/guard" in
