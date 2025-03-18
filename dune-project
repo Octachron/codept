@@ -37,7 +37,7 @@ Both ocamldep and codept computes an over-approximation of the dependencies grap
 
  (synopsis "Alternative ocaml dependency  analyzer")
 
- (depends dune (menhir (>= 20180523)))
+ (depends dune (menhir (>= 20180523)) (ocaml (and (>= 4.03) (< 5.4~))))
 
  (description "Codept intends to be a dependency solver for OCaml project and an
   alternative to ocamldep. This package provides the core library used to build
