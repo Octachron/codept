@@ -22,7 +22,7 @@ end
 module type label = sig type t val l:string end
 type 'a label = (module label with type t = 'a)
 module Label: functor(X:sig val l:string end) ->
-  sig type t val l: t label end
+  sig type t val l: t label end[@@warning "-unused-functor-parameter"]
 
 val show: 'a label -> string
 

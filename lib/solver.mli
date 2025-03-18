@@ -104,7 +104,7 @@ module Make
       (** Solve **)
        val solve: Envt.t -> Unit.s list Unit.pair -> Unit.r list Unit.pair
 
-    end
+    end[@@warning "-67"]
 
 (** Alternative solver *)
 module Directed
@@ -150,4 +150,4 @@ sig
   val solve: loader -> entry list -> Envt.t -> Namespaced.t list
     -> Envt.t * Unit.r list
 
-end
+end[@@warning "-67"]

@@ -22,6 +22,6 @@ end
 
 module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T): sig
   val pp: Zipper_skeleton.path_in_context Def.zipper Pp.t
-end
+end[@@warning "-67"]
 
 module Opaque(Def:Zipper_def.s) : Result_printer with module T := Def.T

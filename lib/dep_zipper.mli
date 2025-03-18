@@ -5,3 +5,4 @@ module Outline(Env : Stage.envt):
 
 module Make(Env:Stage.envt)(Param:Stage.param):
   Stage.outliner with type envt := Env.t 
+[@@warning "-67"]
