@@ -335,7 +335,6 @@ let open_world () =
 module Libraries = struct
 
   type source = {
-    origin: Paths.Simple.t;
     mutable resolved: Core.t;
     cmis: Pkg.t Modname.Map.t
   }
@@ -353,7 +352,7 @@ module Libraries = struct
           else m
         )
         Modname.Map.empty files in
-    { origin=Namespaced.flatten origin; resolved= Core.start M.Def.empty; cmis= cmis_map }
+    { resolved= Core.start M.Def.empty; cmis= cmis_map }
 
   let create includes =  List.map read_dir includes
 
