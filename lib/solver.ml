@@ -141,7 +141,7 @@ module Failure = struct
       | Some { Loc.data = y,path ; loc }  ->
         let next = resolver y path in
         begin
-          Pp.fp ppf " −(%a)⟶@ " Uloc.Pp.tagged {pkg=u.input.src; loc};
+          Pp.fp ppf " @<1>%s(%a)@<1>%s@ " "−" Uloc.Pp.tagged {pkg=u.input.src; loc} "⟶";
           pp_circular block resolver map start false ppf next
         end
 
@@ -151,25 +151,25 @@ module Failure = struct
     let path_pp = Pkg.pp in
     match st with
     | Internal_error ->
-      Pp.fp ppf "@[<hov 2> −Codept internal error for compilation units: {%a}@] "
+      Pp.fp ppf "@[<hov 2> @<1>%sCodept internal error for compilation units: {%a}@] " "−"
         Pp.(list ~sep:(s ", @ ") @@ path_pp ) (paths units)
 
     | Extern path ->
-      Pp.fp ppf "@[<hov 2> −Non-resolved external dependency.@;\
+      Pp.fp ppf "@[<hov 2>  @<1>%sNon-resolved external dependency.@;\
                  The following compilation units {%a} @ depend on \
-                 the unknown module \"%a\" @]"
+                 the unknown module \"%a\" @]"  "−"
         Pp.(list ~sep:(s ", ") @@ path_pp ) (paths units)
         Namespaced.pp path
     | Depend_on path ->
       let u = fst @@ Mp.find path map in (* map ∋ name *)
       Pp.fp ppf
-        "@[<hov 2> −Non-resolved internal dependency.@;\
+        "@[<hov 2> @<1>%sNon-resolved internal dependency.@;\
          The following compilation units {%a}@ depend on the \
-         compilation units \"%a\" that could not be resolved.@]"
+         compilation units \"%a\" that could not be resolved.@]" "−"
         Pp.(list ~sep:(s ",@ ") @@ Pkg.pp ) (paths units)
         path_pp u.input.src
     | Cycle name ->
-      Pp.fp ppf "@[<hov 4> −Circular dependencies: @ @[%a@]@]"
+      Pp.fp ppf "@[<hov 4> @<1>%sCircular dependencies: @ @[%a@]@]" "−"
         (pp_circular block resolver map name.data true) name.data
 
   let pp block resolver map ppf m =

@@ -9,9 +9,9 @@ type 'a ext = { loc:t; data:'a }
 
   let pp ppf = function
     | Nowhere -> ()
-    | Simple {line;start;stop} -> Pp.fp ppf "l%d.%d−%d" line start stop
+    | Simple {line;start;stop} -> Pp.fp ppf "l%d.%d@<1>%s%d" line start "−" stop
     | Multiline {start=(l1,c1); stop = (l2,c2) } ->
-      Pp.fp ppf "l%d.%d−l%d.%d" l1 c1 l2 c2
+      Pp.fp ppf "l%d.%d@<1>%sl%d.%d" l1 c1 "−" l2 c2
 
   let create loc data = {loc; data}
   let nowhere data = { loc = Nowhere; data}
