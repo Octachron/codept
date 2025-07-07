@@ -90,5 +90,5 @@ let compare v ref =
 
 
 let () =
-  Format_tags.enable Pp.err;
+  Format_tags.enable ~simple:true Pp.err;
   assert (Vmap.for_all compare refs)

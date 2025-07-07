@@ -1,9 +1,9 @@
-[[1m[31mError[0m]: Solver failure 
+[Error]: Solver failure 
    −Circular dependencies: 
-      A −([1m2+2-cycles/a.ml:l1.0−6[0m)⟶ B −([1m2+2-cycles/b.ml:l1.0−6[0m)⟶ A
+      A −(2+2-cycles/a.ml:l1.0−6)⟶ B −(2+2-cycles/b.ml:l1.0−6)⟶ A
 
    −Circular dependencies: 
-      C −([1m2+2-cycles/c.ml:l1.0−6[0m)⟶ D −([1m2+2-cycles/d.ml:l1.0−6[0m)⟶ C
+      C −(2+2-cycles/c.ml:l1.0−6)⟶ D −(2+2-cycles/d.ml:l1.0−6)⟶ C
 {
 "version":
   [0, 11, 0],

@@ -1,2 +1,4 @@
 -deps
+-format
+simple-json
 split_unit

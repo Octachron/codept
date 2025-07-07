@@ -1,9 +1,9 @@
-[[1m[36mNotification[0m]: [1mcases/module_type_expr.ml:l2.2−46[0m,
-a non-resolvable module, [1mOne[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/module_type_expr.ml:l2.2−46[0m,
-a non-resolvable module, [1mTwo[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/module_type_expr.ml:l5.2−12[0m,
-a non-resolvable module, [1mThree[0m, has been replaced by an approximation
+[Notification]: cases/module_type_expr.ml:l2.2−46,
+a non-resolvable module, One, has been replaced by an approximation
+[Notification]: cases/module_type_expr.ml:l2.2−46,
+a non-resolvable module, Two, has been replaced by an approximation
+[Notification]: cases/module_type_expr.ml:l5.2−12,
+a non-resolvable module, Three, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

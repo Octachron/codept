@@ -1,7 +1,7 @@
-[[1m[35mWarning[0m]: [1mcases/riddle.ml:l113.6−12[0m,
-first-class module [1mM[0m was opened while its signature was unknown.
-[[1m[36mNotification[0m]: [1mcases/riddle.ml:l114.6−13[0m,
-a non-resolvable module, [1mM5[0m, has been replaced by an approximation
+[Warning]: cases/riddle.ml:l113.6−12,
+first-class module M was opened while its signature was unknown.
+[Notification]: cases/riddle.ml:l114.6−13,
+a non-resolvable module, M5, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

@@ -8,9 +8,11 @@ let std = Format.std_formatter
 let io = Io.direct
 let out = Pp.std
 let main () =
-  Format_tags.enable Pp.err;
-  Format_tags.enable Pp.std;
   let query = Args.process version Sys.argv in
+  let simple = not query.params.pretty_format in
+  Format_tags.enable ~simple Pp.err;
+  Format_tags.enable ~simple Pp.std;
+
   let task = io.reader.findlib query.task query.findlib in
   Compenv.readenv stderr Before_link;
   List.iter (Args.eval_single out io.writer query.params query.task)

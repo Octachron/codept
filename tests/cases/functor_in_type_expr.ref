@@ -1,11 +1,11 @@
-[[1m[36mNotification[0m]: [1mcases/functor_in_type_expr.ml:l1.9−25[0m,
-a non-resolvable module, [1mExt1[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/functor_in_type_expr.ml:l1.9−25[0m,
-a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/functor_in_type_expr.ml:l1.26−42[0m,
-a non-resolvable module, [1mExt3[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/functor_in_type_expr.ml:l1.26−42[0m,
-a non-resolvable module, [1mExt4[0m, has been replaced by an approximation
+[Notification]: cases/functor_in_type_expr.ml:l1.9−25,
+a non-resolvable module, Ext1, has been replaced by an approximation
+[Notification]: cases/functor_in_type_expr.ml:l1.9−25,
+a non-resolvable module, Ext2, has been replaced by an approximation
+[Notification]: cases/functor_in_type_expr.ml:l1.26−42,
+a non-resolvable module, Ext3, has been replaced by an approximation
+[Notification]: cases/functor_in_type_expr.ml:l1.26−42,
+a non-resolvable module, Ext4, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

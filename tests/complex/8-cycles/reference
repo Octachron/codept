@@ -1,17 +1,17 @@
-[[1m[31mError[0m]: Solver failure 
+[Error]: Solver failure 
    −Circular dependencies: 
-      A −([1m8-cycles/a.ml:l1.0−6[0m)⟶ B −([1m8-cycles/b.ml:l2.0−6[0m)⟶
-      C −([1m8-cycles/c.ml:l3.0−6[0m)⟶ D −([1m8-cycles/d.ml:l5.0−6[0m)⟶ A
+      A −(8-cycles/a.ml:l1.0−6)⟶ B −(8-cycles/b.ml:l2.0−6)⟶
+      C −(8-cycles/c.ml:l3.0−6)⟶ D −(8-cycles/d.ml:l5.0−6)⟶ A
 
    −Non-resolved internal dependency.
     The following compilation units {8-cycles/e.ml, 8-cycles/f.ml,
     8-cycles/g.ml, 8-cycles/h.ml}
     depend on the compilation units "8-cycles/a.ml" that could not be resolved.
-[[1m[31mError[0m]: Solver failure 
+[Error]: Solver failure 
    −Circular dependencies: 
-      A −([1m8-cycles/a.ml:l2.0−6[0m)⟶ H −([1m8-cycles/h.ml:l9.0−6[0m)⟶
-      G −([1m8-cycles/g.ml:l8.0−6[0m)⟶ F −([1m8-cycles/f.ml:l7.0−6[0m)⟶
-      E −([1m8-cycles/e.ml:l6.0−6[0m)⟶ A
+      A −(8-cycles/a.ml:l2.0−6)⟶ H −(8-cycles/h.ml:l9.0−6)⟶
+      G −(8-cycles/g.ml:l8.0−6)⟶ F −(8-cycles/f.ml:l7.0−6)⟶
+      E −(8-cycles/e.ml:l6.0−6)⟶ A
 {
 "version":
   [0, 11, 0],

@@ -1,6 +1,6 @@
-[[1m[35mWarning[0m]: Syntax error
+[Warning]: Syntax error
             File "", line 4, characters 7-16
-[[1m[36mNotification[0m]: Approximate parsing of cases/broken3.ml.
+[Notification]: Approximate parsing of cases/broken3.ml.
                 However, lower and upper bound agreed upon dependencies.
 {
 "version":

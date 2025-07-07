@@ -1,7 +1,7 @@
-[[1m[36mNotification[0m]: [1mmodule_types/a.mli:l1.0−11[0m,
-a non-resolvable module, [1mE[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1mmodule_types/b.ml:l3.2−13[0m,
-module [1mA[0m does not contain any module type [1mB[0m
+[Notification]: module_types/a.mli:l1.0−11,
+a non-resolvable module, E, has been replaced by an approximation
+[Warning]: module_types/b.ml:l3.2−13,
+module A does not contain any module type B
 {
 "version":
   [0, 11, 0],

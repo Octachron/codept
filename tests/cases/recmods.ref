@@ -1,13 +1,13 @@
-[[1m[35mWarning[0m]: [1mcases/recmods.ml:l5.18−27[0m,
-module [1m[0m does not contain any module type [1mS[0m
-[[1m[36mNotification[0m]: [1mcases/recmods.ml:l11.2−10[0m,
-a non-resolvable module, [1mExt[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/recmods.ml:l27.10−19[0m,
-a non-resolvable module, [1mXeno[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/recmods.ml:l25.2−12[0m,
-a non-resolvable module, [1mXeno2[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/recmods.ml:l30.2−12[0m,
-a non-resolvable module, [1mXeno3[0m, has been replaced by an approximation
+[Warning]: cases/recmods.ml:l5.18−27,
+module  does not contain any module type S
+[Notification]: cases/recmods.ml:l11.2−10,
+a non-resolvable module, Ext, has been replaced by an approximation
+[Notification]: cases/recmods.ml:l27.10−19,
+a non-resolvable module, Xeno, has been replaced by an approximation
+[Notification]: cases/recmods.ml:l25.2−12,
+a non-resolvable module, Xeno2, has been replaced by an approximation
+[Notification]: cases/recmods.ml:l30.2−12,
+a non-resolvable module, Xeno3, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

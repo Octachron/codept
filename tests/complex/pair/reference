@@ -1,5 +1,5 @@
-[[1m[36mNotification[0m]: [1mpair/b.ml:l1.0−11[0m,
-a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
+[Notification]: pair/b.ml:l1.0−11,
+a non-resolvable module, Extern, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

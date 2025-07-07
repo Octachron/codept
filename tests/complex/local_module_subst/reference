@@ -1,5 +1,5 @@
-[[1m[36mNotification[0m]: [1mlocal_module_subst/b.mli:l2.0−10[0m,
-a non-resolvable module, [1mLocal[0m, has been replaced by an approximation
+[Notification]: local_module_subst/b.mli:l2.0−10,
+a non-resolvable module, Local, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

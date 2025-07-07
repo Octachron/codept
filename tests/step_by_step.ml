@@ -26,7 +26,7 @@ end
 module O = Dep_zipper.Make(Failing_env)(Param)
 
 let () =
-  List.iter Format_tags.enable Format.[std_formatter;err_formatter]
+  List.iter (Format_tags.enable ~simple:true) Format.[std_formatter;err_formatter]
 
 
 module LocalSet =

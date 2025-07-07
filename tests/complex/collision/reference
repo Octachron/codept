@@ -1,7 +1,7 @@
-[[1m[36mNotification[0m]: [1mcollision/a.ml:l3.0−8[0m,
-a non-resolvable module, [1mExt[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1mcollision/a.ml:l4.0−9[0m, name resolution for [1mD[0m was ambiguous, due
-to the opening of the external module [1mExt[0m, at location [1ml3.0−8[0m. Spurious
+[Notification]: collision/a.ml:l3.0−8,
+a non-resolvable module, Ext, has been replaced by an approximation
+[Warning]: collision/a.ml:l4.0−9, name resolution for D was ambiguous, due to
+the opening of the external module Ext, at location l3.0−8. Spurious
 dependencies might be inferred due to this ambiguity.
 {
 "version":

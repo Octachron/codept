@@ -1,9 +1,9 @@
-[[1m[36mNotification[0m]: [1mcases/alias_in_with.ml:l7.0−37[0m,
-a non-resolvable module, [1mExt[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/alias_in_with.ml:l15.0−41[0m,
-a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/alias_in_with.ml:l26.0−l28.27[0m,
-a non-resolvable module, [1mExt3[0m, has been replaced by an approximation
+[Notification]: cases/alias_in_with.ml:l7.0−37,
+a non-resolvable module, Ext, has been replaced by an approximation
+[Notification]: cases/alias_in_with.ml:l15.0−41,
+a non-resolvable module, Ext2, has been replaced by an approximation
+[Notification]: cases/alias_in_with.ml:l26.0−l28.27,
+a non-resolvable module, Ext3, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

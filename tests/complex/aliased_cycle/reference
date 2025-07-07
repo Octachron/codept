@@ -1,15 +1,12 @@
-[[1m[31mError[0m]: Solver failure 
+[Error]: Solver failure 
    −Circular dependencies: 
-      A −([1maliased_cycle/a.ml:l1.0−12[0m)⟶
-      B −([1maliased_cycle/b.ml:l3.0−12[0m)⟶
-      C −([1maliased_cycle/c.ml:l6.0−12[0m)⟶ A
-[[1m[31mError[0m]: Solver failure 
+      A −(aliased_cycle/a.ml:l1.0−12)⟶ B −(aliased_cycle/b.ml:l3.0−12)⟶
+      C −(aliased_cycle/c.ml:l6.0−12)⟶ A
+[Error]: Solver failure 
    −Circular dependencies: 
-      A −([1maliased_cycle/a.ml:l1.0−12[0m)⟶
-      B −([1maliased_cycle/b.ml:l3.0−12[0m)⟶
-      C −([1maliased_cycle/c.ml:l6.0−12[0m)⟶ A
-[[1m[31mError[0m]: Solver failure 
+      A −(aliased_cycle/a.ml:l1.0−12)⟶ B −(aliased_cycle/b.ml:l3.0−12)⟶
+      C −(aliased_cycle/c.ml:l6.0−12)⟶ A
+[Error]: Solver failure 
    −Circular dependencies: 
-      A −([1maliased_cycle/a.ml:l1.0−12[0m)⟶
-      B −([1maliased_cycle/b.ml:l3.0−12[0m)⟶
-      C −([1maliased_cycle/c.ml:l6.0−12[0m)⟶ A
+      A −(aliased_cycle/a.ml:l1.0−12)⟶ B −(aliased_cycle/b.ml:l3.0−12)⟶
+      C −(aliased_cycle/c.ml:l6.0−12)⟶ A

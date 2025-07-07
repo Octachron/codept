@@ -1,5 +1,5 @@
-[[1m[36mNotification[0m]: [1mcases/first_class_encore.ml:l5.21−24[0m,
-a non-resolvable module, [1mExt[0m, has been replaced by an approximation
+[Notification]: cases/first_class_encore.ml:l5.21−24,
+a non-resolvable module, Ext, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

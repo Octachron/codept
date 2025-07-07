@@ -1,7 +1,7 @@
-[[1m[36mNotification[0m]: [1mcases/alias_map.ml:l5.0−11[0m,
-a non-resolvable module, [1mAliased__C[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/alias_map.ml:l6.0−6[0m,
-a non-resolvable module, [1mAliased__B[0m, has been replaced by an approximation
+[Notification]: cases/alias_map.ml:l5.0−11,
+a non-resolvable module, Aliased__C, has been replaced by an approximation
+[Notification]: cases/alias_map.ml:l6.0−6,
+a non-resolvable module, Aliased__B, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

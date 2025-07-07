@@ -1,11 +1,22 @@
 {
-"version" : [0, 11, 0],
-"dependencies" :
-  [{ "file" : "split_unit/intf/a.mli" }, { "file" : "split_unit/impl/a.ml" }],
-"local" :
+"version":
+  [0, 11, 0],
+"dependencies":
   [{
-   "module" : ["A"],
-   "ml" : "split_unit/impl/a.ml",
-   "mli" : "split_unit/intf/a.mli"
+   "file":
+     "split_unit/intf/a.mli"
+   },
+  {
+  "file":
+    "split_unit/impl/a.ml"
+  }],
+"local":
+  [{
+   "module":
+     ["A"],
+   "ml":
+     "split_unit/impl/a.ml",
+   "mli":
+     "split_unit/intf/a.mli"
    }]
 }

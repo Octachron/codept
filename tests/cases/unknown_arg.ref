@@ -1,5 +1,5 @@
-[[1m[36mNotification[0m]: [1mcases/unknown_arg.ml:l1.0−l3.3[0m,
-a non-resolvable module, [1mExt[0m, has been replaced by an approximation
+[Notification]: cases/unknown_arg.ml:l1.0−l3.3,
+a non-resolvable module, Ext, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

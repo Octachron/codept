@@ -1,7 +1,7 @@
-[[1m[36mNotification[0m]: [1muncoupled/a.ml:l1.0−6[0m,
-a non-resolvable module, [1mN[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1muncoupled/a.ml:l2.0−6[0m, name resolution for [1mB[0m was ambiguous, due
-to the opening of the external module [1mN[0m, at location [1ml1.0−6[0m. Spurious
+[Notification]: uncoupled/a.ml:l1.0−6,
+a non-resolvable module, N, has been replaced by an approximation
+[Warning]: uncoupled/a.ml:l2.0−6, name resolution for B was ambiguous, due to
+the opening of the external module N, at location l1.0−6. Spurious
 dependencies might be inferred due to this ambiguity.
 {
 "version":

@@ -1,33 +1,33 @@
-[[1m[36mNotification[0m]: [1mcases/simple.ml:l1.0−15[0m,
-a non-resolvable module, [1mG[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/simple.ml:l1.0−15[0m,
-a non-resolvable module, [1mE[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/simple.ml:l2.0−6[0m,
-a non-resolvable module, [1mI[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/simple.ml:l4.1−7[0m,
-a non-resolvable module, [1mA[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/simple.ml:l5.19−27[0m,
-a non-resolvable module, [1mW[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/simple.ml:l6.9−12[0m,
-a non-resolvable module, [1mB[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1mcases/simple.ml:l8.0−6[0m, name resolution for [1mR[0m was ambiguous, due
-to the opening of the external module [1mA[0m, at location [1ml4.1−7[0m. Spurious
+[Notification]: cases/simple.ml:l1.0−15,
+a non-resolvable module, G, has been replaced by an approximation
+[Notification]: cases/simple.ml:l1.0−15,
+a non-resolvable module, E, has been replaced by an approximation
+[Notification]: cases/simple.ml:l2.0−6,
+a non-resolvable module, I, has been replaced by an approximation
+[Notification]: cases/simple.ml:l4.1−7,
+a non-resolvable module, A, has been replaced by an approximation
+[Notification]: cases/simple.ml:l5.19−27,
+a non-resolvable module, W, has been replaced by an approximation
+[Notification]: cases/simple.ml:l6.9−12,
+a non-resolvable module, B, has been replaced by an approximation
+[Warning]: cases/simple.ml:l8.0−6, name resolution for R was ambiguous, due
+to the opening of the external module A, at location l4.1−7. Spurious
 dependencies might be inferred due to this ambiguity.
-[[1m[36mNotification[0m]: [1mcases/simple.ml:l9.0−6[0m,
-a non-resolvable module, [1mC[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1mcases/simple.ml:l10.0−8[0m, name resolution for [1mU[0m was ambiguous,
-due to the opening of the external module [1mC[0m, at location [1ml9.0−6[0m. Spurious
+[Notification]: cases/simple.ml:l9.0−6,
+a non-resolvable module, C, has been replaced by an approximation
+[Warning]: cases/simple.ml:l10.0−8, name resolution for U was ambiguous, due
+to the opening of the external module C, at location l9.0−6. Spurious
 dependencies might be inferred due to this ambiguity.
-[[1m[35mWarning[0m]: [1mcases/simple.ml:l11.0−6[0m, name resolution for [1mE[0m was ambiguous,
-due to the opening of the external module [1mC[0m, at location [1ml9.0−6[0m. Spurious
+[Warning]: cases/simple.ml:l11.0−6, name resolution for E was ambiguous, due
+to the opening of the external module C, at location l9.0−6. Spurious
 dependencies might be inferred due to this ambiguity.
-[[1m[36mNotification[0m]: [1mcases/simple.ml:l11.0−6[0m,
-a non-resolvable module, [1mExt[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1mcases/simple.ml:l12.0−8[0m, name resolution for [1mK[0m was ambiguous,
-due to the opening of the external module [1mExt[0m, at location [1ml11.0−6[0m.
-Spurious dependencies might be inferred due to this ambiguity.
-[[1m[36mNotification[0m]: [1mcases/simple.ml:l12.0−8[0m,
-a non-resolvable module, [1mY[0m, has been replaced by an approximation
+[Notification]: cases/simple.ml:l11.0−6,
+a non-resolvable module, Ext, has been replaced by an approximation
+[Warning]: cases/simple.ml:l12.0−8, name resolution for K was ambiguous, due
+to the opening of the external module Ext, at location l11.0−6. Spurious
+dependencies might be inferred due to this ambiguity.
+[Notification]: cases/simple.ml:l12.0−8,
+a non-resolvable module, Y, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

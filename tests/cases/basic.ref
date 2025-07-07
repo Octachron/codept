@@ -1,12 +1,12 @@
-[[1m[36mNotification[0m]: [1mcases/basic.ml:l5.2−10[0m,
-a non-resolvable module, [1mExt[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1mcases/basic.ml:l6.2−8[0m, name resolution for [1mA[0m was ambiguous, due
-to the opening of the external module [1mExt[0m, at location [1ml5.2−10[0m. Spurious
+[Notification]: cases/basic.ml:l5.2−10,
+a non-resolvable module, Ext, has been replaced by an approximation
+[Warning]: cases/basic.ml:l6.2−8, name resolution for A was ambiguous, due to
+the opening of the external module Ext, at location l5.2−10. Spurious
 dependencies might be inferred due to this ambiguity.
-[[1m[36mNotification[0m]: [1mcases/basic.ml:l9.2−11[0m,
-a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1mcases/basic.ml:l10.2−8[0m, name resolution for [1mA[0m was ambiguous, due
-to the opening of the external module [1mExt2[0m, at location [1ml9.2−11[0m. Spurious
+[Notification]: cases/basic.ml:l9.2−11,
+a non-resolvable module, Ext2, has been replaced by an approximation
+[Warning]: cases/basic.ml:l10.2−8, name resolution for A was ambiguous, due
+to the opening of the external module Ext2, at location l9.2−11. Spurious
 dependencies might be inferred due to this ambiguity.
 {
 "version":

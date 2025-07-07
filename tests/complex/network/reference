@@ -1,7 +1,7 @@
-[[1m[36mNotification[0m]: [1mnetwork/a.ml:l2.0−11[0m,
-a non-resolvable module, [1mExtern[0m, has been replaced by an approximation
-[[1m[35mWarning[0m]: [1mnetwork/a.ml:l3.0−13[0m, name resolution for [1mC[0m was ambiguous, due
-to the opening of the external module [1mExtern[0m, at location [1ml2.0−11[0m. Spurious
+[Notification]: network/a.ml:l2.0−11,
+a non-resolvable module, Extern, has been replaced by an approximation
+[Warning]: network/a.ml:l3.0−13, name resolution for C was ambiguous, due to
+the opening of the external module Extern, at location l2.0−11. Spurious
 dependencies might be inferred due to this ambiguity.
 {
 "version":

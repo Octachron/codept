@@ -1,9 +1,9 @@
-[[1m[36mNotification[0m]: [1mcases/sig_reader.ml:l7.32−49[0m,
-a non-resolvable module, [1mModule[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/sig_reader.ml:l5.41−53[0m,
-a non-resolvable module, [1mSig_lex[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/sig_reader.ml:l5.19−40[0m,
-a non-resolvable module, [1mSig_parse[0m, has been replaced by an approximation
+[Notification]: cases/sig_reader.ml:l7.32−49,
+a non-resolvable module, Module, has been replaced by an approximation
+[Notification]: cases/sig_reader.ml:l5.41−53,
+a non-resolvable module, Sig_lex, has been replaced by an approximation
+[Notification]: cases/sig_reader.ml:l5.19−40,
+a non-resolvable module, Sig_parse, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

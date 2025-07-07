@@ -1,5 +1,5 @@
-[[1m[36mNotification[0m]: [1mcases/include_functor.ml:l1.0−13[0m,
-a non-resolvable module, [1mA[0m, has been replaced by an approximation
+[Notification]: cases/include_functor.ml:l1.0−13,
+a non-resolvable module, A, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

@@ -1,4 +1,6 @@
 -k
 -deps
+-format
+simple-json
 module_collision/Z/a.mli
 module_collision/B/A.mli

@@ -1,5 +1,5 @@
-[[1m[36mNotification[0m]: [1malias_path_with_namespaces/inner/a.ml:l3.0−6[0m,
-a non-resolvable module, [1mC[0m, has been replaced by an approximation
+[Notification]: alias_path_with_namespaces/inner/a.ml:l3.0−6,
+a non-resolvable module, C, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

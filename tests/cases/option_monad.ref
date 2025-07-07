@@ -1,9 +1,9 @@
-[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l19.7−10[0m,
-a non-resolvable module, [1mExt[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l19.17−21[0m,
-a non-resolvable module, [1mExt3[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/option_monad.ml:l20.22−26[0m,
-a non-resolvable module, [1mExt4[0m, has been replaced by an approximation
+[Notification]: cases/option_monad.ml:l19.7−10,
+a non-resolvable module, Ext, has been replaced by an approximation
+[Notification]: cases/option_monad.ml:l19.17−21,
+a non-resolvable module, Ext3, has been replaced by an approximation
+[Notification]: cases/option_monad.ml:l20.22−26,
+a non-resolvable module, Ext4, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

@@ -1,7 +1,7 @@
-[[1m[36mNotification[0m]: [1mcases/foreign_arg_sig.ml:l1.0−l3.3[0m,
-a non-resolvable module, [1mExt[0m, has been replaced by an approximation
-[[1m[36mNotification[0m]: [1mcases/foreign_arg_sig.ml:l2.2−30[0m,
-a non-resolvable module, [1mExt2[0m, has been replaced by an approximation
+[Notification]: cases/foreign_arg_sig.ml:l1.0−l3.3,
+a non-resolvable module, Ext, has been replaced by an approximation
+[Notification]: cases/foreign_arg_sig.ml:l2.2−30,
+a non-resolvable module, Ext2, has been replaced by an approximation
 {
 "version":
   [0, 11, 0],

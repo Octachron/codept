@@ -1,8 +1,8 @@
-[[1m[31mError[0m]: Solver failure 
+[Error]: Solver failure 
    −Circular dependencies: 
-      C2 −([1mω-cycle/c2.ml:l1.0−7[0m)⟶ C3 −([1mω-cycle/c3.ml:l1.0−7[0m)⟶
-      C4 −([1mω-cycle/c4.ml:l1.0−7[0m)⟶ C5 −([1mω-cycle/c5.ml:l1.0−7[0m)⟶
-      C1 −([1mω-cycle/c1.ml:l1.0−7[0m)⟶ C2
+      C2 −(ω-cycle/c2.ml:l1.0−7)⟶ C3 −(ω-cycle/c3.ml:l1.0−7)⟶
+      C4 −(ω-cycle/c4.ml:l1.0−7)⟶ C5 −(ω-cycle/c5.ml:l1.0−7)⟶
+      C1 −(ω-cycle/c1.ml:l1.0−7)⟶ C2
 
    −Non-resolved internal dependency.
     The following compilation units {ω-cycle/a.ml, ω-cycle/b.ml,
