@@ -37,14 +37,16 @@ let module_type_declaration module_type id mtd =
 
 module P = Path
 module L = Longident
+module Lc = Longident_converter
+
 let rec path_to_lid  = function
-    | P.Pident s -> L.Lident (Ident.name s)
+    | P.Pident s -> Lc.Ident (Ident.name s)
 # oo, 4.08
-    | P.Pdot (p,s,_n) -> L.Ldot (path_to_lid p,s)
+    | P.Pdot (p,s,_n) -> Lc.Dot (path_to_lid p,s)
 # 4.08, oo
-    | P.Pdot (p,s) -> L.Ldot(path_to_lid p,s)
+    | P.Pdot (p,s) -> Lc.Dot(path_to_lid p,s)
 #end
-    | P.Papply (f,x) -> L.Lapply (path_to_lid f, path_to_lid x)
+    | P.Papply (f,x) -> Lc.App (path_to_lid f, path_to_lid x)
 # 5.1, oo
     | P.Pextra_ty (ty, _extra) -> path_to_lid ty
 #end

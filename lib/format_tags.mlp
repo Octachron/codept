@@ -63,7 +63,11 @@ let mark_open_tag tag =
 let mark_close_tag _tag =
   "\x1b[0m"
 
-let enable ppf =
+let enable ~simple ppf =
+  if simple then begin
+    Format.pp_set_tags ppf false;
+    Format.pp_set_mark_tags ppf false;
+  end else begin
   Format.pp_set_tags ppf true;
   Format.pp_set_mark_tags ppf true;
 # oo, 4.08
@@ -77,6 +81,7 @@ let enable ppf =
       mark_close_stag=mark_close_tag
     }
 #end
+  end
 
 let with_tag tag printer ppf x =
 # oo, 4.08

@@ -1,14 +1,32 @@
 
 module L = Longident
+module Lc = Longident_converter
+
 module B = M2l.Build
 
 module M = Module
 module Annot = M2l.Annot
 module Arg = M.Arg
 
-let from_lid = Longident_converter.from_lid
 let txt x= x.Location.txt
-let me_from_lid lid =  Longident_converter.me_from_lid (txt lid)
+
+# oo, 5.4
+let lid_txt x = x
+# 5.4, oo
+let lid_txt x = txt x
+#end
+
+
+let rec simplify_lid =
+  let from_lid' x = simplify_lid (lid_txt x) in
+  function
+  | L.Lident s -> Lc.Ident s
+  | L.Lapply (f,x) -> Lc.App (from_lid' f, from_lid' x)
+  | L.Ldot (p,s) -> Lc.Dot (from_lid' p, lid_txt s)
+
+let from_lid x =
+  Longident_converter.(from_lid @@ simplify_lid x)
+let me_from_lid lid =  Longident_converter.me_from_lid (simplify_lid @@ txt lid)
 
 # oo, 4.10
   let bound_name x = Some x
@@ -293,6 +311,9 @@ and expr exp =
   | Pexp_tuple expressions
     (* (E1, ..., En) Invariant: n >= 2 *)
     ->
+# 5.4, oo
+    let expressions = List.map snd expressions in
+#end
     Annot.union_map expr expressions
   | Pexp_construct (constr, expr_opt)
     (* C                None
@@ -368,10 +389,16 @@ and expr exp =
     expr e ++ Annot.opt core_type ct_opt
   | Pexp_object clstr (* object ... end *) ->
     class_structure clstr
-  | Pexp_pack me (* (module ME) *)
-    ->  (*Warning.first_class_module (); *)
+# oo, 5.4
+  | Pexp_pack me (* (module ME) *) ->
+    let ty = None in
+# 5.4, oo
+    | Pexp_pack (me,ty) ->
+#end
+    (*Warning.first_class_module (); *)
     (* todo: are all cases caught by the Module.approximation mechanism?  *)
-    Annot.pack @@ with_loc loc @@ module_expr me
+    let ty = match ty with None -> Annot.empty | Some ty -> package_type ty in
+    ty ++ (Annot.pack @@ with_loc loc @@ module_expr me)
 # oo, 4.08
   | Pexp_open (_override_flag,me,e)
     -> Annot.local_open (from_loc me.Location.loc) (local_open_arg me) @@ expr e
@@ -419,10 +446,15 @@ and pattern pat =
   | Ppat_exception pat (* exception P *)
   | Ppat_lazy pat (* lazy P *)
   | Ppat_alias (pat,_) (* P as 'a *) -> pattern pat
-
+# oo, 5.4
   | Ppat_array patterns (* [| P1; ...; Pn |] *)
-  | Ppat_tuple patterns (* (P1, ..., Pn) *) ->
+  | Ppat_tuple patterns (* (P1, ..., Pn) *) ->  Pattern.union_map pattern patterns
+# 5.4, oo
+  | Ppat_array patterns (* [| P1; ...; Pn |] *) ->     Pattern.union_map pattern patterns
+  | Ppat_tuple (patterns, _) (* (P1, ..., Pn, ... ) *) ->
+    let patterns = List.map snd patterns in
     Pattern.union_map pattern patterns
+#end
 # oo, 4.13
   | Ppat_construct (c, p)
     (* C                None
@@ -508,6 +540,9 @@ and core_type ct : M2l.Annot.t =
   | Ptyp_arrow (_, t1, t2) (* [~? ]T1->T2 *) ->
     core_type t1 ++ core_type t2
   | Ptyp_tuple cts (* T1 * ... * Tn *) ->
+# 5.4, oo
+    let cts = List.map snd cts in
+#end
     Annot.union_map core_type cts
   | Ptyp_class (name,cts)
   | Ptyp_constr (name,cts) (*[|T|(T1n ..., Tn)] tconstr *) ->
@@ -530,11 +565,19 @@ and core_type ct : M2l.Annot.t =
         (core_type ty)
 #end
 and row_field x = Annot.union_map core_type (row_field_core x)
-and package_type (s,constraints) =
+and package_convert pty =
+# oo, 5.4
+    pty
+# 5.4, oo
+   pty.ppt_path, pty.ppt_cstrs
+#end
+and package_type pty =
+  let s, constraints = package_convert pty in
   Annot.merge
     (access s)
     (Annot.union_map (core_type % snd) constraints)
-and full_package_type (s,constraints) =
+and full_package_type pty =
+  let s, constraints = package_convert pty in
   Ident (epath s),
   Pattern.of_annot @@ Annot.union_map (core_type % snd) constraints
 and case cs =
@@ -828,6 +871,16 @@ and matched_patt_expr x y =
   | Ppat_constraint _ , Pexp_constraint _ -> pattern x, expr y
   | _, Pexp_constraint (_,t) ->
     pattern { x with ppat_desc = Ppat_constraint(x,t)}, expr y
+# 5.4, oo
+  | _, Pexp_pack (_, Some ty) ->
+    let pty = {
+      ptyp_loc = y.pexp_loc;
+      ptyp_desc = Ptyp_package ty;
+      ptyp_attributes = []; ptyp_loc_stack = []
+    } in
+    let pat = { x with ppat_desc = Ppat_constraint(x,pty)} in
+    pattern pat, expr y
+#end
   | Ppat_construct (_,po), Pexp_construct(_,eo) ->
 # 4.13, oo
     let po = Option.fmap snd po in
@@ -839,9 +892,17 @@ and matched_patt_expr x y =
     Option.( (po >>= fun p -> eo >>| fun e -> matched_patt_expr p e) ><
              (Pattern.opt pattern po, Annot.opt expr eo)
            )
-  | Ppat_tuple pt, Pexp_tuple et
-  | Ppat_array pt, Pexp_array et  (* todo use homogeneity *)
-    ->
+# oo, 5.4
+  | Ppat_tuple pt, Pexp_tuple et ->
+# 5.4, oo
+  | Ppat_tuple (pt,_), Pexp_tuple et ->
+    (* FIXME: labels matching *)
+    let pt = List.map snd pt and et = List.map snd et in
+#end
+    fold2
+      (fun (p,e) x y -> let p',e' = matched_patt_expr x y in
+        Pattern.( p ++ p'), e ++ e' ) (Pattern.empty, Annot.empty) pt et
+  | Ppat_array pt, Pexp_array et  (* todo use homogeneity *) ->
     fold2
       (fun (p,e) x y -> let p',e' = matched_patt_expr x y in
         Pattern.( p ++ p'), e ++ e' ) (Pattern.empty, Annot.empty) pt et
