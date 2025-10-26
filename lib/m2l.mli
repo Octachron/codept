@@ -63,7 +63,6 @@ and expression =
     dependency tracking.
 *)
 and minor =
-
   | Access of access (** see  {!access} below *)
   | Pack of module_expr Loc.ext (** (module struct ... end) *)
   | Extension_node of extension Loc.ext (** [%ext ... ] *)
@@ -71,7 +70,10 @@ and minor =
   | Local_open of Loc.t * module_expr * minor list
   (** let open struct ... end in ... *)
   | Local_bind of Loc.t * module_expr bind * minor list
-                                   (** let module M = ... in ... *)
+
+  | External of string list (** external _ = "..." "..." *)
+
+ (** let module M = ... in ... *)
 and access = (Loc.t * Deps.Edge.t) Paths.E.map
   (** [M.N.L.x] ⇒ access \{M.N.L = Normal \}
       type t = A.t ⇒ access \{ A = ε \}

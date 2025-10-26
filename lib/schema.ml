@@ -74,25 +74,31 @@ module Deps = Label(struct let l = "deps" end)
 
 module File = Label(struct let l = "file" end)
 
-type unit = { file: string; deps: p list }
+module Externals = Label(struct let l = "externals" end)
+
+type unit = { file: string; deps: p list; externals: string list }
 
 let raw_unit =
   Obj [
     Req, File.l, String <?> "File name";
-    Opt, Deps.l, Array path <?> "list of dependencies"
+    Opt, Deps.l, Array path <?> "list of dependencies";
+    Opt, Externals.l, Array String <?> "list of external primitive dependencies";
   ]
 
 let unit =
-  let e: _ list = [] in
+  let e x = Option.default ([] : _ list) x in
   let ($=$) x l = if l = L.[] then x $=? None else x $=? Some l in
   custom  raw_unit
-    (fun d -> [ File.l $= d.file; Deps.l $=$ d.deps ])
-    (let open R in fun [_, file; _,deps] -> {file; deps = Option.default e deps } )
+    (fun d -> [ File.l $= d.file; Deps.l $=$ d.deps; Externals.l $=$ d.externals ])
+    (let open R in fun [_, file; _,deps; _, externals ] ->
+        {file; deps = e deps; externals = e externals }
+    )
 
 
 
 module Dependencies = Label(struct let l = "dependencies" end)
 module Atlas = Label(struct let l = "atlas" end)
+
 
 type deps = {
   dependencies: unit list;
@@ -123,7 +129,7 @@ let deps =
        {dependencies;
         local=list local;
         library=list lib;
-        unknown=list u
+        unknown=list u;
        } )
 
 

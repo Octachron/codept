@@ -612,7 +612,7 @@ let result =
           "unitname.ml", (["Modname"; "Pp"; "Support"], ["Filename"; "Format"; "Map"; "Set"; "String"], []);
           "unitname.mli", (["Modname"; "Pp"], ["Map"; "Set"], []);
 
-          "deps.ml", (["Namespaced"; "Option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);
+          "deps.ml", (["Name"; "Namespaced"; "Option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);
           "deps.mli", (["Namespaced"; "Pkg"; "Pp"; "Schematic"],["Format"],[]);
           "summary.mli", (
             ["Module";"Schematic"; "Pp"],
@@ -730,7 +730,7 @@ let result =
           ,["Format"],[]);
           "dep_zipper.ml", (
             ["Deps"; "Module"; "Stage"; "Transforms"; "Zipper"; "Zipper_fold"]
-          ,[],[]);
+          ,["List"],[]);
           "zipper_fold.ml", (
             ["Debug"; "Deps"; "Id"; "Loc"; "M2l"; "Module"; "Mresult"; "Option";
              "Paths"; "Pkg"; "Stage"; "Summary"; "Zipper_skeleton"; "Zipper_def";

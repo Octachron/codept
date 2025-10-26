@@ -231,7 +231,10 @@ and structure_item item =
   | Pstr_primitive desc
     (*  val x: T
         external x: T = "s1" ... "sn" *)
-    -> minor @@ data @@ core_type desc.pval_type
+    -> minor (
+        External desc.pval_prim ::
+        data (core_type desc.pval_type);
+      )
   | Pstr_type (_rec_flag, type_declarations)
     (* type t1 = ... and ... and tn = ... *) ->
     minor @@ data @@ Annot.union_map type_declaration type_declarations

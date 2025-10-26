@@ -42,6 +42,9 @@ and minor =
   | Local_open of Loc.t * module_expr * minor list
   (** let open struct ... end in ... *)
   | Local_bind of Loc.t * module_expr bind * minor list
+
+  | External of string list (** external _ = "..." "..." *)
+
 and access = (Loc.t * Deps.Edge.t) Paths.E.map
   (** [M.N.L.x] ⇒ access \{M.N.L = Normal \}
       type t = A.t ⇒ access \{ A = ε \}
@@ -145,6 +148,7 @@ module Sch = struct
       "Open", [reopen Loc.Sch.t; Mu.module_expr; Array Mu.minor];
       "Bind",
       [reopen Loc.Sch.t; option String; Mu.module_expr; Array Mu.minor];
+      "External", Array String
     ]
 
   let annot = Array Mu.minor
@@ -293,14 +297,16 @@ module Sch = struct
       | Access x -> C (Z x)
       | Pack m -> C (S (Z m))
       | Extension_node e -> C (S (S (Z e)))
-      | Local_open (loc,x,y) -> C (S (S ( S (Z [loc;x;y]))))
-      | Local_bind(loc,b,x) -> C (S (S (S ( S (Z [loc;b.name; b.expr; x])))))
+      | Local_open (loc,x,y) -> C (S (S (S (Z [loc;x;y]))))
+      | Local_bind(loc,b,x) ->  C (S (S (S (S (Z [loc;b.name; b.expr; x])))))
+      | External s ->           C (S (S (S (S (S (Z s))))))
   and rev = let open Tuple in function
       | C Z x -> Access x
       | C S Z m -> Pack m
       | C S S Z e -> Extension_node e
       | C S S S Z [x;y;z] -> Local_open (x,y,z)
       | C S S S S Z [loc;name;expr;z] -> Local_bind (loc,{name;expr},z)
+      | C S S S S S Z s -> External s
       | C E -> assert false
       | _ -> .
 
@@ -421,6 +427,7 @@ module Annot = struct
       Local_open(loc,me, List.map epsilon_promote_raw x)
     | Local_bind (loc,b,x) ->
       Local_bind (loc, b, List.map epsilon_promote_raw x)
+    | External _ as e -> e
 
   let epsilon_promote = Loc.fmap @@ List.map epsilon_promote_raw
 
@@ -462,6 +469,7 @@ let rec pp_expression ppf = function
     Pp.fp ppf "rec@[[ %a ]@]" (and_list pp_bind) bs
 
 and pp_minor ppf = function
+  | External exts -> Pp.fp ppf "@[external(%a)@]" Pp.(list string) exts
   | Access a -> pp_access ppf a
   | Pack x -> Pp.fp ppf "@[(module %a)@]" pp_me x.Loc.data
   | Extension_node e -> Pp.fp ppf "@[%a@]" pp_extension e.data

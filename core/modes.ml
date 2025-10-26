@@ -72,7 +72,10 @@ let structured fmt _ _ ppf param units =
   let groups = Unit.Group.group units in
   let local = Unit.Group.Map.fold assoc groups LocalSet.empty in
   let dep (u:Unit.r) =
-    { Schema.file = ufile u; deps= Deps.paths (Unit.deps u) } in
+    { Schema.file = ufile u;
+      deps= Deps.paths (Unit.deps u);
+      externals = Deps.externals (Unit.deps u);
+    } in
   let dependencies = List.map dep all in
   let local = LocalSet.elements local in
   let library = LibSet.elements lib in

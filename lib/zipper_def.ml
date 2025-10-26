@@ -34,6 +34,7 @@ module type fold = sig
     path_expr -> Uloc.t -> Deps.Edge.t -> access -> access
   val access_init : access
   val access : access -> minor
+  val external_def: string list -> minor
   val pack: module_expr -> minor
   val minor_ext: loc:Uloc.t -> string -> ext -> minor
   val local_open: module_expr -> minors -> minor

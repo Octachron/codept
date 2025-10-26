@@ -14,7 +14,7 @@ type p = Namespaced.t
 type local_association = { path: p; ml: string option; mli: string option }
 type library_module = { path:p; lib:p}
 
-type unit = { file:string; deps: p list }
+type unit = { file:string; deps: p list; externals: string list }
 type deps = {
   dependencies: unit list;
   local: local_association list;

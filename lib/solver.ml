@@ -263,7 +263,8 @@ let expand_epsilon resolved unit =
     | None -> deps
     | Some ancestor ->
       Deps.fold (add_epsilon_dep edge) (Unit.deps ancestor) deps in
-  let deps = Deps.fold expand_dep (Unit.deps unit) Deps.empty in
+  let deps = Unit.deps unit in
+  let deps = Deps.fold expand_dep deps (Deps.externals_only deps) in
   Unit.update deps unit
 
 (* shortcut ε expansion when not needed *)

@@ -26,6 +26,8 @@ module Pre = struct
   let access_add d _ _ d' = d + d'
   let access_init = empty
   let alias = id
+  let external_def =
+    List.fold_left (fun d s -> Deps.add_external s d) Deps.empty
 
   let pack x = x
   let empty_minors = empty

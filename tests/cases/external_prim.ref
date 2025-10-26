@@ -1,0 +1,19 @@
+{
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "cases/external_prim.ml",
+   "externals":
+     ["ext_1",
+     "ext_2"]
+   }],
+"local":
+  [{
+   "module":
+     ["External_prim"],
+   "ml":
+     "cases/external_prim.ml"
+   }]
+}

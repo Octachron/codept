@@ -23,6 +23,11 @@ val update:
 val make:
   path:Namespaced.t -> ?aliases:Namespaced.set -> edge:Edge.t -> Pkg.t -> t
 
+(** Add a new external to a dependency record *)
+val add_external: string -> t -> t
+val add_externals: string list -> t -> t
+val externals_only: t -> t
+
 val merge: t -> t -> t
 val (+) : t -> t -> t
 
@@ -36,4 +41,5 @@ val of_list: dep list -> t
 val pkgs: t -> Pkg.t list
 val paths: t -> Namespaced.t list
 val all: t -> dep list
+val externals: t -> string list
 val pkg_set: t -> Pkg.set

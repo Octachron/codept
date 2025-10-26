@@ -391,6 +391,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       minors (Minor (Local_bind_right (diff0,name,e)) :: path)
         ~ctx ~param ~state m
       >>| fun m -> F.local_open e.user m
+    | External s -> Ok (F.external_def s)
     | _ -> .
   and access path ~param ~ctx ~state s =
     access_step ~state ~param ~ctx path F.access_init (Paths.E.Map.bindings s)

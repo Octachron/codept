@@ -1,6 +1,10 @@
 # 0.12.2
 
-* Support 5.4
+  * Support 5.4
+
+## features:
+
+  * track external declarations
 
 # 0.12.1
 
