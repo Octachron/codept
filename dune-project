@@ -2,7 +2,7 @@
 (using menhir 2.0)
 
 (name codept)
-(version 0.12.1)
+(version 0.12.2)
 (authors "Florian Angeletti <octa@polychoron.fr>")
 (maintainers "Florian Angeletti <octa@polychoron.fr>")
 (homepage https://github.com/Octachron/codept)
