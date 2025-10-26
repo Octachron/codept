@@ -52,6 +52,11 @@ let ephemeron v =
 
 let chain name sub = root name ~mds:(List.map submodule sub)
 
+let chain_after v after name sub =
+  if v >= after then
+    root name ~mds:(List.map submodule sub)
+  else simple name
+
 let pervasives =  chain "Pervasives" ["LargeFile"]
 
 let obj v =
@@ -74,7 +79,17 @@ let array_labels version =
 
 let gc v = if v < (4,11)  then simple "Gc" else chain "Gc" ["Memprof"]
 
-let chained version = [ gc version; array version; array_labels version; obj version; printexc; random;scanf ]
+let char v = chain_after v (5,4) "Char" ["Ascii"]
+
+let chained version = [
+  gc version;
+  array version;
+  char version;
+  array_labels version;
+  obj version;
+  printexc;
+  random;scanf
+]
 
 let simples =
   List.map simple
@@ -82,7 +97,7 @@ let simples =
       "Callback";
       "CamlinternalOO"; "CamlinternalLazy"; "CamlinternalFormat";
       "CamlinternalFormatBasics"; "CamlinternalMod";
-      "Char"; "Complex"; "Filename"; "Format";
+       "Complex"; "Filename"; "Format";
        "Int32"; "Int64"; "Lazy"; "Lexing"; "List";
       "ListLabels"; "Marshal"; "Nativeint"; "Oo"; "Parsing"; "Printf"; "Queue";
       "Stack"; "String"; "StringLabels"; "Uchar";
@@ -107,6 +122,26 @@ let set (mk: _ mk) =
   mk "Set"
     ~mds:[mkfunctor "Make" ["Ord"]]
     ~mts:[submodule "OrderedType"; submodule "S"]
+
+let pqueue =
+  root "Pqueue"
+    ~mds:[
+      mkfunctor "MakeMax" ["E"];
+      mkfunctor "MakeMin" ["E"];
+      mkfunctor "MakeMaxPoly" ["E"];
+      mkfunctor "MakeMinPoly" ["E"];
+    ]
+    ~mts:(
+      List.map submodule [
+        "OrderedType";
+        "OrderedPolyType";
+        "Min";
+        "MinPoly";
+        "Max";
+        "MaxPoly"
+      ]
+    )
+
 
 let immediate64 =
   submodule  "Immediate64"
@@ -181,16 +216,24 @@ let simple_stdlib v = Dict.of_list @@
   @ after v (4,03) [ephemeron v]
   @ in_between v (4,04) (4,12) [spacetime]
   @ after v (4,07) [bigarray ();float v; simple "Seq"]
-  @ after v  (4,08)
-    (List.map simple ["Fun";"Bool";"Option";"Int";"Result"; "Unit"])
+  @ after v  (4,08) (
+    chain_after v (5,4) "Result" ["Syntax"]
+    :: List.map simple ["Fun";"Bool";"Option";"Int"; "Unit"]
+  )
   @ before v  (4,10) [simple "Sys"]
-  @ after v (4,12) [simple "Either"; simple "Atomic"]
+  @ after v (4,12) [simple "Either"; chain_after v (5,4) "Atomic" ["Loc"]]
   @ in_between v (4,12) (5,0) [ simple "CamlinternalAtomic"]
   @ after v (4,14) [simple "In_channel"; simple "Out_channel"]
   @ before v (5,0) (List.map simple ["Stream";"Genlex"])
   @ after v (5,0) [semaphore; effekt; domain; simple "Condition"; simple "Mutex"]
   @ after v (5,1) [chain "Type" ["Id"]]
   @ after v (5,2) [simple "Dynarray"]
+  @ after v (5,4) [
+    simple "Iarray";
+    simple "Pair";
+    simple "Repr";
+    pqueue
+  ]
   @ complex v
   @ simples
 
