@@ -34,11 +34,11 @@ let sch: t Schematic.t =
       { units; externals = Externals.of_list externals }
   in
   let to_ { units = m; externals }  =
-    T.(::)(
-      (Map.fold (fun k {edge;pkg;aliases} l -> T.[k;edge;pkg;aliases] :: l) m []),
-      T.[Externals.elements externals]
-    )
-in
+    let open T in [
+      Map.fold (fun k {edge;pkg;aliases} l -> (T.[k;edge;pkg;aliases] :: l : _ list)) m [];
+      Externals.elements externals
+    ]
+  in
   let open Schematic in
   custom ([Array [Namespaced.sch; Edge.sch; Pkg.sch; S.sch]; Array String])
     to_ from_
