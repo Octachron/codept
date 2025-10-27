@@ -18,16 +18,23 @@
   (libraries unix codept_lib)
 )
 
-(test (name bundle_sync) (modules Bundle_sync) (libraries bundled bundle_refs codept_lib))
+(test
+   (package codept-lib)
+   (name bundle_sync)
+   (modules Bundle_sync)
+   (libraries bundled bundle_refs codept_lib)
+)
 
 (rule
  (alias   runtest)
+ (package codept-lib)
  (deps run.exe)
  (action (run %{exe:run.exe} ../../.. ))
 )
 
 (rule
  (alias   runtest)
+ (package codept-lib)
  (deps run.exe)
  (action (run %{exe:serialization.exe}))
 )
@@ -35,6 +42,7 @@
 
 (rule
  (alias   runtest)
+ (package codept)
  (deps ../full/codept.exe step_by_step.exe)
  (action (run %{exe:integrated.exe}))
 )
