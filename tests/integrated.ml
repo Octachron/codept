@@ -134,7 +134,7 @@ let run arg (v,  (case,_attrs)) =
     let pid =
       let main, args = v.cmd arg case in
       Unix.create_process main args Unix.stdin inp inp in
-    v.name, case, pid, out
+    v.name, case, pid, out, inp
 
 let read_all =
   let len = 1024 in
@@ -224,10 +224,11 @@ let print_arg ppf = function
 let dir x =
   let variant = full_variant in
   let arg = arg x in
-  let _, _, pid, out = run arg (variant, (x,[])) in
+  let _, _, pid, out, inp = run arg (variant, (x,[])) in
   match snd (Unix.waitpid [] pid) with
   | WEXITED (0|2) ->
     let s = read_all out in
+    Unix.close out; Unix.close inp;
     let ref = reference (x ^ "/reference") in
     if s %=% ref then
       log "%s" x
@@ -294,15 +295,16 @@ let cases =
   let all =
     List.filter (fun (v, (_,attrs)) -> List.for_all v.filter attrs)
       @@ prod variants all in
-  let post (vname, name, _, x) =
+  let post (vname, name, _, x, inp) =
     let s = read_all x in
+    Unix.close x; Unix.close inp;
     let ref = reference (refname name) in
     if s %=% ref then
       log "%s(%s)" name vname
     else fail "[%s]:(%s)@,%s@,diff:@,@[<v>%a@]@." name  vname
         s diff (s,ref)
   in
-  let peek l (_, case, pid, _ as x) =
+  let peek l (_, case, pid, _, _ as x) =
     match Unix.waitpid [Unix.WNOHANG] pid with
     | 0, _ -> x :: l
     | _, WEXITED (0|2)  -> post x; l
