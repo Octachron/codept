@@ -485,7 +485,6 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
         ~param ~ctx:(rm_loc ctx) ~state:state'
         body
       >>= fun body ->
-      let state = State.restart state diff in
       restart_minor (path: minor path) ~param ~ctx ~state
         (D.local_bind no x body)
     | Minor Local_open_left (diff0,loc_open,m) :: path ->
