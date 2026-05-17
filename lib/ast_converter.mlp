@@ -16,6 +16,19 @@ let lid_txt x = x
 let lid_txt x = txt x
 #end
 
+let decl_constraints x = let open Parsetree in
+# oo, 5.5
+  x.ptype_cstrs
+# 5.5, oo
+  x.ptype_constraints
+#end
+
+let pack_constraints x = let open Parsetree in
+# oo, 5.5
+  x.ppt_cstrs
+# 5.5, oo
+  x.ppt_constraints
+#end
 
 let rec simplify_lid =
   let from_lid' x = simplify_lid (lid_txt x) in
@@ -141,8 +154,8 @@ module Pattern = struct
 
   let opt f x = Option.( x >>| f >< empty )
 
-  let bind loc name sign =
-    { empty with binds = [Loc.create loc {M2l.name = bound_name name; expr = sign }] }
+  let single_binder b = { empty with binds = [b]  }
+  let bind loc name sign = single_binder (Loc.create loc {M2l.name = bound_name name; expr = sign })
 
 # 4.04, oo
   let open_ m { annot={ data; loc } ; binds} =
@@ -376,10 +389,12 @@ and expr exp =
     expr e
   | Pexp_override labels (* {< x1 = E1; ...; Xn = En >} *) ->
     Annot.union_map (expr % snd) labels
+# 3.10, 5.5
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
     with_loc e.pexp_loc
       [Local_bind(from_loc loc,module_binding (m,me), data @@ expr e) ]
-# 4.04, oo
+#end
+# 4.04, 5.5
   | Pexp_letexception (_c, e) (* let exception C in E *) ->
     expr e
 #end
@@ -405,7 +420,7 @@ and expr exp =
 # oo, 4.08
   | Pexp_open (_override_flag,me,e)
     -> Annot.local_open (from_loc me.Location.loc) (local_open_arg me) @@ expr e
-# 4.08, oo
+# 4.08, 5.5
   | Pexp_open (me,e)
     (* M.(E), let open M in E, let! open M in E *)
     -> Annot.local_open (from_loc me.popen_loc) (local_open_arg me) @@ expr e
@@ -419,6 +434,9 @@ and expr exp =
      val_bindings (fun bop -> bop.pbop_pat, [], bop.pbop_exp)
        (b.let_ :: b.ands)
        (expr b.body)
+#end
+# 5.5, oo
+| Pexp_struct_item (str, body) -> local_struct_item str (expr body)
 #end
 # 5.2,oo
 and fconstraint = function
@@ -484,17 +502,18 @@ and pattern pat =
   | Ppat_or (p1,p2) (* P1 | P2 *) ->
     Pattern.( pattern p1 ++ pattern p2 )
   | Ppat_constraint(
-      {ppat_desc=Ppat_unpack name; _},
-      {ptyp_desc=Ptyp_package s; _ } ) ->
-    let name = txt name in
-    let mt, others = full_package_type s in
-    let bind = {M2l.name = bound_name name; expr = M2l.Constraint(Unpacked, mt) } in
-    { others with binds = [with_loc loc bind] }
+      {ppat_desc=Ppat_unpack (name,None); _},
+      {ptyp_desc=Ptyp_package s; _ } )
+# 5.5, oo
+  | Ppat_unpack(name, Some s)
+#end
+    ->
+    Pattern.bind (from_loc loc) (txt name) (unpack_module s)
   (* todo : catch higher up *)
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
     Pattern.( pattern pat ++ of_annot (core_type ct) )
   | Ppat_type name (* #tconst *) -> Pattern.access name
-  | Ppat_unpack m ->
+  | Ppat_unpack (m,None) ->
     (* Warning.first_class_module(); todo: test coverage *)
     Pattern.bind (from_loc loc) (txt m) Unpacked
   (* (module P)
@@ -511,7 +530,7 @@ and pattern pat =
 #end
 
 and type_declaration td: M2l.Annot.t  =
-  Annot.union_map (fun (_,t,_) -> core_type t) td.ptype_cstrs
+  Annot.union_map (fun (_,t,_) -> core_type t) (decl_constraints td)
   ++
   if td.ptype_kind = Ptype_abstract then
     Annot.opt (Annot.epsilon_promote % core_type) td.ptype_manifest
@@ -519,7 +538,7 @@ and type_declaration td: M2l.Annot.t  =
     type_kind td.ptype_kind
     ++ Annot.opt core_type td.ptype_manifest
 and type_kind = function
-  | Ptype_abstract | Ptype_open -> Annot.empty
+  | Ptype_abstract | Ptype_open | Ptype_external _ -> Annot.empty
   | Ptype_variant constructor_declarations ->
     Annot.union_map constructor_declaration constructor_declarations
   | Ptype_record label_declarations ->
@@ -542,6 +561,12 @@ and core_type ct : M2l.Annot.t =
   | Ptyp_var _ (* 'a *) -> Annot.empty
   | Ptyp_arrow (_, t1, t2) (* [~? ]T1->T2 *) ->
     core_type t1 ++ core_type t2
+# 5.5, oo
+  | Ptyp_functor (_, m, pty, t2) ->
+    let me = unpack_module pty in
+    let mb = { name = bound_name (Some (txt m)); expr = me } in
+    with_loc ct.ptyp_loc [Local_bind(from_loc loc, mb, data @@ core_type t2) ]
+#end
   | Ptyp_tuple cts (* T1 * ... * Tn *) ->
 # 5.4, oo
     let cts = List.map snd cts in
@@ -572,7 +597,7 @@ and package_convert pty =
 # oo, 5.4
     pty
 # 5.4, oo
-   pty.ppt_path, pty.ppt_cstrs
+   pty.ppt_path, pack_constraints pty
 #end
 and package_type pty =
   let s, constraints = package_convert pty in
@@ -581,8 +606,14 @@ and package_type pty =
     (Annot.union_map (core_type % snd) constraints)
 and full_package_type pty =
   let s, constraints = package_convert pty in
-  Ident (epath s),
-  Pattern.of_annot @@ Annot.union_map (core_type % snd) constraints
+  let body = Ident (epath s) in
+  let cstr (p,ty)=
+    { lhs =subst_path p; rhs = Type (data @@ core_type ty); delete = false } in
+  let with_constraints = List.map cstr constraints  in
+  With { body; with_constraints }
+and unpack_module s =
+  let mt = full_package_type s in
+  M2l.Constraint(Unpacked, mt)
 and case cs =
   (Annot.opt expr cs.pc_guard)
   ++ (Pattern.bind_fmod (pattern cs.pc_lhs) @@ expr cs.pc_rhs)
@@ -713,7 +744,7 @@ and module_expr mexpr : M2l.module_expr =
   | Pmod_unpack { pexp_desc = Pexp_constraint
                       (inner, {ptyp_desc = Ptyp_package s; _}); _ }
     (* (val E : S ) *) ->
-    Constraint( Val (data @@ expr inner), fst @@ full_package_type s)
+    Constraint( Val (data @@ expr inner), full_package_type s)
   | Pmod_unpack e  (* (val E) *) ->
     Val(data @@ expr e)
   | Pmod_extension ext ->
@@ -748,7 +779,7 @@ and value_bindings x = val_bindings vb_triple x
 
 and module_binding_raw mb =
   module_binding (mb.pmb_name, mb.pmb_expr)
-and module_binding (pmb_name, pmb_expr) =
+and module_binding: string option Location.loc * Parsetree.module_expr -> _ = fun (pmb_name, pmb_expr) ->
   { name = bound_name (txt pmb_name); expr = module_expr pmb_expr }
 and module_type (mt:Parsetree.module_type) =
   match mt.pmty_desc with
@@ -941,4 +972,58 @@ and simple_open o = ident_open o
 and local_open_arg o = module_expr o.popen_expr
 and ident_open o = do_open o.popen_loc (me_from_lid o.popen_expr)
 and simple_open o = do_open o.popen_loc (module_expr o.popen_expr)
+#end
+# 5.5, oo
+and local_struct_item item body: Annot.t =
+  let loc = item.pstr_loc in
+  let minor x = with_loc loc x ++ body in
+  let minor' x  = x ++ body in
+  let wrap = with_loc loc in
+  match item.pstr_desc with
+  | Pstr_eval (exp, _attrs) -> minor @@ data @@ expr exp
+  (* ;; exp [@@_attrs ] *)
+  | Pstr_value (_rec_flag, vals)
+    (* let P1 = E1 and ... and Pn = EN       (flag = Nonrecursive)
+           let rec P1 = E1 and ... and Pn = EN   (flag = Recursive)
+    *) ->
+    minor @@ data @@
+    Annot.union_map (Pattern.to_annot % val_binding % vb_triple) vals
+  | Pstr_primitive desc
+    (*  val x: T
+        external x: T = "s1" ... "sn" *)
+    -> minor (
+        External desc.pval_prim ::
+        data (core_type desc.pval_type);
+      )
+  | Pstr_type (_rec_flag, type_declarations)
+    (* type t1 = ... and ... and tn = ... *) ->
+    minor @@ data @@ Annot.union_map type_declaration type_declarations
+  | Pstr_typext a_type_extension  (* type t1 += ... *) ->
+    minor @@ data @@ type_extension a_type_extension
+  | Pstr_exception an_extension_constructor
+    (* exception C of T
+       exception C = M.X *)
+    -> minor @@ data @@ extension_constructor @@ exnc an_extension_constructor
+  | Pstr_module mb (* module X = ME *) ->
+    wrap [Local_bind (from_loc loc, module_binding_raw mb, data body)]
+  | Pstr_recmodule _module_bindings (* module rec X1 = ME1 and ... and Xn = MEn *)
+    ->
+    (* not allowed *)
+    assert false
+  | Pstr_modtype _a_module_type_declaration (*module type s = .. *) ->
+    (* TODO *)
+    assert false
+  (*  *wrap [ Bind_sig(module_type_declaration a_module_type_declaration) ] *)
+  | Pstr_open me (* open M *) ->
+    Annot.local_open (from_loc me.popen_loc) (local_open_arg me) body
+  | Pstr_class class_declarations  (* class c1 = ... and ... and cn = ... *)
+    -> minor' @@ Annot.union_map class_declaration class_declarations
+  | Pstr_class_type class_type_declarations
+    (* class type ct1 = ... and ... and ctn = ... *)
+    -> minor' @@ Annot.union_map class_type_declaration class_type_declarations
+  | Pstr_include _include_dec (* include M *) -> assert false
+  | Pstr_attribute _attribute (* [@@@id] *)
+    -> body
+  | Pstr_extension ( ext, _attributes) (* [%%id] *) ->
+    Annot.ext @@ with_loc loc @@ extension_core ext
 #end
