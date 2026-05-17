@@ -23,11 +23,14 @@ let decl_constraints x = let open Parsetree in
   x.ptype_constraints
 #end
 
-let pack_constraints x = let open Parsetree in
-# oo, 5.5
-  x.ppt_cstrs
+let pack_constraints x =
+# oo, 5.4
+  snd x
+let _ = pack_constraints
+# 5.4, 5.5
+  x.Parsetree.ppt_cstrs
 # 5.5, oo
-  x.ppt_constraints
+  x.Parsetree.ppt_constraints
 #end
 
 let rec simplify_lid =
@@ -392,7 +395,7 @@ and expr exp =
 # 3.10, 5.5
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
     with_loc e.pexp_loc
-      [Local_bind(from_loc loc,module_binding (m,me), data @@ expr e) ]
+      [Local_bind(from_loc loc, module_binding (m,me), data @@ expr e) ]
 #end
 # 4.04, 5.5
   | Pexp_letexception (_c, e) (* let exception C in E *) ->
@@ -502,7 +505,11 @@ and pattern pat =
   | Ppat_or (p1,p2) (* P1 | P2 *) ->
     Pattern.( pattern p1 ++ pattern p2 )
   | Ppat_constraint(
+# oo, 5.5
+      {ppat_desc=Ppat_unpack name; _},
+# 5.5, oo
       {ppat_desc=Ppat_unpack (name,None); _},
+#end
       {ptyp_desc=Ptyp_package s; _ } )
 # 5.5, oo
   | Ppat_unpack(name, Some s)
@@ -513,7 +520,11 @@ and pattern pat =
   | Ppat_constraint (pat, ct)  (* (P : T) *) ->
     Pattern.( pattern pat ++ of_annot (core_type ct) )
   | Ppat_type name (* #tconst *) -> Pattern.access name
+# oo, 5.5
+  | Ppat_unpack m ->
+# 5.5, oo
   | Ppat_unpack (m,None) ->
+#end
     (* Warning.first_class_module(); todo: test coverage *)
     Pattern.bind (from_loc loc) (txt m) Unpacked
   (* (module P)
@@ -538,7 +549,11 @@ and type_declaration td: M2l.Annot.t  =
     type_kind td.ptype_kind
     ++ Annot.opt core_type td.ptype_manifest
 and type_kind = function
-  | Ptype_abstract | Ptype_open | Ptype_external _ -> Annot.empty
+  | Ptype_abstract | Ptype_open
+# 5.5, oo
+  | Ptype_external _
+#end
+   -> Annot.empty
   | Ptype_variant constructor_declarations ->
     Annot.union_map constructor_declaration constructor_declarations
   | Ptype_record label_declarations ->
@@ -607,8 +622,9 @@ and package_type pty =
 and full_package_type pty =
   let s, constraints = package_convert pty in
   let body = Ident (epath s) in
-  let cstr (p,ty)=
-    { lhs =subst_path p; rhs = Type (data @@ core_type ty); delete = false } in
+  let cstr (_p,ty)=
+    (* Type substitutions do not matter here *)
+    { lhs = ["<*Bug*>"] ; rhs = Type (data @@ core_type ty); delete = false } in
   let with_constraints = List.map cstr constraints  in
   With { body; with_constraints }
 and unpack_module s =
@@ -779,7 +795,7 @@ and value_bindings x = val_bindings vb_triple x
 
 and module_binding_raw mb =
   module_binding (mb.pmb_name, mb.pmb_expr)
-and module_binding: string option Location.loc * Parsetree.module_expr -> _ = fun (pmb_name, pmb_expr) ->
+and module_binding (pmb_name, pmb_expr) =
   { name = bound_name (txt pmb_name); expr = module_expr pmb_expr }
 and module_type (mt:Parsetree.module_type) =
   match mt.pmty_desc with
