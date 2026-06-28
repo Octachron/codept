@@ -89,7 +89,10 @@ let pp_elt ppf (path, {edge;pkg;aliases}) =
     Namespaced.pp path P.pp pkg S.pp aliases
 
 let pp ppf s =
-    Pp.fp ppf "@[<v>externals:@[<hov>]%a@,@[<hov>{%a}@]@]"
+  if Externals.is_empty s.externals then
+    Pp.fp ppf "@[<hov>{%a}@]"  (Pp.list pp_elt) (Map.bindings s.units)
+  else
+    Pp.fp ppf "@[<v>externals:@[<hov>%a@]@,@[<hov>{%a}@]@]"
       Pp.(list string) (Externals.elements s.externals)
       (Pp.list pp_elt) (Map.bindings s.units)
 
