@@ -68,12 +68,12 @@ and minor =
   | Extension_node of extension Loc.ext (** [%ext ... ] *)
 
   | Local_open of Loc.t * module_expr * minor list
-  (** let open struct ... end in ... *)
-  | Local_bind of Loc.t * module_expr bind * minor list
+  (** [let open struct ... end in ...] *)
+  | Local_bind of Loc.t * any_module bind * minor list
+  (** [let module M = struct ... end in] *)
 
-  | External of string list (** external _ = "..." "..." *)
+  | External of string list (** [external _ = "..." "..."] *)
 
- (** let module M = ... in ... *)
 and access = (Loc.t * Deps.Edge.t) Paths.E.map
   (** [M.N.L.x] ⇒ access \{M.N.L = Normal \}
       type t = A.t ⇒ access \{ A = ε \}
@@ -120,6 +120,10 @@ and module_type =
       with_constraints: with_constraint list;
     }
   (** [ S with ... ] *)
+
+and any_module =
+  | Expr of module_expr
+  | Type of module_type
 
 and with_constraint = { lhs: Paths.S.t; delete:bool; rhs: with_rhs }
 and with_rhs =
@@ -182,6 +186,7 @@ module Annot : sig
   val abbrev:  Paths.E.t Loc.ext -> t
 
   val local_open: Loc.t -> module_expr -> t -> t
+  val local_type_bind: Loc.t -> module_type bind -> t -> t
   val local_bind: Loc.t -> module_expr bind -> t -> t
 
   val opt: ('a -> t) -> 'a option -> t

@@ -171,7 +171,9 @@ module Pattern = struct
 #end
   let bind_fmod p inner =
     let binded x =
-      let binder inner b = [Local_bind (b.Loc.loc, b.Loc.data,inner)] in
+      let binder inner {Loc.data=b; loc} =
+        let b = { b with expr = Expr b.expr } in
+        [Local_bind (loc, b, inner)] in
       List.fold_left binder x p.binds
     in
     Annot.(p.annot ++ Loc.fmap binded inner)
@@ -579,7 +581,7 @@ and core_type ct : M2l.Annot.t =
 # 5.5, oo
   | Ptyp_functor (_, m, pty, t2) ->
     let me = unpack_module pty in
-    let mb = { name = bound_name (Some (txt m)); expr = me } in
+    let mb = { name = bound_name (Some (txt m)); expr = Expr me } in
     with_loc ct.ptyp_loc [Local_bind(from_loc loc, mb, data @@ core_type t2) ]
 #end
   | Ptyp_tuple cts (* T1 * ... * Tn *) ->
@@ -774,7 +776,9 @@ and val_bindings: 'a. ('a -> pattern * core_type list * Parsetree.expression) ->
   fun proj vbs expr ->
   let p = Pattern.union_map (val_binding % proj) vbs in
   let v =
-    let binder inner b = [Local_bind (b.Loc.loc, b.Loc.data, inner)] in
+    let binder inner {Loc.loc; data=b} =
+      [Local_bind (loc, { b with expr = Expr b.expr }, inner)]
+    in
     List.fold_left binder expr.Loc.data p.binds
   in
   Pattern.to_annot p ++ Loc.create expr.Loc.loc v
@@ -792,9 +796,11 @@ and vb_triple x =
    in
     x.pvb_pat, constraints, x.pvb_expr
 and value_bindings x = val_bindings vb_triple x
-
 and module_binding_raw mb =
   module_binding (mb.pmb_name, mb.pmb_expr)
+and local_module_type_binding mb: any_module bind =
+  let ty : M2l.module_type = match mb.pmtd_type with None -> Abstract | Some s -> module_type s in
+  { name = Some (txt mb.pmtd_name); expr = Type ty }
 and module_binding (pmb_name, pmb_expr) =
   { name = bound_name (txt pmb_name); expr = module_expr pmb_expr }
 and module_type (mt:Parsetree.module_type) =
@@ -1021,15 +1027,15 @@ and local_struct_item item body: Annot.t =
        exception C = M.X *)
     -> minor @@ data @@ extension_constructor @@ exnc an_extension_constructor
   | Pstr_module mb (* module X = ME *) ->
-    wrap [Local_bind (from_loc loc, module_binding_raw mb, data body)]
+    let mb =  module_binding_raw mb in
+    wrap [Local_bind (from_loc loc, { mb with expr = Expr mb.expr }, data body)]
   | Pstr_recmodule _module_bindings (* module rec X1 = ME1 and ... and Xn = MEn *)
     ->
     (* not allowed *)
     assert false
-  | Pstr_modtype _a_module_type_declaration (*module type s = .. *) ->
-    (* TODO *)
-    assert false
-  (*  *wrap [ Bind_sig(module_type_declaration a_module_type_declaration) ] *)
+  | Pstr_modtype mt (*module type s = .. *) ->
+     let mb = local_module_type_binding mt in
+     wrap [Local_bind (from_loc loc, mb, data body)]
   | Pstr_open me (* open M *) ->
     Annot.local_open (from_loc me.popen_loc) (local_open_arg me) body
   | Pstr_class class_declarations  (* class c1 = ... and ... and cn = ... *)

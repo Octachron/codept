@@ -33,7 +33,9 @@ module Pre = struct
   let empty_minors = empty
   let add_minor x y = x + y
   let local_open x y = x + y
-  let local_bind _ x y = x + y
+  let local_bind_expr _ x y = x + y
+  let local_bind_type _ x y = x + y
+
   let minor_ext ~loc:_ _ x = x
   let apply _ x y = x + y
   let bind _ = id

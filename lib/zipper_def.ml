@@ -38,7 +38,8 @@ module type fold = sig
   val pack: module_expr -> minor
   val minor_ext: loc:Uloc.t -> string -> ext -> minor
   val local_open: module_expr -> minors -> minor
-  val local_bind: Name.t option -> module_expr -> minors -> minor
+  val local_bind_expr: Name.t option -> module_expr -> minors -> minor
+  val local_bind_type: Name.t option -> module_type -> minors -> minor
   val empty_minors: minors
   val add_minor: minor -> minors -> minors
 
@@ -158,8 +159,11 @@ module type s = sig
     | Local_open_left : state_diff * Loc.t * M2l.minor list -> M2l.module_expr minor
     | Local_open_right: state_diff * module_expr -> M2l.minor list minor
 
-    | Local_bind_left: state_diff * Name.t option * M2l.minor list -> M2l.module_expr minor
-    | Local_bind_right: state_diff * Name.t option * module_expr -> M2l.minor list minor
+    | Local_bind_left_expr: state_diff * Name.t option * M2l.minor list -> M2l.module_expr minor
+    | Local_bind_right_expr: state_diff * Name.t option * module_expr -> M2l.minor list minor
+    | Local_bind_left_type: state_diff * Name.t option * M2l.minor list -> M2l.module_type minor
+    | Local_bind_right_type: state_diff * Name.t option * module_type -> M2l.minor list minor
+
 
   type acc =
     {left: access;

@@ -118,7 +118,7 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Mt Of :: rest -> mt rest (fp1 "module type of %t" sub)
     | Minor Pack :: rest ->
       minor (rest:M2l.minor t) (fp1 "(module %t)" sub)
-    | Minor Local_bind_left (_diff, name,right) :: rest ->
+    | Minor Local_bind_left_expr (_diff, name,right) :: rest ->
       minor (rest:M2l.minor t) (fun ppf -> Pp.fp ppf "%a=%t in %a"
                      Name.pp_opt name
                      sub
@@ -144,9 +144,13 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
       minor rest (fun ppf ->
           Pp.fp ppf "open %t in %t" (R.pp_me e.user) sub
         )
-    | Minor (Local_bind_right (_diff,name,expr)) :: rest ->
+    | Minor (Local_bind_right_expr (_diff,name,expr)) :: rest ->
       minor rest (fun ppf ->
           Pp.fp ppf "%a=%t in %t" optname name (R.pp_me expr.user) sub
+        )
+    | Minor (Local_bind_right_type (_diff,name,expr)) :: rest ->
+      minor rest (fun ppf ->
+          Pp.fp ppf "%a=%t in %t" optname name (R.pp_mt expr.user) sub
         )
     | Me Val :: rest -> me rest (fp1 "(val %t)" sub)
     | Ext Val :: rest -> ext (rest:M2l.extension_core t) sub
@@ -189,7 +193,13 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
         )
     | Mt With_body wcstrs :: rest ->
       mt rest (fp2 "%t with %t" sub (const M2l.pp_with_constraints wcstrs))
-    | _ -> .
+    | Minor Local_bind_left_type (_diff, name,right) :: rest ->
+      minor (rest:M2l.minor t) (fun ppf ->
+          Pp.fp ppf "%a=%t in %a"
+              Name.pp_opt name
+              sub
+              M2l.pp_annot right
+        )    | _ -> .
   and with_constraint: M2l.with_constraint t -> _ = fun rest sub ->
     match rest with
     | Mt With_constraints {original_body; right} :: rest ->

@@ -40,8 +40,9 @@ and minor =
   | Extension_node of extension Loc.ext (** [%ext ... ] *)
 
   | Local_open of Loc.t * module_expr * minor list
-  (** let open struct ... end in ... *)
-  | Local_bind of Loc.t * module_expr bind * minor list
+  (** [let open struct ... end in ...] *)
+  | Local_bind of Loc.t * any_module bind * minor list
+  (** [let module M = struct ... end in] or [let module type T = sig ... end in *)
 
   | External of string list (** external _ = "..." "..." *)
 
@@ -92,6 +93,10 @@ and module_type =
       with_constraints: with_constraint list;
     }
 
+and any_module =
+  | Expr of module_expr
+  | Type of module_type
+
 and with_constraint = { lhs: Paths.S.t; delete:bool; rhs: with_rhs }
 and with_rhs =
   | Type of minor list
@@ -140,6 +145,15 @@ module Sch = struct
                        }
   let module_expr_loc = loc Mu.module_expr
   let path_loc = loc Paths.S.sch
+  let any_module_sch = Sum ["E", Mu.module_expr; "T", Mu.module_type]
+  let rec any_module = Custom { sch = any_module_sch; fwd; rev }
+  and fwd = function
+    | Expr e -> C (Z e)
+    | Type t -> C (S (Z t))
+  and rev = function
+    | C Z e -> Expr e
+    | C S Z t -> Type t
+    | _ -> .
   let minor_sch =
     Sum [
       "Access", reopen access;
@@ -147,7 +161,7 @@ module Sch = struct
       "Extension_node", loc Mu.extension;
       "Open", [reopen Loc.Sch.t; Mu.module_expr; Array Mu.minor];
       "Bind",
-      [reopen Loc.Sch.t; option String; Mu.module_expr; Array Mu.minor];
+      [reopen Loc.Sch.t; option String; any_module; Array Mu.minor];
       "External", Array String
     ]
 
@@ -173,7 +187,7 @@ module Sch = struct
     ]
   let rec with_constraint_rhs =
     Custom { sch = with_sch_rhs; fwd; rev }
-  and fwd = function
+  and fwd : with_rhs -> _  = function
     | Type x -> C (Z x)
     | Module m -> C (S (Z m))
     | Module_type mt -> C (S (S (Z mt)))
@@ -412,7 +426,13 @@ module Annot = struct
   let ext x = { x with data = [(Extension_node x: minor)] }
 
   let local_bind loc mb {data;_} =
+    let mb = { mb with expr = Expr mb.expr } in
     { loc; data = [Local_bind(loc,mb,data)] }
+
+  let local_type_bind loc mb {data;_} =
+    let mb = { mb with expr = Type mb.expr } in
+    { loc; data = [Local_bind(loc,mb,data)] }
+
   let local_open loc me {data; _ } =
     { loc; data = [Local_open (loc,me,data)] }
 
@@ -468,6 +488,9 @@ let rec pp_expression ppf = function
   | Bind_rec bs ->
     Pp.fp ppf "rec@[[ %a ]@]" (and_list pp_bind) bs
 
+and pp_any_module ppf (m:any_module) = match m with
+  | Expr e -> pp_me ppf e
+  | Type t -> pp_mt ppf t
 and pp_minor ppf = function
   | External exts -> Pp.fp ppf "@[external(%a)@]" Pp.(list string) exts
   | Access a -> pp_access ppf a
@@ -478,7 +501,7 @@ and pp_minor ppf = function
   | Local_bind (loc,b,x) ->
     let name = Option.( b.name >< "_" ) in
     Pp.fp ppf "@[<2>(%a)%s=%a in@ (%a)@]" Loc.pp loc name
-      pp_me b.expr pp_annot x
+      pp_any_module b.expr pp_annot x
 and pp_annot ppf l =
   Pp.(list  ~sep:(s "@ ") pp_minor) ppf l
 and pp_access ppf s =  if Paths.E.Map.cardinal s = 0 then () else

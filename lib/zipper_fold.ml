@@ -52,7 +52,8 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
   let sig_include = gen_include  Module_type F.sig_include
   let bind_alias state = fork2 (State.bind_alias state) F.bind_alias
   let bind name = both (Sk.bind name) (F.bind name)
-  let local_bind name me x = user_me (F.local_bind name me.user) x
+  let local_bind name me x = user_me (F.local_bind_expr name me.user) x
+  let local_bind_type name mt x = user_me (F.local_bind_type name mt.user) x
   let local_open me x = user_me (F.local_open me.user) x
   let bind_sig name = both (Sk.bind_sig name) (F.bind_sig name)
   let minor = user_ml F.minor
@@ -382,15 +383,26 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       minors (Minor (Local_open_right (diff0,e)) :: path)
         ~ctx ~param ~state m
       >>| fun m -> F.local_open e.user m
-    | Local_bind (loc,{name;expr},m) ->
+    | Local_bind (loc,{name;expr=Expr expr},m) ->
       let diff0 = State.diff state in
-      me (Minor (Local_bind_left (diff0,name,m)) :: path)
-        ~param ~ctx:(with_loc loc ctx) ~state expr >>= fun e ->
+      me (Minor (Local_bind_left_expr (diff0,name,m)) :: path)
+        ~param ~ctx:(with_loc loc ctx) ~state expr
+      >>= fun e ->
       let diff = Sk.bind name e.backbone in
       let state = State.merge state diff in
-      minors (Minor (Local_bind_right (diff0,name,e)) :: path)
+      minors (Minor (Local_bind_right_expr (diff0,name,e)) :: path)
         ~ctx ~param ~state m
-      >>| fun m -> F.local_open e.user m
+      >>| fun m -> F.local_bind_expr name e.user m
+    | Local_bind (loc,{name;expr=Type ty},m) ->
+      let diff0 = State.diff state in
+      mt (Minor (Local_bind_left_type (diff0,name,m)) :: path)
+        ~param ~ctx:(with_loc loc ctx) ~state ty
+      >>= fun e ->
+      let diff = Sk.bind_sig name e.backbone in
+      let state = State.merge state diff in
+      minors (Minor (Local_bind_right_type (diff0,name,e)) :: path)
+        ~ctx ~param ~state m
+      >>| fun m -> F.local_bind_type name e.user m
     | External s -> Ok (F.external_def s)
     | _ -> .
   and access path ~param ~ctx ~state s =
@@ -477,11 +489,11 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       let state = State.restart state left.backbone in
       bind_rec path left ~ctx ~param ~state right >>=
       restart_expr ~state ~ctx ~param (path: expression path)
-    | Minor Local_bind_left (diff0,no,body) :: path ->
+    | Minor Local_bind_left_expr (diff0,no,body) :: path ->
       let diff = Sk.bind no x.backbone in
       let state' = State.merge state diff in
       minors
-        (Minor (Local_bind_right (diff0,no,x))::path)
+        (Minor (Local_bind_right_expr (diff0,no,x))::path)
         ~param ~ctx:(rm_loc ctx) ~state:state'
         body
       >>= fun body ->
@@ -537,6 +549,16 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       bind_rec_sig path (Sk.bind_rec_add name x.backbone diff)
         ((name, x.user, expr) :: left) ~param ~ctx ~state  right >>=
       restart_expr ~ctx ~state ~param path
+    | Minor Local_bind_left_type (diff0,no,body) :: path ->
+      let diff = Sk.bind_sig no x.backbone in
+      let state' = State.merge state diff in
+      minors
+        (Minor (Local_bind_right_type (diff0,no,x))::path)
+        ~param ~ctx:(rm_loc ctx) ~state:state'
+        body
+      >>= fun body ->
+      restart_minor (path: minor path) ~param ~ctx ~state
+        (D.local_bind_type no x body)
     | _ -> .
   and restart_with: with_constraint path -> _ = fun path ~state ~param ~ctx x ->
     match path with
@@ -584,10 +606,14 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Ext Val :: path ->
       restart_ext (path: extension_core path) ~ctx ~param ~state
         (F.ext_val x)
-    | Minor Local_bind_right (diff0,no,expr) :: path ->
+    | Minor Local_bind_right_expr (diff0,no,expr) :: path ->
       let state = State.restart state diff0 in
       restart_minor (path:minor path) ~ctx ~param ~state
         (D.local_bind no expr x)
+    | Minor Local_bind_right_type (diff0,no,expr) :: path ->
+      let state = State.restart state diff0 in
+      restart_minor (path:minor path) ~ctx ~param ~state
+        (D.local_bind_type no expr x)
     | _ -> .
   and restart_ext: extension_core path -> _ =
     fun path ~ctx ~param ~state x -> match path with
