@@ -1,4 +1,4 @@
-
+module Unit = Comp_unit
 module Findmap = Map.Make(struct type t = Findlib.query let compare = compare end)
 
 type t = {

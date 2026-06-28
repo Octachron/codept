@@ -1,5 +1,6 @@
 (** Codept server *)
 open Params
+module Unit = Comp_unit
 let tool_name = "codept-server"
 let version = 0.3
 let stderr= Format.err_formatter
