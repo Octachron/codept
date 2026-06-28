@@ -1,0 +1,16 @@
+{
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "cases/local_bind_type.ml"
+   }],
+"local":
+  [{
+   "module":
+     ["Local_bind_type"],
+   "ml":
+     "cases/local_bind_type.ml"
+   }]
+}

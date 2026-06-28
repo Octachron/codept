@@ -396,8 +396,10 @@ and expr exp =
     Annot.union_map (expr % snd) labels
 # 3.10, 5.5
   | Pexp_letmodule (m, me, e) (* let module M = ME in E *) ->
+    let mb = module_binding (m,me) in
+    let mb = { mb with expr = Expr mb.expr } in
     with_loc e.pexp_loc
-      [Local_bind(from_loc loc, module_binding (m,me), data @@ expr e) ]
+      [Local_bind(from_loc loc, mb, data @@ expr e) ]
 #end
 # 4.04, 5.5
   | Pexp_letexception (_c, e) (* let exception C in E *) ->
@@ -1048,4 +1050,9 @@ and local_struct_item item body: Annot.t =
     -> body
   | Pstr_extension ( ext, _attributes) (* [%%id] *) ->
     Annot.ext @@ with_loc loc @@ extension_core ext
+#end
+
+
+#oo,5.5
+let _ = local_module_type_binding
 #end
