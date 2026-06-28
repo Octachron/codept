@@ -127,7 +127,9 @@ module State(Env:Stage.envt) = struct
     | _ -> st
 
   let is_alias param state s =
-    param.T.transparent_aliases && Env.is_exterior s state.current
+    param.T.transparent_aliases &&
+    let path = Env.expand_path s state.current in
+    Env.is_exterior path state.current
 
   let restart state diff =
     { initial=state.initial;

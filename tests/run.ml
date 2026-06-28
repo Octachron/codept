@@ -447,8 +447,8 @@ let result =
   &&
   ( chdir "../namespaced";
     both ["NAME__a"; "NAME__c"] @@ dl [
-      "NAME__a.ml", l["main.ml"; "NAME__b.ml"];
-      "NAME__b.ml", l["main.ml"; "NAME__c.ml"];
+      "NAME__a.ml", l["main.ml"; "NAME__b.ml"; "NAME__c.ml"];
+      "NAME__b.ml", l["main.ml"];
       "NAME__c.ml", l["main.ml"];
       "main.ml", []
     ]
@@ -542,7 +542,7 @@ let result =
       both ["Inner.B"] @@ dl
         [
           "inner/a.mli", [];
-          "inner/a.ml", l["inner/b.mli"] @ u["C"];
+          "inner/a.ml", u["C"];
           "inner/b.mli", []
         ]
     end

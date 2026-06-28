@@ -16,9 +16,7 @@ a non-resolvable module, C, has been replaced by an approximation
   "file":
     "alias_path_with_namespaces/inner/a.ml",
   "deps":
-    [["Inner",
-     "B"],
-    ["C"]]
+    [["C"]]
   }],
 "local":
   [{

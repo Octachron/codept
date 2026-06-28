@@ -10,15 +10,15 @@
   "file":
     "namespaced/NAME__a.ml",
   "deps":
-    [["NAME__b"],
+    [["NAME__c"],
+    ["NAME__b"],
     ["Main"]]
   },
   {
   "file":
     "namespaced/NAME__b.ml",
   "deps":
-    [["NAME__c"],
-    ["Main"]]
+    [["Main"]]
   },
   {
   "file":
