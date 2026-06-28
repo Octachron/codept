@@ -43,7 +43,6 @@ let sch: t Schematic.t =
   custom ([Array [Namespaced.sch; Edge.sch; Pkg.sch; S.sch]; Array String])
     to_ from_
 
-module Pth = Paths.S
 module P = Pkg
 
 let empty = { units = Map.empty; externals = Externals.empty }

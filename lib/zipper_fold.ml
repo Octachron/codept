@@ -28,7 +28,7 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
   module Helpers = struct
     let const backbone user = {backbone; user}
     let fork f g x = { backbone = f x; user = g x }
-    let fork2 f g x y = { backbone = f x y; user = g x y }
+    let _fork2 f g x y = { backbone = f x y; user = g x y }
     let both f g x = { backbone = f x.backbone; user = g x.user }
     let both2 f g x y =
       { backbone = f x.backbone y.backbone; user = g x.user y.user }
@@ -52,7 +52,10 @@ module Zip(F:Zdef.fold)(State:Sk.state) = struct
   let gen_include lvl var param ctx = both (Sk.included param ctx.uloc ctx.seed lvl) (var ~loc:ctx.uloc)
   let expr_include = gen_include Module F.expr_include
   let sig_include = gen_include  Module_type F.sig_include
-  let bind_alias state = fork2 (State.bind_alias state) F.bind_alias
+  let bind_alias state name prefix path =
+    { backbone = State.bind_alias state name path;
+      user = F.bind_alias name (Ext_option.fmap (fun x -> x.user) prefix, path)
+    }
   let bind name = both (Sk.bind name) (F.bind name)
   let local_bind name me x = user_me (F.local_bind_expr name me.user) x
   let local_bind_type name mt x = user_me (F.local_bind_type name mt.user) x
@@ -181,7 +184,17 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       mt (Expr SigInclude :: path) ~param ~ctx ~state m
       >>| D.sig_include param ctx
     | Bind {name; expr=(Ident s|Constraint(Abstract, Alias s))}
-      when State.is_alias param state s -> Ok (D.bind_alias state name s)
+      when State.is_alias param state s ->
+       let[@tail_mod_cons] rec elide: Paths.Simple.t -> Paths.Simple.t = function
+         | [] | [_] -> []
+         | a :: q -> a :: elide q
+       in
+       begin match elide s with
+       | [] -> Ok (D.bind_alias state name None s)
+       | elided ->
+          resolve (Expr (Bind_alias (name,s)) :: path) ~param ~ctx ~state ~level:Module elided
+          >>| fun elided -> D.bind_alias state name (Some elided) s
+       end
     | Bind {name; expr} ->
       me ~param (Expr (Bind name) :: path) ~ctx ~state expr
       >>| D.bind name
@@ -436,6 +449,8 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
     | Ok x -> match z.path with
       | Me Ident :: rest ->
         restart_me ~param ~state ~ctx (rest: module_expr path) (D.me_ident x)
+      | Expr Bind_alias (name,s) :: rest ->
+        restart_expr ~param ~state ~ctx (rest: expression path)  (D.bind_alias state name (Some x) s)
       | Me Open_me_left {left;right;diff;loc=body_loc;expr} :: path ->
         let state = State.open_path ~param ~loc:uloc state x.backbone in
         open_all ~state ~param ~ctx:(with_loc body_loc @@ rm_loc ctx) path expr (F.open_add x.user left) right >>=

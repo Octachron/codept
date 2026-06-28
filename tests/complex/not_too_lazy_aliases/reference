@@ -1,0 +1,28 @@
+{
+"version":
+  [0, 11, 0],
+"dependencies":
+  [{
+   "file":
+     "not_too_lazy_aliases/a.ml"
+   },
+  {
+  "file":
+    "not_too_lazy_aliases/b.ml",
+  "deps":
+    [["A"]]
+  }],
+"local":
+  [{
+   "module":
+     ["A"],
+   "ml":
+     "not_too_lazy_aliases/a.ml"
+   },
+  {
+  "module":
+    ["B"],
+  "ml":
+    "not_too_lazy_aliases/b.ml"
+  }]
+}

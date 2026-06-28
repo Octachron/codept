@@ -542,10 +542,18 @@ let result =
       both ["Inner.B"] @@ dl
         [
           "inner/a.mli", [];
-          "inner/a.ml", u["C"];
+          "inner/a.ml", l["inner/b.mli"] @ u["C"];
           "inner/b.mli", []
         ]
     end
+    && begin chdir "../not_too_lazy_aliases";
+      both ["B"] @@ dl
+        [
+          "a.ml", [];
+          "b.ml", l["a.ml"];
+        ]
+    end
+
 
     (* Cycle tests *)
     && (
@@ -711,11 +719,11 @@ let result =
           "standard_policies.ml", (["Fault"; "Standard_faults"; "Solver"],[],[]);
           "standard_policies.mli", (["Fault"],[],[]);
           "comp_unit.mli", (["Deps";"Pkg"; "M2l"; "Module"; "Namespaced";
-                        "Fault"; "Read"],
+                        "Fault"; "Paths"; "Read"],
                        ["Format";"Set"],[]);
           "comp_unit.ml", (
             ["Approx_parser"; "Deps"; "M2l"; "Module"; "Namespaced";
-             "Fault"; "Ext_option"; "Pkg"; "Pp"; "Read";
+             "Fault"; "Ext_option"; "Paths"; "Pkg"; "Pp"; "Read";
              "Standard_faults"],
             [ "List"; "Location"; "Set"],
             []);
@@ -732,7 +740,7 @@ let result =
              "Pp"; "Summary"; "Transforms"; "Uloc"]
           ,["Format"],[]);
           "dep_zipper.ml", (
-            ["Deps"; "Module"; "Stage"; "Transforms"; "Zipper"; "Zipper_fold"]
+            ["Deps"; "Module"; "Stage"; "Ext_option"; "Transforms"; "Zipper"; "Zipper_fold"]
           ,["List"],[]);
           "zipper_fold.ml", (
             ["Debug"; "Deps"; "Id"; "Loc"; "M2l"; "Module"; "Mresult"; "Ext_option";

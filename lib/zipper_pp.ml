@@ -91,6 +91,14 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
            (pp_delete delete)
            (const M2l.pp_mt t)
         )
+    | Expr Bind_alias (name,s) :: rest ->
+      expr (rest:M2l.expression t)
+        (fun ppf -> Pp.fp ppf "%a=(%t)%a"
+           optname name
+           x
+           Paths.S.pp s
+        )
+
     | _ -> .
   and me: M2l.module_expr t -> _ = fun rest sub ->
     match rest with

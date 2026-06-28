@@ -46,7 +46,7 @@ module type fold = sig
   val apply : Uloc.t -> module_expr -> module_expr -> module_expr
 
   val bind : Name.t option -> module_expr -> expr
-  val bind_alias: Name.t option -> Paths.S.t -> expr
+  val bind_alias: Name.t option -> path option * Paths.S.t -> expr
   val bind_rec : bind_rec -> expr
   val bind_rec_add :
     Name.t option -> module_expr -> bind_rec -> bind_rec
@@ -148,6 +148,7 @@ module type s = sig
           mt: T.module_type;
           right: (Name.t option * T.module_type * M2l.module_expr) list;
         } -> M2l.module_expr expr
+    | Bind_alias: Name.t option * Paths.Simple.t -> path_in_context expr
     | Minors: M2l.minor list expr
     | Extension_node: string ->  M2l.extension_core expr
 
