@@ -1,9 +1,8 @@
 
 module M = Module
-
 module Arg = M.Arg
-
 module P = M.Partial
+module Opt = Ext_option
 
 type 'a bind = {name:Name.t option; expr:'a}
 
@@ -436,7 +435,7 @@ module Annot = struct
   let local_open loc me {data; _ } =
     { loc; data = [Local_open (loc,me,data)] }
 
-  let opt f x = Option.( x >>| f >< empty )
+  let opt f x = Ext_option.( x >>| f >< empty )
 
   let rec epsilon_promote_raw = function
     | Access x ->
@@ -499,7 +498,7 @@ and pp_minor ppf = function
   | Local_open (loc,me,x) ->
     Pp.fp ppf "@[<2>(%a)open %a in@ (%a)@]" Loc.pp loc pp_me me pp_annot x
   | Local_bind (loc,b,x) ->
-    let name = Option.( b.name >< "_" ) in
+    let name = Opt.( b.name >< "_" ) in
     Pp.fp ppf "@[<2>(%a)%s=%a in@ (%a)@]" Loc.pp loc name
       pp_any_module b.expr pp_annot x
 and pp_annot ppf l =

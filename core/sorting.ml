@@ -34,8 +34,8 @@ let full_topological_sort (type k) ~(key: _ -> k) deps paths =
   Mresult.Ok.fmap List.rev @@ sort [] [] [Explore paths]
 
 let remember_order units =
-  let open Unit in
-  let compute (i,m) u = i+1, Namespaced.Map.add u.Unit.path i m in
+  let open Comp_unit in
+  let compute (i,m) u = i+1, Namespaced.Map.add u.path i m in
   snd @@ List.fold_left compute (0,Namespaced.Map.empty)
   @@ List.rev @@ List.filter (fun u -> Pkg.is_known u.src) @@ units
 

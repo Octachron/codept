@@ -32,8 +32,8 @@ val eval_single :
 (** Format codept analysis according to the requested output mode *)
 val iter_mode :
   Format.formatter ->
-  Io.writer -> Params.t -> Unit.u list Unit.pair -> string * Modes.t -> unit
+  Io.writer -> Params.t -> Comp_unit.u list Comp_unit.pair -> string * Modes.t -> unit
 
 (** Format codept analysis according into a makefile *)
 val iter_makefile :
-  Format.formatter -> Params.t -> Unit.u list Unit.pair -> string -> unit
+  Format.formatter -> Params.t -> Comp_unit.u list Comp_unit.pair -> string -> unit

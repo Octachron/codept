@@ -1,4 +1,6 @@
 [@@@warning "-37"]
+
+module Opt = Ext_option
 open Debug
 
 module L = struct
@@ -147,7 +149,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
   type annotation = F.annotation
   *)
 
-  let _default_edge = Option.default Deps.Edge.Normal
+  let _default_edge = Opt.default Deps.Edge.Normal
 
 
   let fn_gen sel wrap k ~param ~(ctx:full_ctx) ~state ~path name body signature =
@@ -329,7 +331,7 @@ module Make(F:Zdef.fold)(Env:Stage.envt) = struct
       path_expr_gen ?edge ~level:Module (Path_expr(App_f (x,proj))::path) ~ctx ~param ~state f >>= fun f ->
       path_expr ?edge ~level:Module (Path_expr(App_x (f,proj))::path) ~param ~ctx ~state x >>=
       path_expr_proj ~state ~ctx path param proj f
-  and pack_proj level edge proj = Option.fmap (fun p ->(level, Option.(edge><Deps.Edge.Normal), p)) proj
+  and pack_proj level edge proj = Opt.fmap (fun p ->(level, Opt.(edge><Deps.Edge.Normal), p)) proj
   and path_expr_proj ~state path param ~ctx proj f x =
       let res = D.path_expr_app param ctx.uloc ~f ~x in
       match proj with

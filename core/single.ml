@@ -42,7 +42,7 @@ let one_pass _ _ ppf param (_,filename,_ as x) =
   let module Sg = Dep_zipper.Make(Envt.Core)(Param) in
   let start = to_m2l param.fault_handler param.sig_only x in
   match
-    Option.( start
+    Ext_option.( start
              >>| snd
              >>| Sg.initial
              >>| Sg.next ~pkg:(Pkg.local filename) Envt.Core.empty
@@ -57,7 +57,7 @@ let one_pass _ _ ppf param (_,filename,_ as x) =
 let m2l_info _ _ ppf param f =
   let param = param.analyzer in
   let start = to_m2l param.fault_handler param.sig_only f in
-  let open Option in
+  let open Ext_option in
   start
   >>| snd
   >>| Pp.fp ppf  "%a@." M2l.pp
@@ -67,7 +67,7 @@ let m2l filename (writer:Io.writer) ppf param f =
   let fmt = param.internal_format in
   let param = param.analyzer in
   let start = to_m2l param.fault_handler param.sig_only f in
-  let open Option in
+  let open Ext_option in
   start
   >>| begin fun (k,m) ->
     m

@@ -1,5 +1,6 @@
 module Pth = Paths.S
-
+module Opt = Ext_option
+module Unit = Comp_unit
 type param =
   {
     all: bool;
@@ -16,7 +17,7 @@ type param =
 let preprocess_deps includes unit =
   let replace ({Deps.pkg; _ } as dep) l = match pkg with
     | { Pkg.source = Unknown; file = { Namespaced.namespace=[]; name; _ } } ->
-      let pkg = Option.default pkg (Modname.Map.find_opt (Unitname.modname name) includes) in
+      let pkg = Opt.default pkg (Modname.Map.find_opt (Unitname.modname name) includes) in
       {dep with pkg} :: l
     | { Pkg.source = Pkg _ ; _ }  -> l
     | _ -> dep :: l

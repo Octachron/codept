@@ -1,4 +1,7 @@
 
+module Unit = Comp_unit
+module Opt = Ext_option
+
 let error = ref false
 let ok ppf = Format.fprintf ppf "\x1b[32mok\x1b[0m"
 let failure ppf = Format.fprintf ppf "\x1b[31mfailure\x1b[0m"
@@ -91,7 +94,7 @@ module Branch(Param:Stage.param) = struct
     let core, units = organize pkgs files in
     let loader, files = read fault_handler, files.ml @ files.mli in
     S.solve core units,
-    Option.fmap (fun roots -> snd @@ D.solve loader files core roots) roots
+    Opt.fmap (fun roots -> snd @@ D.solve loader files core roots) roots
 
   module CSet =
     Set.Make(struct
@@ -225,12 +228,12 @@ module Branch(Param:Stage.param) = struct
       ) files in
     None |> merge_test_result "ml files " (exp =? u.ml)
     |> merge_test_result "mli files"  (exp =? u.mli)
-    |> merge_test_result "directed" Option.( u' >>| (=?) exp >< true )
+    |> merge_test_result "directed" Opt.( u' >>| (=?) exp >< true )
     |> close_test_result "gen_deps_test"
 
   let deps_test (roots,l) =
     gen_deps_test [] simple_dep_test
-      (Option.fmap (~:) roots) l
+      (Opt.fmap (~:) roots) l
 
   let deps_test_single l = deps_test (None,l)
 
@@ -612,7 +615,7 @@ let result =
           "unitname.ml", (["Modname"; "Pp"; "Support"], ["Filename"; "Format"; "Map"; "Set"; "String"], []);
           "unitname.mli", (["Modname"; "Pp"], ["Map"; "Set"], []);
 
-          "deps.ml", (["Name"; "Namespaced"; "Option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);
+          "deps.ml", (["Name"; "Namespaced"; "Ext_option"; "Pkg"; "Pp"; "Schematic"],["List"],[]);
           "deps.mli", (["Namespaced"; "Pkg"; "Pp"; "Schematic"],["Format"],[]);
           "summary.mli", (
             ["Module";"Schematic"; "Pp"],
@@ -628,15 +631,15 @@ let result =
           "envt.ml", (
             ["Cmi"; "Debug"; "Deps"; "Summary"; "Transforms";
              "Fault"; "Dep_zipper"; "Modname"; "Unitname"; "Module"; "Name"; "Namespaced"; "Paths";
-             "Standard_faults";"Standard_policies";"Option"; "Pkg"; "Pp"; "Uloc"],
+             "Standard_faults";"Standard_policies";"Ext_option"; "Pkg"; "Pp"; "Uloc"],
             ["Array"; "Buffer"; "Filename"; "Format"; "List";"Sys"],
             []);
           "m2l.mli", (["Deps";"Loc"; "Module";"Name";"Paths"; "Pp"; "Schematic" ],
                       ["Format"],[]);
           "m2l.ml", (["Loc"; "Deps"; "Module"; "Name";
-                      "Option";"Paths"; "Pp"; "Schematic"; "Schematic_indices" ],
+                      "Ext_option";"Paths"; "Pp"; "Schematic"; "Schematic_indices" ],
                      ["List"],[]);
-          "fault.ml", (["Format_tags"; "Option"; "Pp"],
+          "fault.ml", (["Format_tags"; "Ext_option"; "Pp"],
                           ["Array"; "Format"; "Map"; "String"],[]);
           "fault.mli", ([], ["Format"],[]);
           "format_tags.mli", ([],["Format"],[]);
@@ -647,7 +650,7 @@ let result =
                           [], [] );
           "module.mli", ( ["Id"; "Paths"; "Pkg"; "Name";"Namespaced"; "Schematic"; "Uloc"],
                           ["Format"], [] );
-          "module.ml", ( ["Debug"; "Id"; "Loc";"Paths"; "Pkg"; "Modname"; "Unitname"; "Name"; "Namespaced"; "Option"; "Pp"
+          "module.ml", ( ["Debug"; "Id"; "Loc";"Paths"; "Pkg"; "Modname"; "Unitname"; "Name"; "Namespaced"; "Ext_option"; "Pp"
                          ; "Schematic"; "Schematic_indices"; "Support"; "Uloc" ],
                          ["Format";  "List"], [] );
           "name.mli", ( [], ["Format";"Set";"Map"], [] );
@@ -660,8 +663,8 @@ let result =
           "loc.ml", ( ["Pp";"Schematic"], ["List"], []);
           "uloc.mli", ( ["Loc"; "Pkg"; "Pp"], [], []);
           "uloc.ml", ( ["Format_tags"; "Loc"; "Namespaced"; "Pkg"; "Pp"], [], []);
-          "option.mli", ([],["Lazy"],[]);
-          "option.ml", ([],["List";"Lazy"],[]);
+          "ext_option.mli", ([],["Lazy"],[]);
+          "ext_option.ml", ([],["List";"Lazy"],[]);
           "pparse_compat.mli", ([], ["Parsetree"], []);
           "paths.mli", (["Name"; "Pp"; "Schematic"], ["Map";"Set";"Format"],[]);
           "paths.ml", (["Name"; "Pp"; "Schematic"; "Schematic_indices"; "Support" ],
@@ -678,24 +681,24 @@ let result =
                       ["Sparser";"Slex"]);
           "mresult.mli", ([],[],[]);
           "mresult.ml", ([],["List"],[]);
-          "schema.ml", (["M2l"; "Module"; "Namespaced"; "Option"; "Schematic"],
+          "schema.ml", (["M2l"; "Module"; "Namespaced"; "Ext_option"; "Schematic"],
                         [],  []);
           "schema.mli", (["M2l"; "Module"; "Namespaced"; "Schematic"], [], []);
           "schematic.mli", ([],["Format"], []);
           "schematic_indices.ml", (["Schematic"],[],[]);
 
           "schematic.ml", (["Format_compat"; "Name"; "Mresult"; "Pp";
-                            "Support";"Option"],
+                            "Support";"Ext_option"],
                            ["Format"; "Hashtbl"; "List"; "Map"; "String"],
                            [] );
-          "solver.mli", (["Fault"; "Loc"; "Unit";
+          "solver.mli", (["Fault"; "Loc"; "Comp_unit";
                           "Namespaced"; "Read";
                           "Summary"; "Stage"; "Paths"; "Pkg"],
                          ["Format"],[]);
           "solver.ml", (
             ["Approx_parser"; "Debug"; "Deps"; "Summary"; "Stage"; "Loc";
              "M2l"; "Modname"; "Unitname"; "Module"; "Mresult"; "Namespaced";
-             "Option"; "Pp"; "Paths"; "Pkg"; "Read"; "Unit"; "Fault";
+             "Ext_option"; "Pp"; "Paths"; "Pkg"; "Read"; "Comp_unit"; "Fault";
              "Standard_faults"; "Support";"Uloc"],
             ["List";"Map";"Format"],[]);
           "standard_faults.ml", (
@@ -707,12 +710,12 @@ let result =
             ["Lexer";"Syntaxerr"],[]);
           "standard_policies.ml", (["Fault"; "Standard_faults"; "Solver"],[],[]);
           "standard_policies.mli", (["Fault"],[],[]);
-          "unit.mli", (["Deps";"Pkg"; "M2l"; "Module"; "Namespaced";
+          "comp_unit.mli", (["Deps";"Pkg"; "M2l"; "Module"; "Namespaced";
                         "Fault"; "Read"],
                        ["Format";"Set"],[]);
-          "unit.ml", (
+          "comp_unit.ml", (
             ["Approx_parser"; "Deps"; "M2l"; "Module"; "Namespaced";
-             "Fault"; "Option"; "Pkg"; "Pp"; "Read";
+             "Fault"; "Ext_option"; "Pkg"; "Pp"; "Read";
              "Standard_faults"],
             [ "List"; "Location"; "Set"],
             []);
@@ -732,12 +735,12 @@ let result =
             ["Deps"; "Module"; "Stage"; "Transforms"; "Zipper"; "Zipper_fold"]
           ,["List"],[]);
           "zipper_fold.ml", (
-            ["Debug"; "Deps"; "Id"; "Loc"; "M2l"; "Module"; "Mresult"; "Option";
+            ["Debug"; "Deps"; "Id"; "Loc"; "M2l"; "Module"; "Mresult"; "Ext_option";
              "Paths"; "Pkg"; "Stage"; "Summary"; "Zipper_skeleton"; "Zipper_def";
              "Zipper_pp"; "Uloc"]
           ,["List"],[]);
           "zipper_pp.ml", (
-            ["Loc"; "M2l"; "Module"; "Name"; "Option"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
+            ["Loc"; "M2l"; "Module"; "Name"; "Ext_option"; "Paths"; "Pp"; "Zipper_def"; "Zipper_skeleton"]
           ,["Format"],[]);
           "zipper_fold.mli", (["Stage";"Zipper_def"], [], []);
           "zipper.ml", ([],[],[]);
@@ -746,7 +749,7 @@ let result =
              "Zipper_skeleton"]
           ,[],[]);
           "zipper_skeleton.ml", (
-            ["Debug"; "Deps"; "Fault"; "Id"; "M2l"; "Module"; "Name"; "Namespaced"; "Option"; "Paths"; "Pp";
+            ["Debug"; "Deps"; "Fault"; "Id"; "M2l"; "Module"; "Name"; "Namespaced"; "Ext_option"; "Paths"; "Pp";
              "Stage"; "Standard_faults"; "Summary"; "Transforms"; "Uloc"]
           ,["Format"; "List"],[]);
           "zipper_skeleton.mli", (

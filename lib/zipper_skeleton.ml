@@ -70,7 +70,7 @@ let unpacked =
   { empty with mty }
 
 let fn ~f ~x =
-  let arg = Option.fmap (Arg.map (fun x -> x.P.mty)) x in
+  let arg = Ext_option.fmap (Arg.map (fun x -> x.P.mty)) x in
   { P.name=f.P.name; mty=Module.Fun (arg, f.P.mty) }
 
 let ext param (loc:Uloc.t) (name:string) =
@@ -104,7 +104,7 @@ let bind_sig name m = match name with
   | None -> Y.empty
 
 let bind_rec_add name expr y =
-  Y.merge y @@ Option.either (fun name -> (T.bind_summary Module name expr)) Y.empty name
+  Y.merge y @@ Ext_option.either (fun name -> (T.bind_summary Module name expr)) Y.empty name
 let bind_rec_init = Y.empty
 let opened param ~loc m = T.open_ param.T.fault_handler loc m
 let empty_diff = Y.empty

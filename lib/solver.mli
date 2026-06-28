@@ -1,4 +1,6 @@
 (** Basic solver *)
+module Unit = Comp_unit
+
 
 type 'a i = { input: Unit.s; code: 'a }
 (** In-processing state for unit files *)

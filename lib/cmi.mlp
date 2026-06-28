@@ -1,5 +1,7 @@
 (** Extract module level definitions from cmi files *)
 
+module Opt = Ext_option
+
 let cmi_infos path =
   Cmi_format.read_cmi path
 
@@ -29,11 +31,11 @@ let bind id mt = let open M2l in
   Bind {name= Ident.make id; expr = Constraint(Abstract,mt)}
 
 let bind_sig id mt = let open M2l in
-  Bind_sig { name = Ident.make id; expr = Option.( mt >< Abstract)}
+  Bind_sig { name = Ident.make id; expr = Opt.( mt >< Abstract)}
 
 let module_declaration module_type id md = bind id @@ module_type md.md_type
 let module_type_declaration module_type id mtd =
-  bind_sig id Option.( mtd.mtd_type >>| module_type)
+  bind_sig id Opt.( mtd.mtd_type >>| module_type)
 
 module P = Path
 module L = Longident
@@ -83,7 +85,7 @@ and module_type  = function
   | Mty_functor (id, mto, mt) ->
     let open M2l in
     let name = Ident.name id in
-    let arg = Option.( mto >>|module_type >>| fun s ->
+    let arg = Opt.( mto >>|module_type >>| fun s ->
                        {Arg.name = Ident.make name; signature = s} ) in
     Fun { arg ; body = module_type mt}
 # 4.10, oo
@@ -91,7 +93,7 @@ and module_type  = function
     let open M2l in
     let arg = match arg with
         | Named(name,mt) ->
-          Some {Arg.name = Option.fmap Ident.name name ; signature = module_type mt }
+          Some {Arg.name = Opt.fmap Ident.name name ; signature = module_type mt }
         | Unit -> None
     in
     Fun { arg; body = module_type mt }

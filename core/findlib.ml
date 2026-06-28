@@ -1,5 +1,7 @@
 
-  type query =
+module Opt = Ext_option
+
+type query =
     { pkgs: Name.t list;
       predicates: string list;
       syntaxes: Name.t list;
@@ -32,7 +34,7 @@ let run_word cmd = match run cmd with
 let query q = run@@ String.concat " " ("ocamlfind query -r " :: q)
 let printppx q =
   let s = run_word @@ String.concat " " ("ocamlfind printppx " :: q) in
-  Option.fmap (fun s -> String.sub s 4 @@ String.length s - 4) s
+  Opt.fmap (fun s -> String.sub s 4 @@ String.length s - 4) s
 
 let archive q = run @@ String.concat " " ("ocamlfind query -format %a":: q)
 
@@ -60,8 +62,8 @@ let find_pp info syntax pkgs =
 let process_pkg info name =
   let predicates = find_pred info in
   let dirs = query @@  predicates @ [name] in
-  let ppxopt = Option.default [] @@ Name.Map.find_opt name info.ppxopts in
-  let ppx = Option.fmap (fun s -> String.concat " " @@ s :: ppxopt) @@
+  let ppxopt = Opt.default [] @@ Name.Map.find_opt name info.ppxopts in
+  let ppx = Opt.fmap (fun s -> String.concat " " @@ s :: ppxopt) @@
     printppx @@ predicates @ [name] in
   dirs, ppx
 
@@ -73,7 +75,7 @@ let ppxopt info opt =
   | a :: q ->
     let q = String.concat "," q in
     let m = info.ppxopts in
-    let q = Option.( Name.Map.find_opt a m >>| (List.cons q) >< [q] ) in
+    let q = Opt.( Name.Map.find_opt a m >>| (List.cons q) >< [q] ) in
     let m = Name.Map.add a q m in
     { info with ppxopts = m }
 
@@ -99,7 +101,7 @@ let process_pp info name pp =
     Some s
   with Not_found -> pp
 
-let ( |:: ) x l = Option.( x >>| (fun x -> x :: l) >< l)
+let ( |:: ) x l = Opt.( x >>| (fun x -> x :: l) >< l)
 
 let process info =
   let syntaxes = Name.Set.of_list (info.syntaxes) in

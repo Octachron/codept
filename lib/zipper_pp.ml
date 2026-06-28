@@ -1,7 +1,7 @@
 
 type dp = Format.formatter -> unit
 type 'a dprinter = 'a -> dp
-
+module Opt = Ext_option
 
 module type Result_printer = sig
   module T: Zipper_def.tree
@@ -224,12 +224,12 @@ module Make(Def:Zipper_def.s)(R:Result_printer with module T := Def.T) = struct
     | Path_expr App_f (a,proj) :: rest ->
       path_expr rest
         (fun ppf -> Pp.fp ppf "@[%t(%a)%t@]"
-            sub Paths.E.pp a (option "." Paths.S.pp (Option.fmap (fun (_,_,x) -> x) proj))
+            sub Paths.E.pp a (option "." Paths.S.pp (Opt.fmap (fun (_,_,x) -> x) proj))
         )
    | Path_expr App_x (f,proj) :: rest ->
       path_expr rest
         (fun ppf -> Pp.fp ppf "@[%t(%t)%t@]"
-            (R.pp_path_expr f.user) sub (option "." Paths.S.pp (Option.fmap (fun (_,_,x) -> x) proj))
+            (R.pp_path_expr f.user) sub (option "." Paths.S.pp (Opt.fmap (fun (_,_,x) -> x) proj))
         )
    | Access acc :: rest ->
      access (rest: waccess t)

@@ -15,4 +15,4 @@ type param =
 
 val main:
   Fault.handler -> Format.formatter -> Common.synonyms -> param ->
-  Unit.r list Unit.pair -> unit
+  Comp_unit.r list Comp_unit.pair -> unit

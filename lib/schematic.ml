@@ -1,5 +1,6 @@
 
 type format = Json | Sexp
+module Opt = Ext_option
 
 type (_,_) eq = Eq : ('a,'a) eq
 type void = (int,float) eq
@@ -608,17 +609,17 @@ type untyped = Untyped.t =
 
 let promote_to_obj l =
   let promote_pair = function List [Atom x;y] -> Some(x,y) | _ -> None in
-  Option.List'.map promote_pair l
+  Opt.List'.map promote_pair l
 
 let rec retype: type a f. f pending_rec_def -> (a,f) s -> untyped -> a option =
-  let open Option in
+  let open Opt in
   fun defs sch u -> match sch, u with
     | Int, Atom u -> Support.opt int_of_string u
     | Float, Atom u -> Support.opt float_of_string u
     | Bool, Atom u -> Support.opt bool_of_string u
     | String, Atom s -> Some s
     | Array t, (Array ul | List ul) ->
-      Option.List'.map (retype defs t) ul
+      Opt.List'.map (retype defs t) ul
     |  [], Array [] -> Some []
     | (a::q), (Array(ua :: uq) | List(ua :: uq)) ->
         retype defs a ua >>= fun h ->
@@ -642,7 +643,7 @@ let rec retype: type a f. f pending_rec_def -> (a,f) s -> untyped -> a option =
     | _ -> None
 and retype_obj: type a f. f pending_rec_def -> (a,f) record_declaration -> (string * untyped) list ->
   a record option = fun defs sch x ->
-  let open Option in
+  let open Opt in
   match sch, x with
   | [], [] -> Some []
   | (Req, field, t) :: q , (ufield, u) :: uq when show field = ufield ->
@@ -660,7 +661,7 @@ and retype_obj: type a f. f pending_rec_def -> (a,f) record_declaration -> (stri
 
 and retype_sum: type all a. all pending_rec_def -> (a,all) sum_decl -> string
   -> untyped -> a sum option =
-  let open Option in
+  let open Opt in
   fun defs decl n u ->
     match decl with
     | (s, a) :: _  when s = n ->
@@ -670,7 +671,7 @@ and retype_sum: type all a. all pending_rec_def -> (a,all) sum_decl -> string
       retype_sum defs q n u >>| fun (C c) -> (C (S c))
 
 and retype_const_sum: type a b. (a,b) sum_decl -> string -> a sum option =
-  let open Option in
+  let open Opt in
   fun decl n -> match decl with
     | ( (s, Void) :: _ ) when s = n -> Some (C E)
     | [] -> None

@@ -103,7 +103,7 @@ module Group = struct
 
     let raw_add kind unit m =
       let key = key unit in
-      let grp = Option.default empty (Namespaced.Map.find_opt key m) in
+      let grp = Ext_option.default empty (Namespaced.Map.find_opt key m) in
       Namespaced.Map.add key (raw_add kind unit grp) m
 
     let add unit m = raw_add unit.kind unit m

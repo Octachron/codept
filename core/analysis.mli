@@ -16,4 +16,4 @@ val lift: param -> (module Stage.param)
 
 (** [main param task] performs dependency analysis
     with parameters [param] on the given task *)
-val main: Io.reader -> param -> Common.task -> Unit.r list Unit.pair
+val main: Io.reader -> param -> Common.task -> Comp_unit.r list Comp_unit.pair

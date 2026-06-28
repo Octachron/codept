@@ -1,3 +1,5 @@
+module Opt = Ext_option
+
 module Arg = struct
   type 'a t = { name:Name.t option; signature:'a }
   type 'a arg = 'a t
@@ -61,7 +63,7 @@ module Divergence= struct
     Pp.fp ppf "(%a:%a)" Pkg.reflect pkg rloc loc
 
   let divergence ppf {root;loc;origin} =
-    Pp.fp ppf "{root=%a;loc=%a;origin=%a}" Pp.estring Option.(root><"")
+    Pp.fp ppf "{root=%a;loc=%a;origin=%a}" Pp.estring Opt.(root><"")
       floc loc origin_r origin
 
   end
@@ -69,7 +71,7 @@ module Divergence= struct
 
   let pp ppf {root; origin; loc= {pkg=path;loc} } =
     Pp.fp ppf "open %s at %a:%a (%a)"
-      Option.(root><"")
+      Opt.(root><"")
       Pkg.pp path Loc.pp loc
       pp_origin origin
 
@@ -515,7 +517,7 @@ module Schema = struct
   module Module_types = Label(struct let l = "module_types" end)
   module Name_f = Label(struct let l = "name" end)
 
-  let (><) = Option.(><)
+  let (><) = Opt.(><)
 
   let l = let open L in function | [] -> None | x -> Some x
 
@@ -700,7 +702,7 @@ let rec extend: type any. any ty -> extended ty = function
   | Abstract n -> Abstract n
   | Fun(a,x) ->
     let map a = Arg.map extend a in
-    (Fun(Option.fmap map a, extend x) : modul_)
+    (Fun(Opt.fmap map a, extend x) : modul_)
   | Sig s ->  Sig s
   | Alias _ as x -> x
   | Link _ as x -> x
@@ -719,10 +721,10 @@ module Subst = struct
   let add id mty subst = Tbl.add id mty subst
 
   let rec apply: type any. (Id.t -> any ty option) -> any ty -> any ty = fun subst -> function
-    | Abstract id as old -> Option.( subst id >< old)
-    | Fun (x,y) -> Fun(Option.fmap (Arg.map (apply subst)) x, apply subst y)
+    | Abstract id as old -> Opt.( subst id >< old)
+    | Fun (x,y) -> Fun(Opt.fmap (Arg.map (apply subst)) x, apply subst y)
     | Sig {origin;signature} ->
-      Sig {origin;signature = apply_sig (fun id -> Option.fmap extend (subst id)) signature }
+      Sig {origin;signature = apply_sig (fun id -> Opt.fmap extend (subst id)) signature }
     | Alias _ as x -> x
     | Link _ as x -> x
     | Namespace _ as x -> x
@@ -954,7 +956,7 @@ module Partial = struct
     | Abstract n -> (Abstract n:modul_)
     | Fun(a,x) ->
       let map a = Arg.map (to_module_kind ?origin) a in
-      (Fun(Option.fmap map a, to_module_kind ?origin x) : modul_)
+      (Fun(Opt.fmap map a, to_module_kind ?origin x) : modul_)
     | Sig s ->
       let origin = match origin with
         | Some o -> Origin.at_most s.origin o
@@ -995,7 +997,7 @@ module Partial = struct
   let rec of_extended_mty: modul_ -> sty = function
     | Abstract n -> Abstract n
     | Sig x -> Sig x
-    | Fun (a,x) -> Fun(Option.fmap (Arg.map of_extended_mty) a, of_extended_mty x)
+    | Fun (a,x) -> Fun(Opt.fmap (Arg.map of_extended_mty) a, of_extended_mty x)
     | Link _ | Namespace _ | Alias _ -> assert false
 
   let of_extended ?name kind = { name; mty = of_extended_mty kind }

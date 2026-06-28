@@ -20,14 +20,14 @@ module Query = struct
   let deps deps = Some {T.main=(); deps; msgs=[]}
 
   let (>>|) x f = { x with T.main = f x.T.main }
-  let (>>?) (x: _ t) f = let open Option in
+  let (>>?) (x: _ t) f = let open Ext_option in
     x >>= fun x -> f x.T.main >>| fun q ->
     { q with T.msgs= x.msgs @ q.T.msgs; deps=Deps.merge q.T.deps x.deps }
 
   let (>>) x y = x >>? fun () -> y
 
   let (<!>) x msgs =
-    Option.fmap (fun x -> { x with T.msgs = msgs @ x.T.msgs }) x
+    Ext_option.fmap (fun x -> { x with T.msgs = msgs @ x.T.msgs }) x
 
 end
 open Query
@@ -139,7 +139,7 @@ module Core = struct
       | Some _ as x -> x
       | None ->
         let open Query in
-        let (|||) = Option.(|||) in
+        let (|||) = Ext_option.(|||) in
 
         (* We then try to find the searched name in the signature
            before the divergence *)
@@ -222,7 +222,7 @@ module Core = struct
       else find option aliases ctx current (restrict env @@ In_namespace modules) q
 
   let find loc sub ?edge level path envt =
-    let edge = Option.default Edge.Normal edge in
+    let edge = Ext_option.default Edge.Normal edge in
     let option = {loc; approx_submodule=sub; edge; level } in
     match find option Namespaced.Set.empty Any [] envt path with
     | None -> raise Not_found

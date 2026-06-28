@@ -53,7 +53,7 @@ let update ~path ?(aliases=S.empty) ~edge pkg { units; externals }: t =
     let update x =
       let aliases = S.union aliases x.aliases in
       { x with edge = Edge.max edge x.edge; aliases } in
-    Option.either update {edge;pkg; aliases }
+    Ext_option.either update {edge;pkg; aliases }
       (Map.find_opt path units) in
   let units = Map.add path ep units in
   { units; externals }
@@ -80,7 +80,7 @@ let (+) = merge
 
 
 let find path deps =
-  Option.fmap (fun {edge;pkg;aliases} -> {path;edge;pkg;aliases}) @@ Map.find_opt path deps.units
+  Ext_option.fmap (fun {edge;pkg;aliases} -> {path;edge;pkg;aliases}) @@ Map.find_opt path deps.units
 let fold f deps acc =
   Map.fold (fun path {edge;pkg;aliases} -> f {path;edge;pkg;aliases}) deps.units acc
 

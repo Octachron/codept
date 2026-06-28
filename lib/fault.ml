@@ -1,3 +1,4 @@
+module Opt = Ext_option
 module S = Map.Make (String)
 module Level = struct
 type t = Format_tags.t
@@ -128,7 +129,7 @@ module Policy = struct
     Register.find (Dyn tag) p.register
 
   let rec find_lvl default pol l  =
-    let with_default = Option.default default in
+    let with_default = Ext_option.default default in
     match pol, l with
     | Level h, _ -> with_default h.lvl
     | Map m, a :: q  ->
@@ -147,8 +148,8 @@ module Policy = struct
     level_info p info
 
   let rec set ?lvl ?expl path env = match path, env with
-    | [], Level l -> Level {expl = Option.default l.expl expl;lvl }
-    | [], Map m -> Map { m with lvl; expl = Option.default m.expl expl }
+    | [], Level l -> Level {expl = Opt.default l.expl expl;lvl }
+    | [], Map m -> Map { m with lvl; expl = Opt.default m.expl expl }
     | a :: q, Level l ->
       Map{ lvl = None; expl = "";
            map=S.singleton a @@ set ?lvl ?expl q @@ Level l
@@ -208,7 +209,7 @@ let handle {policy;err_formatter} (Err(tag,e)) =
     silent = policy.silent;
     exit = policy.exit;
   } in
-  Option.iter (fun info -> log log_info info.printer err_formatter e) (check tag info)
+  Opt.iter (fun info -> log log_info info.printer err_formatter e) (check tag info)
 
 let raise h info x = handle h (emit info x)
 

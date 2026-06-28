@@ -1,5 +1,6 @@
 
-module With_deps = With_deps
+module Unit = Comp_unit
+module Opt = Ext_option
 open Debug
 
 type 'a i = { input: Unit.s; code: 'a}
@@ -89,7 +90,7 @@ module Failure = struct
     |> List.map (fun (k,x) -> k, List.map fst (UMap.bindings x))
 
   let categorize m = Mp.fold (fun _name (unit, status) ->
-      Map.add_elt Option.(!status >< Internal_error) unit
+      Map.add_elt Ext_option.(!status >< Internal_error) unit
     ) m Map.empty
 
   let rec kernel block resolver map cycle start =
@@ -448,7 +449,7 @@ struct
       None, pending
 
   let add_pending i state =
-    let l = Option.default [] @@ File_map.find_opt i.input.path state.pending in
+    let l = Opt.default [] @@ File_map.find_opt i.input.path state.pending in
     { state with
       pending = File_map.add i.input.path ( i :: l ) state.pending
     }
@@ -524,7 +525,7 @@ struct
           not_ancestors =
             Namespaced.Set.remove path state.not_ancestors
         } in
-      Option.(more >>| eval_depth state >< Ok state )
+      Opt.(more >>| eval_depth state >< Ok state )
     | Error m2l ->
       (* first, we update the work-in-progress map *)
       let state = update_pending { i with code = m2l } state in
@@ -602,7 +603,7 @@ struct
     let add_g (k,x,n) g =
       g ++ (k.Read.kind, (k, x, n) ) in
     let add m ((_, _x, path ) as f) =
-      let g = Option.default {Unit.ml = []; mli=[]}
+      let g = Opt.default {Unit.ml = []; mli=[]}
         @@ File_map.find_opt path m in
       File_map.add path (add_g f g) m in
     let m = List.fold_left add File_map.empty files in
@@ -620,8 +621,8 @@ struct
       @@ List.map convert_p @@ File_map.bindings m in
     fun name ->
       File_map.find_opt name m
-      |> Option.default {Unit.ml = None; mli = None}
-      |> Unit.unimap (Option.fmap load_file)
+      |> Opt.default {Unit.ml = None; mli = None}
+      |> Unit.unimap (Opt.fmap load_file)
 
   let start loader files env roots =
     debug "starting env:%a" Envt.pp env;

@@ -8,7 +8,7 @@ val full_topological_sort:
 
 (** [order units] inspects an topologically ordered list [units] and
     remember the position of each modules *)
-val remember_order: Unit.r list -> int Namespaced.Map.t
+val remember_order: Comp_unit.r list -> int Namespaced.Map.t
 
 (** [topos_compare] uses a memoized order function to compare
     known modules *)

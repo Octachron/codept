@@ -21,7 +21,7 @@ type t =
 
 
 type mode = string -> Io.writer -> Format.formatter
-  -> Params.t -> Unit.r list Unit.pair -> unit
+  -> Params.t -> Comp_unit.r list Comp_unit.pair -> unit
 
 val eval: t -> mode
 

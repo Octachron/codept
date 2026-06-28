@@ -86,7 +86,7 @@ let raw_unit =
   ]
 
 let unit =
-  let e x = Option.default ([] : _ list) x in
+  let e x = Ext_option.default ([] : _ list) x in
   let ($=$) x l = if l = L.[] then x $=? None else x $=? Some l in
   custom  raw_unit
     (fun d -> [ File.l $= d.file; Deps.l $=$ d.deps; Externals.l $=$ d.externals ])
@@ -115,7 +115,7 @@ let deps = Obj [
   ]
 
 let deps =
-  let list x = Option.default ([]: _ list) x in
+  let list x = Ext_option.default ([]: _ list) x in
   let ($=$) x l = if l = L.[] then x $=? None else x $=? Some l in
   let open Record in
   custom  deps

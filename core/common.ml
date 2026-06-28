@@ -1,5 +1,3 @@
-module U = Unit
-
 type kind = Interface | Implementation | Signature
 type info = { format: Read.format; kind : kind }
 

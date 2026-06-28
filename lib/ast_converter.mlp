@@ -4,6 +4,7 @@ module Lc = Longident_converter
 
 module B = M2l.Build
 
+module Opt = Ext_option
 module M = Module
 module Annot = M2l.Annot
 module Arg = M.Arg
@@ -90,7 +91,7 @@ module H = struct
     | q -> Some (remove_simple_last q)
 
   let remove_last = function
-    | Paths.E.Simple p -> Option.fmap Paths.E.pure (remove_simple_last p)
+    | Paths.E.Simple p -> Opt.fmap Paths.E.pure (remove_simple_last p)
     | Apply {f;x;proj=Some p} ->
       Some (Paths.E.app f x (remove_simple_last p))
     | Apply {proj=None; _ } as y -> Some y
@@ -155,7 +156,7 @@ module Pattern = struct
 
   let union_map f = List.fold_left (fun p x -> p ++ f x) empty
 
-  let opt f x = Option.( x >>| f >< empty )
+  let opt f x = Opt.( x >>| f >< empty )
 
   let single_binder b = { empty with binds = [b]  }
   let bind loc name sign = single_binder (Loc.create loc {M2l.name = bound_name name; expr = sign })
@@ -497,7 +498,7 @@ and pattern pat =
            C (P1, ..., Pn)      Some ([], Ppat_tuple [P1; ...; Pn])
            C (type a b) P       Some ([a; b], P)
          *)
-    Pattern.( access c ++ Pattern.opt pattern (Option.fmap snd p) )
+    Pattern.( access c ++ Pattern.opt pattern (Opt.fmap snd p) )
 #end
   | Ppat_variant (_, p) (*`A (None), `A P(Some P)*) ->
     Pattern.opt pattern p
@@ -743,7 +744,7 @@ and module_expr mexpr : M2l.module_expr =
 # oo, 4.10
   | Pmod_functor (name, sign, mex) ->
     let name = txt name in
-    let arg = Option.( sign >>| module_type >>| fun s -> {Arg.name = Some name;signature=s} ) in
+    let arg = Opt.( sign >>| module_type >>| fun s -> {Arg.name = Some name;signature=s} ) in
     Fun { arg; body = module_expr mex }
 # 4.10, oo
   | Pmod_functor (Unit, mex) ->
@@ -810,7 +811,7 @@ and module_type (mt:Parsetree.module_type) =
   | Pmty_signature s (* sig ... end *) -> Sig (signature s)
 # oo, 4.10
   | Pmty_functor (name, arg, res) (* functor(X : MT1) -> MT2 *) ->
-    let arg = let open Option in
+    let arg = let open Opt in
       arg >>| module_type >>| fun s -> { Arg.name = Some(txt name); signature = s} in
     Fun { arg; body = module_type res }
 # 4.10, oo
@@ -832,7 +833,7 @@ and module_declaration mdec =
   let s = module_type mdec.pmd_type in
   { name = bound_name (txt mdec.pmd_name); expr = Constraint( Abstract, s) }
 and module_type_declaration mdec =
-  let open Option in
+  let open Opt in
   let name = txt mdec.pmtd_name in
   let s = ( (mdec.pmtd_type >>| module_type) >< Abstract ) in
   {name = Some name; expr = s }
@@ -941,13 +942,13 @@ and matched_patt_expr x y =
 #end
   | Ppat_construct (_,po), Pexp_construct(_,eo) ->
 # 4.13, oo
-    let po = Option.fmap snd po in
+    let po = Opt.fmap snd po in
 #end
-    Option.( (po >>= fun p -> eo >>| fun e -> matched_patt_expr p e) ><
+    Opt.( (po >>= fun p -> eo >>| fun e -> matched_patt_expr p e) ><
              (Pattern.opt pattern po, Annot.opt expr eo)
            )
   | Ppat_variant (_,po), Pexp_variant(_,eo) ->
-    Option.( (po >>= fun p -> eo >>| fun e -> matched_patt_expr p e) ><
+    Opt.( (po >>= fun p -> eo >>| fun e -> matched_patt_expr p e) ><
              (Pattern.opt pattern po, Annot.opt expr eo)
            )
 # oo, 5.4

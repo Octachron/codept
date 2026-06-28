@@ -1,5 +1,6 @@
 open Params
-
+module Unit = Comp_unit
+module Opt = Ext_option
 type mode =
   string -> Io.writer ->
   Format.formatter -> Params.t -> Unit.r list Unit.pair -> unit
@@ -46,7 +47,7 @@ let assoc x set =
   | Some u, _ | None, Some u ->
     let path = u.path in
     LocalSet.add
-      { path; ml = Option.fmap ufile x.ml ; mli = Option.fmap ufile x.mli }
+      { path; ml = Opt.fmap ufile x.ml ; mli = Opt.fmap ufile x.mli }
       set
   | _ -> set
 
@@ -60,7 +61,7 @@ let build_atlas (lib,unknow) (u:Unit.r) =
   Deps.fold build_atlas (Unit.deps u) (lib,unknow)
 
 let structured fmt _ _ ppf param units =
-  let fmt = Option.default param.external_format fmt in
+  let fmt = Opt.default param.external_format fmt in
   let all = units.Unit.mli @ units.ml in
   let pp = let open Schematic in
     match fmt, param.pretty_format with

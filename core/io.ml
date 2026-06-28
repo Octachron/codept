@@ -2,7 +2,7 @@
 type reader = {
   sign:  string -> (Module.Namespace.t, Schematic.Ext.error) result;
   m2l: Fault.handler -> Read.kind -> string
-    -> Namespaced.t -> Unit.s;
+    -> Namespaced.t -> Comp_unit.s;
   findlib: Common.task -> Findlib.query -> Common.task ;
   env: Module.dict
 }
@@ -29,7 +29,7 @@ let lib (task:Common.task ref) f =
 let expand task query =
   let task = ref task in
   let result = Findlib.process query in
-  Option.iter (fun pp -> Clflags.preprocessor := Some pp) result.pp;
+  Ext_option.iter (fun pp -> Clflags.preprocessor := Some pp) result.pp;
   List.iter (lib task) result.libs; List.iter add_ppx result.ppxs;
   !task
 end
@@ -53,7 +53,7 @@ let read_sigfile filename =
 let direct = {
   reader = {
     sign = read_sigfile;
-    m2l = Unit.read_file;
+    m2l = Comp_unit.read_file;
     env = Name.Map.empty;
     findlib = Findlib.expand
   };

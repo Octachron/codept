@@ -1,5 +1,7 @@
 module M = Module
 module Nms = Namespaced
+module Unit = Comp_unit
+module Opt = Ext_option
 
 type param = {
   epsilon_dependencies:bool;
@@ -41,7 +43,7 @@ let split either =
   split either ([],[])
 
 let default_path f =
-  Option.default (Namespaced.module_path_of_filename f)
+  Opt.default (Namespaced.module_path_of_filename f)
 
 
 let info_split (io:Io.reader) = function
@@ -68,7 +70,7 @@ let signature_error fault_handler = function
 let pre_organize fault_handler io files =
   let units, signatures = split (info_split io) files in
   let signatures =
-    Module.Namespace.merge_all @@ Option.List'.filter
+    Module.Namespace.merge_all @@ Opt.List'.filter
     @@ List.map (signature_error fault_handler) signatures in
   units, signatures
 
@@ -175,7 +177,7 @@ module Collisions = struct
   (** add a new collision [path] to a map of collision [m]
       for a module name [name] *)
   let add name path m =
-    let s = Option.default Pkg.Set.empty
+    let s = Opt.default Pkg.Set.empty
       @@ Nms.Map.find_opt name m in
     Nms.Map.add name (Pkg.Set.add path s) m
 
