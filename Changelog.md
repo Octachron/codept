@@ -1,3 +1,14 @@
+# 0.13.0
+
+  * Support OCaml 5.5
+  * Aliases prefix `module A = Prefix.X` triggers dependencies immediately even in
+   `-no-alias-deps-mode`
+  * Allow aliases to aliases
+   ``` 
+    module Y = Lib.Alias
+    ```
+  * Rename two library modules to avoid a collision with standard library modules
+
 # 0.12.2
 
   * Support 5.4
