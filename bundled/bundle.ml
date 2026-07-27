@@ -77,9 +77,14 @@ let array_labels version =
   if version >= (4,06) then chain "ArrayLabels" ["Floatarray"] else
     simple "ArrayLabels"
 
-let gc v = if v < (4,11)  then simple "Gc" else chain "Gc" ["Memprof"]
+let gc v = if v < (4,11)  then simple "Gc"
+           else if v < (5,5) then chain "Gc" ["Memprof"]
+           else chain "Gc" ["Memprof"; "Tweak"]
 
 let char v = chain_after v (5,4) "Char" ["Ascii"]
+let with_args m v = chain_after v (5,5) m ["Args"]
+let std_lazy v = chain_after v (5,5) "Lazy" ["Mutexed"]
+let option v = chain_after v (5,5) "Option" ["Syntax"]
 
 let chained version = [
   gc version;
@@ -87,19 +92,25 @@ let chained version = [
   char version;
   array_labels version;
   obj version;
+  with_args "CamlinternalFormat" version;
+  with_args "Format" version;
+  with_args "Printf" version;
+  std_lazy version;
   printexc;
-  random;scanf
+  random;
+  scanf
 ]
+
 
 let simples =
   List.map simple
     [ "Arg"; "Buffer"; "Bytes"; "BytesLabels";
       "Callback";
-      "CamlinternalOO"; "CamlinternalLazy"; "CamlinternalFormat";
+      "CamlinternalOO"; "CamlinternalLazy";
       "CamlinternalFormatBasics"; "CamlinternalMod";
-       "Complex"; "Filename"; "Format";
-       "Int32"; "Int64"; "Lazy"; "Lexing"; "List";
-      "ListLabels"; "Marshal"; "Nativeint"; "Oo"; "Parsing"; "Printf"; "Queue";
+       "Complex"; "Filename";
+       "Int32"; "Int64"; "Lexing"; "List";
+      "ListLabels"; "Marshal"; "Nativeint"; "Oo"; "Parsing"; "Queue";
       "Stack"; "String"; "StringLabels"; "Uchar";
       "LargeFile"
     ]
@@ -218,7 +229,8 @@ let simple_stdlib v = Dict.of_list @@
   @ after v (4,07) [bigarray ();float v; simple "Seq"]
   @ after v  (4,08) (
     chain_after v (5,4) "Result" ["Syntax"]
-    :: List.map simple ["Fun";"Bool";"Option";"Int"; "Unit"]
+    :: option v
+    :: List.map simple ["Fun";"Bool"; "Int"; "Unit"]
   )
   @ before v  (4,10) [simple "Sys"]
   @ after v (4,12) [simple "Either"; chain_after v (5,4) "Atomic" ["Loc"]]

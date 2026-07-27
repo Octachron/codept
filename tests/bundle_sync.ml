@@ -26,6 +26,7 @@ let refs =
   List.fold_left (fun m (mj,mn,lib) -> Vmap.add (mj,mn) lib m) Vmap.empty
     (let open Bundle_refs in
      [
+       5,  5, Stdlib_505.modules;
        5,  4, Stdlib_504.modules;
        5,  3, Stdlib_503.modules;
        5,  2, Stdlib_502.modules;
